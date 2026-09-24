@@ -1,7 +1,7 @@
 {
   "name": "Aftermath",
   "id": "aftermath",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Opens StarCraft replays over the map they were played on: where buildings went down and when, where units were sent, heat maps of the orders across one game or many, build orders, actions per minute and chat, on a timeline that plays back.",
   "author": "Jeany",
   "homepage": "https://github.com/scm-js/plugin-aftermath",

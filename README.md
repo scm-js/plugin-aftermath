@@ -48,7 +48,8 @@ The panel, from the top:
 - **Which replay**, when several are loaded, **Open Replay…**, **Close**, which closes the
   replay and leaves the map open, and **Dock** / **Float**: the panel floats over the map
   at first; **Dock** moves it into the right-hand column beside the map, and it stays
-  there next time.
+  there next time. The same choice is on the plugin's page in **Edit ▸ Preferences ▸
+  Plugins ▸ Aftermath**.
 - **The game**: its type, length, date and the game version that wrote it.
 - **The timeline**: **Play** / **Pause**, a slider, and the speed. 1× is the game's own
   speed at Fastest.

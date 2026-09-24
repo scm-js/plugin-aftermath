@@ -1253,14 +1253,37 @@ function activate(api) {
     });
     panel = handle;
   }
-  function moveDock() {
-    settings.docked = !settings.docked;
+  function setDocked(docked) {
+    if (settings.docked === docked) return;
+    settings.docked = docked;
     save();
+    if (!panel?.isOpen()) return;
     const old = panel;
     panel = null;
-    old?.close();
+    old.close();
     showPanel();
   }
+  const moveDock = () => setDocked(!settings.docked);
+  let dockField = null;
+  api.ui.preferencesPage({
+    mount(body) {
+      const w2 = api.ui.widgets;
+      dockField = w2.select([{ value: "float", label: t("Floating over the map") }, { value: "right", label: t("Docked on the right") }], { value: settings.docked ? "right" : "float" });
+      body.append(
+        w2.form([{ label: t("Panel"), field: dockField }]),
+        w2.hint(t("A floating panel is dragged about and resized from its corner; a docked one sits in the right-hand column beside the map. The Dock and Float button in the panel does the same."))
+      );
+      return () => {
+        dockField = null;
+      };
+    },
+    apply() {
+      if (dockField) setDocked(dockField.value === "right");
+    },
+    reset() {
+      if (dockField) dockField.value = DEFAULTS.docked ? "right" : "float";
+    }
+  });
   const w = api.ui.widgets;
   class PanelView {
     root;

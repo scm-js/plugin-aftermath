@@ -398,14 +398,35 @@ export function activate(api: PluginApi) {
     panel = handle;
   }
 
-  function moveDock(): void {
-    settings.docked = !settings.docked;
+  /** Move the panel to the other side of the dock line; a closed panel opens there next time. */
+  function setDocked(docked: boolean): void {
+    if (settings.docked === docked) return;
+    settings.docked = docked;
     save();
+    if (!panel?.isOpen()) return;
     const old = panel;
     panel = null;
-    old?.close();
+    old.close();
     showPanel();
   }
+  const moveDock = () => setDocked(!settings.docked);
+
+  /* ── The plugin's page under Edit ▸ Preferences ▸ Plugins: where the panel opens. Written on OK or Apply. ── */
+
+  let dockField: HTMLSelectElement | null = null;
+  api.ui.preferencesPage({
+    mount(body) {
+      const w = api.ui.widgets;
+      dockField = w.select([{ value: "float", label: t("Floating over the map") }, { value: "right", label: t("Docked on the right") }], { value: settings.docked ? "right" : "float" });
+      body.append(
+        w.form([{ label: t("Panel"), field: dockField }]),
+        w.hint(t("A floating panel is dragged about and resized from its corner; a docked one sits in the right-hand column beside the map. The Dock and Float button in the panel does the same.")),
+      );
+      return () => { dockField = null; };
+    },
+    apply() { if (dockField) setDocked(dockField.value === "right"); },
+    reset() { if (dockField) dockField.value = DEFAULTS.docked ? "right" : "float"; },
+  });
 
   const w = api.ui.widgets;
 
