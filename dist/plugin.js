@@ -944,7 +944,7 @@ var KO = {
   "Chat": "\uCC44\uD305",
   "Close": "\uB2EB\uAE30",
   "Close this replay": "\uC774 \uB9AC\uD50C\uB808\uC774 \uB2EB\uAE30",
-  "Could not read {name}": "{name}{name|\uC744} \uC77D\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4",
+  "Could not read {name}": "{name}\uC744(\uB97C) \uC77D\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4",
   "Count the whole game rather than up to the timeline": "\uD0C0\uC784\uB77C\uC778\uAE4C\uC9C0\uAC00 \uC544\uB2C8\uB77C \uAC8C\uC784 \uC804\uCCB4\uB97C \uC149\uB2C8\uB2E4",
   "Dock": "\uB3C4\uD0B9",
   "Docked on the right": "\uC624\uB978\uCABD\uC5D0 \uB3C4\uD0B9",
