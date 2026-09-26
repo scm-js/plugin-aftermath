@@ -310,6 +310,7 @@ for (let symbol = 0; symbol < LENGTH_BASE.length; symbol++) {
 // replay.ts
 var ReplayError = class extends Error {
 };
+var msg = (text) => text;
 var FRAME_MS = 42;
 var CHUNK = 8192;
 async function inflate(chunk) {
@@ -326,13 +327,13 @@ var Reader = class {
     return this.b.length - this.pos;
   }
   u32() {
-    if (this.pos + 4 > this.b.length) throw new ReplayError("The file ends in the middle of a section.");
+    if (this.pos + 4 > this.b.length) throw new ReplayError(msg("The file ends in the middle of a section."));
     const v = (this.b[this.pos] | this.b[this.pos + 1] << 8 | this.b[this.pos + 2] << 16 | this.b[this.pos + 3] << 24) >>> 0;
     this.pos += 4;
     return v;
   }
   bytes(n) {
-    if (n < 0 || this.pos + n > this.b.length) throw new ReplayError("The file ends in the middle of a section.");
+    if (n < 0 || this.pos + n > this.b.length) throw new ReplayError(msg("The file ends in the middle of a section."));
     const out = this.b.subarray(this.pos, this.pos + n);
     this.pos += n;
     return out;
@@ -345,7 +346,7 @@ async function section(r, size, format, unzip) {
   if (size === 0) return new Uint8Array(0);
   r.u32();
   const count = r.u32();
-  if (count > 65536) throw new ReplayError("A section claims more chunks than a replay can hold.");
+  if (count > 65536) throw new ReplayError(msg("A section claims more chunks than a replay can hold."));
   const chunks = [];
   for (let i = 0; i < count; i++) chunks.push(r.bytes(r.u32()));
   if (format === "legacy") {
@@ -353,14 +354,14 @@ async function section(r, size, format, unzip) {
     let at2 = 0;
     for (const c of chunks) {
       const want = Math.min(size - at2, CHUNK);
-      if (want <= 0) throw new ReplayError("A section holds more than its stated size.");
+      if (want <= 0) throw new ReplayError(msg("A section holds more than its stated size."));
       if (c.length === want) out2.set(c, at2);
       else {
         let unpacked;
         try {
           unpacked = explode(c, want);
         } catch {
-          throw new ReplayError("A section's data does not unpack.");
+          throw new ReplayError(msg("A section's data does not unpack."));
         }
         out2.set(unpacked.subarray(0, want), at2);
       }
@@ -379,9 +380,9 @@ async function section(r, size, format, unzip) {
 }
 async function sized(r, format, unzip) {
   const head = await section(r, 4, format, unzip);
-  if (head.length < 4) throw new ReplayError("A section's size is missing.");
+  if (head.length < 4) throw new ReplayError(msg("A section's size is missing."));
   const size = (head[0] | head[1] << 8 | head[2] << 16 | head[3] << 24) >>> 0;
-  if (size > 64 << 20) throw new ReplayError("A section claims to be larger than any replay.");
+  if (size > 64 << 20) throw new ReplayError(msg("A section claims to be larger than any replay."));
   return section(r, size, format, unzip);
 }
 function detectFormat(b) {
@@ -449,7 +450,7 @@ var COLORS = [
 ];
 var hex = (rgb) => "#" + rgb.toString(16).padStart(6, "0");
 function readHeader(d, format) {
-  if (d.length < 633) throw new ReplayError("The replay's header is too short.");
+  if (d.length < 633) throw new ReplayError(msg("The replay's header is too short."));
   const dv = new DataView(d.buffer, d.byteOffset, d.byteLength);
   const text = (at, n, utf = false) => cString(d.subarray(at, at + n), utf);
   const started = dv.getUint32(8, true);
@@ -672,7 +673,7 @@ var TAGGED = {
 };
 async function parseReplay(bytes, unzip = inflate) {
   const format = detectFormat(bytes);
-  if (!format) throw new ReplayError("This is not a StarCraft replay.");
+  if (!format) throw new ReplayError(msg("This is not a StarCraft replay."));
   const r = new Reader(bytes);
   const id = await section(r, 4, format, unzip);
   if (format === "1.21") r.u32();
@@ -924,6 +925,86 @@ function plainText(s) {
   return s.replace(/[\u0000-\u001f\u007f]/g, "").trim();
 }
 
+// ko.ts
+var KO = {
+  "A floating panel is dragged about and resized from its corner; a docked one sits in the right-hand column beside the map. The Dock and Float button in the panel does the same.": "\uB5A0 \uC788\uB294 \uD328\uB110\uC740 \uB04C\uC5B4\uC11C \uC62E\uAE30\uACE0 \uBAA8\uC11C\uB9AC\uB85C \uD06C\uAE30\uB97C \uBC14\uAFC9\uB2C8\uB2E4. \uB3C4\uD0B9\uD55C \uD328\uB110\uC740 \uB9F5 \uC606 \uC624\uB978\uCABD \uC5F4\uC5D0 \uB193\uC785\uB2C8\uB2E4. \uD328\uB110\uC758 \uB3C4\uD0B9/\uB744\uC6B0\uAE30 \uBC84\uD2BC\uB3C4 \uAC19\uC740 \uC77C\uC744 \uD569\uB2C8\uB2E4.",
+  "A replay records the orders players gave, not what happened, so Aftermath shows what was asked for: buildings placed, where units were sent, build orders and actions per minute.": "\uB9AC\uD50C\uB808\uC774\uB294 \uC2E4\uC81C\uB85C \uC77C\uC5B4\uB09C \uC77C\uC774 \uC544\uB2C8\uB77C \uD50C\uB808\uC774\uC5B4\uAC00 \uB0B4\uB9B0 \uBA85\uB839\uC744 \uAE30\uB85D\uD569\uB2C8\uB2E4. \uADF8\uB798\uC11C Aftermath\uB294 \uC694\uCCAD\uB41C \uAC83\uC744 \uBCF4\uC5EC \uC90D\uB2C8\uB2E4: \uC9C0\uC740 \uAC74\uBB3C, \uC720\uB2DB\uC744 \uBCF4\uB0B8 \uACF3, \uBE4C\uB4DC \uC624\uB354, \uBD84\uB2F9 \uD589\uB3D9 \uC218.",
+  "A section claims more chunks than a replay can hold.": "\uD55C \uC139\uC158\uC774 \uB9AC\uD50C\uB808\uC774\uC5D0 \uB4E4\uC5B4\uAC08 \uC218 \uC788\uB294 \uAC83\uBCF4\uB2E4 \uB9CE\uC740 \uC870\uAC01\uC744 \uAC00\uC84C\uB2E4\uACE0 \uD569\uB2C8\uB2E4.",
+  "A section claims to be larger than any replay.": "\uD55C \uC139\uC158\uC774 \uC5B4\uB5A4 \uB9AC\uD50C\uB808\uC774\uBCF4\uB2E4\uB3C4 \uD06C\uB2E4\uACE0 \uD569\uB2C8\uB2E4.",
+  "A section holds more than its stated size.": "\uD55C \uC139\uC158\uC5D0 \uC801\uD78C \uD06C\uAE30\uBCF4\uB2E4 \uB9CE\uC740 \uB370\uC774\uD130\uAC00 \uB4E4\uC5B4 \uC788\uC2B5\uB2C8\uB2E4.",
+  "A section's data does not unpack.": "\uD55C \uC139\uC158\uC758 \uB370\uC774\uD130\uB97C \uD480 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.",
+  "A section's size is missing.": "\uD55C \uC139\uC158\uC758 \uD06C\uAE30\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.",
+  "Actions per minute": "\uBD84\uB2F9 \uD589\uB3D9 \uC218",
+  "Actions per minute over the game \u2014 click to go there": "\uAC8C\uC784 \uC804\uCCB4\uC758 \uBD84\uB2F9 \uD589\uB3D9 \uC218 \u2014 \uD074\uB9AD\uD558\uBA74 \uADF8 \uC2DC\uC810\uC73C\uB85C \uAC11\uB2C8\uB2E4",
+  "Aftermath opens StarCraft replays, files ending in .rep.": "Aftermath\uB294 .rep\uB85C \uB05D\uB098\uB294 StarCraft \uB9AC\uD50C\uB808\uC774 \uD30C\uC77C\uC744 \uC5FD\uB2C8\uB2E4.",
+  "All {n} replays of this map": "\uC774 \uB9F5\uC758 \uB9AC\uD50C\uB808\uC774 {n}\uAC1C \uBAA8\uB450",
+  "Build order": "\uBE4C\uB4DC \uC624\uB354",
+  "Buildings": "\uAC74\uBB3C",
+  "Capture the Flag": "\uAE43\uBC1C \uBE8F\uAE30",
+  "Chat": "\uCC44\uD305",
+  "Close": "\uB2EB\uAE30",
+  "Close this replay": "\uC774 \uB9AC\uD50C\uB808\uC774 \uB2EB\uAE30",
+  "Could not read {name}": "{name}{name|\uC744} \uC77D\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4",
+  "Count the whole game rather than up to the timeline": "\uD0C0\uC784\uB77C\uC778\uAE4C\uC9C0\uAC00 \uC544\uB2C8\uB77C \uAC8C\uC784 \uC804\uCCB4\uB97C \uC149\uB2C8\uB2E4",
+  "Dock": "\uB3C4\uD0B9",
+  "Docked on the right": "\uC624\uB978\uCABD\uC5D0 \uB3C4\uD0B9",
+  "Drop replays (.rep) here, or": "\uB9AC\uD50C\uB808\uC774(.rep)\uB97C \uC5EC\uAE30\uC5D0 \uB04C\uC5B4 \uB193\uAC70\uB098",
+  "Float": "\uB744\uC6B0\uAE30",
+  "Float the panel over the map": "\uD328\uB110\uC744 \uB9F5 \uC704\uC5D0 \uB744\uC6C1\uB2C8\uB2E4",
+  "Floating over the map": "\uB9F5 \uC704\uC5D0 \uB5A0 \uC788\uC74C",
+  "Free For All": "\uB09C\uC804",
+  "Game type {n}": "\uAC8C\uC784 \uC720\uD615 {n}",
+  "Go to the time": "\uADF8 \uC2DC\uAC04\uC73C\uB85C \uC774\uB3D9",
+  "Go to the time and place": "\uADF8 \uC2DC\uAC04\uACFC \uC704\uCE58\uB85C \uC774\uB3D9",
+  "Greed": "\uD0D0\uC695",
+  "Heat: all orders": "\uD788\uD2B8\uB9F5: \uBAA8\uB4E0 \uBA85\uB839",
+  "Heat: attacks": "\uD788\uD2B8\uB9F5: \uACF5\uACA9",
+  "Heat: buildings": "\uD788\uD2B8\uB9F5: \uAC74\uBB3C",
+  "Heat: minimap pings": "\uD788\uD2B8\uB9F5: \uBBF8\uB2C8\uB9F5 \uD551",
+  "Heat: moves": "\uD788\uD2B8\uB9F5: \uC774\uB3D9",
+  "Ladder": "\uB798\uB354",
+  "Melee": "\uBC00\uB9AC",
+  "No builds, units or research ordered.": "\uBA85\uB839\uD55C \uAC74\uBB3C, \uC720\uB2DB, \uC5F0\uAD6C\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.",
+  "No heat map": "\uD788\uD2B8\uB9F5 \uC5C6\uC74C",
+  "Not a replay": "\uB9AC\uD50C\uB808\uC774\uAC00 \uC544\uB2D9\uB2C8\uB2E4",
+  "One on One": "\uC77C\uB300\uC77C",
+  "Open Replay\u2026": "\uB9AC\uD50C\uB808\uC774 \uC5F4\uAE30\u2026",
+  "Open the replay's map": "\uB9AC\uD50C\uB808\uC774\uC758 \uB9F5 \uC5F4\uAE30",
+  "Ordered {n} times": "{n}\uBC88 \uBA85\uB839\uD568",
+  "Panel": "\uD328\uB110",
+  "Pause": "\uC77C\uC2DC \uC815\uC9C0",
+  "Play": "\uC7AC\uC0DD",
+  "Playback speed": "\uC7AC\uC0DD \uC18D\uB3C4",
+  "Protoss": "\uD504\uB85C\uD1A0\uC2A4",
+  "Put the panel in the right dock, beside the map": "\uD328\uB110\uC744 \uB9F5 \uC606 \uC624\uB978\uCABD \uB3C4\uD06C\uC5D0 \uB193\uC2B5\uB2C8\uB2E4",
+  "Random": "\uBB34\uC791\uC704",
+  "Recent orders": "\uCD5C\uADFC \uBA85\uB839",
+  "Replay map": "\uB9AC\uD50C\uB808\uC774 \uB9F5",
+  "Show": "\uD45C\uC2DC",
+  "Show SCVs, Drones and Probes": "SCV, \uB4DC\uB860, \uD504\uB85C\uBE0C \uD45C\uC2DC",
+  "Show this player on the map": "\uC774 \uD50C\uB808\uC774\uC5B4\uB97C \uB9F5\uC5D0 \uD45C\uC2DC",
+  "Slaughter": "\uD559\uC0B4",
+  "Sudden Death": "\uC11C\uB4E0 \uB370\uC2A4",
+  "Team Capture the Flag": "\uD300 \uAE43\uBC1C \uBE8F\uAE30",
+  "Team Free For All": "\uD300 \uB09C\uC804",
+  "Team Melee": "\uD300 \uBC00\uB9AC",
+  "Terran": "\uD14C\uB780",
+  "The file ends in the middle of a section.": "\uD30C\uC77C\uC774 \uC139\uC158 \uC911\uAC04\uC5D0\uC11C \uB05D\uB0A9\uB2C8\uB2E4.",
+  "The map in front is not the one this game was played on.": "\uC55E\uC5D0 \uC5F4\uB9B0 \uB9F5\uC740 \uC774 \uAC8C\uC784\uC744 \uD55C \uB9F5\uC774 \uC544\uB2D9\uB2C8\uB2E4.",
+  "The replay's header is too short.": "\uB9AC\uD50C\uB808\uC774\uC758 \uD5E4\uB354\uAC00 \uB108\uBB34 \uC9E7\uC2B5\uB2C8\uB2E4.",
+  "This is not a StarCraft replay.": "StarCraft \uB9AC\uD50C\uB808\uC774\uAC00 \uC544\uB2D9\uB2C8\uB2E4.",
+  "Top vs Bottom": "\uD0D1 vs \uBC14\uD140",
+  "Use Map Settings": "\uC720\uC988\uB9F5 \uC138\uD305",
+  "Where units were sent in the last 8 seconds": "\uC9C0\uB09C 8\uCD08 \uB3D9\uC548 \uC720\uB2DB\uC744 \uBCF4\uB0B8 \uACF3",
+  "Whole game": "\uAC8C\uC784 \uC804\uCCB4",
+  "Workers": "\uC77C\uAFBC",
+  "Zerg": "\uC800\uADF8",
+  "before 1.18": "1.18 \uC774\uC804",
+  "left {time}": "{time}\uC5D0 \uB098\uAC10",
+  "{n, plural, one {# command of a kind Aftermath does not know was skipped.} other {# commands of a kind Aftermath does not know were skipped.}}": "Aftermath\uAC00 \uBAA8\uB974\uB294 \uC885\uB958\uC758 \uBA85\uB839 {n}\uAC1C\uB97C \uAC74\uB108\uB6F0\uC5C8\uC2B5\uB2C8\uB2E4.",
+  "{n} APM": "{n} APM"
+};
+
 // plugin.ts
 var DEFAULTS = { buildings: true, orders: true, heat: "off", wholeGame: false, allReplays: false, speed: 8, docked: false, workers: false };
 var TRAIL_FRAMES = 8 * 24;
@@ -935,21 +1016,22 @@ var HEAT_KINDS = {
   attack: /* @__PURE__ */ new Set(["attack", "patrol"]),
   ping: /* @__PURE__ */ new Set(["ping"])
 };
-var RACES = ["Zerg", "Terran", "Protoss"];
+var msg2 = (text) => text;
+var RACES = [msg2("Zerg"), msg2("Terran"), msg2("Protoss")];
 var GAME_TYPES = {
-  2: "Melee",
-  3: "Free For All",
-  4: "One on One",
-  5: "Capture the Flag",
-  6: "Greed",
-  7: "Slaughter",
-  8: "Sudden Death",
-  9: "Ladder",
-  10: "Use Map Settings",
-  11: "Team Melee",
-  12: "Team Free For All",
-  13: "Team Capture the Flag",
-  15: "Top vs Bottom"
+  2: msg2("Melee"),
+  3: msg2("Free For All"),
+  4: msg2("One on One"),
+  5: msg2("Capture the Flag"),
+  6: msg2("Greed"),
+  7: msg2("Slaughter"),
+  8: msg2("Sudden Death"),
+  9: msg2("Ladder"),
+  10: msg2("Use Map Settings"),
+  11: msg2("Team Melee"),
+  12: msg2("Team Free For All"),
+  13: msg2("Team Capture the Flag"),
+  15: msg2("Top vs Bottom")
 };
 var STYLE = `
 .afm { display: flex; flex-direction: column; gap: 8px; font-size: 12px; flex: 1; min-height: 0; overflow: auto; }
@@ -979,7 +1061,9 @@ var STYLE = `
 .afm .afm-chat div { padding: 1px 0; }
 `;
 function activate(api) {
+  api.i18n.register({ ko: KO });
   const t = api.i18n.t;
+  const translate = (text) => api.i18n.t(text);
   const settings = { ...DEFAULTS, ...api.storage.get("settings", {}) };
   const save = () => api.storage.set("settings", settings);
   const loaded = [];
@@ -1010,7 +1094,7 @@ function activate(api) {
         loaded.push(entry);
         first ??= entry;
       } catch (err) {
-        const detail = err instanceof ReplayError ? err.message : String(err);
+        const detail = err instanceof ReplayError ? translate(err.message) : String(err);
         api.ui.toast({ kind: "error", title: t("Could not read {name}", { name: file.name }), detail });
         api.log("Aftermath:", file.name, err);
       }
@@ -1052,7 +1136,7 @@ function activate(api) {
   }
   async function openReplayMap() {
     if (!current) return;
-    const name = plainText(current.report.replay.header.mapName) || "Replay map";
+    const name = plainText(current.report.replay.header.mapName) || t("Replay map");
     const ok = await api.document.open(current.report.replay.chk, `${name.replace(/[\\/:*?"<>|]/g, "_")}.scx`, { into: "new" });
     if (ok) checkMap();
   }
@@ -1231,7 +1315,7 @@ function activate(api) {
     if (panel?.isOpen()) return;
     const place = settings.docked ? { dock: "right", grow: true } : { width: 330, height: Math.min(680, Math.max(360, window.innerHeight - 220)), resizable: true };
     const handle = api.ui.panel({
-      title: t("Aftermath"),
+      title: "Aftermath",
       ...place,
       mount(body) {
         const v = new PanelView(body);
@@ -1340,7 +1424,7 @@ function activate(api) {
         w.row(openButton, w.button(t("Close"), { ghost: true, title: t("Close this replay"), onClick: () => remove(entry) }), el("span", { style: "flex:1" }), dockButton)
       );
       const facts = [
-        GAME_TYPES[rep.header.gameType] ?? t("Game type {n}", { n: rep.header.gameType }),
+        (GAME_TYPES[rep.header.gameType] ? translate(GAME_TYPES[rep.header.gameType]) : null) ?? t("Game type {n}", { n: rep.header.gameType }),
         formatTime(current.report.frames),
         rep.header.started ? rep.header.started.toLocaleDateString() : null,
         rep.format === "legacy" ? t("before 1.18") : rep.format === "1.18" ? "1.18\u20131.20" : "1.21+"
@@ -1352,7 +1436,7 @@ function activate(api) {
           w.row(w.button(t("Open the replay's map"), { primary: true, onClick: () => void openReplayMap().then(() => this.render()) }))
         );
       }
-      if (rep.unknownCommands > 0) this.root.append(w.hint(t("{n} commands of a kind Aftermath does not know were skipped.", { n: rep.unknownCommands })));
+      if (rep.unknownCommands > 0) this.root.append(w.hint(t("{n, plural, one {# command of a kind Aftermath does not know was skipped.} other {# commands of a kind Aftermath does not know were skipped.}}", { n: rep.unknownCommands })));
       this.playButton = w.button("", { onClick: () => playing ? stop() : play() });
       this.slider = el("input", { type: "range", min: "0", max: String(current.report.frames), step: "1", value: String(frame) });
       this.slider.addEventListener("input", () => seek(Number(this.slider.value)));
@@ -1378,7 +1462,7 @@ function activate(api) {
           el("td", {}, tick),
           el("td", {}, el("span", { className: "afm-swatch", style: `background:${p.player.color}` })),
           el("td", { className: "afm-name", title: p.player.name }, p.player.name),
-          el("td", {}, RACES[p.player.race] ?? t("Random")),
+          el("td", {}, RACES[p.player.race] ? translate(RACES[p.player.race]) : t("Random")),
           el("td", { className: "afm-num", title: t("Actions per minute") }, t("{n} APM", { n: p.apm })),
           el("td", { className: "afm-dim" }, p.leftAt === null ? "" : t("left {time}", { time: formatTime(p.leftAt) }))
         ));
@@ -1550,13 +1634,13 @@ function activate(api) {
     const files = await api.ui.pickFiles({ accept: ".rep", multiple: true });
     if (files.length) await load(files);
   }
-  api.commands.register({ id: "open-replay", title: t("Open Replay\u2026"), run: () => void pick() });
-  api.commands.register({ id: "panel", title: t("Aftermath"), run: () => {
+  api.commands.register({ id: "open-replay", title: msg2("Open Replay\u2026"), run: () => void pick() });
+  api.commands.register({ id: "panel", title: "Aftermath", run: () => {
     showPanel();
     view?.render();
   } });
-  api.menu.add("File", { label: t("Open Replay\u2026"), icon: "plugin", after: "Open Recent", command: "open-replay" });
-  api.menu.add("View", { label: t("Aftermath"), icon: "plugin", command: "panel" });
+  api.menu.add("File", { label: msg2("Open Replay\u2026"), icon: "plugin", after: "Open Recent", command: "open-replay" });
+  api.menu.add("View", { label: "Aftermath", icon: "plugin", command: "panel" });
   api.events.on("document", () => {
     checkMap();
     heatCache = null;

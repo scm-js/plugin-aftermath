@@ -20,6 +20,7 @@ import type { MapView, OverlayHandle, PanelHandle, PluginApi } from "@scm-js/plu
 import { analyse, buildOrderRows, formatTime, FRAMES_PER_MINUTE, heat, TOWN_HALLS, type ClickKind, type HeatGrid, type Placement, type PlayerReport, type ReplayReport } from "./analysis";
 import { likeness, plainText, readChk, type ChkInfo } from "./chk";
 import { FRAME_MS, parseReplay, ReplayError } from "./replay";
+import { KO } from "./ko";
 
 /* ── State ──────────────────────────────────────────────── */
 
@@ -63,12 +64,15 @@ const HEAT_KINDS: Record<Exclude<HeatMode, "off" | "buildings">, ReadonlySet<Cli
   ping: new Set(["ping"]),
 };
 
-const RACES = ["Zerg", "Terran", "Protoss"];
+/** Marks English kept in a table or registered with the editor, for `tests/ko.test.ts` to find; it is translated where shown. */
+const msg = (text: string) => text;
+
+const RACES = [msg("Zerg"), msg("Terran"), msg("Protoss")];
 
 const GAME_TYPES: Record<number, string> = {
-  2: "Melee", 3: "Free For All", 4: "One on One", 5: "Capture the Flag", 6: "Greed", 7: "Slaughter",
-  8: "Sudden Death", 9: "Ladder", 10: "Use Map Settings", 11: "Team Melee", 12: "Team Free For All",
-  13: "Team Capture the Flag", 15: "Top vs Bottom",
+  2: msg("Melee"), 3: msg("Free For All"), 4: msg("One on One"), 5: msg("Capture the Flag"), 6: msg("Greed"), 7: msg("Slaughter"),
+  8: msg("Sudden Death"), 9: msg("Ladder"), 10: msg("Use Map Settings"), 11: msg("Team Melee"), 12: msg("Team Free For All"),
+  13: msg("Team Capture the Flag"), 15: msg("Top vs Bottom"),
 };
 
 const STYLE = `
@@ -100,7 +104,10 @@ const STYLE = `
 `;
 
 export function activate(api: PluginApi) {
+  api.i18n.register({ ko: KO });
   const t = api.i18n.t;
+  /** A string from a table (`msg`) or a `ReplayError`, in the editor's language. */
+  const translate = (text: string) => api.i18n.t(text);
   const settings: Settings = { ...DEFAULTS, ...api.storage.get<Partial<Settings>>("settings", {}) };
   const save = () => api.storage.set("settings", settings);
 
@@ -137,7 +144,7 @@ export function activate(api: PluginApi) {
         loaded.push(entry);
         first ??= entry;
       } catch (err) {
-        const detail = err instanceof ReplayError ? err.message : String(err);
+        const detail = err instanceof ReplayError ? translate(err.message) : String(err);
         api.ui.toast({ kind: "error", title: t("Could not read {name}", { name: file.name }), detail });
         api.log("Aftermath:", file.name, err);
       }
@@ -182,7 +189,7 @@ export function activate(api: PluginApi) {
 
   async function openReplayMap(): Promise<void> {
     if (!current) return;
-    const name = plainText(current.report.replay.header.mapName) || "Replay map";
+    const name = plainText(current.report.replay.header.mapName) || t("Replay map");
     const ok = await api.document.open(current.report.replay.chk, `${name.replace(/[\\/:*?"<>|]/g, "_")}.scx`, { into: "new" });
     if (ok) checkMap();
   }
@@ -383,7 +390,7 @@ export function activate(api: PluginApi) {
       ? { dock: "right" as const, grow: true }
       : { width: 330, height: Math.min(680, Math.max(360, window.innerHeight - 220)), resizable: true };
     const handle: PanelHandle = api.ui.panel({
-      title: t("Aftermath"),
+      title: "Aftermath",
       ...place,
       mount(body) {
         const v = new PanelView(body);
@@ -490,7 +497,7 @@ export function activate(api: PluginApi) {
       );
 
       const facts = [
-        GAME_TYPES[rep.header.gameType] ?? t("Game type {n}", { n: rep.header.gameType }),
+        (GAME_TYPES[rep.header.gameType] ? translate(GAME_TYPES[rep.header.gameType]) : null) ?? t("Game type {n}", { n: rep.header.gameType }),
         formatTime(current.report.frames),
         rep.header.started ? rep.header.started.toLocaleDateString() : null,
         rep.format === "legacy" ? t("before 1.18") : rep.format === "1.18" ? "1.18–1.20" : "1.21+",
@@ -503,7 +510,7 @@ export function activate(api: PluginApi) {
           w.row(w.button(t("Open the replay's map"), { primary: true, onClick: () => void openReplayMap().then(() => this.render()) })),
         );
       }
-      if (rep.unknownCommands > 0) this.root.append(w.hint(t("{n} commands of a kind Aftermath does not know were skipped.", { n: rep.unknownCommands })));
+      if (rep.unknownCommands > 0) this.root.append(w.hint(t("{n, plural, one {# command of a kind Aftermath does not know was skipped.} other {# commands of a kind Aftermath does not know were skipped.}}", { n: rep.unknownCommands })));
 
       // Timeline.
       this.playButton = w.button("", { onClick: () => (playing ? stop() : play()) });
@@ -522,7 +529,7 @@ export function activate(api: PluginApi) {
           el("td", {}, tick),
           el("td", {}, el("span", { className: "afm-swatch", style: `background:${p.player.color}` })),
           el("td", { className: "afm-name", title: p.player.name }, p.player.name),
-          el("td", {}, RACES[p.player.race] ?? t("Random")),
+          el("td", {}, (RACES[p.player.race] ? translate(RACES[p.player.race]) : t("Random"))),
           el("td", { className: "afm-num", title: t("Actions per minute") }, t("{n} APM", { n: p.apm })),
           el("td", { className: "afm-dim" }, p.leftAt === null ? "" : t("left {time}", { time: formatTime(p.leftAt) })),
         ));
@@ -664,10 +671,11 @@ export function activate(api: PluginApi) {
 
   /* ── Menus, commands, events ── */
 
-  api.commands.register({ id: "open-replay", title: t("Open Replay…"), run: () => void pick() });
-  api.commands.register({ id: "panel", title: t("Aftermath"), run: () => { showPanel(); view?.render(); } });
-  api.menu.add("File", { label: t("Open Replay…"), icon: "plugin", after: "Open Recent", command: "open-replay" });
-  api.menu.add("View", { label: t("Aftermath"), icon: "plugin", command: "panel" });
+  // Titles and menu labels go to the editor in English; it shows them in the user's language from this plugin's catalogue.
+  api.commands.register({ id: "open-replay", title: msg("Open Replay…"), run: () => void pick() });
+  api.commands.register({ id: "panel", title: "Aftermath", run: () => { showPanel(); view?.render(); } });
+  api.menu.add("File", { label: msg("Open Replay…"), icon: "plugin", after: "Open Recent", command: "open-replay" });
+  api.menu.add("View", { label: "Aftermath", icon: "plugin", command: "panel" });
 
   api.events.on("document", () => {
     checkMap();

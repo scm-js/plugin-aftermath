@@ -105,7 +105,11 @@ export interface Replay {
   chk: Uint8Array;
 }
 
+/** A reason the file cannot be read, in English; the plugin shows it translated. */
 export class ReplayError extends Error {}
+
+/** Marks English the plugin translates where it is shown, for `tests/ko.test.ts` to find. */
+const msg = (text: string) => text;
 
 /** A frame at Fastest: 1000 / 24 ms, as the game rounds it. */
 export const FRAME_MS = 42;
@@ -128,13 +132,13 @@ class Reader {
   constructor(b: Uint8Array) { this.b = b; }
   get left(): number { return this.b.length - this.pos; }
   u32(): number {
-    if (this.pos + 4 > this.b.length) throw new ReplayError("The file ends in the middle of a section.");
+    if (this.pos + 4 > this.b.length) throw new ReplayError(msg("The file ends in the middle of a section."));
     const v = (this.b[this.pos] | (this.b[this.pos + 1] << 8) | (this.b[this.pos + 2] << 16) | (this.b[this.pos + 3] << 24)) >>> 0;
     this.pos += 4;
     return v;
   }
   bytes(n: number): Uint8Array {
-    if (n < 0 || this.pos + n > this.b.length) throw new ReplayError("The file ends in the middle of a section.");
+    if (n < 0 || this.pos + n > this.b.length) throw new ReplayError(msg("The file ends in the middle of a section."));
     const out = this.b.subarray(this.pos, this.pos + n);
     this.pos += n;
     return out;
@@ -150,7 +154,7 @@ async function section(r: Reader, size: number, format: ReplayFormat, unzip: Inf
   if (size === 0) return new Uint8Array(0);
   r.u32(); // checksum — the game's, not checked here
   const count = r.u32();
-  if (count > 0x10000) throw new ReplayError("A section claims more chunks than a replay can hold.");
+  if (count > 0x10000) throw new ReplayError(msg("A section claims more chunks than a replay can hold."));
   const chunks: Uint8Array[] = [];
   for (let i = 0; i < count; i++) chunks.push(r.bytes(r.u32()));
 
@@ -159,11 +163,11 @@ async function section(r: Reader, size: number, format: ReplayFormat, unzip: Inf
     let at = 0;
     for (const c of chunks) {
       const want = Math.min(size - at, CHUNK);
-      if (want <= 0) throw new ReplayError("A section holds more than its stated size.");
+      if (want <= 0) throw new ReplayError(msg("A section holds more than its stated size."));
       if (c.length === want) out.set(c, at);
       else {
         let unpacked: Uint8Array;
-        try { unpacked = explode(c, want); } catch { throw new ReplayError("A section's data does not unpack."); }
+        try { unpacked = explode(c, want); } catch { throw new ReplayError(msg("A section's data does not unpack.")); }
         out.set(unpacked.subarray(0, want), at);
       }
       at += want;
@@ -180,9 +184,9 @@ async function section(r: Reader, size: number, format: ReplayFormat, unzip: Inf
 
 async function sized(r: Reader, format: ReplayFormat, unzip: Inflate): Promise<Uint8Array> {
   const head = await section(r, 4, format, unzip);
-  if (head.length < 4) throw new ReplayError("A section's size is missing.");
+  if (head.length < 4) throw new ReplayError(msg("A section's size is missing."));
   const size = (head[0] | (head[1] << 8) | (head[2] << 16) | (head[3] << 24)) >>> 0;
-  if (size > 64 << 20) throw new ReplayError("A section claims to be larger than any replay.");
+  if (size > 64 << 20) throw new ReplayError(msg("A section claims to be larger than any replay."));
   return section(r, size, format, unzip);
 }
 
@@ -238,7 +242,7 @@ const COLORS = [
 const hex = (rgb: number) => "#" + rgb.toString(16).padStart(6, "0");
 
 function readHeader(d: Uint8Array, format: ReplayFormat): { header: ReplayHeader; slots: ReplayPlayer[] } {
-  if (d.length < 0x279) throw new ReplayError("The replay's header is too short.");
+  if (d.length < 0x279) throw new ReplayError(msg("The replay's header is too short."));
   const dv = new DataView(d.buffer, d.byteOffset, d.byteLength);
   const text = (at: number, n: number, utf = false) => cString(d.subarray(at, at + n), utf);
   const started = dv.getUint32(0x08, true);
@@ -389,7 +393,7 @@ const TAGGED: Record<number, number> = {
 
 export async function parseReplay(bytes: Uint8Array, unzip: Inflate = inflate): Promise<Replay> {
   const format = detectFormat(bytes);
-  if (!format) throw new ReplayError("This is not a StarCraft replay.");
+  if (!format) throw new ReplayError(msg("This is not a StarCraft replay."));
   const r = new Reader(bytes);
 
   const id = await section(r, 4, format, unzip);

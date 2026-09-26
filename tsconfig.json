@@ -15,5 +15,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["plugin.ts", "replay.ts", "analysis.ts", "chk.ts"]
+  "include": ["plugin.ts", "ko.ts", "replay.ts", "analysis.ts", "chk.ts"]
 }
