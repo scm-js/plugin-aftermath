@@ -38,7 +38,7 @@ export function readChk(chk: Uint8Array): ChkInfo {
  * How much of the terrain two maps share, 0…1: 0 when their size or tileset differ. A
  * map maker's working copy, edited since the game, still scores high.
  */
-export function likeness(a: ChkInfo, b: { width: number; height: number; tileset: number; tiles: Uint16Array }): number {
+export function likeness(a: ChkInfo, b: { width: number; height: number; tileset: number; tiles: ArrayLike<number> }): number {
   if (a.width !== b.width || a.height !== b.height || a.tileset !== b.tileset || a.tiles.length === 0) return 0;
   let same = 0;
   const n = Math.min(a.tiles.length, b.tiles.length);
