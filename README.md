@@ -22,6 +22,37 @@ Aftermath reads the orders without re-running the game, so it shows what players
 - a unit in the build order was ordered, not necessarily made;
 - the heat maps count where players clicked, not where units ended up or where they died.
 
+## Playing the game through
+
+In the editor at scmjs.dev, Aftermath can do more: **Play the game through** runs the whole
+game out of sight in the site's game engine and shows what happened. It needs your own copy
+of StarCraft given to the site (the Game Data page), and takes about fifteen seconds for a
+twenty-minute game. The replay stays in your browser.
+
+Afterwards the panel shows what happened instead of what was ordered:
+
+- **Buildings** are the ones that stood at the moment on the timeline. A site is drawn
+  fainter with a dashed edge until it is finished, and a building that was cancelled or
+  destroyed goes when it did.
+- **Units** draws every unit where it stood, moving as the timeline plays; workers are
+  smaller. A small cross marks where something was just lost.
+- **What was made** replaces the build order: everything a player really started, when it
+  was finished, and when it was lost. A Zerg unit is dated from its egg. A line struck
+  through never finished.
+- **The players** table adds what each lost: how many units and buildings, and what they
+  cost.
+- **The graph** can show army value, army size, workers, supply, minerals or gas in the
+  bank, or buildings, in place of actions per minute.
+- Two more **heat maps**: where the armies were (workers left out) and where units were
+  lost.
+
+Recent orders, the order heat maps and the chat stay as they are.
+
+The button is only there where the editor has the engine beside it, which is scmjs.dev. In
+the desktop app and an editor hosted elsewhere, Aftermath works from the orders alone.
+Replays written by StarCraft 1.16.1 are what the engine has been run on; replays from 1.18
+and later, StarCraft: Remastered included, have not been tried yet and may not play.
+
 ## Install
 
 In scmJS: **Plugins ▸ Manage Plugins…**, paste
