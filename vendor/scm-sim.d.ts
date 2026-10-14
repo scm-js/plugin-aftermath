@@ -33,6 +33,18 @@ export interface UnitEvent {
   from?: number;
   /** `born`: a hallucination. */
   hallucination?: true;
+  /**
+   * `died`, from timeline version 2: the unit the game credited with the kill, its type and
+   * owner then, and where it stood. The game counts a kill to a unit's name (a reaver's for
+   * its scarab's, a carrier's for its interceptors', a templar's for its storm's). A death
+   * nobody is credited with has none of these: a unit used up (a scarab, a spider mine), a
+   * spell running out, a building cancelled, and what a spider mine killed.
+   */
+  by?: number;
+  byType?: number;
+  byOwner?: number;
+  byX?: number;
+  byY?: number;
 }
 
 /** An upgrade's level reached or a technology researched, seen at a sample (so `frame` is late by up to `samples.every`). */
@@ -74,6 +86,7 @@ export interface Positions {
 }
 
 export interface ReplayTimeline {
+  /** 1: as first written. 2: a `died` event says who killed the unit. */
   version: number;
   /** Frames played, and the replay's length. */
   frames: number;

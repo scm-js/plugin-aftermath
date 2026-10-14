@@ -1035,7 +1035,23 @@ var KO = {
   "done {time}": "{time}\uC5D0 \uC644\uC131",
   "Nothing was made.": "\uC0DD\uC0B0\uD55C \uAC83\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.",
   "What was made": "\uC0DD\uC0B0 \uBAA9\uB85D",
-  "Playing the game: {time} of {total}": "\uAC8C\uC784 \uC2E4\uD589 \uC911: {total} \uC911 {time}"
+  "Playing the game: {time} of {total}": "\uAC8C\uC784 \uC2E4\uD589 \uC911: {total} \uC911 {time}",
+  "Play all {n} through": "{n}\uAC1C \uBAA8\uB450 \uB05D\uAE4C\uC9C0 \uC2E4\uD589",
+  "One after another; the heat maps can then add every game of this map together": "\uD558\uB098\uC529 \uCC28\uB840\uB85C \uC2E4\uD589\uD569\uB2C8\uB2E4. \uADF8 \uB4A4\uC5D0\uB294 \uC774 \uB9F5\uC758 \uBAA8\uB4E0 \uAC8C\uC784\uC744 \uD788\uD2B8\uB9F5\uC5D0 \uD569\uCE60 \uC218 \uC788\uC2B5\uB2C8\uB2E4",
+  "Playing {name} through; {n} more to go.": "{name} \uC2E4\uD589 \uC911, {n}\uAC1C \uB0A8\uC74C.",
+  "Playing {name} through.": "{name} \uC2E4\uD589 \uC911.",
+  "Player {n}": "\uD50C\uB808\uC774\uC5B4 {n}",
+  "Go to the fight": "\uC774 \uAD50\uC804\uC73C\uB85C \uC774\uB3D9",
+  "{name}: {army} there when it began, lost {lost}, killed {killed}": "{name}: \uC2DC\uC791 \uC2DC \uBCD1\uB825 {army}, \uC190\uC2E4 {lost}, \uCC98\uCE58 {killed}",
+  "{name}: lost {lost}, killed {killed}": "{name}: \uC190\uC2E4 {lost}, \uCC98\uCE58 {killed}",
+  "{name} lost {lost}": "{name} \uC190\uC2E4 {lost}",
+  "No fights: nothing much was lost in one place at one time.": "\uAD50\uC804\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uD55C\uACF3\uC5D0\uC11C \uD55C\uAEBC\uBC88\uC5D0 \uC783\uC740 \uAC83\uC774 \uAC70\uC758 \uC5C6\uC2B5\uB2C8\uB2E4.",
+  "Fights": "\uAD50\uC804",
+  "Losses close together in time and place. The side that came out ahead is in bold.": "\uC2DC\uAC04\uACFC \uC7A5\uC18C\uAC00 \uAC00\uAE4C\uC6B4 \uC190\uC2E4\uC744 \uD558\uB098\uC758 \uAD50\uC804\uC73C\uB85C \uBB36\uC5C8\uC2B5\uB2C8\uB2E4. \uC6B0\uC138\uD588\uB358 \uCABD\uC740 \uAD75\uAC8C \uD45C\uC2DC\uD569\uB2C8\uB2E4.",
+  "Go to its first kill": "\uCCAB \uCC98\uCE58 \uC2DC\uC810\uC73C\uB85C \uC774\uB3D9",
+  "{n, plural, one {# kill} other {# kills}}, worth {value}": "{n}\uD68C \uCC98\uCE58, \uAC00\uCE58 {value}",
+  "{n, plural, one {# kill} other {# kills}}": "{n}\uD68C \uCC98\uCE58",
+  "Most kills": "\uCD5C\uB2E4 \uCC98\uCE58"
 };
 
 // played.ts
@@ -1209,9 +1225,141 @@ function series(t, player, metric) {
   return t.samples.players.find((p) => p.slot === player)?.[metric] ?? null;
 }
 
+// fights.ts
+var GAP_FRAMES = 240;
+var RADIUS = 480;
+var MIN_LOSSES = 4;
+var MIN_VALUE = 400;
+var PRESENT = RADIUS * 1.5;
+var AHEAD = 0.2;
+var RESOURCES2 = /* @__PURE__ */ new Set([176, 177, 178, 188]);
+var fell = (e, ignored) => e.kind === "died" && e.owner <= 7 && e.type < 203 && !NOT_MADE.has(e.type) && !RESOURCES2.has(e.type) && !ignored.has(e.unit);
+function kills(t) {
+  const out = [];
+  for (const e of t.events) if (e.kind === "died" && e.by !== void 0 && e.owner <= 7 && (e.byOwner ?? 99) <= 7) out.push({ frame: e.frame, x: e.x, y: e.y, fromX: e.byX ?? e.x, fromY: e.byY ?? e.y, player: e.owner, by: e.byOwner });
+  return out;
+}
+function fights(t, cost, index) {
+  const ignored = /* @__PURE__ */ new Set();
+  const open = [], closed = [];
+  for (const e of t.events) {
+    if (e.kind === "born" && e.hallucination) {
+      ignored.add(e.unit);
+      continue;
+    }
+    if (!fell(e, ignored)) continue;
+    for (let i = open.length - 1; i >= 0; i--) if (e.frame - open[i].last > GAP_FRAMES) closed.push(...open.splice(i, 1));
+    let best = null, bestD = RADIUS * RADIUS;
+    for (const f of open) {
+      const dx = f.sx / f.deaths.length - e.x, dy = f.sy / f.deaths.length - e.y, d = dx * dx + dy * dy;
+      if (d <= bestD) {
+        best = f;
+        bestD = d;
+      }
+    }
+    if (!best) {
+      best = { deaths: [], sx: 0, sy: 0, last: e.frame };
+      open.push(best);
+    }
+    best.deaths.push(e);
+    best.sx += e.x;
+    best.sy += e.y;
+    best.last = e.frame;
+  }
+  closed.push(...open);
+  closed.sort((a, b) => a.deaths[0].frame - b.deaths[0].frame);
+  for (let i = 0; i < closed.length; i++) {
+    for (let j = i + 1; j < closed.length; j++) {
+      const a = closed[i], b = closed[j];
+      if (b.deaths[0].frame - a.last > GAP_FRAMES) break;
+      if (Math.hypot(a.sx / a.deaths.length - b.sx / b.deaths.length, a.sy / a.deaths.length - b.sy / b.deaths.length) > RADIUS) continue;
+      a.deaths.push(...b.deaths);
+      a.deaths.sort((x, y) => x.frame - y.frame);
+      a.sx += b.sx;
+      a.sy += b.sy;
+      a.last = Math.max(a.last, b.last);
+      closed.splice(j, 1);
+      j--;
+    }
+  }
+  const out = [];
+  for (const f of closed) {
+    const sides = /* @__PURE__ */ new Map();
+    const side = (player) => {
+      let s = sides.get(player);
+      if (!s) {
+        s = { player, lost: 0, lostValue: 0, killed: 0, killedValue: 0, army: 0, armyValue: 0, lostTypes: /* @__PURE__ */ new Map() };
+        sides.set(player, s);
+      }
+      return s;
+    };
+    let value = 0, x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const e of f.deaths) {
+      const v = cost(e.type), s = side(e.owner);
+      s.lost++;
+      s.lostValue += v;
+      s.lostTypes.set(e.type, (s.lostTypes.get(e.type) ?? 0) + 1);
+      value += v;
+      if (e.byOwner !== void 0 && e.byOwner <= 7 && e.byOwner !== e.owner) {
+        const k = side(e.byOwner);
+        k.killed++;
+        k.killedValue += v;
+      }
+      x0 = Math.min(x0, e.x);
+      y0 = Math.min(y0, e.y);
+      x1 = Math.max(x1, e.x);
+      y1 = Math.max(y1, e.y);
+    }
+    if (f.deaths.length < MIN_LOSSES && value < MIN_VALUE) continue;
+    const x = f.sx / f.deaths.length, y = f.sy / f.deaths.length, from = f.deaths[0].frame;
+    const p = t.positions;
+    if (p) {
+      const i = Math.max(0, sampleAt(p.frame, from));
+      for (let r = p.start[i]; r < p.start[i + 1]; r++) {
+        const u = p.unit[r], type = index.type[u], owner = index.owner[u];
+        if (owner < 0 || owner > 7 || type < 0 || NOT_MADE.has(type) || WORKERS2.has(type) || isBuilding(type)) continue;
+        if (Math.hypot(p.x[r] - x, p.y[r] - y) > PRESENT) continue;
+        const s = sides.get(owner);
+        if (s) {
+          s.army++;
+          s.armyValue += cost(type);
+        }
+      }
+    }
+    const list = [...sides.values()].sort((a, b) => a.player - b.player);
+    const score = (s) => value > 0 ? s.killedValue - s.lostValue : s.killed - s.lost;
+    const ranked = [...list].sort((a, b) => score(b) - score(a));
+    const total = value > 0 ? value : f.deaths.length;
+    const winner = ranked.length > 1 && score(ranked[0]) - score(ranked[1]) > total * AHEAD ? ranked[0].player : null;
+    out.push({ from, to: f.last, x, y, rect: { x0, y0, x1, y1 }, losses: f.deaths.length, value, sides: list, winner });
+  }
+  return out.sort((a, b) => a.from - b.from);
+}
+function topKillers(t, cost, limit = 8) {
+  const by = /* @__PURE__ */ new Map();
+  const ignored = /* @__PURE__ */ new Set();
+  for (const e of t.events) {
+    if (e.kind === "born" && e.hallucination) {
+      ignored.add(e.unit);
+      continue;
+    }
+    if (!fell(e, ignored) || e.by === void 0 || e.byOwner === void 0 || e.byOwner > 7 || e.byOwner === e.owner) continue;
+    let k = by.get(e.by);
+    if (!k) {
+      k = { unit: e.by, type: e.byType ?? -1, player: e.byOwner, kills: 0, value: 0, frame: e.frame, x: e.byX ?? e.x, y: e.byY ?? e.y };
+      by.set(e.by, k);
+    }
+    k.kills++;
+    k.value += cost(e.type);
+    k.type = e.byType ?? k.type;
+  }
+  return [...by.values()].sort((a, b) => b.value - a.value || b.kills - a.kills || a.frame - b.frame).slice(0, limit);
+}
+
 // plugin.ts
 var DEFAULTS = { buildings: true, orders: true, heat: "off", wholeGame: false, allReplays: false, speed: 8, docked: false, workers: false, units: true, chart: "apm" };
 var TRAIL_FRAMES = 8 * 24;
+var KILL_FRAMES = 36;
 var NEW_FRAMES = 6 * 24;
 var SAME_MAP = 0.9;
 var HEAT_KINDS = {
@@ -1407,7 +1555,8 @@ function activate(api) {
       await api.data.load();
       const units = api.data.units();
       const cost = (type) => units ? (units.mineralCost[type] ?? 0) + (units.vespeneCost[type] ?? 0) : 0;
-      entry.played = { timeline, standing: buildings(timeline), index: unitIndex(timeline), lost: lossPoints(timeline), lostBy: losses(timeline, cost) };
+      const index = unitIndex(timeline);
+      entry.played = { timeline, standing: buildings(timeline), index, lost: lossPoints(timeline), lostBy: losses(timeline, cost), fights: fights(timeline, cost, index), kills: kills(timeline), killers: topKillers(timeline, cost) };
       for (const b of entry.played.standing) api.graphics.requestUnit(b.type);
     } catch (err) {
       if (err?.name !== "AbortError") {
@@ -1420,6 +1569,23 @@ function activate(api) {
       view?.render();
       overlay.redraw();
     }
+  }
+  let queued = 0;
+  async function playAll() {
+    if (running || queued) return;
+    const todo = loaded.filter((l) => !l.played);
+    queued = todo.length;
+    for (const entry of todo) {
+      if (!loaded.includes(entry)) {
+        queued--;
+        continue;
+      }
+      await playThrough(entry);
+      queued--;
+      if (!entry.played) break;
+    }
+    queued = 0;
+    view?.render();
   }
   let heatCache = null;
   function heatSources() {
@@ -1531,6 +1697,17 @@ function activate(api) {
           ctx.fill();
         });
         ctx.globalAlpha = 1;
+      }
+      const shots = done.kills;
+      for (let i = firstAfter(shots, frame - KILL_FRAMES); i < shots.length && shots[i].frame <= frame; i++) {
+        const k = shots[i], p = byIndex.get(k.by);
+        if (!p || !byIndex.has(k.player)) continue;
+        ctx.strokeStyle = withAlpha(p.player.color, 0.9 * (1 - (frame - k.frame) / KILL_FRAMES));
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(v.x(k.fromX), v.y(k.fromY));
+        ctx.lineTo(v.x(k.x), v.y(k.y));
+        ctx.stroke();
       }
       const lost = done.lost;
       for (let i = firstAfter(lost, frame - NEW_FRAMES); i < lost.length && lost[i].frame <= frame; i++) {
@@ -1756,10 +1933,15 @@ function activate(api) {
         this.root.append(bar, w.row(w.button(t("Stop"), { ghost: true, onClick: () => run.controller.abort() })));
         this.progress();
       } else if (sim?.present) {
+        const unplayed = loaded.filter((l) => !l.played).length;
         this.root.append(
-          w.row(w.button(t("Play the game through"), { primary: true, disabled: running !== null, title: running ? t("Another replay is being played through") : void 0, onClick: () => void playThrough(entry) })),
+          w.row(
+            w.button(t("Play the game through"), { primary: true, disabled: running !== null, title: running ? t("Another replay is being played through") : void 0, onClick: () => void playThrough(entry) }),
+            unplayed > 1 && w.button(t("Play all {n} through", { n: unplayed }), { disabled: running !== null, title: t("One after another; the heat maps can then add every game of this map together"), onClick: () => void playAll() })
+          ),
           w.hint(t("Runs the whole game out of sight in the site's game engine, from your own copy of StarCraft, to show what happened and not only what was ordered. It takes about fifteen seconds for a twenty-minute game."))
         );
+        if (running) this.root.append(el("div", { className: "afm-dim" }, queued > 1 ? t("Playing {name} through; {n} more to go.", { name: running.entry.fileName, n: queued - 1 }) : t("Playing {name} through.", { name: running.entry.fileName })));
       }
       if (!matches) {
         this.root.append(
@@ -1948,6 +2130,52 @@ function activate(api) {
         this.render();
       } });
       this.root.append(w.group(entry.played ? t("What was made") : t("Build order"), w.row(who, workers), list));
+      if (entry.played) {
+        const byIndex = new Map(players.map((p) => [p.player.index, p.player]));
+        const nameOf = (index) => byIndex.get(index)?.name ?? t("Player {n}", { n: index + 1 });
+        const amount = (count, value) => value > 0 ? `${count} (${value})` : String(count);
+        const fightList = el("div", { className: "afm-list" });
+        for (const f of entry.played.fights) {
+          const sides = f.sides.filter((sd) => byIndex.has(sd.player));
+          const line = el(
+            "div",
+            { className: "afm-step", title: t("Go to the fight") },
+            el("span", { className: "afm-t" }, formatTime(f.from)),
+            el("span", {}, ...sides.flatMap((sd, i) => [
+              i ? el("span", { className: "afm-end" }, " \xB7 ") : null,
+              el("span", { style: `color:${byIndex.get(sd.player).color};${f.winner === sd.player ? "font-weight:600" : ""}`, title: sd.army ? t("{name}: {army} there when it began, lost {lost}, killed {killed}", { name: nameOf(sd.player), army: amount(sd.army, sd.armyValue), lost: amount(sd.lost, sd.lostValue), killed: amount(sd.killed, sd.killedValue) }) : t("{name}: lost {lost}, killed {killed}", { name: nameOf(sd.player), lost: amount(sd.lost, sd.lostValue), killed: amount(sd.killed, sd.killedValue) }) }, t("{name} lost {lost}", { name: nameOf(sd.player), lost: amount(sd.lost, sd.lostValue) }))
+            ]))
+          );
+          line.addEventListener("click", () => {
+            seek(Math.max(0, f.from - 48));
+            const rect = { x0: Math.max(0, Math.floor(f.rect.x0 / 32) - 2), y0: Math.max(0, Math.floor(f.rect.y0 / 32) - 2), x1: Math.ceil(f.rect.x1 / 32) + 2, y1: Math.ceil(f.rect.y1 / 32) + 2 };
+            api.view.center(Math.floor(f.x / 32), Math.floor(f.y / 32));
+            api.view.flash({ rect, kind: "attention" });
+          });
+          fightList.append(line);
+          this.steps.push({ el: line, frame: f.from });
+        }
+        if (!entry.played.fights.length) fightList.append(el("div", { className: "afm-dim", style: "padding:6px" }, t("No fights: nothing much was lost in one place at one time.")));
+        this.root.append(w.group(t("Fights"), fightList, w.hint(t("Losses close together in time and place. The side that came out ahead is in bold."))));
+        if (entry.played.killers.length) {
+          const top = el("div", { className: "afm-list" });
+          for (const k of entry.played.killers) {
+            const owner = byIndex.get(k.player);
+            const line = el(
+              "div",
+              { className: "afm-step", title: t("Go to its first kill") },
+              el("span", { className: "afm-t" }, formatTime(k.frame)),
+              el("span", {}, el("span", { style: owner ? `color:${owner.color}` : "" }, api.names.unit(k.type)), el("span", { className: "afm-end" }, " \xB7 " + (k.value > 0 ? t("{n, plural, one {# kill} other {# kills}}, worth {value}", { n: k.kills, value: k.value }) : t("{n, plural, one {# kill} other {# kills}}", { n: k.kills }))))
+            );
+            line.addEventListener("click", () => {
+              seek(Math.max(0, k.frame - 24));
+              api.view.center(Math.floor(k.x / 32), Math.floor(k.y / 32));
+            });
+            top.append(line);
+          }
+          this.root.append(w.group(t("Most kills"), top));
+        }
+      }
       if (current.report.chat.length) {
         const byId = new Map(players.map((p) => [p.player.id, p.player]));
         const bySlot = new Map(rep.players.map((p) => [p.slot, p]));
@@ -2029,6 +2257,10 @@ function activate(api) {
       g.font = `${10 * dpr}px system-ui, sans-serif`;
       g.textBaseline = "top";
       g.fillText(String(Math.round(max)), 3 * dpr, 2 * dpr);
+      if (current.played) {
+        g.fillStyle = "rgba(240,80,60,0.9)";
+        for (const f of current.played.fights) g.fillRect(xOf(f.from), ch - 3 * dpr, Math.max(2 * dpr, xOf(f.to) - xOf(f.from)), 3 * dpr);
+      }
       g.strokeStyle = "rgba(255,255,255,0.8)";
       g.lineWidth = 1 * dpr;
       g.beginPath();
