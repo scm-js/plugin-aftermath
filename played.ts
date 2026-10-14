@@ -14,7 +14,7 @@ const EGGS = new Set([36, 59, 97]);
 const RESOURCES = new Set([176, 177, 178, 188]);
 export const WORKERS = new Set([7, 41, 64]);
 export const isBuilding = (type: number) => type >= 106 && type <= 201 && !RESOURCES.has(type);
-const counted = (type: number) => type >= 0 && type < 203 && !NOT_MADE.has(type) && !RESOURCES.has(type);
+export const counted = (type: number) => type >= 0 && type < 203 && !NOT_MADE.has(type) && !RESOURCES.has(type);
 
 /** Units of one type started close together read as one line. */
 const FOLD_FRAMES = 3 * 24;
@@ -79,6 +79,52 @@ export function madeRows(t: ReplayTimeline, player: number, options: { workers?:
     out.push({ ...r });
   }
   return out;
+}
+
+const MINERALS = new Set([176, 177, 178]);
+/** Mineral fields this near each other (six tiles) are one mineral line; a line of fewer fields than this is no base (a wall, a stray field). */
+const FIELD_LINK = 192;
+const MIN_FIELDS = 3;
+/**
+ * A hall stands at a mineral line when its nearest field is this near its middle (eight tiles). Measured over twelve
+ * real games: a hall at a base has a field 5 to 6½ tiles away (7½ for a careless one), and a hall anywhere else
+ * (a macro hatchery, a proxy, one built to fly) none within 8.
+ */
+const HALL_REACH = 256;
+
+/** The map's mineral lines as the game began, and each field with the line it belongs to (-1 for none). */
+export interface MineralLines {
+  fields: { x: number; y: number; line: number }[];
+  lines: { x: number; y: number; fields: number }[];
+}
+
+export function mineralLines(t: ReplayTimeline): MineralLines {
+  const fields = t.events.filter((e) => e.frame === 0 && e.kind === "born" && MINERALS.has(e.type));
+  const root = fields.map((_, i) => i);
+  const find = (i: number): number => (root[i] === i ? i : (root[i] = find(root[i])));
+  for (let i = 0; i < fields.length; i++) for (let j = i + 1; j < fields.length; j++) {
+    if (Math.hypot(fields[i].x - fields[j].x, fields[i].y - fields[j].y) <= FIELD_LINK) root[find(i)] = find(j);
+  }
+  const groups = new Map<number, number[]>();
+  fields.forEach((_, i) => { const g = find(i); groups.set(g, [...(groups.get(g) ?? []), i]); });
+  const lines: MineralLines["lines"] = [];
+  const lineOf = new Map<number, number>();
+  for (const [g, members] of groups) {
+    if (members.length < MIN_FIELDS) continue;
+    lineOf.set(g, lines.length);
+    lines.push({ x: members.reduce((a, i) => a + fields[i].x, 0) / members.length, y: members.reduce((a, i) => a + fields[i].y, 0) / members.length, fields: members.length });
+  }
+  return { lines, fields: fields.map((f, i) => ({ x: f.x, y: f.y, line: lineOf.get(find(i)) ?? -1 })) };
+}
+
+/** The mineral line a hall at (x, y) stands at: its nearest field's, when that field is near enough; -1 when none is. */
+export function lineAt(m: MineralLines, x: number, y: number): number {
+  let best = -1, bestD = HALL_REACH;
+  for (const f of m.fields) {
+    const d = Math.hypot(f.x - x, f.y - y);
+    if (d <= bestD) { bestD = d; best = f.line; }
+  }
+  return best;
 }
 
 /** A building as it stood: from its site to its end, the type it had over that time. */
