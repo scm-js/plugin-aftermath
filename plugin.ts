@@ -290,6 +290,8 @@ export function activate(api: PluginApi) {
     try {
       const state = await sim.status();
       if (!state.available) throw new Error(state.reason ?? t("The game engine cannot run a game here."));
+      // An engine from before timeline 3 reads only the file 1.16.1 wrote.
+      if (entry.report.replay.format !== "legacy" && (state.timeline ?? 0) < 3) throw new Error(t("The game engine on this site is an older one that plays replays from StarCraft 1.16.1 and earlier only."));
       const timeline = await sim.analyse(entry.bytes, {
         name: entry.fileName,
         signal: run.controller.signal,
@@ -319,7 +321,7 @@ export function activate(api: PluginApi) {
   let queued = 0;
   async function playAll(): Promise<void> {
     if (running || queued) return;
-    const todo = loaded.filter((l) => !l.played && l.report.replay.format === "legacy");
+    const todo = loaded.filter((l) => !l.played);
     queued = todo.length;
     for (const entry of todo) {
       if (!loaded.includes(entry)) { queued--; continue; }
@@ -337,7 +339,8 @@ export function activate(api: PluginApi) {
   function currentReport(): MapReport | null {
     if (!current) return null;
     const map = current.map;
-    const games = loaded.filter((l) => l.played && (l === current || likeness(map, l.map) >= SAME_MAP));
+    // A game that left its replay part-way says nothing true of the map after that.
+    const games = loaded.filter((l) => l.played && (l.played.timeline.check?.parted ?? null) === null && (l === current || likeness(map, l.map) >= SAME_MAP));
     if (!games.length) return null;
     const key = games.map((l) => l.id).join(",");
     if (reportCache?.key === key) return reportCache.report;
@@ -756,6 +759,8 @@ export function activate(api: PluginApi) {
         this.root.append(el("div", { className: "afm-dim" }, tl.frames < tl.total
           ? t("Played through to {time}, where the game stopped. Buildings, units, what was made and the graphs below are what happened.", { time: formatTime(tl.frames) })
           : t("Played through. Buildings, units, what was made and the graphs below are what happened.")));
+        const parted = tl.check?.parted ?? null;
+        if (parted !== null) this.root.append(el("div", { className: "afm-warn" }, t("From {time} the game played here is not the game in the replay: a player gave an order to a unit that had not been made. What is shown after that moment is not what happened, and this game is left out of the map's report.", { time: formatTime(parted) })));
         // The others of a Play all go on behind this one.
         if (running) this.root.append(el("div", { className: "afm-dim" }, queued > 1 ? t("Playing {name} through; {n} more to go.", { name: running.entry.fileName, n: queued - 1 }) : t("Playing {name} through.", { name: running.entry.fileName })));
       } else if (running?.entry === entry) {
@@ -764,11 +769,8 @@ export function activate(api: PluginApi) {
         this.bar = bar;
         this.root.append(bar, w.row(w.button(t("Stop"), { ghost: true, onClick: () => run.controller.abort() })));
         this.progress();
-      } else if (sim?.present && rep.format !== "legacy") {
-        // The engine is StarCraft 1.16.1's game and reads the file as that game did.
-        this.root.append(w.hint(t("This replay was written by StarCraft 1.18 or later. The site's game engine plays replays from 1.16.1 and earlier so far, so this one cannot be played through; what is shown is from the orders.")));
       } else if (sim?.present) {
-        const unplayed = loaded.filter((l) => !l.played && l.report.replay.format === "legacy").length;
+        const unplayed = loaded.filter((l) => !l.played).length;
         this.root.append(
           w.row(
             w.button(t("Play the game through"), { primary: true, disabled: running !== null, title: running ? t("Another replay is being played through") : undefined, onClick: () => void playThrough(entry) }),

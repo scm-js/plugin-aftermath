@@ -145,5 +145,6 @@ export const KO: Record<string, string> = {
   "Rings at the starts and the bases taken, red circles where the fighting was": "시작 위치와 확보한 기지는 고리로, 교전이 있던 곳은 빨간 원으로 표시합니다",
   "From few games this says little. Load more replays of this map and play them all through.": "게임 수가 적으면 알 수 있는 것이 거의 없습니다. 이 맵의 리플레이를 더 불러와 모두 끝까지 실행하세요.",
   "{percent}% of the map's ground was never entered by any unit, water and cliffs included. Choose Ground never entered under Show to see it.": "맵의 땅 중 {percent}%에는 어떤 유닛도 들어가지 않았습니다(물과 절벽 포함). 표시에서 '한 번도 들어가지 않은 땅'을 고르면 볼 수 있습니다.",
-  "This replay was written by StarCraft 1.18 or later. The site's game engine plays replays from 1.16.1 and earlier so far, so this one cannot be played through; what is shown is from the orders.": "이 리플레이는 StarCraft 1.18 이후 버전에서 만들어졌습니다. 사이트의 게임 엔진은 아직 1.16.1 이전 버전의 리플레이만 실행할 수 있어 이 리플레이는 끝까지 실행할 수 없습니다. 표시되는 내용은 명령 기록에서 나온 것입니다.",
+  "The game engine on this site is an older one that plays replays from StarCraft 1.16.1 and earlier only.": "이 사이트의 게임 엔진은 이전 버전이라 StarCraft 1.16.1 이전의 리플레이만 실행할 수 있습니다.",
+  "From {time} the game played here is not the game in the replay: a player gave an order to a unit that had not been made. What is shown after that moment is not what happened, and this game is left out of the map's report.": "{time}부터 여기서 실행된 게임은 리플레이의 게임과 다릅니다. 아직 만들어지지 않은 유닛에 플레이어가 명령을 내렸습니다. 그 시점 이후에 표시되는 내용은 실제로 일어난 일이 아니며, 이 게임은 맵 보고에서 제외됩니다.",
 };

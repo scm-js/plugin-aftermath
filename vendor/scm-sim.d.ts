@@ -85,8 +85,24 @@ export interface Positions {
   y: Uint16Array;
 }
 
+/**
+ * Whether the game played by the engine stayed the game the replay was recorded from. A
+ * replay's commands name units by the game's own slots, so each name is held against the
+ * game as it is played: a name of a unit the game had not made yet cannot come from the game
+ * that was played.
+ */
+export interface ReplayCheck {
+  /** Units the commands named, and of those: the unit had died before the command reached the game (no sign of anything). */
+  named: number;
+  gone: number;
+  /** Names of a unit the game had not made. */
+  ahead: number;
+  /** The frame of the first of those: what the timeline says from there on is not what happened. null: none, the whole game stands. */
+  parted: number | null;
+}
+
 export interface ReplayTimeline {
-  /** 1: as first written. 2: a `died` event says who killed the unit. */
+  /** 1: as first written. 2: a `died` event says who killed the unit. 3: `check`. */
   version: number;
   /** Frames played, and the replay's length. */
   frames: number;
@@ -102,6 +118,8 @@ export interface ReplayTimeline {
   samples: { every: number; frame: number[]; players: PlayerSeries[] };
   /** Null when not asked for. */
   positions: Positions | null;
+  /** From timeline version 3; absent in a timeline of an engine before that. */
+  check?: ReplayCheck | null;
 }
 
 export interface AnalyseProgress {
