@@ -15,8 +15,8 @@
  * Where the editor has the site's game engine beside it (the scm-sim plugin), a replay can
  * also be played through: the game is run to its end out of sight, and the panel then
  * shows what happened as well — the units where they stood, the buildings that really
- * stood, what was made and lost, and each player's army and economy through the game
- * (`played.ts`).
+ * stood, what was made and lost, each player's army and economy through the game
+ * (`played.ts`), and the fights and who killed what (`fights.ts`).
  *
  * `replay.ts` reads the file, `analysis.ts` makes the per-player reports and the heat
  * grid, `played.ts` reads the engine's timeline, `chk.ts` compares maps; all four are pure
@@ -29,6 +29,7 @@ import { likeness, plainText, readChk, type ChkInfo } from "./chk";
 import { FRAME_MS, parseReplay, ReplayError } from "./replay";
 import { KO } from "./ko";
 import { buildings as standingBuildings, isBuilding, losses, lossPoints, madeRows, presencePoints, series, unitIndex, unitsAt, WORKERS, type Metric, type Point, type Standing, type UnitIndex } from "./played";
+import { fights as findFights, kills as findKills, topKillers, type Fight, type Kill, type Killer } from "./fights";
 import type { ReplayTimeline, ScmSimService } from "./vendor/scm-sim";
 
 /* ── State ──────────────────────────────────────────────── */
@@ -75,10 +76,15 @@ interface Played {
   index: UnitIndex;
   lost: Point[];
   lostBy: Map<number, { units: number; value: number }>;
+  fights: Fight[];
+  kills: Kill[];
+  killers: Killer[];
 }
 
 /** How long a click stays on the map behind the timeline. */
 const TRAIL_FRAMES = 8 * 24;
+/** How long a kill's line stays on the map. */
+const KILL_FRAMES = 36;
 /** How long a new building is marked as new. */
 const NEW_FRAMES = 6 * 24;
 /** Terrain shared with the replay's map for the map in front to count as the same one. */
@@ -289,7 +295,8 @@ export function activate(api: PluginApi) {
       await api.data.load();
       const units = api.data.units();
       const cost = (type: number) => (units ? (units.mineralCost[type] ?? 0) + (units.vespeneCost[type] ?? 0) : 0);
-      entry.played = { timeline, standing: standingBuildings(timeline), index: unitIndex(timeline), lost: lossPoints(timeline), lostBy: losses(timeline, cost) };
+      const index = unitIndex(timeline);
+      entry.played = { timeline, standing: standingBuildings(timeline), index, lost: lossPoints(timeline), lostBy: losses(timeline, cost), fights: findFights(timeline, cost, index), kills: findKills(timeline), killers: topKillers(timeline, cost) };
       for (const b of entry.played.standing) api.graphics.requestUnit(b.type);
     } catch (err) {
       if ((err as Error)?.name !== "AbortError") {
@@ -302,6 +309,22 @@ export function activate(api: PluginApi) {
       view?.render();
       overlay.redraw();
     }
+  }
+
+  /** Every loaded replay that has not been played through, one after another. Stopping one stops the rest. */
+  let queued = 0;
+  async function playAll(): Promise<void> {
+    if (running || queued) return;
+    const todo = loaded.filter((l) => !l.played);
+    queued = todo.length;
+    for (const entry of todo) {
+      if (!loaded.includes(entry)) { queued--; continue; }
+      await playThrough(entry);
+      queued--;
+      if (!entry.played) break;
+    }
+    queued = 0;
+    view?.render();
   }
 
   /* ── Heat ── */
@@ -429,6 +452,17 @@ export function activate(api: PluginApi) {
           ctx.fill();
         });
         ctx.globalAlpha = 1;
+      }
+      // A kill is a line from the killer to where its victim fell, for a moment, in the killer's colour.
+      const shots = done.kills;
+      for (let i = firstAfter(shots, frame - KILL_FRAMES); i < shots.length && shots[i].frame <= frame; i++) {
+        const k = shots[i], p = byIndex.get(k.by);
+        if (!p || !byIndex.has(k.player)) continue;
+        ctx.strokeStyle = withAlpha(p.player.color, 0.9 * (1 - (frame - k.frame) / KILL_FRAMES));
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(v.x(k.fromX), v.y(k.fromY)); ctx.lineTo(v.x(k.x), v.y(k.y));
+        ctx.stroke();
       }
       // Losses flash where they fell.
       const lost = done.lost;
@@ -658,10 +692,15 @@ export function activate(api: PluginApi) {
         this.root.append(bar, w.row(w.button(t("Stop"), { ghost: true, onClick: () => run.controller.abort() })));
         this.progress();
       } else if (sim?.present) {
+        const unplayed = loaded.filter((l) => !l.played).length;
         this.root.append(
-          w.row(w.button(t("Play the game through"), { primary: true, disabled: running !== null, title: running ? t("Another replay is being played through") : undefined, onClick: () => void playThrough(entry) })),
+          w.row(
+            w.button(t("Play the game through"), { primary: true, disabled: running !== null, title: running ? t("Another replay is being played through") : undefined, onClick: () => void playThrough(entry) }),
+            unplayed > 1 && w.button(t("Play all {n} through", { n: unplayed }), { disabled: running !== null, title: t("One after another; the heat maps can then add every game of this map together"), onClick: () => void playAll() }),
+          ),
           w.hint(t("Runs the whole game out of sight in the site's game engine, from your own copy of StarCraft, to show what happened and not only what was ordered. It takes about fifteen seconds for a twenty-minute game.")),
         );
+        if (running) this.root.append(el("div", { className: "afm-dim" }, queued > 1 ? t("Playing {name} through; {n} more to go.", { name: running.entry.fileName, n: queued - 1 }) : t("Playing {name} through.", { name: running.entry.fileName })));
       }
 
       if (!matches) {
@@ -808,6 +847,49 @@ export function activate(api: PluginApi) {
       const workers = w.checkbox(t("Workers"), { value: settings.workers, title: t("Show SCVs, Drones and Probes"), onChange: (on) => { settings.workers = on; save(); this.render(); } });
       this.root.append(w.group(entry.played ? t("What was made") : t("Build order"), w.row(who, workers), list));
 
+      // The fights, and the units that killed the most, once the game has been played through.
+      if (entry.played) {
+        const byIndex = new Map(players.map((p) => [p.player.index, p.player] as const));
+        const nameOf = (index: number) => byIndex.get(index)?.name ?? t("Player {n}", { n: index + 1 });
+        const amount = (count: number, value: number) => (value > 0 ? `${count} (${value})` : String(count));
+        const fightList = el("div", { className: "afm-list" });
+        for (const f of entry.played.fights) {
+          const sides = f.sides.filter((sd) => byIndex.has(sd.player));
+          const line = el("div", { className: "afm-step", title: t("Go to the fight") },
+            el("span", { className: "afm-t" }, formatTime(f.from)),
+            el("span", {}, ...sides.flatMap((sd, i) => [
+              i ? el("span", { className: "afm-end" }, " · ") : null,
+              el("span", { style: `color:${byIndex.get(sd.player)!.color};${f.winner === sd.player ? "font-weight:600" : ""}`, title: sd.army ? t("{name}: {army} there when it began, lost {lost}, killed {killed}", { name: nameOf(sd.player), army: amount(sd.army, sd.armyValue), lost: amount(sd.lost, sd.lostValue), killed: amount(sd.killed, sd.killedValue) }) : t("{name}: lost {lost}, killed {killed}", { name: nameOf(sd.player), lost: amount(sd.lost, sd.lostValue), killed: amount(sd.killed, sd.killedValue) }) }, t("{name} lost {lost}", { name: nameOf(sd.player), lost: amount(sd.lost, sd.lostValue) })),
+            ])),
+          );
+          line.addEventListener("click", () => {
+            // A moment before the first death, so the fight is seen to begin.
+            seek(Math.max(0, f.from - 48));
+            const rect = { x0: Math.max(0, Math.floor(f.rect.x0 / 32) - 2), y0: Math.max(0, Math.floor(f.rect.y0 / 32) - 2), x1: Math.ceil(f.rect.x1 / 32) + 2, y1: Math.ceil(f.rect.y1 / 32) + 2 };
+            api.view.center(Math.floor(f.x / 32), Math.floor(f.y / 32));
+            api.view.flash({ rect, kind: "attention" });
+          });
+          fightList.append(line);
+          this.steps.push({ el: line, frame: f.from });
+        }
+        if (!entry.played.fights.length) fightList.append(el("div", { className: "afm-dim", style: "padding:6px" }, t("No fights: nothing much was lost in one place at one time.")));
+        this.root.append(w.group(t("Fights"), fightList, w.hint(t("Losses close together in time and place. The side that came out ahead is in bold."))));
+
+        if (entry.played.killers.length) {
+          const top = el("div", { className: "afm-list" });
+          for (const k of entry.played.killers) {
+            const owner = byIndex.get(k.player);
+            const line = el("div", { className: "afm-step", title: t("Go to its first kill") },
+              el("span", { className: "afm-t" }, formatTime(k.frame)),
+              el("span", {}, el("span", { style: owner ? `color:${owner.color}` : "" }, api.names.unit(k.type)), el("span", { className: "afm-end" }, " · " + (k.value > 0 ? t("{n, plural, one {# kill} other {# kills}}, worth {value}", { n: k.kills, value: k.value }) : t("{n, plural, one {# kill} other {# kills}}", { n: k.kills })))),
+            );
+            line.addEventListener("click", () => { seek(Math.max(0, k.frame - 24)); api.view.center(Math.floor(k.x / 32), Math.floor(k.y / 32)); });
+            top.append(line);
+          }
+          this.root.append(w.group(t("Most kills"), top));
+        }
+      }
+
       // Chat.
       if (current.report.chat.length) {
         const byId = new Map(players.map((p) => [p.player.id, p.player] as const));
@@ -889,6 +971,11 @@ export function activate(api: PluginApi) {
       g.font = `${10 * dpr}px system-ui, sans-serif`;
       g.textBaseline = "top";
       g.fillText(String(Math.round(max)), 3 * dpr, 2 * dpr);
+      // The fights, as marks along the bottom: as wide as each lasted, at least a pixel or two.
+      if (current.played) {
+        g.fillStyle = "rgba(240,80,60,0.9)";
+        for (const f of current.played.fights) g.fillRect(xOf(f.from), ch - 3 * dpr, Math.max(2 * dpr, xOf(f.to) - xOf(f.from)), 3 * dpr);
+      }
       g.strokeStyle = "rgba(255,255,255,0.8)";
       g.lineWidth = 1 * dpr;
       g.beginPath(); g.moveTo(xOf(frame), 0); g.lineTo(xOf(frame), ch); g.stroke();

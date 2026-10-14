@@ -46,7 +46,26 @@ Afterwards the panel shows what happened instead of what was ordered:
 - Two more **heat maps**: where the armies were (workers left out) and where units were
   lost.
 
+- **Fights**: losses close together in time and place are one fight. Each line gives when
+  it began and what each side lost, with the side that came out ahead in bold; hover a
+  name for what that side had there, lost and killed. Click a line to go to the moment and
+  the place. The fights are also marked in red along the bottom of the graph.
+- **Most kills**: the units that killed the most. Click one to go to its first kill.
+- On the map, a thin line runs for a moment from a unit to what it just killed.
+
 Recent orders, the order heat maps and the chat stay as they are.
+
+A kill is the game's own credit, so a Reaver gets its Scarab's kills and a Carrier its
+Interceptors'. What a Spider Mine kills is credited to nobody. When several units fall in
+the same instant, which killer goes with which victim is the likeliest pairing, not a
+certain one.
+
+### Many replays of one map
+
+Load several replays and **Play all N through** runs them one after another. With **All N
+replays of this map** ticked, the heat maps then add every game together: where armies
+went across all of them, and where units were lost. One game says little about a map;
+twenty show which paths and chokes are used and where the fighting happens.
 
 The button is only there where the editor has the engine beside it, which is scmjs.dev. In
 the desktop app and an editor hosted elsewhere, Aftermath works from the orders alone.
