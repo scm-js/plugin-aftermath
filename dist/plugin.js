@@ -1002,11 +1002,215 @@ var KO = {
   "before 1.18": "1.18 \uC774\uC804",
   "left {time}": "{time}\uC5D0 \uB098\uAC10",
   "{n, plural, one {# command of a kind Aftermath does not know was skipped.} other {# commands of a kind Aftermath does not know were skipped.}}": "Aftermath\uAC00 \uBAA8\uB974\uB294 \uC885\uB958\uC758 \uBA85\uB839 {n}\uAC1C\uB97C \uAC74\uB108\uB6F0\uC5C8\uC2B5\uB2C8\uB2E4.",
-  "{n} APM": "{n} APM"
+  "{n} APM": "{n} APM",
+  "The game engine cannot run a game here.": "\uC5EC\uAE30\uC11C\uB294 \uAC8C\uC784 \uC5D4\uC9C4\uC774 \uAC8C\uC784\uC744 \uC2E4\uD589\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.",
+  "Could not play {name} through": "{name}\uC744(\uB97C) \uB05D\uAE4C\uC9C0 \uC2E4\uD589\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4",
+  "Played through to {time}, where the game stopped. Buildings, units, what was made and the graphs below are what happened.": "\uAC8C\uC784\uC774 \uBA48\uCD98 {time}\uAE4C\uC9C0 \uC2E4\uD589\uD588\uC2B5\uB2C8\uB2E4. \uC544\uB798\uC758 \uAC74\uBB3C, \uC720\uB2DB, \uC0DD\uC0B0 \uBAA9\uB85D\uACFC \uADF8\uB798\uD504\uB294 \uC2E4\uC81C\uB85C \uC77C\uC5B4\uB09C \uC77C\uC785\uB2C8\uB2E4.",
+  "Played through. Buildings, units, what was made and the graphs below are what happened.": "\uB05D\uAE4C\uC9C0 \uC2E4\uD589\uD588\uC2B5\uB2C8\uB2E4. \uC544\uB798\uC758 \uAC74\uBB3C, \uC720\uB2DB, \uC0DD\uC0B0 \uBAA9\uB85D\uACFC \uADF8\uB798\uD504\uB294 \uC2E4\uC81C\uB85C \uC77C\uC5B4\uB09C \uC77C\uC785\uB2C8\uB2E4.",
+  "Starting the game\u2026": "\uAC8C\uC784\uC744 \uC2DC\uC791\uD558\uB294 \uC911\u2026",
+  "Stop": "\uC911\uC9C0",
+  "Play the game through": "\uAC8C\uC784\uC744 \uB05D\uAE4C\uC9C0 \uC2E4\uD589",
+  "Another replay is being played through": "\uB2E4\uB978 \uB9AC\uD50C\uB808\uC774\uB97C \uC2E4\uD589\uD558\uB294 \uC911\uC785\uB2C8\uB2E4",
+  "Runs the whole game out of sight in the site's game engine, from your own copy of StarCraft, to show what happened and not only what was ordered. It takes about fifteen seconds for a twenty-minute game.": "\uC0AC\uC6A9\uC790\uC758 StarCraft \uBCF5\uC0AC\uBCF8\uC73C\uB85C \uC0AC\uC774\uD2B8\uC758 \uAC8C\uC784 \uC5D4\uC9C4\uC5D0\uC11C \uAC8C\uC784 \uC804\uCCB4\uB97C \uD654\uBA74 \uBC16\uC5D0\uC11C \uC2E4\uD589\uD574, \uB0B4\uB9B0 \uBA85\uB839\uBFD0 \uC544\uB2C8\uB77C \uC2E4\uC81C\uB85C \uC77C\uC5B4\uB09C \uC77C\uC744 \uBCF4\uC5EC \uC90D\uB2C8\uB2E4. 20\uBD84\uC9DC\uB9AC \uAC8C\uC784\uC5D0 \uC57D 15\uCD08\uAC00 \uAC78\uB9BD\uB2C8\uB2E4.",
+  "Units and buildings lost, and what they cost in minerals and gas": "\uC783\uC740 \uC720\uB2DB\uACFC \uAC74\uBB3C, \uADF8\uB9AC\uACE0 \uADF8 \uBE44\uC6A9(\uBBF8\uB124\uB784\uACFC \uAC00\uC2A4)",
+  "Lost {n}, worth {value}": "{n}\uAC1C \uC190\uC2E4, \uAC00\uCE58 {value}",
+  "Lost {n}": "{n}\uAC1C \uC190\uC2E4",
+  "Army value": "\uBCD1\uB825 \uAC00\uCE58",
+  "Army size": "\uBCD1\uB825 \uC218",
+  "Supply": "\uBCF4\uAE09",
+  "Minerals in the bank": "\uBCF4\uC720 \uBBF8\uB124\uB784",
+  "Gas in the bank": "\uBCF4\uC720 \uAC00\uC2A4",
+  "What the graph shows": "\uADF8\uB798\uD504\uC5D0 \uD45C\uC2DC\uD560 \uD56D\uBAA9",
+  "Click to go there": "\uD074\uB9AD\uD558\uBA74 \uADF8 \uC2DC\uC810\uC73C\uB85C \uC774\uB3D9\uD569\uB2C8\uB2E4",
+  "Heat: where the armies were": "\uD788\uD2B8\uB9F5: \uBCD1\uB825\uC774 \uC788\uB358 \uACF3",
+  "Heat: where units were lost": "\uD788\uD2B8\uB9F5: \uC720\uB2DB\uC744 \uC783\uC740 \uACF3",
+  "The buildings that stood at this moment; a site is drawn fainter until it is finished": "\uC774 \uC2DC\uC810\uC5D0 \uC11C \uC788\uB358 \uAC74\uBB3C\uC785\uB2C8\uB2E4. \uAC74\uC124 \uC911\uC778 \uAC74\uBB3C\uC740 \uC644\uC131\uB420 \uB54C\uAE4C\uC9C0 \uD750\uB9AC\uAC8C \uADF8\uB9BD\uB2C8\uB2E4",
+  "Every building ordered so far": "\uC9C0\uAE08\uAE4C\uC9C0 \uAC74\uC124 \uBA85\uB839\uC744 \uB0B4\uB9B0 \uBAA8\uB4E0 \uAC74\uBB3C",
+  "Units": "\uC720\uB2DB",
+  "Where every unit stood at this moment; workers are drawn smaller": "\uC774 \uC2DC\uC810\uC5D0 \uAC01 \uC720\uB2DB\uC774 \uC788\uB358 \uC704\uCE58\uC785\uB2C8\uB2E4. \uC77C\uAFBC\uC740 \uB354 \uC791\uAC8C \uADF8\uB9BD\uB2C8\uB2E4",
+  "researched": "\uC5F0\uAD6C \uC644\uB8CC",
+  "not finished": "\uC644\uC131\uB418\uC9C0 \uC54A\uC74C",
+  "cancelled or destroyed {time}": "{time}\uC5D0 \uCDE8\uC18C\uB418\uAC70\uB098 \uD30C\uAD34\uB428",
+  "lost {time}": "{time}\uC5D0 \uC783\uC74C",
+  "done {time}": "{time}\uC5D0 \uC644\uC131",
+  "Nothing was made.": "\uC0DD\uC0B0\uD55C \uAC83\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.",
+  "What was made": "\uC0DD\uC0B0 \uBAA9\uB85D",
+  "Playing the game: {time} of {total}": "\uAC8C\uC784 \uC2E4\uD589 \uC911: {total} \uC911 {time}"
 };
 
+// played.ts
+var NOT_MADE = /* @__PURE__ */ new Set([13, 14, 33, 35, 36, 59, 73, 85, 97, 101, 105, 202]);
+var EGGS = /* @__PURE__ */ new Set([36, 59, 97]);
+var RESOURCES = /* @__PURE__ */ new Set([176, 177, 178, 188]);
+var WORKERS2 = /* @__PURE__ */ new Set([7, 41, 64]);
+var isBuilding = (type) => type >= 106 && type <= 201 && !RESOURCES.has(type);
+var counted = (type) => type >= 0 && type < 203 && !NOT_MADE.has(type) && !RESOURCES.has(type);
+var FOLD_FRAMES = 3 * 24;
+function madeRows(t, player, options = {}) {
+  const rows = [];
+  const rowOf = /* @__PURE__ */ new Map();
+  const eggAt = /* @__PURE__ */ new Map();
+  const ignored = /* @__PURE__ */ new Set();
+  for (const e of t.events) {
+    if (e.kind === "born") {
+      if (e.hallucination) {
+        ignored.add(e.unit);
+        continue;
+      }
+      if (e.frame === 0 || e.owner !== player || !counted(e.type)) continue;
+      const row = { kind: "unit", frame: e.frame, id: e.type, done: null, lost: null, building: isBuilding(e.type), x: e.x, y: e.y, count: 1 };
+      rows.push(row);
+      rowOf.set(e.unit, row);
+    } else if (ignored.has(e.unit)) continue;
+    else if (e.kind === "morph") {
+      const before = rowOf.get(e.unit);
+      if (EGGS.has(e.type)) {
+        eggAt.set(e.unit, e.frame);
+        continue;
+      }
+      if (before && before.building && !isBuilding(e.type)) {
+        before.lost ??= e.frame;
+        rowOf.delete(e.unit);
+        continue;
+      }
+      if (e.owner !== player || !counted(e.type)) continue;
+      const row = { kind: "unit", frame: eggAt.get(e.unit) ?? e.frame, id: e.type, done: null, lost: null, building: isBuilding(e.type), x: e.x, y: e.y, count: 1 };
+      eggAt.delete(e.unit);
+      rows.push(row);
+      rowOf.set(e.unit, row);
+    } else if (e.kind === "done") {
+      const row = rowOf.get(e.unit);
+      if (row && row.done === null && row.id === e.type) row.done = e.frame;
+    } else if (e.kind === "died") {
+      const row = rowOf.get(e.unit);
+      if (row) row.lost ??= e.frame;
+    }
+  }
+  for (const r of t.research) if (r.player === player) rows.push({ kind: r.kind, frame: r.frame, id: r.id, level: r.level, done: r.frame, lost: null, building: false, x: 0, y: 0, count: 1 });
+  rows.sort((a, b) => a.frame - b.frame);
+  const out = [];
+  for (const r of rows) {
+    if (r.kind === "unit" && !options.workers && WORKERS2.has(r.id)) continue;
+    const last = out[out.length - 1];
+    if (last && r.kind === "unit" && last.kind === "unit" && !r.building && last.id === r.id && r.frame - last.frame <= FOLD_FRAMES * last.count) {
+      last.count++;
+      continue;
+    }
+    out.push({ ...r });
+  }
+  return out;
+}
+function buildings(t) {
+  const out = [];
+  const open = /* @__PURE__ */ new Map();
+  const start = (unit, e) => {
+    if (!isBuilding(e.type) || e.owner > 7) return;
+    const s = { type: e.type, owner: e.owner, x: e.x, y: e.y, from: e.frame, done: null, to: null };
+    out.push(s);
+    open.set(unit, s);
+  };
+  const end = (unit, frame) => {
+    const s = open.get(unit);
+    if (s) {
+      s.to = frame;
+      open.delete(unit);
+    }
+  };
+  for (const e of t.events) {
+    if (e.kind === "born") start(e.unit, e);
+    else if (e.kind === "morph") {
+      end(e.unit, e.frame);
+      start(e.unit, e);
+    } else if (e.kind === "done") {
+      const s = open.get(e.unit);
+      if (s && s.done === null) s.done = e.frame;
+    } else if (e.kind === "given") {
+      end(e.unit, e.frame);
+      start(e.unit, e);
+      const s = open.get(e.unit);
+      if (s) s.done = e.frame;
+    } else if (e.kind === "died") end(e.unit, e.frame);
+  }
+  return out;
+}
+function lossPoints(t) {
+  const ignored = /* @__PURE__ */ new Set();
+  const out = [];
+  for (const e of t.events) {
+    if (e.kind === "born" && e.hallucination) ignored.add(e.unit);
+    else if (e.kind === "died" && e.owner <= 7 && counted(e.type) && !ignored.has(e.unit)) out.push({ frame: e.frame, player: e.owner, x: e.x, y: e.y });
+  }
+  return out;
+}
+function losses(t, cost) {
+  const out = /* @__PURE__ */ new Map();
+  const ignored = /* @__PURE__ */ new Set();
+  for (const e of t.events) {
+    if (e.kind === "born" && e.hallucination) ignored.add(e.unit);
+    if (e.kind !== "died" || e.owner > 7 || !counted(e.type) || ignored.has(e.unit)) continue;
+    const row = out.get(e.owner) ?? { units: 0, value: 0 };
+    row.units++;
+    row.value += cost(e.type);
+    out.set(e.owner, row);
+  }
+  return out;
+}
+function unitIndex(t) {
+  let n = 0;
+  for (const e of t.events) if (e.unit >= n) n = e.unit + 1;
+  const owner = new Int8Array(n).fill(-1), type = new Int16Array(n).fill(-1);
+  for (const e of t.events) {
+    if (e.kind === "born") {
+      owner[e.unit] = e.owner;
+      type[e.unit] = e.hallucination ? -1 : e.type;
+    } else if (e.kind === "morph" && type[e.unit] >= 0) type[e.unit] = e.type;
+  }
+  return { owner, type };
+}
+function* presencePoints(t, index) {
+  const p = t.positions;
+  if (!p) return;
+  for (let i = 0; i < p.frame.length; i++) {
+    for (let r = p.start[i]; r < p.start[i + 1]; r++) {
+      const u = p.unit[r], type = index.type[u], owner = index.owner[u];
+      if (owner < 0 || owner > 7 || !counted(type) || WORKERS2.has(type)) continue;
+      yield { frame: p.frame[i], player: owner, x: p.x[r], y: p.y[r] };
+    }
+  }
+}
+function sampleAt(frames, frame) {
+  let lo = 0, hi = frames.length;
+  while (lo < hi) {
+    const mid = lo + hi >> 1;
+    if (frames[mid] <= frame) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo - 1;
+}
+function unitsAt(t, frame, each) {
+  const p = t.positions;
+  if (!p) return;
+  const i = sampleAt(p.frame, frame);
+  if (i < 0) return;
+  const next = i + 1 < p.frame.length ? i + 1 : -1;
+  const k = next < 0 ? 0 : Math.min(1, Math.max(0, (frame - p.frame[i]) / (p.frame[next] - p.frame[i])));
+  let ahead = null;
+  if (next >= 0 && k > 0) {
+    ahead = /* @__PURE__ */ new Map();
+    for (let r = p.start[next]; r < p.start[next + 1]; r++) ahead.set(p.unit[r], r);
+  }
+  for (let r = p.start[i]; r < p.start[i + 1]; r++) {
+    const u = p.unit[r], a = ahead?.get(u);
+    if (a === void 0) each(u, p.x[r], p.y[r]);
+    else each(u, p.x[r] + (p.x[a] - p.x[r]) * k, p.y[r] + (p.y[a] - p.y[r]) * k);
+  }
+}
+function series(t, player, metric) {
+  return t.samples.players.find((p) => p.slot === player)?.[metric] ?? null;
+}
+
 // plugin.ts
-var DEFAULTS = { buildings: true, orders: true, heat: "off", wholeGame: false, allReplays: false, speed: 8, docked: false, workers: false };
+var DEFAULTS = { buildings: true, orders: true, heat: "off", wholeGame: false, allReplays: false, speed: 8, docked: false, workers: false, units: true, chart: "apm" };
 var TRAIL_FRAMES = 8 * 24;
 var NEW_FRAMES = 6 * 24;
 var SAME_MAP = 0.9;
@@ -1051,6 +1255,8 @@ var STYLE = `
 .afm td.afm-num { text-align: right; font-variant-numeric: tabular-nums; }
 .afm .afm-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; }
 .afm canvas.afm-apm { width: 100%; height: 72px; display: block; cursor: pointer; }
+.afm .afm-step .afm-end { color: var(--text-dim, #99a2b3); font-size: 11px; }
+.afm .afm-step.afm-gone > span:nth-child(2) { text-decoration: line-through; text-decoration-color: var(--text-dim, #99a2b3); }
 .afm .afm-list { max-height: 240px; overflow: auto; border: 1px solid var(--border, #3a4150); border-radius: 4px; }
 .afm .afm-step { display: grid; grid-template-columns: 44px 1fr; gap: 6px; padding: 2px 6px; cursor: pointer; }
 .afm .afm-step:hover { background: var(--hover, rgba(255,255,255,0.06)); }
@@ -1089,8 +1295,9 @@ function activate(api) {
     let first = null;
     for (const file of reps) {
       try {
-        const replay = await parseReplay(new Uint8Array(await file.arrayBuffer()));
-        const entry = { id: nextId++, fileName: file.name, report: analyse(replay), map: readChk(replay.chk) };
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const replay = await parseReplay(bytes);
+        const entry = { id: nextId++, fileName: file.name, report: analyse(replay), map: readChk(replay.chk), bytes, played: null };
         loaded.push(entry);
         first ??= entry;
       } catch (err) {
@@ -1122,6 +1329,7 @@ function activate(api) {
   function remove(entry) {
     const at = loaded.indexOf(entry);
     if (at < 0) return;
+    if (running?.entry === entry) running.controller.abort();
     loaded.splice(at, 1);
     if (current === entry) {
       stop();
@@ -1174,22 +1382,71 @@ function activate(api) {
     cancelAnimationFrame(raf);
     view?.update();
   }
+  let sim = null;
+  const simWatch = api.services.watch("scm-sim.engine", (service) => {
+    sim = service;
+    view?.render();
+  });
+  let running = null;
+  async function playThrough(entry) {
+    if (!sim?.present || running || entry.played) return;
+    const run = { entry, controller: new AbortController(), fraction: -1 };
+    running = run;
+    view?.render();
+    try {
+      const state = await sim.status();
+      if (!state.available) throw new Error(state.reason ?? t("The game engine cannot run a game here."));
+      const timeline = await sim.analyse(entry.bytes, {
+        name: entry.fileName,
+        signal: run.controller.signal,
+        onProgress: (p) => {
+          run.fraction = p.stage === "playing" && p.frames > 0 ? p.frame / p.frames : -1;
+          view?.progress();
+        }
+      });
+      await api.data.load();
+      const units = api.data.units();
+      const cost = (type) => units ? (units.mineralCost[type] ?? 0) + (units.vespeneCost[type] ?? 0) : 0;
+      entry.played = { timeline, standing: buildings(timeline), index: unitIndex(timeline), lost: lossPoints(timeline), lostBy: losses(timeline, cost) };
+      for (const b of entry.played.standing) api.graphics.requestUnit(b.type);
+    } catch (err) {
+      if (err?.name !== "AbortError") {
+        api.ui.toast({ kind: "error", title: t("Could not play {name} through", { name: entry.fileName }), detail: err instanceof Error ? err.message : String(err) });
+        api.log("Aftermath:", entry.fileName, err);
+      }
+    } finally {
+      if (running === run) running = null;
+      heatCache = null;
+      view?.render();
+      overlay.redraw();
+    }
+  }
   let heatCache = null;
   function heatSources() {
     if (!current) return [];
     if (!settings.allReplays) return [{ report: current.report, players: current.report.players.filter((p) => !hidden.has(p.player.id)) }];
     return loaded.filter((l) => l === current || likeness(current.map, l.map) >= SAME_MAP).map((l) => ({ report: l.report, players: l.report.players }));
   }
+  const playedOf = (report) => loaded.find((l) => l.report === report)?.played ?? null;
   function heatCanvas() {
     if (!current || settings.heat === "off") return null;
     const whole = settings.wholeGame || settings.allReplays;
     const until = whole ? void 0 : Math.floor(frame / 12) * 12;
     const sources = heatSources();
-    const key = [settings.heat, until ?? "all", sources.map((s) => `${s.report.replay.header.started?.getTime()}:${s.players.map((p) => p.player.id).join(".")}`).join("|")].join("/");
+    const played = settings.heat === "presence" || settings.heat === "losses";
+    if (played && !sources.some((s) => playedOf(s.report))) return null;
+    const key = [settings.heat, until ?? "all", played ? sources.filter((s) => playedOf(s.report)).length : "", sources.map((s) => `${s.report.replay.header.started?.getTime()}:${s.players.map((p) => p.player.id).join(".")}`).join("|")].join("/");
     if (heatCache?.key === key) return heatCache.canvas;
     const { width, height } = current.map;
     const points = function* () {
       for (const s of sources) {
+        if (played) {
+          const pl = playedOf(s.report);
+          if (!pl) continue;
+          const shown = new Set(s.players.map((p) => p.player.index));
+          for (const pt of settings.heat === "losses" ? pl.lost : presencePoints(pl.timeline, pl.index)) if (shown.has(pt.player)) yield { ...pt, kind: "move" };
+          continue;
+        }
         for (const p of s.players) {
           if (settings.heat === "buildings") {
             for (const pl of p.placements) {
@@ -1200,7 +1457,7 @@ function activate(api) {
         }
       }
     };
-    const grid = heat(points(), width, height, { until, kinds: settings.heat === "buildings" ? void 0 : HEAT_KINDS[settings.heat] });
+    const grid = heat(points(), width, height, { until, kinds: settings.heat === "buildings" || settings.heat === "presence" || settings.heat === "losses" ? void 0 : HEAT_KINDS[settings.heat] });
     const canvas = heatCache?.canvas ?? document.createElement("canvas");
     canvas.width = grid.width;
     canvas.height = grid.height;
@@ -1233,7 +1490,64 @@ function activate(api) {
       ctx.restore();
     }
     const players = current.report.players.filter((p) => !hidden.has(p.player.id));
-    if (settings.buildings) {
+    const done = current.played;
+    if (done) {
+      const byIndex = new Map(players.map((p) => [p.player.index, p]));
+      if (settings.buildings) {
+        for (const b of done.standing) {
+          if (b.from > frame || b.to !== null && b.to <= frame) continue;
+          const p = byIndex.get(b.owner);
+          if (!p) continue;
+          const size = api.palette.unitSize(b.type);
+          const w2 = size.width * s, h = size.height * s;
+          const x = v.x(b.x) - w2 / 2, y = v.y(b.y) - h / 2;
+          const built = b.done !== null && b.done <= frame;
+          ctx.fillStyle = withAlpha(p.player.color, built ? 0.22 : 0.1);
+          ctx.fillRect(x, y, w2, h);
+          const img = s >= 0.4 ? api.graphics.unitImage(b.type, { owner: p.player.index }) : null;
+          if (img) {
+            ctx.globalAlpha = built ? 0.9 : 0.4;
+            ctx.drawImage(img.image, x + w2 / 2 - img.width * s / 2, y + h / 2 - img.height * s / 2, img.width * s, img.height * s);
+            ctx.globalAlpha = 1;
+          }
+          const age = frame - b.from;
+          ctx.strokeStyle = p.player.color;
+          ctx.lineWidth = age < NEW_FRAMES ? 3 : 1.5;
+          if (!built) ctx.setLineDash([4, 3]);
+          ctx.strokeRect(x + 0.5, y + 0.5, w2 - 1, h - 1);
+          ctx.setLineDash([]);
+        }
+      }
+      if (settings.units) {
+        const r = Math.max(1.5, Math.min(5, 4 * s));
+        unitsAt(done.timeline, frame, (unit, ux, uy) => {
+          const type = done.index.type[unit];
+          const p = byIndex.get(done.index.owner[unit]);
+          if (!p || type < 0 || isBuilding(type)) return;
+          ctx.fillStyle = p.player.color;
+          ctx.globalAlpha = WORKERS2.has(type) ? 0.55 : 1;
+          ctx.beginPath();
+          ctx.arc(v.x(ux), v.y(uy), WORKERS2.has(type) ? r * 0.7 : r, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        ctx.globalAlpha = 1;
+      }
+      const lost = done.lost;
+      for (let i = firstAfter(lost, frame - NEW_FRAMES); i < lost.length && lost[i].frame <= frame; i++) {
+        const p = byIndex.get(lost[i].player);
+        if (!p) continue;
+        const k = (frame - lost[i].frame) / NEW_FRAMES;
+        ctx.strokeStyle = withAlpha(p.player.color, 1 - k);
+        ctx.lineWidth = 1.5;
+        const x = v.x(lost[i].x), y = v.y(lost[i].y), d = 3 + k * 6;
+        ctx.beginPath();
+        ctx.moveTo(x - d, y - d);
+        ctx.lineTo(x + d, y + d);
+        ctx.moveTo(x + d, y - d);
+        ctx.lineTo(x - d, y + d);
+        ctx.stroke();
+      }
+    } else if (settings.buildings) {
       for (const p of players) {
         for (const pl of p.placements) {
           if (!standing(pl)) break;
@@ -1377,6 +1691,7 @@ function activate(api) {
     apm = null;
     steps = [];
     buildPlayer = -1;
+    bar = null;
     constructor(body) {
       this.root = api.ui.el("div", { className: "afm" });
       body.append(this.root);
@@ -1430,6 +1745,22 @@ function activate(api) {
         rep.format === "legacy" ? t("before 1.18") : rep.format === "1.18" ? "1.18\u20131.20" : "1.21+"
       ].filter(Boolean).join(" \xB7 ");
       this.root.append(el("div", { className: "afm-dim" }, facts));
+      this.bar = null;
+      if (entry.played) {
+        const tl = entry.played.timeline;
+        this.root.append(el("div", { className: "afm-dim" }, tl.frames < tl.total ? t("Played through to {time}, where the game stopped. Buildings, units, what was made and the graphs below are what happened.", { time: formatTime(tl.frames) }) : t("Played through. Buildings, units, what was made and the graphs below are what happened.")));
+      } else if (running?.entry === entry) {
+        const run = running;
+        const bar = w.progressBar({ value: null, label: t("Starting the game\u2026") });
+        this.bar = bar;
+        this.root.append(bar, w.row(w.button(t("Stop"), { ghost: true, onClick: () => run.controller.abort() })));
+        this.progress();
+      } else if (sim?.present) {
+        this.root.append(
+          w.row(w.button(t("Play the game through"), { primary: true, disabled: running !== null, title: running ? t("Another replay is being played through") : void 0, onClick: () => void playThrough(entry) })),
+          w.hint(t("Runs the whole game out of sight in the site's game engine, from your own copy of StarCraft, to show what happened and not only what was ordered. It takes about fifteen seconds for a twenty-minute game."))
+        );
+      }
       if (!matches) {
         this.root.append(
           el("div", { className: "afm-warn" }, t("The map in front is not the one this game was played on.")),
@@ -1466,9 +1797,31 @@ function activate(api) {
           el("td", { className: "afm-num", title: t("Actions per minute") }, t("{n} APM", { n: p.apm })),
           el("td", { className: "afm-dim" }, p.leftAt === null ? "" : t("left {time}", { time: formatTime(p.leftAt) }))
         ));
+        if (entry.played) {
+          const lost = entry.played.lostBy.get(p.player.index) ?? { units: 0, value: 0 };
+          const text = lost.value > 0 ? t("Lost {n}, worth {value}", { n: lost.units, value: lost.value }) : t("Lost {n}", { n: lost.units });
+          table.append(el("tr", {}, el("td"), el("td"), el("td", { className: "afm-dim", colSpan: 4, title: t("Units and buildings lost, and what they cost in minerals and gas") }, text)));
+        }
       }
       this.root.append(table);
-      this.apm = el("canvas", { className: "afm-apm", title: t("Actions per minute over the game \u2014 click to go there") });
+      const chart = entry.played ? settings.chart : "apm";
+      if (entry.played) {
+        this.root.append(w.row(w.select([
+          { value: "apm", label: t("Actions per minute") },
+          { value: "armyValue", label: t("Army value") },
+          { value: "army", label: t("Army size") },
+          { value: "workers", label: t("Workers") },
+          { value: "supplyUsed", label: t("Supply") },
+          { value: "minerals", label: t("Minerals in the bank") },
+          { value: "gas", label: t("Gas in the bank") },
+          { value: "buildings", label: t("Buildings") }
+        ], { value: chart, title: t("What the graph shows"), onChange: (v) => {
+          settings.chart = v;
+          save();
+          this.render();
+        } })));
+      }
+      this.apm = el("canvas", { className: "afm-apm", title: chart === "apm" ? t("Actions per minute over the game \u2014 click to go there") : t("Click to go there") });
       this.apm.addEventListener("click", (e) => {
         const r = this.apm.getBoundingClientRect();
         seek((e.clientX - r.left) / r.width * current.report.frames);
@@ -1480,8 +1833,9 @@ function activate(api) {
         { value: "move", label: t("Heat: moves") },
         { value: "attack", label: t("Heat: attacks") },
         { value: "buildings", label: t("Heat: buildings") },
-        { value: "ping", label: t("Heat: minimap pings") }
-      ], { value: settings.heat, onChange: (v) => {
+        { value: "ping", label: t("Heat: minimap pings") },
+        ...entry.played ? [{ value: "presence", label: t("Heat: where the armies were") }, { value: "losses", label: t("Heat: where units were lost") }] : []
+      ], { value: !entry.played && (settings.heat === "presence" || settings.heat === "losses") ? "off" : settings.heat, onChange: (v) => {
         settings.heat = v;
         save();
         heatCache = null;
@@ -1492,11 +1846,16 @@ function activate(api) {
       this.root.append(w.group(
         t("Show"),
         w.row(
-          w.checkbox(t("Buildings"), { value: settings.buildings, onChange: (on) => {
+          w.checkbox(t("Buildings"), { value: settings.buildings, title: entry.played ? t("The buildings that stood at this moment; a site is drawn fainter until it is finished") : t("Every building ordered so far"), onChange: (on) => {
             settings.buildings = on;
             save();
             overlay.redraw();
           } }),
+          entry.played ? w.checkbox(t("Units"), { value: settings.units, title: t("Where every unit stood at this moment; workers are drawn smaller"), onChange: (on) => {
+            settings.units = on;
+            save();
+            overlay.redraw();
+          } }) : null,
           w.checkbox(t("Recent orders"), { value: settings.orders, title: t("Where units were sent in the last 8 seconds"), onChange: (on) => {
             settings.orders = on;
             save();
@@ -1528,36 +1887,67 @@ function activate(api) {
       } });
       const list = el("div", { className: "afm-list" });
       const pr = players.find((p) => p.player.id === this.buildPlayer);
-      const rows = pr ? buildOrderRows(pr.build, { workers: settings.workers }) : [];
-      for (const step2 of rows) {
-        const name = step2.kind === "upgrade" ? api.names.upgrade(step2.id) : step2.kind === "tech" ? api.names.tech(step2.id) : api.names.unit(step2.id);
-        const hall = step2.kind === "build" && TOWN_HALLS.has(step2.id);
-        const row = el(
-          "div",
-          { className: "afm-step" + (hall ? " afm-hall" : ""), title: step2.placement ? t("Go to the time and place") : t("Go to the time") },
-          el("span", { className: "afm-t" }, formatTime(step2.frame)),
-          el("span", { title: step2.count > 1 ? t("Ordered {n} times", { n: step2.count }) : void 0 }, step2.count > 1 ? `${name} \xD7${step2.count}` : name)
-        );
-        row.addEventListener("click", () => {
-          seek(step2.frame);
-          const pl = step2.placement;
-          if (pl) {
-            const size = api.palette.unitSize(pl.unit);
-            const rect = { x0: pl.tx, y0: pl.ty, x1: pl.tx + Math.max(1, Math.ceil(size.width / 32)), y1: pl.ty + Math.max(1, Math.ceil(size.height / 32)) };
-            api.view.center(Math.floor((rect.x0 + rect.x1) / 2), Math.floor((rect.y0 + rect.y1) / 2));
-            api.view.flash({ rect, kind: "attention" });
-          }
-        });
-        list.append(row);
-        this.steps.push({ el: row, frame: step2.frame });
+      const goTo = (frame2, x, y, type) => {
+        seek(frame2);
+        const size = api.palette.unitSize(type);
+        const tw = Math.max(1, Math.ceil(size.width / 32)), th = Math.max(1, Math.ceil(size.height / 32));
+        const tx = Math.max(0, Math.floor(x / 32 - tw / 2)), ty = Math.max(0, Math.floor(y / 32 - th / 2));
+        api.view.center(Math.floor(x / 32), Math.floor(y / 32));
+        api.view.flash({ rect: { x0: tx, y0: ty, x1: tx + tw, y1: ty + th }, kind: "attention" });
+      };
+      let rowCount = 0;
+      if (entry.played && pr) {
+        for (const row of madeRows(entry.played.timeline, pr.player.index, { workers: settings.workers })) {
+          const name = row.kind === "upgrade" ? `${api.names.upgrade(row.id)} ${row.level ?? ""}`.trim() : row.kind === "tech" ? api.names.tech(row.id) : api.names.unit(row.id);
+          const hall = row.kind === "unit" && TOWN_HALLS.has(row.id);
+          const end = row.kind !== "unit" ? t("researched") : row.done === null ? row.lost === null ? t("not finished") : row.building ? t("cancelled or destroyed {time}", { time: formatTime(row.lost) }) : t("lost {time}", { time: formatTime(row.lost) }) : row.lost !== null ? t("lost {time}", { time: formatTime(row.lost) }) : row.building ? t("done {time}", { time: formatTime(row.done) }) : "";
+          const line = el(
+            "div",
+            { className: "afm-step" + (hall ? " afm-hall" : "") + (row.kind === "unit" && row.done === null && row.lost !== null ? " afm-gone" : ""), title: row.kind === "unit" ? t("Go to the time and place") : t("Go to the time") },
+            el("span", { className: "afm-t" }, formatTime(row.frame)),
+            el("span", {}, row.count > 1 ? `${name} \xD7${row.count}` : name, end ? el("span", { className: "afm-end" }, ` \xB7 ${end}`) : null)
+          );
+          line.addEventListener("click", () => {
+            if (row.kind === "unit") goTo(row.frame, row.x, row.y, row.id);
+            else seek(row.frame);
+          });
+          list.append(line);
+          this.steps.push({ el: line, frame: row.frame });
+          rowCount++;
+        }
+        if (!rowCount) list.append(el("div", { className: "afm-dim", style: "padding:6px" }, t("Nothing was made.")));
+      } else {
+        const rows = pr ? buildOrderRows(pr.build, { workers: settings.workers }) : [];
+        for (const step2 of rows) {
+          const name = step2.kind === "upgrade" ? api.names.upgrade(step2.id) : step2.kind === "tech" ? api.names.tech(step2.id) : api.names.unit(step2.id);
+          const hall = step2.kind === "build" && TOWN_HALLS.has(step2.id);
+          const row = el(
+            "div",
+            { className: "afm-step" + (hall ? " afm-hall" : ""), title: step2.placement ? t("Go to the time and place") : t("Go to the time") },
+            el("span", { className: "afm-t" }, formatTime(step2.frame)),
+            el("span", { title: step2.count > 1 ? t("Ordered {n} times", { n: step2.count }) : void 0 }, step2.count > 1 ? `${name} \xD7${step2.count}` : name)
+          );
+          row.addEventListener("click", () => {
+            seek(step2.frame);
+            const pl = step2.placement;
+            if (pl) {
+              const size = api.palette.unitSize(pl.unit);
+              const rect = { x0: pl.tx, y0: pl.ty, x1: pl.tx + Math.max(1, Math.ceil(size.width / 32)), y1: pl.ty + Math.max(1, Math.ceil(size.height / 32)) };
+              api.view.center(Math.floor((rect.x0 + rect.x1) / 2), Math.floor((rect.y0 + rect.y1) / 2));
+              api.view.flash({ rect, kind: "attention" });
+            }
+          });
+          list.append(row);
+          this.steps.push({ el: row, frame: step2.frame });
+        }
+        if (!rows.length) list.append(el("div", { className: "afm-dim", style: "padding:6px" }, t("No builds, units or research ordered.")));
       }
-      if (!rows.length) list.append(el("div", { className: "afm-dim", style: "padding:6px" }, t("No builds, units or research ordered.")));
       const workers = w.checkbox(t("Workers"), { value: settings.workers, title: t("Show SCVs, Drones and Probes"), onChange: (on) => {
         settings.workers = on;
         save();
         this.render();
       } });
-      this.root.append(w.group(t("Build order"), w.row(who, workers), list));
+      this.root.append(w.group(entry.played ? t("What was made") : t("Build order"), w.row(who, workers), list));
       if (current.report.chat.length) {
         const byId = new Map(players.map((p) => [p.player.id, p.player]));
         const bySlot = new Map(rep.players.map((p) => [p.slot, p]));
@@ -1583,6 +1973,12 @@ function activate(api) {
       for (const s of this.steps) s.el.classList.toggle("afm-future", s.frame > frame);
       this.drawApm();
     }
+    /** How far the engine is with the replay it is playing. */
+    progress() {
+      if (!this.bar || !running || running.entry !== current) return;
+      if (running.fraction < 0) this.bar.set(null, t("Starting the game\u2026"));
+      else this.bar.set(running.fraction, t("Playing the game: {time} of {total}", { time: formatTime(running.fraction * current.report.frames), total: formatTime(current.report.frames) }));
+    }
     drawApm() {
       const c = this.apm;
       if (!c || !current || !c.isConnected) return;
@@ -1596,8 +1992,15 @@ function activate(api) {
       g.clearRect(0, 0, cw, ch);
       const frames = current.report.frames || 1;
       const players = current.report.players;
+      const tl = current.played?.timeline ?? null;
+      const metric = tl && settings.chart !== "apm" ? settings.chart : null;
+      const lines = players.map((p) => {
+        const values = metric ? series(tl, p.player.index, metric) ?? [] : p.perMinute;
+        const at = metric ? (i) => tl.samples.frame[i] : (i) => Math.min(frames, (i + 0.5) * FRAMES_PER_MINUTE);
+        return { p, values, at };
+      });
       let max = 1;
-      for (const p of players) for (const n of p.perMinute) max = Math.max(max, n);
+      for (const l of lines) for (const n of l.values) max = Math.max(max, n);
       const pad = 4 * dpr;
       const xOf = (f) => f / frames * cw;
       const yOf = (n) => ch - pad - n / max * (ch - pad * 2);
@@ -1610,18 +2013,22 @@ function activate(api) {
         g.lineTo(xOf(m * FRAMES_PER_MINUTE), ch);
         g.stroke();
       }
-      for (const p of players) {
+      for (const { p, values, at } of lines) {
         if (hidden.has(p.player.id)) continue;
         g.strokeStyle = p.player.color;
         g.lineWidth = 1.5 * dpr;
         g.beginPath();
-        p.perMinute.forEach((n, i) => {
-          const x = xOf(Math.min(frames, (i + 0.5) * FRAMES_PER_MINUTE));
+        values.forEach((n, i) => {
+          const x = xOf(Math.min(frames, at(i)));
           if (i === 0) g.moveTo(x, yOf(n));
           else g.lineTo(x, yOf(n));
         });
         g.stroke();
       }
+      g.fillStyle = "rgba(160,168,184,0.9)";
+      g.font = `${10 * dpr}px system-ui, sans-serif`;
+      g.textBaseline = "top";
+      g.fillText(String(Math.round(max)), 3 * dpr, 2 * dpr);
       g.strokeStyle = "rgba(255,255,255,0.8)";
       g.lineWidth = 1 * dpr;
       g.beginPath();
@@ -1659,6 +2066,8 @@ function activate(api) {
   api.events.on("language", () => view?.render());
   return () => {
     stop();
+    running?.controller.abort();
+    simWatch.dispose();
     imageListener.dispose();
     style.remove();
   };

@@ -12,19 +12,30 @@
  * in front is not the one the game was played on — its size, tileset and nine tenths of
  * its terrain — the plugin opens the replay's own copy.
  *
+ * Where the editor has the site's game engine beside it (the scm-sim plugin), a replay can
+ * also be played through: the game is run to its end out of sight, and the panel then
+ * shows what happened as well — the units where they stood, the buildings that really
+ * stood, what was made and lost, and each player's army and economy through the game
+ * (`played.ts`).
+ *
  * `replay.ts` reads the file, `analysis.ts` makes the per-player reports and the heat
- * grid, `chk.ts` compares maps; all three are pure and tested. This file is the editor
- * side: the panel, the playback clock and the overlay. It never edits the map.
+ * grid, `played.ts` reads the engine's timeline, `chk.ts` compares maps; all four are pure
+ * and tested. This file is the editor side: the panel, the playback clock and the overlay.
+ * It never edits the map.
  */
 import type { MapView, OverlayHandle, PanelHandle, PluginApi } from "@scm-js/plugin-api";
 import { analyse, buildOrderRows, formatTime, FRAMES_PER_MINUTE, heat, TOWN_HALLS, type ClickKind, type HeatGrid, type Placement, type PlayerReport, type ReplayReport } from "./analysis";
 import { likeness, plainText, readChk, type ChkInfo } from "./chk";
 import { FRAME_MS, parseReplay, ReplayError } from "./replay";
 import { KO } from "./ko";
+import { buildings as standingBuildings, isBuilding, losses, lossPoints, madeRows, presencePoints, series, unitIndex, unitsAt, WORKERS, type Metric, type Point, type Standing, type UnitIndex } from "./played";
+import type { ReplayTimeline, ScmSimService } from "./vendor/scm-sim";
 
 /* ── State ──────────────────────────────────────────────── */
 
-type HeatMode = "off" | "orders" | "move" | "attack" | "buildings" | "ping";
+/** `presence` and `losses` need the game played through. */
+type HeatMode = "off" | "orders" | "move" | "attack" | "buildings" | "ping" | "presence" | "losses";
+type Chart = "apm" | Metric;
 
 interface Settings {
   buildings: boolean;
@@ -39,15 +50,31 @@ interface Settings {
   docked: boolean;
   /** SCVs, Drones and Probes in the build order. */
   workers: boolean;
+  /** The units where they stood, once the game has been played through. */
+  units: boolean;
+  /** What the graph draws. */
+  chart: Chart;
 }
 
-const DEFAULTS: Settings = { buildings: true, orders: true, heat: "off", wholeGame: false, allReplays: false, speed: 8, docked: false, workers: false };
+const DEFAULTS: Settings = { buildings: true, orders: true, heat: "off", wholeGame: false, allReplays: false, speed: 8, docked: false, workers: false, units: true, chart: "apm" };
 
 interface Loaded {
   id: number;
   fileName: string;
   report: ReplayReport;
   map: ChkInfo;
+  /** The file, for the engine to play. */
+  bytes: Uint8Array;
+  /** What happened in the game, once it has been played through, and what is read out of that once. */
+  played: Played | null;
+}
+
+interface Played {
+  timeline: ReplayTimeline;
+  standing: Standing[];
+  index: UnitIndex;
+  lost: Point[];
+  lostBy: Map<number, { units: number; value: number }>;
 }
 
 /** How long a click stays on the map behind the timeline. */
@@ -57,7 +84,7 @@ const NEW_FRAMES = 6 * 24;
 /** Terrain shared with the replay's map for the map in front to count as the same one. */
 const SAME_MAP = 0.9;
 
-const HEAT_KINDS: Record<Exclude<HeatMode, "off" | "buildings">, ReadonlySet<ClickKind>> = {
+const HEAT_KINDS: Record<Exclude<HeatMode, "off" | "buildings" | "presence" | "losses">, ReadonlySet<ClickKind>> = {
   orders: new Set(["move", "attack", "patrol", "ability"]),
   move: new Set(["move"]),
   attack: new Set(["attack", "patrol"]),
@@ -93,6 +120,8 @@ const STYLE = `
 .afm td.afm-num { text-align: right; font-variant-numeric: tabular-nums; }
 .afm .afm-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; }
 .afm canvas.afm-apm { width: 100%; height: 72px; display: block; cursor: pointer; }
+.afm .afm-step .afm-end { color: var(--text-dim, #99a2b3); font-size: 11px; }
+.afm .afm-step.afm-gone > span:nth-child(2) { text-decoration: line-through; text-decoration-color: var(--text-dim, #99a2b3); }
 .afm .afm-list { max-height: 240px; overflow: auto; border: 1px solid var(--border, #3a4150); border-radius: 4px; }
 .afm .afm-step { display: grid; grid-template-columns: 44px 1fr; gap: 6px; padding: 2px 6px; cursor: pointer; }
 .afm .afm-step:hover { background: var(--hover, rgba(255,255,255,0.06)); }
@@ -139,8 +168,9 @@ export function activate(api: PluginApi) {
     let first: Loaded | null = null;
     for (const file of reps) {
       try {
-        const replay = await parseReplay(new Uint8Array(await file.arrayBuffer()));
-        const entry: Loaded = { id: nextId++, fileName: file.name, report: analyse(replay), map: readChk(replay.chk) };
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const replay = await parseReplay(bytes);
+        const entry: Loaded = { id: nextId++, fileName: file.name, report: analyse(replay), map: readChk(replay.chk), bytes, played: null };
         loaded.push(entry);
         first ??= entry;
       } catch (err) {
@@ -174,6 +204,7 @@ export function activate(api: PluginApi) {
   function remove(entry: Loaded): void {
     const at = loaded.indexOf(entry);
     if (at < 0) return;
+    if (running?.entry === entry) running.controller.abort();
     loaded.splice(at, 1);
     if (current === entry) {
       stop();
@@ -234,6 +265,45 @@ export function activate(api: PluginApi) {
     view?.update();
   }
 
+  /* ── Playing the game through (the scm-sim plugin's engine) ── */
+
+  let sim: ScmSimService | null = null;
+  const simWatch = api.services.watch<ScmSimService>("scm-sim.engine", (service) => { sim = service; view?.render(); });
+  /** The replay the engine is playing now, and how far it is (0 to 1; -1 while the engine starts). */
+  let running: { entry: Loaded; controller: AbortController; fraction: number } | null = null;
+
+  async function playThrough(entry: Loaded): Promise<void> {
+    if (!sim?.present || running || entry.played) return;
+    const run = { entry, controller: new AbortController(), fraction: -1 };
+    running = run;
+    view?.render();
+    try {
+      const state = await sim.status();
+      if (!state.available) throw new Error(state.reason ?? t("The game engine cannot run a game here."));
+      const timeline = await sim.analyse(entry.bytes, {
+        name: entry.fileName,
+        signal: run.controller.signal,
+        onProgress: (p) => { run.fraction = p.stage === "playing" && p.frames > 0 ? p.frame / p.frames : -1; view?.progress(); },
+      });
+      // (The costs come from the game's unit table, when the editor has the game's data.)
+      await api.data.load();
+      const units = api.data.units();
+      const cost = (type: number) => (units ? (units.mineralCost[type] ?? 0) + (units.vespeneCost[type] ?? 0) : 0);
+      entry.played = { timeline, standing: standingBuildings(timeline), index: unitIndex(timeline), lost: lossPoints(timeline), lostBy: losses(timeline, cost) };
+      for (const b of entry.played.standing) api.graphics.requestUnit(b.type);
+    } catch (err) {
+      if ((err as Error)?.name !== "AbortError") {
+        api.ui.toast({ kind: "error", title: t("Could not play {name} through", { name: entry.fileName }), detail: err instanceof Error ? err.message : String(err) });
+        api.log("Aftermath:", entry.fileName, err);
+      }
+    } finally {
+      if (running === run) running = null;
+      heatCache = null;
+      view?.render();
+      overlay.redraw();
+    }
+  }
+
   /* ── Heat ── */
 
   let heatCache: { key: string; grid: HeatGrid; canvas: HTMLCanvasElement } | null = null;
@@ -246,17 +316,29 @@ export function activate(api: PluginApi) {
       .map((l) => ({ report: l.report, players: l.report.players }));
   }
 
+  const playedOf = (report: ReplayReport): Played | null => loaded.find((l) => l.report === report)?.played ?? null;
+
   function heatCanvas(): HTMLCanvasElement | null {
     if (!current || settings.heat === "off") return null;
     const whole = settings.wholeGame || settings.allReplays;
     const until = whole ? undefined : Math.floor(frame / 12) * 12;
     const sources = heatSources();
-    const key = [settings.heat, until ?? "all", sources.map((s) => `${s.report.replay.header.started?.getTime()}:${s.players.map((p) => p.player.id).join(".")}`).join("|")].join("/");
+    const played = settings.heat === "presence" || settings.heat === "losses";
+    if (played && !sources.some((s) => playedOf(s.report))) return null;
+    const key = [settings.heat, until ?? "all", played ? sources.filter((s) => playedOf(s.report)).length : "", sources.map((s) => `${s.report.replay.header.started?.getTime()}:${s.players.map((p) => p.player.id).join(".")}`).join("|")].join("/");
     if (heatCache?.key === key) return heatCache.canvas;
 
     const { width, height } = current.map;
     const points = function* () {
       for (const s of sources) {
+        if (played) {
+          const pl = playedOf(s.report);
+          if (!pl) continue;
+          // The timeline names a player by the game's number; the panel hides one by the id its commands carry.
+          const shown = new Set(s.players.map((p) => p.player.index));
+          for (const pt of settings.heat === "losses" ? pl.lost : presencePoints(pl.timeline, pl.index)) if (shown.has(pt.player)) yield { ...pt, kind: "move" as ClickKind };
+          continue;
+        }
         for (const p of s.players) {
           if (settings.heat === "buildings") {
             for (const pl of p.placements) {
@@ -267,7 +349,7 @@ export function activate(api: PluginApi) {
         }
       }
     };
-    const grid = heat(points(), width, height, { until, kinds: settings.heat === "buildings" ? undefined : HEAT_KINDS[settings.heat] });
+    const grid = heat(points(), width, height, { until, kinds: settings.heat === "buildings" || settings.heat === "presence" || settings.heat === "losses" ? undefined : HEAT_KINDS[settings.heat] });
     const canvas = heatCache?.canvas ?? document.createElement("canvas");
     canvas.width = grid.width;
     canvas.height = grid.height;
@@ -305,7 +387,64 @@ export function activate(api: PluginApi) {
     }
     const players = current.report.players.filter((p) => !hidden.has(p.player.id));
 
-    if (settings.buildings) {
+    const done = current.played;
+    if (done) {
+      const byIndex = new Map(players.map((p) => [p.player.index, p] as const));
+      if (settings.buildings) {
+        // What stood at this moment: a site is fainter until it is finished.
+        for (const b of done.standing) {
+          if (b.from > frame || (b.to !== null && b.to <= frame)) continue;
+          const p = byIndex.get(b.owner);
+          if (!p) continue;
+          const size = api.palette.unitSize(b.type);
+          const w = size.width * s, h = size.height * s;
+          const x = v.x(b.x) - w / 2, y = v.y(b.y) - h / 2;
+          const built = b.done !== null && b.done <= frame;
+          ctx.fillStyle = withAlpha(p.player.color, built ? 0.22 : 0.1);
+          ctx.fillRect(x, y, w, h);
+          const img = s >= 0.4 ? api.graphics.unitImage(b.type, { owner: p.player.index }) : null;
+          if (img) {
+            ctx.globalAlpha = built ? 0.9 : 0.4;
+            ctx.drawImage(img.image, x + w / 2 - (img.width * s) / 2, y + h / 2 - (img.height * s) / 2, img.width * s, img.height * s);
+            ctx.globalAlpha = 1;
+          }
+          const age = frame - b.from;
+          ctx.strokeStyle = p.player.color;
+          ctx.lineWidth = age < NEW_FRAMES ? 3 : 1.5;
+          if (!built) ctx.setLineDash([4, 3]);
+          ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+          ctx.setLineDash([]);
+        }
+      }
+      if (settings.units) {
+        const r = Math.max(1.5, Math.min(5, 4 * s));
+        unitsAt(done.timeline, frame, (unit, ux, uy) => {
+          const type = done.index.type[unit];
+          const p = byIndex.get(done.index.owner[unit]);
+          if (!p || type < 0 || isBuilding(type)) return;
+          ctx.fillStyle = p.player.color;
+          ctx.globalAlpha = WORKERS.has(type) ? 0.55 : 1;
+          ctx.beginPath();
+          ctx.arc(v.x(ux), v.y(uy), WORKERS.has(type) ? r * 0.7 : r, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        ctx.globalAlpha = 1;
+      }
+      // Losses flash where they fell.
+      const lost = done.lost;
+      for (let i = firstAfter(lost, frame - NEW_FRAMES); i < lost.length && lost[i].frame <= frame; i++) {
+        const p = byIndex.get(lost[i].player);
+        if (!p) continue;
+        const k = (frame - lost[i].frame) / NEW_FRAMES;
+        ctx.strokeStyle = withAlpha(p.player.color, 1 - k);
+        ctx.lineWidth = 1.5;
+        const x = v.x(lost[i].x), y = v.y(lost[i].y), d = 3 + k * 6;
+        ctx.beginPath();
+        ctx.moveTo(x - d, y - d); ctx.lineTo(x + d, y + d);
+        ctx.moveTo(x + d, y - d); ctx.lineTo(x - d, y + d);
+        ctx.stroke();
+      }
+    } else if (settings.buildings) {
       for (const p of players) {
         for (const pl of p.placements) {
           if (!standing(pl)) break;
@@ -445,6 +584,7 @@ export function activate(api: PluginApi) {
     private apm: HTMLCanvasElement | null = null;
     private steps: { el: HTMLElement; frame: number }[] = [];
     private buildPlayer = -1;
+    private bar: { set(value: number | null, label?: string): void } | null = null;
 
     constructor(body: HTMLElement) {
       this.root = api.ui.el("div", { className: "afm" });
@@ -504,6 +644,26 @@ export function activate(api: PluginApi) {
       ].filter(Boolean).join(" · ");
       this.root.append(el("div", { className: "afm-dim" }, facts));
 
+      // Playing the game through, where the site's engine is beside the editor.
+      this.bar = null;
+      if (entry.played) {
+        const tl = entry.played.timeline;
+        this.root.append(el("div", { className: "afm-dim" }, tl.frames < tl.total
+          ? t("Played through to {time}, where the game stopped. Buildings, units, what was made and the graphs below are what happened.", { time: formatTime(tl.frames) })
+          : t("Played through. Buildings, units, what was made and the graphs below are what happened.")));
+      } else if (running?.entry === entry) {
+        const run = running;
+        const bar = w.progressBar({ value: null, label: t("Starting the game…") });
+        this.bar = bar;
+        this.root.append(bar, w.row(w.button(t("Stop"), { ghost: true, onClick: () => run.controller.abort() })));
+        this.progress();
+      } else if (sim?.present) {
+        this.root.append(
+          w.row(w.button(t("Play the game through"), { primary: true, disabled: running !== null, title: running ? t("Another replay is being played through") : undefined, onClick: () => void playThrough(entry) })),
+          w.hint(t("Runs the whole game out of sight in the site's game engine, from your own copy of StarCraft, to show what happened and not only what was ordered. It takes about fifteen seconds for a twenty-minute game.")),
+        );
+      }
+
       if (!matches) {
         this.root.append(
           el("div", { className: "afm-warn" }, t("The map in front is not the one this game was played on.")),
@@ -533,11 +693,30 @@ export function activate(api: PluginApi) {
           el("td", { className: "afm-num", title: t("Actions per minute") }, t("{n} APM", { n: p.apm })),
           el("td", { className: "afm-dim" }, p.leftAt === null ? "" : t("left {time}", { time: formatTime(p.leftAt) })),
         ));
+        if (entry.played) {
+          // What the player lost, on a line of its own: the panel is narrow.
+          const lost = entry.played.lostBy.get(p.player.index) ?? { units: 0, value: 0 };
+          const text = lost.value > 0 ? t("Lost {n}, worth {value}", { n: lost.units, value: lost.value }) : t("Lost {n}", { n: lost.units });
+          table.append(el("tr", {}, el("td"), el("td"), el("td", { className: "afm-dim", colSpan: 4, title: t("Units and buildings lost, and what they cost in minerals and gas") }, text)));
+        }
       }
       this.root.append(table);
 
-      // APM over the game.
-      this.apm = el("canvas", { className: "afm-apm", title: t("Actions per minute over the game — click to go there") }) as HTMLCanvasElement;
+      // A graph over the game: actions per minute, or one of the engine's numbers once the game is played through.
+      const chart: Chart = entry.played ? settings.chart : "apm";
+      if (entry.played) {
+        this.root.append(w.row(w.select([
+          { value: "apm", label: t("Actions per minute") },
+          { value: "armyValue", label: t("Army value") },
+          { value: "army", label: t("Army size") },
+          { value: "workers", label: t("Workers") },
+          { value: "supplyUsed", label: t("Supply") },
+          { value: "minerals", label: t("Minerals in the bank") },
+          { value: "gas", label: t("Gas in the bank") },
+          { value: "buildings", label: t("Buildings") },
+        ], { value: chart, title: t("What the graph shows"), onChange: (v) => { settings.chart = v as Chart; save(); this.render(); } })));
+      }
+      this.apm = el("canvas", { className: "afm-apm", title: chart === "apm" ? t("Actions per minute over the game — click to go there") : t("Click to go there") }) as HTMLCanvasElement;
       this.apm.addEventListener("click", (e) => {
         const r = this.apm!.getBoundingClientRect();
         seek(((e.clientX - r.left) / r.width) * current!.report.frames);
@@ -552,11 +731,13 @@ export function activate(api: PluginApi) {
         { value: "attack", label: t("Heat: attacks") },
         { value: "buildings", label: t("Heat: buildings") },
         { value: "ping", label: t("Heat: minimap pings") },
-      ], { value: settings.heat, onChange: (v) => { settings.heat = v as HeatMode; save(); heatCache = null; overlay.redraw(); this.render(); } });
+        ...(entry.played ? [{ value: "presence", label: t("Heat: where the armies were") }, { value: "losses", label: t("Heat: where units were lost") }] : []),
+      ], { value: !entry.played && (settings.heat === "presence" || settings.heat === "losses") ? "off" : settings.heat, onChange: (v) => { settings.heat = v as HeatMode; save(); heatCache = null; overlay.redraw(); this.render(); } });
       const sameMap = loaded.filter((l) => likeness(entry.map, l.map) >= SAME_MAP).length;
       this.root.append(w.group(t("Show"),
         w.row(
-          w.checkbox(t("Buildings"), { value: settings.buildings, onChange: (on) => { settings.buildings = on; save(); overlay.redraw(); } }),
+          w.checkbox(t("Buildings"), { value: settings.buildings, title: entry.played ? t("The buildings that stood at this moment; a site is drawn fainter until it is finished") : t("Every building ordered so far"), onChange: (on) => { settings.buildings = on; save(); overlay.redraw(); } }),
+          entry.played ? w.checkbox(t("Units"), { value: settings.units, title: t("Where every unit stood at this moment; workers are drawn smaller"), onChange: (on) => { settings.units = on; save(); overlay.redraw(); } }) : null,
           w.checkbox(t("Recent orders"), { value: settings.orders, title: t("Where units were sent in the last 8 seconds"), onChange: (on) => { settings.orders = on; save(); overlay.redraw(); } }),
         ),
         w.row(heatSelect),
@@ -572,6 +753,35 @@ export function activate(api: PluginApi) {
       const who = w.select(players.map((p) => ({ value: p.player.id, label: p.player.name })), { value: this.buildPlayer, onChange: (id) => { this.buildPlayer = Number(id); this.render(); } });
       const list = el("div", { className: "afm-list" });
       const pr = players.find((p) => p.player.id === this.buildPlayer);
+      const goTo = (frame: number, x: number, y: number, type: number) => {
+        seek(frame);
+        const size = api.palette.unitSize(type);
+        const tw = Math.max(1, Math.ceil(size.width / 32)), th = Math.max(1, Math.ceil(size.height / 32));
+        const tx = Math.max(0, Math.floor(x / 32 - tw / 2)), ty = Math.max(0, Math.floor(y / 32 - th / 2));
+        api.view.center(Math.floor(x / 32), Math.floor(y / 32));
+        api.view.flash({ rect: { x0: tx, y0: ty, x1: tx + tw, y1: ty + th }, kind: "attention" });
+      };
+      let rowCount = 0;
+      if (entry.played && pr) {
+        // What happened: every line is something that was really started, with what became of it.
+        for (const row of madeRows(entry.played.timeline, pr.player.index, { workers: settings.workers })) {
+          const name = row.kind === "upgrade" ? `${api.names.upgrade(row.id)} ${row.level ?? ""}`.trim() : row.kind === "tech" ? api.names.tech(row.id) : api.names.unit(row.id);
+          const hall = row.kind === "unit" && TOWN_HALLS.has(row.id);
+          const end = row.kind !== "unit" ? t("researched")
+            : row.done === null ? (row.lost === null ? t("not finished") : row.building ? t("cancelled or destroyed {time}", { time: formatTime(row.lost) }) : t("lost {time}", { time: formatTime(row.lost) }))
+            : row.lost !== null ? t("lost {time}", { time: formatTime(row.lost) })
+            : row.building ? t("done {time}", { time: formatTime(row.done) }) : "";
+          const line = el("div", { className: "afm-step" + (hall ? " afm-hall" : "") + (row.kind === "unit" && row.done === null && row.lost !== null ? " afm-gone" : ""), title: row.kind === "unit" ? t("Go to the time and place") : t("Go to the time") },
+            el("span", { className: "afm-t" }, formatTime(row.frame)),
+            el("span", {}, row.count > 1 ? `${name} ×${row.count}` : name, end ? el("span", { className: "afm-end" }, ` · ${end}`) : null),
+          );
+          line.addEventListener("click", () => { if (row.kind === "unit") goTo(row.frame, row.x, row.y, row.id); else seek(row.frame); });
+          list.append(line);
+          this.steps.push({ el: line, frame: row.frame });
+          rowCount++;
+        }
+        if (!rowCount) list.append(el("div", { className: "afm-dim", style: "padding:6px" }, t("Nothing was made.")));
+      } else {
       const rows = pr ? buildOrderRows(pr.build, { workers: settings.workers }) : [];
       for (const step of rows) {
         const name = step.kind === "upgrade" ? api.names.upgrade(step.id) : step.kind === "tech" ? api.names.tech(step.id) : api.names.unit(step.id);
@@ -594,8 +804,9 @@ export function activate(api: PluginApi) {
         this.steps.push({ el: row, frame: step.frame });
       }
       if (!rows.length) list.append(el("div", { className: "afm-dim", style: "padding:6px" }, t("No builds, units or research ordered.")));
+      }
       const workers = w.checkbox(t("Workers"), { value: settings.workers, title: t("Show SCVs, Drones and Probes"), onChange: (on) => { settings.workers = on; save(); this.render(); } });
-      this.root.append(w.group(t("Build order"), w.row(who, workers), list));
+      this.root.append(w.group(entry.played ? t("What was made") : t("Build order"), w.row(who, workers), list));
 
       // Chat.
       if (current.report.chat.length) {
@@ -626,6 +837,13 @@ export function activate(api: PluginApi) {
       this.drawApm();
     }
 
+    /** How far the engine is with the replay it is playing. */
+    progress(): void {
+      if (!this.bar || !running || running.entry !== current) return;
+      if (running.fraction < 0) this.bar.set(null, t("Starting the game…"));
+      else this.bar.set(running.fraction, t("Playing the game: {time} of {total}", { time: formatTime(running.fraction * current.report.frames), total: formatTime(current.report.frames) }));
+    }
+
     drawApm(): void {
       const c = this.apm;
       if (!c || !current || !c.isConnected) return;
@@ -636,8 +854,16 @@ export function activate(api: PluginApi) {
       g.clearRect(0, 0, cw, ch);
       const frames = current.report.frames || 1;
       const players = current.report.players;
+      // Each player's line: the points along the game and their values, whichever numbers are asked for.
+      const tl = current.played?.timeline ?? null;
+      const metric = tl && settings.chart !== "apm" ? settings.chart : null;
+      const lines = players.map((p) => {
+        const values = metric ? series(tl!, p.player.index, metric) ?? [] : p.perMinute;
+        const at = metric ? (i: number) => tl!.samples.frame[i] : (i: number) => Math.min(frames, (i + 0.5) * FRAMES_PER_MINUTE);
+        return { p, values, at };
+      });
       let max = 1;
-      for (const p of players) for (const n of p.perMinute) max = Math.max(max, n);
+      for (const l of lines) for (const n of l.values) max = Math.max(max, n);
       const pad = 4 * dpr;
       const xOf = (f: number) => (f / frames) * cw;
       const yOf = (n: number) => ch - pad - (n / max) * (ch - pad * 2);
@@ -647,17 +873,22 @@ export function activate(api: PluginApi) {
         if (m % 5) continue;
         g.beginPath(); g.moveTo(xOf(m * FRAMES_PER_MINUTE), 0); g.lineTo(xOf(m * FRAMES_PER_MINUTE), ch); g.stroke();
       }
-      for (const p of players) {
+      for (const { p, values, at } of lines) {
         if (hidden.has(p.player.id)) continue;
         g.strokeStyle = p.player.color;
         g.lineWidth = 1.5 * dpr;
         g.beginPath();
-        p.perMinute.forEach((n, i) => {
-          const x = xOf(Math.min(frames, (i + 0.5) * FRAMES_PER_MINUTE));
+        values.forEach((n, i) => {
+          const x = xOf(Math.min(frames, at(i)));
           if (i === 0) g.moveTo(x, yOf(n)); else g.lineTo(x, yOf(n));
         });
         g.stroke();
       }
+      // The scale's top, so a line can be read as a number.
+      g.fillStyle = "rgba(160,168,184,0.9)";
+      g.font = `${10 * dpr}px system-ui, sans-serif`;
+      g.textBaseline = "top";
+      g.fillText(String(Math.round(max)), 3 * dpr, 2 * dpr);
       g.strokeStyle = "rgba(255,255,255,0.8)";
       g.lineWidth = 1 * dpr;
       g.beginPath(); g.moveTo(xOf(frame), 0); g.lineTo(xOf(frame), ch); g.stroke();
@@ -694,6 +925,8 @@ export function activate(api: PluginApi) {
 
   return () => {
     stop();
+    running?.controller.abort();
+    simWatch.dispose();
     imageListener.dispose();
     style.remove();
   };
