@@ -12,25 +12,31 @@ export interface ChkInfo {
   tiles: Uint16Array;
 }
 
-/** Sections in file order; a later copy of a section overrides an earlier one, as the game reads them. */
+/**
+ * Sections in file order; a later copy of a section overrides an earlier one, as the game reads them. The terrain is
+ * the exception: the game reads every MTXM into the same tiles, each over the start of the one before, so a shorter
+ * later copy replaces only as many tiles as it has. Protected maps are written that way (the iCCup ladder maps carry
+ * three), and reading the last copy alone leaves most of the map empty.
+ */
 export function readChk(chk: Uint8Array): ChkInfo {
   const dv = new DataView(chk.buffer, chk.byteOffset, chk.byteLength);
   const found = new Map<string, Uint8Array>();
+  const terrain: Uint8Array[] = [];
   for (let p = 0; p + 8 <= chk.length;) {
     const name = String.fromCharCode(chk[p], chk[p + 1], chk[p + 2], chk[p + 3]);
     const len = dv.getInt32(p + 4, true);
     const start = p + 8;
     if (len < 0) break; // a protection trick; the maps games are played on read without it
-    found.set(name, chk.subarray(start, Math.min(chk.length, start + len)));
+    const bytes = chk.subarray(start, Math.min(chk.length, start + len));
+    if (name === "MTXM") terrain.push(bytes); else found.set(name, bytes);
     p = start + len;
   }
   const dim = found.get("DIM ");
   const width = dim && dim.length >= 4 ? dim[0] | (dim[1] << 8) : 0;
   const height = dim && dim.length >= 4 ? dim[2] | (dim[3] << 8) : 0;
   const era = found.get("ERA ");
-  const mtxm = found.get("MTXM");
   const tiles = new Uint16Array(width * height);
-  if (mtxm) for (let i = 0; i < tiles.length && i * 2 + 1 < mtxm.length; i++) tiles[i] = mtxm[i * 2] | (mtxm[i * 2 + 1] << 8);
+  for (const mtxm of terrain) for (let i = 0; i < tiles.length && i * 2 + 1 < mtxm.length; i++) tiles[i] = mtxm[i * 2] | (mtxm[i * 2 + 1] << 8);
   return { width, height, tileset: era && era.length ? era[0] & 7 : 0, tiles };
 }
 
