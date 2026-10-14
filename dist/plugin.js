@@ -897,21 +897,23 @@ function blur(src, w, h) {
 function readChk(chk) {
   const dv = new DataView(chk.buffer, chk.byteOffset, chk.byteLength);
   const found = /* @__PURE__ */ new Map();
+  const terrain = [];
   for (let p = 0; p + 8 <= chk.length; ) {
     const name = String.fromCharCode(chk[p], chk[p + 1], chk[p + 2], chk[p + 3]);
     const len = dv.getInt32(p + 4, true);
     const start = p + 8;
     if (len < 0) break;
-    found.set(name, chk.subarray(start, Math.min(chk.length, start + len)));
+    const bytes = chk.subarray(start, Math.min(chk.length, start + len));
+    if (name === "MTXM") terrain.push(bytes);
+    else found.set(name, bytes);
     p = start + len;
   }
   const dim = found.get("DIM ");
   const width = dim && dim.length >= 4 ? dim[0] | dim[1] << 8 : 0;
   const height = dim && dim.length >= 4 ? dim[2] | dim[3] << 8 : 0;
   const era = found.get("ERA ");
-  const mtxm = found.get("MTXM");
   const tiles = new Uint16Array(width * height);
-  if (mtxm) for (let i = 0; i < tiles.length && i * 2 + 1 < mtxm.length; i++) tiles[i] = mtxm[i * 2] | mtxm[i * 2 + 1] << 8;
+  for (const mtxm of terrain) for (let i = 0; i < tiles.length && i * 2 + 1 < mtxm.length; i++) tiles[i] = mtxm[i * 2] | mtxm[i * 2 + 1] << 8;
   return { width, height, tileset: era && era.length ? era[0] & 7 : 0, tiles };
 }
 function likeness(a, b) {
@@ -1051,7 +1053,27 @@ var KO = {
   "Go to its first kill": "\uCCAB \uCC98\uCE58 \uC2DC\uC810\uC73C\uB85C \uC774\uB3D9",
   "{n, plural, one {# kill} other {# kills}}, worth {value}": "{n}\uD68C \uCC98\uCE58, \uAC00\uCE58 {value}",
   "{n, plural, one {# kill} other {# kills}}": "{n}\uD68C \uCC98\uCE58",
-  "Most kills": "\uCD5C\uB2E4 \uCC98\uCE58"
+  "Most kills": "\uCD5C\uB2E4 \uCC98\uCE58",
+  "Ground never entered": "\uD55C \uBC88\uB3C4 \uB4E4\uC5B4\uAC00\uC9C0 \uC54A\uC740 \uB545",
+  "{n} o'clock": "{n}\uC2DC",
+  "the middle": "\uC911\uC559",
+  "Start: {n, plural, one {# player} other {# players}}, won {wins} of {decided}": "\uC2DC\uC791 \uC704\uCE58: \uD50C\uB808\uC774\uC5B4 {n}\uBA85, {decided}\uD310 \uC911 {wins}\uC2B9",
+  "Start: {n, plural, one {# player} other {# players}}": "\uC2DC\uC791 \uC704\uCE58: \uD50C\uB808\uC774\uC5B4 {n}\uBA85",
+  "Go to this start location": "\uC774 \uC2DC\uC791 \uC704\uCE58\uB85C \uC774\uB3D9",
+  "Base: taken in {taken} of {games}, about {time}, usually base {order}": "\uAE30\uC9C0: {games}\uD310 \uC911 {taken}\uD310\uC5D0\uC11C \uD655\uBCF4, \uC57D {time}, \uBCF4\uD1B5 {order}\uBC88\uC9F8 \uAE30\uC9C0",
+  "Go to this base": "\uC774 \uAE30\uC9C0\uB85C \uC774\uB3D9",
+  "Fights: {fights} in {games, plural, one {# game} other {# games}}; the nearer player ahead in {won} of {decided}": "\uAD50\uC804: {games}\uD310\uC5D0\uC11C {fights}\uD68C, \uAC00\uAE4C\uC6B4 \uCABD\uC774 {decided}\uD68C \uC911 {won}\uD68C \uC6B0\uC138",
+  "Fights: {fights} in {games, plural, one {# game} other {# games}}": "\uAD50\uC804: {games}\uD310\uC5D0\uC11C {fights}\uD68C",
+  "Go to where the fighting was": "\uAD50\uC804\uC774 \uC788\uB358 \uACF3\uC73C\uB85C \uC774\uB3D9",
+  "{n, plural, one {# game} other {# games}} played through": "{n}\uD310\uC744 \uB05D\uAE4C\uC9C0 \uC2E4\uD589\uD568",
+  "usual length {time}": "\uBCF4\uD1B5 \uAE38\uC774 {time}",
+  "first fight about {time}": "\uCCAB \uAD50\uC804 \uC57D {time}",
+  "This map": "\uC774 \uB9F5",
+  "Mark on the map": "\uB9F5\uC5D0 \uD45C\uC2DC",
+  "Rings at the starts and the bases taken, red circles where the fighting was": "\uC2DC\uC791 \uC704\uCE58\uC640 \uD655\uBCF4\uD55C \uAE30\uC9C0\uB294 \uACE0\uB9AC\uB85C, \uAD50\uC804\uC774 \uC788\uB358 \uACF3\uC740 \uBE68\uAC04 \uC6D0\uC73C\uB85C \uD45C\uC2DC\uD569\uB2C8\uB2E4",
+  "From few games this says little. Load more replays of this map and play them all through.": "\uAC8C\uC784 \uC218\uAC00 \uC801\uC73C\uBA74 \uC54C \uC218 \uC788\uB294 \uAC83\uC774 \uAC70\uC758 \uC5C6\uC2B5\uB2C8\uB2E4. \uC774 \uB9F5\uC758 \uB9AC\uD50C\uB808\uC774\uB97C \uB354 \uBD88\uB7EC\uC640 \uBAA8\uB450 \uB05D\uAE4C\uC9C0 \uC2E4\uD589\uD558\uC138\uC694.",
+  "{percent}% of the map's ground was never entered by any unit, water and cliffs included. Choose Ground never entered under Show to see it.": "\uB9F5\uC758 \uB545 \uC911 {percent}%\uC5D0\uB294 \uC5B4\uB5A4 \uC720\uB2DB\uB3C4 \uB4E4\uC5B4\uAC00\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4(\uBB3C\uACFC \uC808\uBCBD \uD3EC\uD568). \uD45C\uC2DC\uC5D0\uC11C '\uD55C \uBC88\uB3C4 \uB4E4\uC5B4\uAC00\uC9C0 \uC54A\uC740 \uB545'\uC744 \uACE0\uB974\uBA74 \uBCFC \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+  "This replay was written by StarCraft 1.18 or later. The site's game engine plays replays from 1.16.1 and earlier so far, so this one cannot be played through; what is shown is from the orders.": "\uC774 \uB9AC\uD50C\uB808\uC774\uB294 StarCraft 1.18 \uC774\uD6C4 \uBC84\uC804\uC5D0\uC11C \uB9CC\uB4E4\uC5B4\uC84C\uC2B5\uB2C8\uB2E4. \uC0AC\uC774\uD2B8\uC758 \uAC8C\uC784 \uC5D4\uC9C4\uC740 \uC544\uC9C1 1.16.1 \uC774\uC804 \uBC84\uC804\uC758 \uB9AC\uD50C\uB808\uC774\uB9CC \uC2E4\uD589\uD560 \uC218 \uC788\uC5B4 \uC774 \uB9AC\uD50C\uB808\uC774\uB294 \uB05D\uAE4C\uC9C0 \uC2E4\uD589\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4. \uD45C\uC2DC\uB418\uB294 \uB0B4\uC6A9\uC740 \uBA85\uB839 \uAE30\uB85D\uC5D0\uC11C \uB098\uC628 \uAC83\uC785\uB2C8\uB2E4."
 };
 
 // played.ts
@@ -1356,8 +1378,153 @@ function topKillers(t, cost, limit = 8) {
   return [...by.values()].sort((a, b) => b.value - a.value || b.kills - a.kills || a.frame - b.frame).slice(0, limit);
 }
 
+// report.ts
+var HALLS = /* @__PURE__ */ new Set([106, 131, 154]);
+var SITE_RADIUS = 320;
+var SPOT_RADIUS = 480;
+var VISIT_CELL = 128;
+var MIN_SPOT_FIGHTS = 2;
+var median = (list) => {
+  if (!list.length) return null;
+  const s = [...list].sort((a, b) => a - b);
+  return s[s.length - 1 >> 1];
+};
+function clockOf(x, y, widthPx, heightPx) {
+  const dx = (x - widthPx / 2) / widthPx, dy = (y - heightPx / 2) / heightPx;
+  if (Math.hypot(dx, dy) < 0.125) return 0;
+  const h = (Math.atan2(dx, -dy) / (Math.PI * 2) * 12 + 12) % 12, low = Math.floor(h);
+  const hour = Math.abs(h - low - 0.5) < 0.15 ? low % 6 < 3 ? low : low + 1 : Math.round(h);
+  return (hour + 11) % 12 + 1;
+}
+function nearest(list, x, y, radius) {
+  let best = null, bestD = radius;
+  for (const c of list) {
+    const d = Math.hypot(c.sx / c.n - x, c.sy / c.n - y);
+    if (d <= bestD) {
+      best = c;
+      bestD = d;
+    }
+  }
+  return best;
+}
+function mapReport(games, map) {
+  const widthPx = map.width * 32, heightPx = map.height * 32;
+  const sites = [], spots = [];
+  const siteAt = (x, y) => {
+    let s = nearest(sites, x, y, SITE_RADIUS);
+    if (!s) {
+      s = { sx: 0, sy: 0, n: 0, starts: 0, startWins: 0, startDecided: 0, frames: [], orders: [] };
+      sites.push(s);
+    }
+    s.sx += x;
+    s.sy += y;
+    s.n++;
+    return s;
+  };
+  const cw = Math.ceil(widthPx / VISIT_CELL), chh = Math.ceil(heightPx / VISIT_CELL);
+  const visited = new Uint16Array(cw * chh), seen = new Uint8Array(cw * chh);
+  const firstFights = [];
+  games.forEach((game, g) => {
+    const startOf = /* @__PURE__ */ new Map();
+    for (const b of game.standing) if (b.from === 0 && HALLS.has(b.type) && !startOf.has(b.owner)) startOf.set(b.owner, { x: b.x, y: b.y });
+    for (const [player, at] of startOf) {
+      const s = siteAt(at.x, at.y);
+      s.starts++;
+      if (game.winner !== null) {
+        s.startDecided++;
+        if (game.winner === player) s.startWins++;
+      }
+    }
+    const taken = /* @__PURE__ */ new Map(), count = /* @__PURE__ */ new Map(), mine = /* @__PURE__ */ new Map();
+    for (const b of [...game.standing].sort((a, c) => a.from - c.from)) {
+      if (b.from === 0 || !HALLS.has(b.type)) continue;
+      const home = startOf.get(b.owner);
+      if (home && Math.hypot(home.x - b.x, home.y - b.y) <= SITE_RADIUS) continue;
+      const s = siteAt(b.x, b.y), had = mine.get(b.owner) ?? /* @__PURE__ */ new Set();
+      mine.set(b.owner, had);
+      if (had.has(s)) continue;
+      had.add(s);
+      const order = (count.get(b.owner) ?? 1) + 1;
+      count.set(b.owner, order);
+      s.orders.push(order);
+      if (!taken.has(s)) taken.set(s, b.from);
+    }
+    for (const [s, frame] of taken) s.frames.push(frame);
+    if (game.fights.length) firstFights.push(game.fights[0].from);
+    for (const f of game.fights) {
+      let s = nearest(spots, f.x, f.y, SPOT_RADIUS);
+      if (!s) {
+        s = { sx: 0, sy: 0, n: 0, fights: 0, games: /* @__PURE__ */ new Set(), value: 0, frames: [], decided: 0, nearerWon: 0 };
+        spots.push(s);
+      }
+      s.sx += f.x;
+      s.sy += f.y;
+      s.n++;
+      s.fights++;
+      s.games.add(g);
+      s.value += f.value;
+      s.frames.push(f.from);
+      if (f.winner === null) continue;
+      let nearer = -1, nearD = Infinity;
+      for (const side of f.sides) {
+        const at = startOf.get(side.player);
+        if (!at) continue;
+        const d = Math.hypot(at.x - f.x, at.y - f.y);
+        if (d < nearD) {
+          nearD = d;
+          nearer = side.player;
+        }
+      }
+      if (nearer < 0) continue;
+      s.decided++;
+      if (f.winner === nearer) s.nearerWon++;
+    }
+    const p = game.timeline.positions;
+    if (p) {
+      seen.fill(0);
+      for (let r = 0; r < p.unit.length; r++) {
+        const cx = Math.floor(p.x[r] / VISIT_CELL), cy = Math.floor(p.y[r] / VISIT_CELL);
+        if (cx >= 0 && cy >= 0 && cx < cw && cy < chh) seen[cy * cw + cx] = 1;
+      }
+      for (const b of game.standing) {
+        const cx = Math.floor(b.x / VISIT_CELL), cy = Math.floor(b.y / VISIT_CELL);
+        if (cx >= 0 && cy >= 0 && cx < cw && cy < chh) seen[cy * cw + cx] = 1;
+      }
+      for (let i = 0; i < seen.length; i++) visited[i] += seen[i];
+    }
+  });
+  let empty = 0;
+  for (const n of visited) if (!n) empty++;
+  const siteOut = sites.map((s) => {
+    const x = s.sx / s.n, y = s.sy / s.n;
+    return { x, y, clock: clockOf(x, y, widthPx, heightPx), starts: s.starts, startWins: s.startWins, startDecided: s.startDecided, taken: s.frames.length, medianFrame: median(s.frames), medianOrder: median(s.orders) };
+  }).sort((a, b) => (b.starts > 0 ? 1 : 0) - (a.starts > 0 ? 1 : 0) || b.taken - a.taken || (a.clock || 13) - (b.clock || 13));
+  const spotOut = spots.filter((s) => s.fights >= MIN_SPOT_FIGHTS).map((s) => {
+    const x = s.sx / s.n, y = s.sy / s.n;
+    return { x, y, clock: clockOf(x, y, widthPx, heightPx), fights: s.fights, games: s.games.size, value: s.value, medianFrame: median(s.frames), decided: s.decided, nearerWon: s.nearerWon };
+  }).sort((a, b) => b.fights - a.fights);
+  return {
+    games: games.length,
+    decided: games.filter((g) => g.winner !== null).length,
+    medianFrames: median(games.map((g) => g.timeline.frames)) ?? 0,
+    medianFirstFight: median(firstFights),
+    sites: siteOut,
+    spots: spotOut,
+    visited: { width: cw, height: chh, games: visited },
+    neverEntered: games.some((g) => g.timeline.positions) && visited.length ? empty / visited.length : 0
+  };
+}
+function winnerOf(players, standing) {
+  const stayed = players.filter((p) => !p.left);
+  if (stayed.length === 1 && players.length > 1) return stayed[0].index;
+  const alive = /* @__PURE__ */ new Set();
+  for (const b of standing) if (b.to === null) alive.add(b.owner);
+  const holding = players.filter((p) => alive.has(p.index));
+  return holding.length === 1 && players.length > 1 ? holding[0].index : null;
+}
+
 // plugin.ts
-var DEFAULTS = { buildings: true, orders: true, heat: "off", wholeGame: false, allReplays: false, speed: 8, docked: false, workers: false, units: true, chart: "apm" };
+var DEFAULTS = { buildings: true, orders: true, heat: "off", wholeGame: false, allReplays: false, speed: 8, docked: false, workers: false, units: true, chart: "apm", marks: true };
 var TRAIL_FRAMES = 8 * 24;
 var KILL_FRAMES = 36;
 var NEW_FRAMES = 6 * 24;
@@ -1573,7 +1740,7 @@ function activate(api) {
   let queued = 0;
   async function playAll() {
     if (running || queued) return;
-    const todo = loaded.filter((l) => !l.played);
+    const todo = loaded.filter((l) => !l.played && l.report.replay.format === "legacy");
     queued = todo.length;
     for (const entry of todo) {
       if (!loaded.includes(entry)) {
@@ -1587,6 +1754,23 @@ function activate(api) {
     queued = 0;
     view?.render();
   }
+  let reportCache = null;
+  function currentReport() {
+    if (!current) return null;
+    const map = current.map;
+    const games = loaded.filter((l) => l.played && (l === current || likeness(map, l.map) >= SAME_MAP));
+    if (!games.length) return null;
+    const key = games.map((l) => l.id).join(",");
+    if (reportCache?.key === key) return reportCache.report;
+    const report = mapReport(games.map((l) => ({
+      timeline: l.played.timeline,
+      standing: l.played.standing,
+      fights: l.played.fights,
+      winner: winnerOf(l.report.players.map((p) => ({ index: p.player.index, left: p.leftAt !== null })), l.played.standing)
+    })), map);
+    reportCache = { key, report };
+    return report;
+  }
   let heatCache = null;
   function heatSources() {
     if (!current) return [];
@@ -1596,6 +1780,27 @@ function activate(api) {
   const playedOf = (report) => loaded.find((l) => l.report === report)?.played ?? null;
   function heatCanvas() {
     if (!current || settings.heat === "off") return null;
+    if (settings.heat === "unvisited") {
+      const report = currentReport();
+      if (!report) return null;
+      const key2 = `unvisited/${reportCache.key}`;
+      if (heatCache?.key === key2) return heatCache.canvas;
+      const canvas2 = heatCache?.canvas ?? document.createElement("canvas");
+      const { width: cw, height: ch, games } = report.visited;
+      canvas2.width = cw;
+      canvas2.height = ch;
+      const g2 = canvas2.getContext("2d");
+      const img2 = g2.createImageData(cw, ch);
+      for (let i = 0; i < games.length; i++) if (!games[i]) {
+        img2.data[i * 4] = 235;
+        img2.data[i * 4 + 1] = 70;
+        img2.data[i * 4 + 2] = 60;
+        img2.data[i * 4 + 3] = 105;
+      }
+      g2.putImageData(img2, 0, 0);
+      heatCache = { key: key2, grid: { width: cw, height: ch, cell: 0, values: new Float32Array(0), max: 0 }, canvas: canvas2 };
+      return canvas2;
+    }
     const whole = settings.wholeGame || settings.allReplays;
     const until = whole ? void 0 : Math.floor(frame / 12) * 12;
     const sources = heatSources();
@@ -1792,6 +1997,44 @@ function activate(api) {
         ctx.globalAlpha = 1;
       }
     }
+    const report = settings.marks ? currentReport() : null;
+    if (report) {
+      const label = (text, x, y, colour) => {
+        ctx.font = "600 11px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "rgba(0,0,0,0.75)";
+        ctx.strokeText(text, x, y);
+        ctx.fillStyle = colour;
+        ctx.fillText(text, x, y);
+      };
+      for (const spot of report.spots) {
+        const x = v.x(spot.x), y = v.y(spot.y), r = Math.max(10, (64 + Math.min(8, spot.fights) * 16) * s);
+        ctx.fillStyle = "rgba(235,70,60,0.14)";
+        ctx.strokeStyle = "rgba(235,70,60,0.9)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        label(`${spot.fights}\xD7`, x, y, "#ff9a8a");
+      }
+      for (const site of report.sites) {
+        const x = v.x(site.x), y = v.y(site.y), r = Math.max(8, 80 * s);
+        ctx.strokeStyle = site.starts ? "rgba(255,255,255,0.9)" : "rgba(120,220,160,0.9)";
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 4]);
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        const text = site.starts ? site.startDecided ? `${site.startWins}/${site.startDecided}` : "" : `${site.taken}/${report.games}`;
+        if (text) label(text, x, y - r - 8, site.starts ? "#ffffff" : "#8fe0b0");
+      }
+      ctx.textAlign = "start";
+      ctx.textBaseline = "alphabetic";
+    }
   }
   const overlay = api.ui.overlay({
     name: "Aftermath",
@@ -1926,14 +2169,17 @@ function activate(api) {
       if (entry.played) {
         const tl = entry.played.timeline;
         this.root.append(el("div", { className: "afm-dim" }, tl.frames < tl.total ? t("Played through to {time}, where the game stopped. Buildings, units, what was made and the graphs below are what happened.", { time: formatTime(tl.frames) }) : t("Played through. Buildings, units, what was made and the graphs below are what happened.")));
+        if (running) this.root.append(el("div", { className: "afm-dim" }, queued > 1 ? t("Playing {name} through; {n} more to go.", { name: running.entry.fileName, n: queued - 1 }) : t("Playing {name} through.", { name: running.entry.fileName })));
       } else if (running?.entry === entry) {
         const run = running;
         const bar = w.progressBar({ value: null, label: t("Starting the game\u2026") });
         this.bar = bar;
         this.root.append(bar, w.row(w.button(t("Stop"), { ghost: true, onClick: () => run.controller.abort() })));
         this.progress();
+      } else if (sim?.present && rep.format !== "legacy") {
+        this.root.append(w.hint(t("This replay was written by StarCraft 1.18 or later. The site's game engine plays replays from 1.16.1 and earlier so far, so this one cannot be played through; what is shown is from the orders.")));
       } else if (sim?.present) {
-        const unplayed = loaded.filter((l) => !l.played).length;
+        const unplayed = loaded.filter((l) => !l.played && l.report.replay.format === "legacy").length;
         this.root.append(
           w.row(
             w.button(t("Play the game through"), { primary: true, disabled: running !== null, title: running ? t("Another replay is being played through") : void 0, onClick: () => void playThrough(entry) }),
@@ -2016,8 +2262,8 @@ function activate(api) {
         { value: "attack", label: t("Heat: attacks") },
         { value: "buildings", label: t("Heat: buildings") },
         { value: "ping", label: t("Heat: minimap pings") },
-        ...entry.played ? [{ value: "presence", label: t("Heat: where the armies were") }, { value: "losses", label: t("Heat: where units were lost") }] : []
-      ], { value: !entry.played && (settings.heat === "presence" || settings.heat === "losses") ? "off" : settings.heat, onChange: (v) => {
+        ...entry.played ? [{ value: "presence", label: t("Heat: where the armies were") }, { value: "losses", label: t("Heat: where units were lost") }, { value: "unvisited", label: t("Ground never entered") }] : []
+      ], { value: !entry.played && (settings.heat === "presence" || settings.heat === "losses" || settings.heat === "unvisited") ? "off" : settings.heat, onChange: (v) => {
         settings.heat = v;
         save();
         heatCache = null;
@@ -2045,7 +2291,7 @@ function activate(api) {
           } })
         ),
         w.row(heatSelect),
-        settings.heat !== "off" && w.row(
+        settings.heat !== "off" && settings.heat !== "unvisited" && w.row(
           w.checkbox(t("Whole game"), { value: settings.wholeGame, title: t("Count the whole game rather than up to the timeline"), disabled: settings.allReplays, onChange: (on) => {
             settings.wholeGame = on;
             save();
@@ -2175,6 +2421,68 @@ function activate(api) {
           }
           this.root.append(w.group(t("Most kills"), top));
         }
+      }
+      const report = entry.played ? currentReport() : null;
+      if (report) {
+        const place = (clock) => clock ? t("{n} o'clock", { n: clock }) : t("the middle");
+        const go = (x, y, radius) => {
+          const tx = Math.floor(x / 32), ty = Math.floor(y / 32);
+          api.view.center(tx, ty);
+          api.view.flash({ rect: { x0: Math.max(0, tx - radius), y0: Math.max(0, ty - radius), x1: tx + radius, y1: ty + radius }, kind: "attention" });
+        };
+        const rowOf = (head, text, title, click, x = -1, y = -1) => {
+          const line = el("div", { className: "afm-step", title }, el("span", { className: "afm-t" }, head), el("span", {}, text, x < 0 ? null : el("span", { className: "afm-end" }, ` \xB7 ${Math.floor(x / 32)}, ${Math.floor(y / 32)}`)));
+          line.style.gridTemplateColumns = "70px 1fr";
+          line.addEventListener("click", click);
+          return line;
+        };
+        const list2 = el("div", { className: "afm-list" });
+        for (const site of report.sites.filter((x) => x.starts > 0)) {
+          list2.append(rowOf(
+            place(site.clock),
+            site.startDecided ? t("Start: {n, plural, one {# player} other {# players}}, won {wins} of {decided}", { n: site.starts, wins: site.startWins, decided: site.startDecided }) : t("Start: {n, plural, one {# player} other {# players}}", { n: site.starts }),
+            t("Go to this start location"),
+            () => go(site.x, site.y, 4),
+            site.x,
+            site.y
+          ));
+        }
+        for (const site of report.sites.filter((x) => !x.starts && x.taken > 0)) {
+          list2.append(rowOf(
+            place(site.clock),
+            t("Base: taken in {taken} of {games}, about {time}, usually base {order}", { taken: site.taken, games: report.games, time: formatTime(site.medianFrame ?? 0), order: site.medianOrder ?? 2 }),
+            t("Go to this base"),
+            () => go(site.x, site.y, 4),
+            site.x,
+            site.y
+          ));
+        }
+        for (const spot of report.spots.slice(0, 8)) {
+          list2.append(rowOf(
+            place(spot.clock),
+            spot.decided ? t("Fights: {fights} in {games, plural, one {# game} other {# games}}; the nearer player ahead in {won} of {decided}", { fights: spot.fights, games: spot.games, won: spot.nearerWon, decided: spot.decided }) : t("Fights: {fights} in {games, plural, one {# game} other {# games}}", { fights: spot.fights, games: spot.games }),
+            t("Go to where the fighting was"),
+            () => go(spot.x, spot.y, 8),
+            spot.x,
+            spot.y
+          ));
+        }
+        const facts2 = [
+          t("{n, plural, one {# game} other {# games}} played through", { n: report.games }),
+          t("usual length {time}", { time: formatTime(report.medianFrames) }),
+          report.medianFirstFight !== null ? t("first fight about {time}", { time: formatTime(report.medianFirstFight) }) : null
+        ].filter(Boolean).join(" \xB7 ");
+        this.root.append(w.group(
+          t("This map"),
+          el("div", { className: "afm-dim" }, facts2),
+          w.row(w.checkbox(t("Mark on the map"), { value: settings.marks, title: t("Rings at the starts and the bases taken, red circles where the fighting was"), onChange: (on) => {
+            settings.marks = on;
+            save();
+            overlay.redraw();
+          } })),
+          list2,
+          w.hint(report.games < 3 ? t("From few games this says little. Load more replays of this map and play them all through.") : t("{percent}% of the map's ground was never entered by any unit, water and cliffs included. Choose Ground never entered under Show to see it.", { percent: Math.round(report.neverEntered * 100) }))
+        ));
       }
       if (current.report.chat.length) {
         const byId = new Map(players.map((p) => [p.player.id, p.player]));

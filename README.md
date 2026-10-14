@@ -67,10 +67,33 @@ replays of this map** ticked, the heat maps then add every game together: where 
 went across all of them, and where units were lost. One game says little about a map;
 twenty show which paths and chokes are used and where the fighting happens.
 
+**This map**, at the bottom of the panel, reads every game played through on the map in
+front as a report on the map itself. Places are named as on a clock face, with their tile:
+
+- **Start** lines: how many players started at each location and how many of them won.
+  The winner is the one player who never left, or else the only one with a building
+  standing at the end; a game where that cannot be told is left out of the count.
+- **Base** lines: every place a Command Center, Hatchery or Nexus was built away from its
+  owner's start. In how many games it was taken, about when (the middle game's time), and
+  which base it usually was for the player who took it.
+- **Fights** lines: the places where fights happened in more than one instance, how many
+  and in how many games, and how often the player who started nearer came out ahead. A
+  place where the nearer player usually loses is hard to hold.
+- The share of the map's ground no unit ever entered. Pick **Ground never entered** under
+  Show to shade it in red. Water and cliffs are part of it, so read it for the walkable
+  ground you expected to be used and was not.
+
+**Mark on the map** draws the report over the map: a white ring at each start with its
+wins, a green ring at each base with the games it was taken in, and a red circle where
+the fighting was with its count. Click a line to go to its place.
+
+Different versions of a map count as the same map when nine tenths of the terrain agree.
+
 The button is only there where the editor has the engine beside it, which is scmjs.dev. In
 the desktop app and an editor hosted elsewhere, Aftermath works from the orders alone.
 Replays written by StarCraft 1.16.1 are what the engine has been run on; replays from 1.18
-and later, StarCraft: Remastered included, have not been tried yet and may not play.
+and later, StarCraft: Remastered included, do not play in it yet; Aftermath says so on such a
+replay and shows it from the orders.
 
 ## Install
 

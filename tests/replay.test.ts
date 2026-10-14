@@ -160,6 +160,15 @@ describe("maps", () => {
     edited.tiles.fill(9, 0, 64 * 3);
     expect(likeness(a, edited)).toBeGreaterThan(0.9);
   });
+
+  it("reads terrain written in several sections, each over the start of the one before, as the game does", () => {
+    // What a protected ladder map carries: the whole terrain, then two shorter copies over its first tiles.
+    const section = (data: number[]) => { const len = data.length * 2, out = new Uint8Array(8 + len); out.set([77, 84, 88, 77, len & 255, len >> 8, 0, 0]); data.forEach((t, i) => { out[8 + i * 2] = t & 255; out[9 + i * 2] = t >> 8; }); return out; };
+    const base = chk(4, 4, 4, 7), more = [section([1, 2, 3, 4, 5, 6]), section([9, 9])];
+    const whole = new Uint8Array(base.length + more[0].length + more[1].length);
+    whole.set(base); whole.set(more[0], base.length); whole.set(more[1], base.length + more[0].length);
+    expect([...readChk(whole).tiles]).toEqual([9, 9, 3, 4, 5, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7]);
+  });
 });
 
 // Real replays, when there are some in fixtures/ (gitignored: nobody's games are committed).

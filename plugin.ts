@@ -16,7 +16,8 @@
  * also be played through: the game is run to its end out of sight, and the panel then
  * shows what happened as well — the units where they stood, the buildings that really
  * stood, what was made and lost, each player's army and economy through the game
- * (`played.ts`), and the fights and who killed what (`fights.ts`).
+ * (`played.ts`), the fights and who killed what (`fights.ts`), and what all the games played
+ * through on this map say about the map itself (`report.ts`).
  *
  * `replay.ts` reads the file, `analysis.ts` makes the per-player reports and the heat
  * grid, `played.ts` reads the engine's timeline, `chk.ts` compares maps; all four are pure
@@ -30,12 +31,13 @@ import { FRAME_MS, parseReplay, ReplayError } from "./replay";
 import { KO } from "./ko";
 import { buildings as standingBuildings, isBuilding, losses, lossPoints, madeRows, presencePoints, series, unitIndex, unitsAt, WORKERS, type Metric, type Point, type Standing, type UnitIndex } from "./played";
 import { fights as findFights, kills as findKills, topKillers, type Fight, type Kill, type Killer } from "./fights";
+import { mapReport, winnerOf, type MapReport } from "./report";
 import type { ReplayTimeline, ScmSimService } from "./vendor/scm-sim";
 
 /* ── State ──────────────────────────────────────────────── */
 
 /** `presence` and `losses` need the game played through. */
-type HeatMode = "off" | "orders" | "move" | "attack" | "buildings" | "ping" | "presence" | "losses";
+type HeatMode = "off" | "orders" | "move" | "attack" | "buildings" | "ping" | "presence" | "losses" | "unvisited";
 type Chart = "apm" | Metric;
 
 interface Settings {
@@ -55,9 +57,11 @@ interface Settings {
   units: boolean;
   /** What the graph draws. */
   chart: Chart;
+  /** The map report's bases and fight spots drawn on the map. */
+  marks: boolean;
 }
 
-const DEFAULTS: Settings = { buildings: true, orders: true, heat: "off", wholeGame: false, allReplays: false, speed: 8, docked: false, workers: false, units: true, chart: "apm" };
+const DEFAULTS: Settings = { buildings: true, orders: true, heat: "off", wholeGame: false, allReplays: false, speed: 8, docked: false, workers: false, units: true, chart: "apm", marks: true };
 
 interface Loaded {
   id: number;
@@ -90,7 +94,7 @@ const NEW_FRAMES = 6 * 24;
 /** Terrain shared with the replay's map for the map in front to count as the same one. */
 const SAME_MAP = 0.9;
 
-const HEAT_KINDS: Record<Exclude<HeatMode, "off" | "buildings" | "presence" | "losses">, ReadonlySet<ClickKind>> = {
+const HEAT_KINDS: Record<Exclude<HeatMode, "off" | "buildings" | "presence" | "losses" | "unvisited">, ReadonlySet<ClickKind>> = {
   orders: new Set(["move", "attack", "patrol", "ability"]),
   move: new Set(["move"]),
   attack: new Set(["attack", "patrol"]),
@@ -315,7 +319,7 @@ export function activate(api: PluginApi) {
   let queued = 0;
   async function playAll(): Promise<void> {
     if (running || queued) return;
-    const todo = loaded.filter((l) => !l.played);
+    const todo = loaded.filter((l) => !l.played && l.report.replay.format === "legacy");
     queued = todo.length;
     for (const entry of todo) {
       if (!loaded.includes(entry)) { queued--; continue; }
@@ -325,6 +329,24 @@ export function activate(api: PluginApi) {
     }
     queued = 0;
     view?.render();
+  }
+
+  /* ── The map's report: every replay of the map in front that has been played through ── */
+
+  let reportCache: { key: string; report: MapReport } | null = null;
+  function currentReport(): MapReport | null {
+    if (!current) return null;
+    const map = current.map;
+    const games = loaded.filter((l) => l.played && (l === current || likeness(map, l.map) >= SAME_MAP));
+    if (!games.length) return null;
+    const key = games.map((l) => l.id).join(",");
+    if (reportCache?.key === key) return reportCache.report;
+    const report = mapReport(games.map((l) => ({
+      timeline: l.played!.timeline, standing: l.played!.standing, fights: l.played!.fights,
+      winner: winnerOf(l.report.players.map((p) => ({ index: p.player.index, left: p.leftAt !== null })), l.played!.standing),
+    })), map);
+    reportCache = { key, report };
+    return report;
   }
 
   /* ── Heat ── */
@@ -343,6 +365,22 @@ export function activate(api: PluginApi) {
 
   function heatCanvas(): HTMLCanvasElement | null {
     if (!current || settings.heat === "off") return null;
+    if (settings.heat === "unvisited") {
+      // Not a heat of anything counted: the ground no unit stood on in any game played through, shaded.
+      const report = currentReport();
+      if (!report) return null;
+      const key = `unvisited/${reportCache!.key}`;
+      if (heatCache?.key === key) return heatCache.canvas;
+      const canvas = heatCache?.canvas ?? document.createElement("canvas");
+      const { width: cw, height: ch, games } = report.visited;
+      canvas.width = cw; canvas.height = ch;
+      const g = canvas.getContext("2d")!;
+      const img = g.createImageData(cw, ch);
+      for (let i = 0; i < games.length; i++) if (!games[i]) { img.data[i * 4] = 235; img.data[i * 4 + 1] = 70; img.data[i * 4 + 2] = 60; img.data[i * 4 + 3] = 105; }
+      g.putImageData(img, 0, 0);
+      heatCache = { key, grid: { width: cw, height: ch, cell: 0, values: new Float32Array(0), max: 0 }, canvas };
+      return canvas;
+    }
     const whole = settings.wholeGame || settings.allReplays;
     const until = whole ? undefined : Math.floor(frame / 12) * 12;
     const sources = heatSources();
@@ -545,6 +583,39 @@ export function activate(api: PluginApi) {
         ctx.globalAlpha = 1;
       }
     }
+
+    // The map report's places: the starts and the bases taken as rings, the fight spots as red circles.
+    const report = settings.marks ? currentReport() : null;
+    if (report) {
+      const label = (text: string, x: number, y: number, colour: string) => {
+        ctx.font = "600 11px system-ui, sans-serif";
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.lineWidth = 3; ctx.strokeStyle = "rgba(0,0,0,0.75)";
+        ctx.strokeText(text, x, y);
+        ctx.fillStyle = colour;
+        ctx.fillText(text, x, y);
+      };
+      for (const spot of report.spots) {
+        const x = v.x(spot.x), y = v.y(spot.y), r = Math.max(10, (64 + Math.min(8, spot.fights) * 16) * s);
+        ctx.fillStyle = "rgba(235,70,60,0.14)";
+        ctx.strokeStyle = "rgba(235,70,60,0.9)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        label(`${spot.fights}×`, x, y, "#ff9a8a");
+      }
+      for (const site of report.sites) {
+        const x = v.x(site.x), y = v.y(site.y), r = Math.max(8, 80 * s);
+        ctx.strokeStyle = site.starts ? "rgba(255,255,255,0.9)" : "rgba(120,220,160,0.9)";
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 4]);
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+        ctx.setLineDash([]);
+        // A start says how its players fared; a base says in how many games it was taken.
+        const text = site.starts ? (site.startDecided ? `${site.startWins}/${site.startDecided}` : "") : `${site.taken}/${report.games}`;
+        if (text) label(text, x, y - r - 8, site.starts ? "#ffffff" : "#8fe0b0");
+      }
+      ctx.textAlign = "start"; ctx.textBaseline = "alphabetic";
+    }
   }
 
   const overlay: OverlayHandle = api.ui.overlay({
@@ -685,14 +756,19 @@ export function activate(api: PluginApi) {
         this.root.append(el("div", { className: "afm-dim" }, tl.frames < tl.total
           ? t("Played through to {time}, where the game stopped. Buildings, units, what was made and the graphs below are what happened.", { time: formatTime(tl.frames) })
           : t("Played through. Buildings, units, what was made and the graphs below are what happened.")));
+        // The others of a Play all go on behind this one.
+        if (running) this.root.append(el("div", { className: "afm-dim" }, queued > 1 ? t("Playing {name} through; {n} more to go.", { name: running.entry.fileName, n: queued - 1 }) : t("Playing {name} through.", { name: running.entry.fileName })));
       } else if (running?.entry === entry) {
         const run = running;
         const bar = w.progressBar({ value: null, label: t("Starting the game…") });
         this.bar = bar;
         this.root.append(bar, w.row(w.button(t("Stop"), { ghost: true, onClick: () => run.controller.abort() })));
         this.progress();
+      } else if (sim?.present && rep.format !== "legacy") {
+        // The engine is StarCraft 1.16.1's game and reads the file as that game did.
+        this.root.append(w.hint(t("This replay was written by StarCraft 1.18 or later. The site's game engine plays replays from 1.16.1 and earlier so far, so this one cannot be played through; what is shown is from the orders.")));
       } else if (sim?.present) {
-        const unplayed = loaded.filter((l) => !l.played).length;
+        const unplayed = loaded.filter((l) => !l.played && l.report.replay.format === "legacy").length;
         this.root.append(
           w.row(
             w.button(t("Play the game through"), { primary: true, disabled: running !== null, title: running ? t("Another replay is being played through") : undefined, onClick: () => void playThrough(entry) }),
@@ -770,8 +846,8 @@ export function activate(api: PluginApi) {
         { value: "attack", label: t("Heat: attacks") },
         { value: "buildings", label: t("Heat: buildings") },
         { value: "ping", label: t("Heat: minimap pings") },
-        ...(entry.played ? [{ value: "presence", label: t("Heat: where the armies were") }, { value: "losses", label: t("Heat: where units were lost") }] : []),
-      ], { value: !entry.played && (settings.heat === "presence" || settings.heat === "losses") ? "off" : settings.heat, onChange: (v) => { settings.heat = v as HeatMode; save(); heatCache = null; overlay.redraw(); this.render(); } });
+        ...(entry.played ? [{ value: "presence", label: t("Heat: where the armies were") }, { value: "losses", label: t("Heat: where units were lost") }, { value: "unvisited", label: t("Ground never entered") }] : []),
+      ], { value: !entry.played && (settings.heat === "presence" || settings.heat === "losses" || settings.heat === "unvisited") ? "off" : settings.heat, onChange: (v) => { settings.heat = v as HeatMode; save(); heatCache = null; overlay.redraw(); this.render(); } });
       const sameMap = loaded.filter((l) => likeness(entry.map, l.map) >= SAME_MAP).length;
       this.root.append(w.group(t("Show"),
         w.row(
@@ -780,7 +856,7 @@ export function activate(api: PluginApi) {
           w.checkbox(t("Recent orders"), { value: settings.orders, title: t("Where units were sent in the last 8 seconds"), onChange: (on) => { settings.orders = on; save(); overlay.redraw(); } }),
         ),
         w.row(heatSelect),
-        settings.heat !== "off" && w.row(
+        settings.heat !== "off" && settings.heat !== "unvisited" && w.row(
           w.checkbox(t("Whole game"), { value: settings.wholeGame, title: t("Count the whole game rather than up to the timeline"), disabled: settings.allReplays, onChange: (on) => { settings.wholeGame = on; save(); heatCache = null; overlay.redraw(); } }),
           sameMap > 1 && w.checkbox(t("All {n} replays of this map", { n: sameMap }), { value: settings.allReplays, onChange: (on) => { settings.allReplays = on; save(); heatCache = null; overlay.redraw(); this.render(); } }),
         ),
@@ -888,6 +964,53 @@ export function activate(api: PluginApi) {
           }
           this.root.append(w.group(t("Most kills"), top));
         }
+      }
+
+      // What every game played through on this map says about the map.
+      const report = entry.played ? currentReport() : null;
+      if (report) {
+        const place = (clock: number) => (clock ? t("{n} o'clock", { n: clock }) : t("the middle"));
+        const go = (x: number, y: number, radius: number) => {
+          const tx = Math.floor(x / 32), ty = Math.floor(y / 32);
+          api.view.center(tx, ty);
+          api.view.flash({ rect: { x0: Math.max(0, tx - radius), y0: Math.max(0, ty - radius), x1: tx + radius, y1: ty + radius }, kind: "attention" });
+        };
+        // Several places share an hour of the clock (a start, its natural, its third): each line ends with its tile.
+        const rowOf = (head: string, text: string, title: string, click: () => void, x = -1, y = -1) => {
+          const line = el("div", { className: "afm-step", title }, el("span", { className: "afm-t" }, head), el("span", {}, text, x < 0 ? null : el("span", { className: "afm-end" }, ` · ${Math.floor(x / 32)}, ${Math.floor(y / 32)}`)));
+          line.style.gridTemplateColumns = "70px 1fr";
+          line.addEventListener("click", click);
+          return line;
+        };
+        const list = el("div", { className: "afm-list" });
+        for (const site of report.sites.filter((x) => x.starts > 0)) {
+          list.append(rowOf(place(site.clock),
+            site.startDecided ? t("Start: {n, plural, one {# player} other {# players}}, won {wins} of {decided}", { n: site.starts, wins: site.startWins, decided: site.startDecided }) : t("Start: {n, plural, one {# player} other {# players}}", { n: site.starts }),
+            t("Go to this start location"), () => go(site.x, site.y, 4), site.x, site.y));
+        }
+        for (const site of report.sites.filter((x) => !x.starts && x.taken > 0)) {
+          list.append(rowOf(place(site.clock),
+            t("Base: taken in {taken} of {games}, about {time}, usually base {order}", { taken: site.taken, games: report.games, time: formatTime(site.medianFrame ?? 0), order: site.medianOrder ?? 2 }),
+            t("Go to this base"), () => go(site.x, site.y, 4), site.x, site.y));
+        }
+        for (const spot of report.spots.slice(0, 8)) {
+          list.append(rowOf(place(spot.clock),
+            spot.decided ? t("Fights: {fights} in {games, plural, one {# game} other {# games}}; the nearer player ahead in {won} of {decided}", { fights: spot.fights, games: spot.games, won: spot.nearerWon, decided: spot.decided }) : t("Fights: {fights} in {games, plural, one {# game} other {# games}}", { fights: spot.fights, games: spot.games }),
+            t("Go to where the fighting was"), () => go(spot.x, spot.y, 8), spot.x, spot.y));
+        }
+        const facts = [
+          t("{n, plural, one {# game} other {# games}} played through", { n: report.games }),
+          t("usual length {time}", { time: formatTime(report.medianFrames) }),
+          report.medianFirstFight !== null ? t("first fight about {time}", { time: formatTime(report.medianFirstFight) }) : null,
+        ].filter(Boolean).join(" · ");
+        this.root.append(w.group(t("This map"),
+          el("div", { className: "afm-dim" }, facts),
+          w.row(w.checkbox(t("Mark on the map"), { value: settings.marks, title: t("Rings at the starts and the bases taken, red circles where the fighting was"), onChange: (on) => { settings.marks = on; save(); overlay.redraw(); } })),
+          list,
+          w.hint(report.games < 3
+            ? t("From few games this says little. Load more replays of this map and play them all through.")
+            : t("{percent}% of the map's ground was never entered by any unit, water and cliffs included. Choose Ground never entered under Show to see it.", { percent: Math.round(report.neverEntered * 100) })),
+        ));
       }
 
       // Chat.
