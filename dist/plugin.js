@@ -1073,7 +1073,8 @@ var KO = {
   "Rings at the starts and the bases taken, red circles where the fighting was": "\uC2DC\uC791 \uC704\uCE58\uC640 \uD655\uBCF4\uD55C \uAE30\uC9C0\uB294 \uACE0\uB9AC\uB85C, \uAD50\uC804\uC774 \uC788\uB358 \uACF3\uC740 \uBE68\uAC04 \uC6D0\uC73C\uB85C \uD45C\uC2DC\uD569\uB2C8\uB2E4",
   "From few games this says little. Load more replays of this map and play them all through.": "\uAC8C\uC784 \uC218\uAC00 \uC801\uC73C\uBA74 \uC54C \uC218 \uC788\uB294 \uAC83\uC774 \uAC70\uC758 \uC5C6\uC2B5\uB2C8\uB2E4. \uC774 \uB9F5\uC758 \uB9AC\uD50C\uB808\uC774\uB97C \uB354 \uBD88\uB7EC\uC640 \uBAA8\uB450 \uB05D\uAE4C\uC9C0 \uC2E4\uD589\uD558\uC138\uC694.",
   "{percent}% of the map's ground was never entered by any unit, water and cliffs included. Choose Ground never entered under Show to see it.": "\uB9F5\uC758 \uB545 \uC911 {percent}%\uC5D0\uB294 \uC5B4\uB5A4 \uC720\uB2DB\uB3C4 \uB4E4\uC5B4\uAC00\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4(\uBB3C\uACFC \uC808\uBCBD \uD3EC\uD568). \uD45C\uC2DC\uC5D0\uC11C '\uD55C \uBC88\uB3C4 \uB4E4\uC5B4\uAC00\uC9C0 \uC54A\uC740 \uB545'\uC744 \uACE0\uB974\uBA74 \uBCFC \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
-  "This replay was written by StarCraft 1.18 or later. The site's game engine plays replays from 1.16.1 and earlier so far, so this one cannot be played through; what is shown is from the orders.": "\uC774 \uB9AC\uD50C\uB808\uC774\uB294 StarCraft 1.18 \uC774\uD6C4 \uBC84\uC804\uC5D0\uC11C \uB9CC\uB4E4\uC5B4\uC84C\uC2B5\uB2C8\uB2E4. \uC0AC\uC774\uD2B8\uC758 \uAC8C\uC784 \uC5D4\uC9C4\uC740 \uC544\uC9C1 1.16.1 \uC774\uC804 \uBC84\uC804\uC758 \uB9AC\uD50C\uB808\uC774\uB9CC \uC2E4\uD589\uD560 \uC218 \uC788\uC5B4 \uC774 \uB9AC\uD50C\uB808\uC774\uB294 \uB05D\uAE4C\uC9C0 \uC2E4\uD589\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4. \uD45C\uC2DC\uB418\uB294 \uB0B4\uC6A9\uC740 \uBA85\uB839 \uAE30\uB85D\uC5D0\uC11C \uB098\uC628 \uAC83\uC785\uB2C8\uB2E4."
+  "The game engine on this site is an older one that plays replays from StarCraft 1.16.1 and earlier only.": "\uC774 \uC0AC\uC774\uD2B8\uC758 \uAC8C\uC784 \uC5D4\uC9C4\uC740 \uC774\uC804 \uBC84\uC804\uC774\uB77C StarCraft 1.16.1 \uC774\uC804\uC758 \uB9AC\uD50C\uB808\uC774\uB9CC \uC2E4\uD589\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+  "From {time} the game played here is not the game in the replay: a player gave an order to a unit that had not been made. What is shown after that moment is not what happened, and this game is left out of the map's report.": "{time}\uBD80\uD130 \uC5EC\uAE30\uC11C \uC2E4\uD589\uB41C \uAC8C\uC784\uC740 \uB9AC\uD50C\uB808\uC774\uC758 \uAC8C\uC784\uACFC \uB2E4\uB985\uB2C8\uB2E4. \uC544\uC9C1 \uB9CC\uB4E4\uC5B4\uC9C0\uC9C0 \uC54A\uC740 \uC720\uB2DB\uC5D0 \uD50C\uB808\uC774\uC5B4\uAC00 \uBA85\uB839\uC744 \uB0B4\uB838\uC2B5\uB2C8\uB2E4. \uADF8 \uC2DC\uC810 \uC774\uD6C4\uC5D0 \uD45C\uC2DC\uB418\uB294 \uB0B4\uC6A9\uC740 \uC2E4\uC81C\uB85C \uC77C\uC5B4\uB09C \uC77C\uC774 \uC544\uB2C8\uBA70, \uC774 \uAC8C\uC784\uC740 \uB9F5 \uBCF4\uACE0\uC5D0\uC11C \uC81C\uC678\uB429\uB2C8\uB2E4."
 };
 
 // played.ts
@@ -1711,6 +1712,7 @@ function activate(api) {
     try {
       const state = await sim.status();
       if (!state.available) throw new Error(state.reason ?? t("The game engine cannot run a game here."));
+      if (entry.report.replay.format !== "legacy" && (state.timeline ?? 0) < 3) throw new Error(t("The game engine on this site is an older one that plays replays from StarCraft 1.16.1 and earlier only."));
       const timeline = await sim.analyse(entry.bytes, {
         name: entry.fileName,
         signal: run.controller.signal,
@@ -1740,7 +1742,7 @@ function activate(api) {
   let queued = 0;
   async function playAll() {
     if (running || queued) return;
-    const todo = loaded.filter((l) => !l.played && l.report.replay.format === "legacy");
+    const todo = loaded.filter((l) => !l.played);
     queued = todo.length;
     for (const entry of todo) {
       if (!loaded.includes(entry)) {
@@ -1758,7 +1760,7 @@ function activate(api) {
   function currentReport() {
     if (!current) return null;
     const map = current.map;
-    const games = loaded.filter((l) => l.played && (l === current || likeness(map, l.map) >= SAME_MAP));
+    const games = loaded.filter((l) => l.played && (l.played.timeline.check?.parted ?? null) === null && (l === current || likeness(map, l.map) >= SAME_MAP));
     if (!games.length) return null;
     const key = games.map((l) => l.id).join(",");
     if (reportCache?.key === key) return reportCache.report;
@@ -2169,6 +2171,8 @@ function activate(api) {
       if (entry.played) {
         const tl = entry.played.timeline;
         this.root.append(el("div", { className: "afm-dim" }, tl.frames < tl.total ? t("Played through to {time}, where the game stopped. Buildings, units, what was made and the graphs below are what happened.", { time: formatTime(tl.frames) }) : t("Played through. Buildings, units, what was made and the graphs below are what happened.")));
+        const parted = tl.check?.parted ?? null;
+        if (parted !== null) this.root.append(el("div", { className: "afm-warn" }, t("From {time} the game played here is not the game in the replay: a player gave an order to a unit that had not been made. What is shown after that moment is not what happened, and this game is left out of the map's report.", { time: formatTime(parted) })));
         if (running) this.root.append(el("div", { className: "afm-dim" }, queued > 1 ? t("Playing {name} through; {n} more to go.", { name: running.entry.fileName, n: queued - 1 }) : t("Playing {name} through.", { name: running.entry.fileName })));
       } else if (running?.entry === entry) {
         const run = running;
@@ -2176,10 +2180,8 @@ function activate(api) {
         this.bar = bar;
         this.root.append(bar, w.row(w.button(t("Stop"), { ghost: true, onClick: () => run.controller.abort() })));
         this.progress();
-      } else if (sim?.present && rep.format !== "legacy") {
-        this.root.append(w.hint(t("This replay was written by StarCraft 1.18 or later. The site's game engine plays replays from 1.16.1 and earlier so far, so this one cannot be played through; what is shown is from the orders.")));
       } else if (sim?.present) {
-        const unplayed = loaded.filter((l) => !l.played && l.report.replay.format === "legacy").length;
+        const unplayed = loaded.filter((l) => !l.played).length;
         this.root.append(
           w.row(
             w.button(t("Play the game through"), { primary: true, disabled: running !== null, title: running ? t("Another replay is being played through") : void 0, onClick: () => void playThrough(entry) }),

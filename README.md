@@ -91,9 +91,16 @@ Different versions of a map count as the same map when nine tenths of the terrai
 
 The button is only there where the editor has the engine beside it, which is scmjs.dev. In
 the desktop app and an editor hosted elsewhere, Aftermath works from the orders alone.
-Replays written by StarCraft 1.16.1 are what the engine has been run on; replays from 1.18
-and later, StarCraft: Remastered included, do not play in it yet; Aftermath says so on such a
-replay and shows it from the orders.
+Replays from every version play: one written by StarCraft 1.18 or Remastered is rewritten in
+1.16.1's form first, since the engine is 1.16.1's game. Two kinds of Remastered game cannot be
+played through, and Aftermath says which when you try: a game on a map that uses Remastered's
+added terrain, unless your copy of StarCraft on the site was made from a Remastered
+installation, and a game that held more than 1,700 units at once.
+
+A replay holds the players' orders and nothing to compare the game against. So while the game
+is played, every order is checked against it: an order for a unit that has not been made yet
+means the game on screen is no longer the one that was recorded. When that happens Aftermath
+shows the moment, and leaves the game out of the map's report.
 
 ## Install
 
