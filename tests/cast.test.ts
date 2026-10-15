@@ -42,7 +42,7 @@ function game(): CastGame {
     ev(S(150), "morph", 1, LAIR, 1),
     ev(S(200), "born", 5, MUTALISK, 1), ev(S(201), "born", 6, MUTALISK, 1), ev(S(240), "done", 5, MUTALISK, 1), ev(S(241), "done", 6, MUTALISK, 1),
     ev(S(255), "born", 7, MUTALISK, 1),
-    ev(S(305), "died", 5, MUTALISK, 1), ev(S(306), "died", 6, MUTALISK, 1), ev(S(318), "died", 3, MARINE, 0),
+    { ...ev(S(305), "died", 5, MUTALISK, 1), by: 3, byType: MARINE, byOwner: 0 }, { ...ev(S(305), "died", 6, MUTALISK, 1), by: 4, byType: MARINE, byOwner: 0 }, ev(S(318), "died", 3, MARINE, 0),
   ];
   const frames = [0, S(100), S(200), S(300), S(400)];
   const timeline: ReplayTimeline = {
@@ -92,10 +92,12 @@ describe("the facts sent", () => {
       "Zed's whole army, wherever it stands: 2 Mutalisk (2 units, worth 400)",
       "Zed leads in army at 4:20: 400 against 100 for Tara",
     ]);
-    // Seconds on screen from the clip's start, each with the game's clock.
+    // Seconds on screen from the clip's start, each with the game's clock; a key fight blow by blow, with what killed what.
     expect(m.events).toEqual([
       { at: 36, text: "4:56 Armies close at the middle; at the fight: 10 of Tara's fighting units, 12 of Zed's fighting units" },
-      { at: 45, text: "5:05 Zed loses 2 Mutalisk" },
+      { at: 45, text: "5:05 the first Mutalisk Zed has lost" },
+      { at: 45, text: "5:05 Zed loses 2 Mutalisk to Tara's Marine" },
+      { at: 58, text: "5:18 the first Marine Tara has lost" },
       { at: 58, text: "5:18 Tara loses 1 Marine" },
     ]);
     // What fell is weighed against everything the side had; the units at the fight are said apart from the whole army.

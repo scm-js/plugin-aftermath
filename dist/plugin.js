@@ -2881,6 +2881,10 @@ var OPENING_SECONDS = 120;
 var BRIDGE_SECONDS = 40;
 var TAIL_SECONDS = 15;
 var LOSS_BUCKET = frameOf(3);
+var FIGHT_BUCKET = Math.round(frameOf(1.5));
+var PEAK_WINDOW = frameOf(5);
+var MOVE_STEP = frameOf(8);
+var MAX_FIGHT_EVENTS = 110;
 var MAX_EVENTS = 60;
 var OPENING_STEPS = 18;
 var OPENING_UNTIL = frameOf(360);
@@ -3068,6 +3072,58 @@ function castInput(game, clips, wishes, options) {
       bucket *= 2;
     }
   };
+  const blows = (from, to, fights2) => {
+    const out = [];
+    const lostBefore = /* @__PURE__ */ new Set();
+    for (const e of t.events) {
+      if (e.frame >= from) break;
+      if (e.kind === "died" && shown.has(e.owner)) lostBefore.add(`${e.owner}:${n.unit(e.type)}`);
+    }
+    const groups = /* @__PURE__ */ new Map();
+    for (const e of t.events) {
+      if (e.frame < from) continue;
+      if (e.frame > to) break;
+      if (e.kind !== "died" || !shown.has(e.owner) || !counted(e.type)) continue;
+      const by = e.byOwner !== void 0 && e.byOwner !== e.owner && shown.has(e.byOwner) ? e.byOwner : null;
+      const byType = by !== null && e.byType !== void 0 ? e.byType : null;
+      const k = `${Math.floor((e.frame - from) / FIGHT_BUCKET)}:${e.owner}:${byType ?? "-"}`;
+      let g = groups.get(k);
+      if (!g) groups.set(k, g = { frame: e.frame, player: e.owner, by, byType, types: /* @__PURE__ */ new Map() });
+      g.types.set(e.type, (g.types.get(e.type) ?? 0) + 1);
+      const first = `${e.owner}:${n.unit(e.type)}`;
+      if (!lostBefore.has(first) && !WORKERS2.has(e.type) && (!isBuilding(e.type) || HALL_TYPES.has(e.type))) {
+        lostBefore.add(first);
+        out.push({ frame: e.frame, text: HALL_TYPES.has(e.type) ? `${nameOf(e.owner)}'s ${n.unit(e.type)} is destroyed` : `the first ${n.unit(e.type)} ${nameOf(e.owner)} has lost` });
+      }
+    }
+    for (const g of groups.values()) {
+      const what = [...g.types].sort((a, b) => b[1] - a[1]).map(([type, k]) => plural(k, n.unit(type))).join(", ");
+      out.push({ frame: g.frame, text: `${nameOf(g.player)} loses ${what}${g.byType !== null ? ` to ${nameOf(g.by)}'s ${n.unit(g.byType)}` : ""}` });
+    }
+    for (const f of fights2) {
+      const deaths = f.points.filter((p) => p.frame >= from && p.frame <= to);
+      let best = -1, at = -1;
+      for (let i = 0, j = 0; i < deaths.length; i++) {
+        while (deaths[i].frame - deaths[j].frame > PEAK_WINDOW) j++;
+        if (i - j + 1 > best) {
+          best = i - j + 1;
+          at = deaths[j].frame;
+        }
+      }
+      if (best >= 4) out.push({ frame: at, text: `the heaviest exchange of the fight begins: ${best} units fall in the next five seconds` });
+      let place = n.place(f.x, f.y);
+      for (let s = f.from + MOVE_STEP; s <= Math.min(f.to, to); s += MOVE_STEP) {
+        const near = f.points.filter((p) => p.frame > s - MOVE_STEP && p.frame <= s);
+        if (near.length < 2) continue;
+        const here = n.place(near.reduce((a, p) => a + p.x, 0) / near.length, near.reduce((a, p) => a + p.y, 0) / near.length);
+        if (here !== place) {
+          out.push({ frame: s, text: `the fight moves to ${here}` });
+          place = here;
+        }
+      }
+    }
+    return out.sort((a, b) => a.frame - b.frame).slice(0, MAX_FIGHT_EVENTS);
+  };
   const fightFacts = (f) => {
     const out = [];
     const label = f.turning ? "the turning point of the game" : f.tier === "decisive" ? "a decisive fight" : f.tier === "major" ? "a major fight" : "a skirmish";
@@ -3116,7 +3172,8 @@ function castInput(game, clips, wishes, options) {
     }
     if (fast) for (const o of orders(c.from, c.to)) news(o.frame, o.text);
     for (const h of [...happened(c.from, c.to), ...blocks(c.from, c.to)]) news(h.frame, h.text);
-    for (const x of losses2(c.from, c.to, fast ? LOSS_BUCKET * speed : LOSS_BUCKET)) news(x.frame, x.text);
+    if (!fast && c.fights.length) for (const x of blows(c.from, c.to, c.fights)) news(x.frame, x.text);
+    else for (const x of losses2(c.from, c.to, fast ? LOSS_BUCKET * speed : LOSS_BUCKET)) news(x.frame, x.text);
     events.sort((a, b) => a.at - b.at);
     const after = c.fights.flatMap(fightFacts);
     if (fast && !last) after.push(...standing(c.to));
@@ -3133,7 +3190,7 @@ function castInput(game, clips, wishes, options) {
       title,
       state: state.slice(0, 20),
       before: before.slice(0, 40),
-      events: events.slice(0, 120),
+      events: events.slice(0, 160),
       after: after.slice(0, 24)
     };
   });

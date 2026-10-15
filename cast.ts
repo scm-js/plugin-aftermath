@@ -30,6 +30,14 @@ const BRIDGE_SECONDS = 40;
 const TAIL_SECONDS = 15;
 /** Deaths this close together are one line of what fell (three seconds). */
 const LOSS_BUCKET = frameOf(3);
+/** In a key fight, what fell is said in steps this short (a second and a half), with what killed it. */
+const FIGHT_BUCKET = Math.round(frameOf(1.5));
+/** The heaviest exchange of a fight: the window this long (five seconds) where the most fell. */
+const PEAK_WINDOW = frameOf(5);
+/** Where the fight is, looked at this often (eight seconds): a new place on the map is news. */
+const MOVE_STEP = frameOf(8);
+/** A key fight can carry this many facts. */
+const MAX_FIGHT_EVENTS = 110;
 /** The most timed facts in one moment; past this, losses are bucketed wider. */
 const MAX_EVENTS = 60;
 /** Build steps said for each player's opening, and how far into the game it reaches (six minutes). */
@@ -317,6 +325,59 @@ export function castInput(game: CastGame, clips: readonly Clip[], wishes?: strin
     }
   };
 
+  /**
+   * A key fight blow by blow, for the call: what fell every second and a half and what killed it, the first of each
+   * kind of unit or a town hall a player loses, where the heaviest exchange begins, and where the fight moves.
+   */
+  const blows = (from: number, to: number, fights: readonly Fight[]) => {
+    const out: { frame: number; text: string }[] = [];
+    const lostBefore = new Set<string>();
+    for (const e of t.events) {
+      if (e.frame >= from) break;
+      if (e.kind === "died" && shown.has(e.owner)) lostBefore.add(`${e.owner}:${n.unit(e.type)}`);
+    }
+    const groups = new Map<string, { frame: number; player: number; by: number | null; byType: number | null; types: Map<number, number> }>();
+    for (const e of t.events) {
+      if (e.frame < from) continue;
+      if (e.frame > to) break;
+      if (e.kind !== "died" || !shown.has(e.owner) || !counted(e.type)) continue;
+      const by = e.byOwner !== undefined && e.byOwner !== e.owner && shown.has(e.byOwner) ? e.byOwner : null;
+      const byType = by !== null && e.byType !== undefined ? e.byType : null;
+      const k = `${Math.floor((e.frame - from) / FIGHT_BUCKET)}:${e.owner}:${byType ?? "-"}`;
+      let g = groups.get(k);
+      if (!g) groups.set(k, (g = { frame: e.frame, player: e.owner, by, byType, types: new Map() }));
+      g.types.set(e.type, (g.types.get(e.type) ?? 0) + 1);
+      const first = `${e.owner}:${n.unit(e.type)}`;
+      if (!lostBefore.has(first) && !WORKERS.has(e.type) && (!isBuilding(e.type) || HALL_TYPES.has(e.type))) {
+        lostBefore.add(first);
+        out.push({ frame: e.frame, text: HALL_TYPES.has(e.type) ? `${nameOf(e.owner)}'s ${n.unit(e.type)} is destroyed` : `the first ${n.unit(e.type)} ${nameOf(e.owner)} has lost` });
+      }
+    }
+    for (const g of groups.values()) {
+      const what = [...g.types].sort((a, b) => b[1] - a[1]).map(([type, k]) => plural(k, n.unit(type))).join(", ");
+      out.push({ frame: g.frame, text: `${nameOf(g.player)} loses ${what}${g.byType !== null ? ` to ${nameOf(g.by!)}'s ${n.unit(g.byType)}` : ""}` });
+    }
+    for (const f of fights) {
+      // The heaviest five seconds, by how many fell.
+      const deaths = f.points.filter((p) => p.frame >= from && p.frame <= to);
+      let best = -1, at = -1;
+      for (let i = 0, j = 0; i < deaths.length; i++) {
+        while (deaths[i].frame - deaths[j].frame > PEAK_WINDOW) j++;
+        if (i - j + 1 > best) { best = i - j + 1; at = deaths[j].frame; }
+      }
+      if (best >= 4) out.push({ frame: at, text: `the heaviest exchange of the fight begins: ${best} units fall in the next five seconds` });
+      // Where it is, every few seconds: a new place is news.
+      let place = n.place(f.x, f.y);
+      for (let s = f.from + MOVE_STEP; s <= Math.min(f.to, to); s += MOVE_STEP) {
+        const near = f.points.filter((p) => p.frame > s - MOVE_STEP && p.frame <= s);
+        if (near.length < 2) continue;
+        const here = n.place(near.reduce((a, p) => a + p.x, 0) / near.length, near.reduce((a, p) => a + p.y, 0) / near.length);
+        if (here !== place) { out.push({ frame: s, text: `the fight moves to ${here}` }); place = here; }
+      }
+    }
+    return out.sort((a, b) => a.frame - b.frame).slice(0, MAX_FIGHT_EVENTS);
+  };
+
   const fightFacts = (f: Fight) => {
     const out: string[] = [];
     const label = f.turning ? "the turning point of the game" : f.tier === "decisive" ? "a decisive fight" : f.tier === "major" ? "a major fight" : "a skirmish";
@@ -367,7 +428,9 @@ export function castInput(game: CastGame, clips: readonly Clip[], wishes?: strin
     }
     if (fast) for (const o of orders(c.from, c.to)) news(o.frame, o.text);
     for (const h of [...happened(c.from, c.to), ...blocks(c.from, c.to)]) news(h.frame, h.text);
-    for (const x of losses(c.from, c.to, fast ? LOSS_BUCKET * speed : LOSS_BUCKET)) news(x.frame, x.text);
+    // A key fight at normal speed is told blow by blow; anything else, what fell every few seconds.
+    if (!fast && c.fights.length) for (const x of blows(c.from, c.to, c.fights)) news(x.frame, x.text);
+    else for (const x of losses(c.from, c.to, fast ? LOSS_BUCKET * speed : LOSS_BUCKET)) news(x.frame, x.text);
     events.sort((a, b) => a.at - b.at);
 
     const after = c.fights.flatMap(fightFacts);
@@ -381,7 +444,7 @@ export function castInput(game: CastGame, clips: readonly Clip[], wishes?: strin
       : i === 0 ? "The opening" : last ? "The end of the game" : "Between the fights";
     return {
       from: seconds(c.from), to: seconds(c.to), speed, seconds: Math.round(((c.to - c.from) * FRAME_SECONDS * 10) / speed) / 10,
-      title, state: state.slice(0, 20), before: before.slice(0, 40), events: events.slice(0, 120), after: after.slice(0, 24),
+      title, state: state.slice(0, 20), before: before.slice(0, 40), events: events.slice(0, 160), after: after.slice(0, 24),
     };
   });
 
