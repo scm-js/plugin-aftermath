@@ -1049,7 +1049,17 @@ var KO = {
   "Supply {used} of {max} \xB7 {n} actions per minute over the game": "\uC778\uAD6C\uC218 {max} \uC911 {used} \xB7 \uAC8C\uC784 \uC804\uCCB4 \uBD84\uB2F9 \uD589\uB3D9 \uC218 {n}",
   "Actions per minute over the game": "\uAC8C\uC784 \uC804\uCCB4\uC758 \uBD84\uB2F9 \uD589\uB3D9 \uC218",
   "Try again": "\uB2E4\uC2DC \uC2DC\uB3C4",
-  "Fights in red, taller the more they mattered; the turning point in gold; chat in grey; a player leaving in their colour. Point at the graph to read it; press or drag to go there.": "\uBE68\uAC04\uC0C9\uC740 \uAD50\uC804\uC774\uBA70 \uC911\uC694\uD560\uC218\uB85D \uB192\uAC8C \uADF8\uB9BD\uB2C8\uB2E4. \uAE08\uC0C9\uC740 \uC804\uD658\uC810, \uD68C\uC0C9\uC740 \uCC44\uD305, \uD50C\uB808\uC774\uC5B4 \uC0C9\uC740 \uB098\uAC04 \uD50C\uB808\uC774\uC5B4\uC785\uB2C8\uB2E4. \uADF8\uB798\uD504\uB97C \uAC00\uB9AC\uD0A4\uBA74 \uAC12\uC744 \uC77D\uACE0, \uB204\uB974\uAC70\uB098 \uB04C\uBA74 \uADF8 \uC2DC\uC810\uC73C\uB85C \uAC11\uB2C8\uB2E4.",
+  "Fights in red, taller the more they mattered; the turning point in gold; chat in grey; a player leaving in their colour.": "\uBE68\uAC04\uC0C9\uC740 \uAD50\uC804\uC774\uBA70 \uC911\uC694\uD560\uC218\uB85D \uB192\uAC8C \uADF8\uB9BD\uB2C8\uB2E4. \uAE08\uC0C9\uC740 \uC804\uD658\uC810, \uD68C\uC0C9\uC740 \uCC44\uD305, \uD50C\uB808\uC774\uC5B4 \uC0C9\uC740 \uB098\uAC04 \uD50C\uB808\uC774\uC5B4\uC785\uB2C8\uB2E4.",
+  "Press or drag to go there": "\uB204\uB974\uAC70\uB098 \uB04C\uBA74 \uADF8 \uC2DC\uC810\uC73C\uB85C \uAC11\uB2C8\uB2E4",
+  "{used}/{max} supply": "\uBCF4\uAE09 {used}/{max}",
+  "{n} workers": "\uC77C\uAFBC {n}",
+  "{n} army value": "\uBCD1\uB825 \uAC00\uCE58 {n}",
+  "{minerals} minerals, {gas} gas": "\uBBF8\uB124\uB784 {minerals}, \uAC00\uC2A4 {gas}",
+  "lost {value}": "{value} \uC783\uC74C",
+  "lost {n}": "{n}\uAE30 \uC783\uC74C",
+  "{name}, level {level}": "{name} {level}\uB2E8\uACC4",
+  "Takes base {n}": "{n}\uBC88\uC9F8 \uAE30\uC9C0 \uD655\uBCF4",
+  "{name} left the game": "{name} \uB098\uAC10",
   "The game": "\uAC8C\uC784",
   "Game": "\uAC8C\uC784",
   "The game and its orders": "\uAC8C\uC784\uACFC \uBA85\uB839",
@@ -2651,6 +2661,22 @@ var HEAT_LABELS = {
   unvisited: msg2("Ground never entered")
 };
 var LEGEND_TITLES = { watch: msg2("The game"), orders: msg2("The game and its orders"), map: msg2("Map stats") };
+var CHART_LABELS = {
+  lead: msg2("Army lead"),
+  apm: msg2("Actions per minute"),
+  armyValue: msg2("Army value"),
+  army: msg2("Army size"),
+  workers: msg2("Workers"),
+  supplyUsed: msg2("Supply"),
+  minerals: msg2("Minerals in the bank"),
+  gas: msg2("Gas in the bank"),
+  buildings: msg2("Buildings")
+};
+var TREND_FRAMES = FRAMES_PER_MINUTE / 6;
+var MOMENT_FRAMES = FRAMES_PER_MINUTE / 30;
+var MAX_MOMENTS = 4;
+var MAX_LOST_TYPES = 6;
+var HALLS4 = { 0: 131, 1: 106, 2: 154 };
 var FIGHT_KINDS = { battle: msg2("Battle"), workers: msg2("Workers killed"), buildings: msg2("Buildings destroyed") };
 function fightMark(f) {
   if (f.turning) return { id: "turn", label: msg2("Turning point"), why: msg2("After this fight the player ahead in army stayed ahead to the end") };
@@ -2676,6 +2702,32 @@ var STYLE = `
 .afm-tip-queue { display: flex; gap: 3px; }
 .afm-tip-icon { width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; background: var(--bg-1); border: 1px solid var(--border); border-radius: 3px; }
 .afm-tip-icon.afm-first { border-color: var(--gold, #d8b04a); }
+.afm-tip-fallback { position: fixed; display: block; pointer-events: none; z-index: 200; max-width: 360px; padding: 6px 8px; }
+.afm-gt { display: flex; flex-direction: column; gap: 6px; min-width: 230px; font-size: 12px; line-height: 1.35; }
+.afm-gt .afm-dim { color: var(--text-dim, #99a2b3); }
+.afm-gt-head { display: flex; align-items: baseline; gap: 10px; justify-content: space-between; }
+.afm-gt-head b { font-variant-numeric: tabular-nums; }
+.afm-gt-lead { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+.afm-gt-players { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto auto; column-gap: 6px; row-gap: 1px; align-items: center; }
+.afm-gt-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.afm-gt-num { text-align: right; font-variant-numeric: tabular-nums; }
+.afm-gt-delta { min-width: 46px; text-align: right; font-size: 11px; font-variant-numeric: tabular-nums; color: var(--text-dim, #99a2b3); }
+.afm-gt-delta.afm-up { color: var(--ok, #4caf50); }
+.afm-gt-delta.afm-down { color: var(--danger, #e05050); }
+.afm-gt-sub { grid-column: 2 / 5; font-size: 11px; margin-bottom: 3px; }
+.afm-gt-fight { display: flex; flex-direction: column; gap: 4px; padding-top: 6px; border-top: 1px solid var(--border, rgba(255,255,255,0.1)); }
+.afm-gt-ftitle { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; }
+.afm-gt-side { display: grid; grid-template-columns: 8px auto auto; column-gap: 6px; align-items: center; }
+.afm-gt-side .afm-gt-lost { grid-column: 1 / 4; display: flex; flex-wrap: wrap; gap: 3px 6px; padding-left: 14px; }
+.afm-gt-unit { display: inline-flex; align-items: center; gap: 1px; }
+.afm-gt-uname { font-size: 11px; }
+.afm-gt-count { font-size: 11px; font-variant-numeric: tabular-nums; }
+.afm-gi { width: 24px; height: 23px; flex: none; padding: 1px; box-sizing: content-box; background: #12151c; border: 1px solid rgba(255,255,255,0.08); border-radius: 3px; }
+.afm-gi-none { display: inline-block; background: none; border-color: transparent; }
+.afm-gt-moments { display: flex; flex-direction: column; gap: 2px; padding-top: 6px; border-top: 1px solid var(--border, rgba(255,255,255,0.1)); }
+.afm-gt-moment { display: flex; align-items: center; gap: 6px; }
+.afm-gt-mtext { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.afm-gt-foot { font-size: 11px; }
 .afm-busy .afm-spin { width: 16px; height: 16px; flex: none; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.22); border-top-color: var(--accent, #4fd1c5); animation: afm-spin 0.8s linear infinite; }
 @keyframes afm-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .afm-busy .afm-spin { animation-duration: 2.4s; } }
@@ -2728,10 +2780,10 @@ var STYLE = `
 .afm-toggle:disabled { opacity: 0.45; cursor: default; }
 .afm-toggle.afm-on { background: var(--accent, #4fd1c5); border-color: var(--accent, #4fd1c5); color: #10131a; }
 .afm .afm-ahead { color: var(--text, #e4e8ef); font-weight: 600; }
-.afm .afm-mark { display: inline-block; font-size: 10px; font-weight: 600; line-height: 14px; padding: 0 5px; border-radius: 7px; margin-right: 5px; vertical-align: 1px; }
-.afm .afm-mark.afm-turn { background: #f0c64a; color: #1b1d22; }
-.afm .afm-mark.afm-decisive { background: rgba(240,80,60,0.9); color: #fff; }
-.afm .afm-mark.afm-even { background: rgba(160,168,184,0.25); color: var(--text, #e4e8ef); }
+.afm .afm-mark, .afm-gt .afm-mark { display: inline-block; font-size: 10px; font-weight: 600; line-height: 14px; padding: 0 5px; border-radius: 7px; margin-right: 5px; vertical-align: 1px; }
+.afm .afm-mark.afm-turn, .afm-gt .afm-mark.afm-turn { background: #f0c64a; color: #1b1d22; }
+.afm .afm-mark.afm-decisive, .afm-gt .afm-mark.afm-decisive { background: rgba(240,80,60,0.9); color: #fff; }
+.afm .afm-mark.afm-even, .afm-gt .afm-mark.afm-even { background: rgba(160,168,184,0.25); color: var(--text, #e4e8ef); }
 .afm .afm-fold > summary { cursor: pointer; color: var(--text-dim, #99a2b3); padding: 2px 6px; }
 .afm .afm-fold > summary:hover { color: var(--text, #e4e8ef); }
 .afm .afm-chat div { padding: 1px 0; cursor: pointer; }
@@ -2779,6 +2831,42 @@ function activate(api) {
   const save = () => api.storage.set("settings", settings);
   const w = api.ui.widgets;
   const el = api.ui.el;
+  function tooltip(target, content) {
+    if (typeof api.ui.tooltip === "function") return api.ui.tooltip(target, content, { maxWidth: 360 });
+    const tip = el("div", { className: "tooltip afm-tip-fallback", role: "tooltip" });
+    let last = null;
+    const show = () => {
+      const r = target.getBoundingClientRect();
+      const body = last && target.isConnected ? content({ offsetX: last.clientX - r.left, offsetY: last.clientY - r.top }) : null;
+      if (!body || !last) {
+        tip.remove();
+        return;
+      }
+      tip.replaceChildren(body);
+      if (!tip.isConnected) document.body.append(tip);
+      const x = last.clientX + 14 + tip.offsetWidth > innerWidth - 8 ? last.clientX - 14 - tip.offsetWidth : last.clientX + 14;
+      const y = last.clientY + 18 + tip.offsetHeight > innerHeight - 8 ? last.clientY - 9 - tip.offsetHeight : last.clientY + 18;
+      tip.style.left = `${Math.max(8, x)}px`;
+      tip.style.top = `${Math.max(8, y)}px`;
+    };
+    const move = (e) => {
+      last = e;
+      show();
+    };
+    const leave = () => {
+      last = null;
+      tip.remove();
+    };
+    target.addEventListener("pointermove", move);
+    target.addEventListener("pointerleave", leave);
+    return { refresh: () => {
+      if (tip.isConnected) show();
+    }, dispose: () => {
+      leave();
+      target.removeEventListener("pointermove", move);
+      target.removeEventListener("pointerleave", leave);
+    } };
+  }
   const loaded = [];
   let nextId = 1;
   let current = null;
@@ -3734,6 +3822,7 @@ function activate(api) {
   const imageListener = api.graphics.onImageLoaded(() => {
     if (current && overlay.isVisible()) overlay.redraw();
     if (lastHover) showHover(lastHover);
+    strip?.refreshTip();
   });
   function toggle(label2, onClick) {
     const b = el("button", { type: "button", className: "afm-toggle" }, label2);
@@ -3762,32 +3851,128 @@ function activate(api) {
     if (settings.chart === "lead" && !entry.played.adv) return "armyValue";
     return settings.chart;
   }
-  function readout(entry, chart, frame, slack) {
-    const out = [];
-    const shown = entry.report.players.filter((p) => !entry.hidden.has(p.player.id));
-    const nameOf = (index) => entry.report.players.find((p) => p.player.index === index)?.player.name ?? "";
+  function gameIcon(kind, id, owner) {
+    let pic = null;
+    if (typeof api.graphics.icon === "function") {
+      pic = api.graphics.icon(kind, id);
+      if (!pic) api.graphics.requestIcons();
+    }
+    if (!pic && kind === "unit") {
+      pic = api.graphics.unitImage(id, { owner });
+      if (!pic) api.graphics.requestUnit(id);
+    }
+    if (!pic) return null;
+    const w2 = 36, h = 34, k = Math.min(w2 / pic.width, h / pic.height, 1);
+    const c = el("canvas", { className: "afm-gi", width: w2, height: h });
+    c.getContext("2d")?.drawImage(pic.image, (w2 - pic.width * k) / 2, (h - pic.height * k) / 2, pic.width * k, pic.height * k);
+    return c;
+  }
+  const number = (n) => Math.round(n).toLocaleString();
+  const supplyShown = (n) => Math.ceil(n);
+  function graphTip(entry, chart, frame, slack, lane) {
+    const byIndex = new Map(entry.report.players.map((p) => [p.player.index, p]));
+    const nameOf = (index) => byIndex.get(index)?.player.name ?? "";
+    const swatch = (index) => el("span", { className: "afm-tip-swatch", style: `background:${byIndex.get(index)?.player.color ?? "#888"}` });
     const tl = entry.played?.timeline ?? null;
     const adv = entry.played?.adv ?? null;
+    const rows = [el("div", { className: "afm-gt-head" }, el("b", {}, formatTime(frame)), el("span", { className: "afm-dim" }, translate(CHART_LABELS[chart])))];
     if (chart === "lead" && adv) {
       const i = sampleIndex(adv.frames, frame);
       const n = i >= 0 ? Math.round(adv.lead[i]) : 0;
-      out.push(n === 0 ? t("even") : t("{name} ahead by {n}", { name: nameOf(n > 0 ? adv.a : adv.b), n: Math.abs(n) }));
-    } else if (chart === "apm") {
-      const m = Math.floor(frame / FRAMES_PER_MINUTE);
-      for (const p of shown) out.push(`${p.player.name} ${p.perMinute[m] ?? 0}`);
-    } else if (tl && chart !== "lead") {
-      const i = sampleIndex(tl.samples.frame, frame);
-      for (const p of shown) {
-        const v = i >= 0 ? series(tl, p.player.index, chart)?.[i] : void 0;
-        if (v !== void 0) out.push(`${p.player.name} ${v}`);
-      }
+      rows.push(el("div", { className: "afm-gt-lead" }, ...n === 0 ? [t("even")] : [swatch(n > 0 ? adv.a : adv.b), t("{name} ahead by {n}", { name: nameOf(n > 0 ? adv.a : adv.b), n: number(Math.abs(n)) })]));
     }
+    const at = tl ? sampleIndex(tl.samples.frame, frame) : -1;
+    const before = tl ? sampleIndex(tl.samples.frame, frame - TREND_FRAMES) : -1;
+    const minute = Math.floor(frame / FRAMES_PER_MINUTE);
+    const grid = el("div", { className: "afm-gt-players" });
+    for (const p of entry.report.players) {
+      if (entry.hidden.has(p.player.id)) continue;
+      const s = tl?.samples.players.find((x) => x.slot === p.player.index);
+      if (s && !s.supplyMax.some((n) => n > 0)) continue;
+      const metric = chart === "lead" ? "armyValue" : chart === "apm" ? null : chart;
+      const value = metric ? s && at >= 0 ? s[metric][at] : void 0 : p.perMinute[minute];
+      const was = metric && s && before >= 0 ? s[metric][before] : void 0;
+      const gone = p.leftAt !== null && p.leftAt <= frame;
+      const delta = value !== void 0 && was !== void 0 ? value - was : 0;
+      grid.append(
+        swatch(p.player.index),
+        el("span", { className: "afm-gt-name" }, p.player.name),
+        el("b", { className: "afm-gt-num" }, gone ? "" : value === void 0 ? "\u2013" : number(value)),
+        el("span", { className: `afm-gt-delta ${delta > 0 ? "afm-up" : delta < 0 ? "afm-down" : ""}` }, delta ? `${delta > 0 ? "\u25B2" : "\u25BC"} ${number(Math.abs(delta))}` : "")
+      );
+      const parts = s && at >= 0 ? [
+        metric !== "supplyUsed" ? t("{used}/{max} supply", { used: supplyShown(s.supplyUsed[at]), max: supplyShown(s.supplyMax[at]) }) : null,
+        metric !== "workers" ? t("{n} workers", { n: s.workers[at] }) : null,
+        metric !== "armyValue" ? t("{n} army value", { n: number(s.armyValue[at]) }) : null,
+        metric !== "minerals" && metric !== "gas" ? t("{minerals} minerals, {gas} gas", { minerals: number(s.minerals[at]), gas: number(s.gas[at]) }) : null
+      ].filter((x) => x !== null) : [];
+      const sub = gone ? t("left {time}", { time: formatTime(p.leftAt) }) : parts.length ? parts.join(" \xB7 ") : null;
+      if (sub) grid.append(el("span", {}), el("span", { className: "afm-gt-sub afm-dim" }, sub));
+    }
+    rows.push(grid);
     const here = (entry.played?.fights ?? []).filter((f) => frame >= f.from - slack && frame <= f.to + slack).sort((a, b) => b.importance - a.importance)[0];
     if (here && entry.played) {
       const mark = fightMark(here);
-      out.push(`${mark ? `${translate(mark.label)}: ` : ""}${translate(FIGHT_KINDS[here.kind])}, ${placeOf(here.x, here.y, entry.played.timeline.map)}`);
+      const box = el("div", { className: "afm-gt-fight" }, el(
+        "div",
+        { className: "afm-gt-ftitle" },
+        mark ? el("span", { className: `afm-mark afm-${mark.id}` }, translate(mark.label)) : null,
+        el("b", {}, translate(FIGHT_KINDS[here.kind])),
+        el("span", { className: "afm-dim" }, `${placeOf(here.x, here.y, entry.played.timeline.map)} \xB7 ${formatTime(here.from)}\u2013${formatTime(here.to)}`)
+      ));
+      for (const sd of here.sides) {
+        const types = [...sd.lostTypes].sort((a, b) => b[1] - a[1]);
+        const shown = types.slice(0, MAX_LOST_TYPES);
+        box.append(el(
+          "div",
+          { className: "afm-gt-side" },
+          swatch(sd.player),
+          el("span", { className: "afm-gt-name" }, nameOf(sd.player)),
+          el("span", { className: "afm-dim" }, sd.lostValue > 0 ? t("lost {value}", { value: number(sd.lostValue) }) : t("lost {n}", { n: sd.lost })),
+          el(
+            "span",
+            { className: "afm-gt-lost" },
+            ...shown.map(([type, n]) => el(
+              "span",
+              { className: "afm-gt-unit", title: api.names.unit(type) },
+              gameIcon("unit", type, sd.player) ?? el("span", { className: "afm-gt-uname" }, api.names.unit(type)),
+              n > 1 ? el("span", { className: "afm-gt-count" }, `\xD7${n}`) : null
+            )),
+            types.length > shown.length ? el("span", { className: "afm-dim" }, `+${types.length - shown.length}`) : null
+          )
+        ));
+      }
+      rows.push(box);
     }
-    return out;
+    const near = Math.max(slack, MOMENT_FRAMES);
+    const moments = [];
+    const moment = (f, player, icon, text) => {
+      if (Math.abs(f - frame) <= near) moments.push({ frame: f, node: el(
+        "div",
+        { className: "afm-gt-moment" },
+        icon ?? el("span", { className: "afm-gi afm-gi-none" }),
+        player !== null ? swatch(player) : null,
+        el("span", { className: "afm-gt-mtext" }, text),
+        el("span", { className: "afm-dim" }, formatTime(f))
+      ) });
+    };
+    for (const r of tl?.research ?? []) {
+      const name = r.kind === "tech" ? api.names.tech(r.id) : api.names.upgrade(r.id);
+      moment(r.frame, r.player, gameIcon(r.kind, r.id, r.player), r.kind === "upgrade" && r.level > 1 ? t("{name}, level {level}", { name, level: r.level }) : name);
+    }
+    for (const b of entry.played?.bases ?? []) {
+      const race = byIndex.get(b.player)?.player.race ?? 1;
+      moment(b.frame, b.player, gameIcon("unit", HALLS4[race] ?? 106, b.player), t("Takes base {n}", { n: b.nth }));
+    }
+    for (const line of entry.report.chat) {
+      const p = entry.report.players.find((x) => x.player.id === line.player);
+      moment(line.frame, p?.player.index ?? null, null, `${p ? `${p.player.name}: ` : ""}${line.text}`);
+    }
+    for (const p of entry.report.players) if (p.leftAt !== null) moment(p.leftAt, p.player.index, null, t("{name} left the game", { name: p.player.name }));
+    moments.sort((a, b) => Math.abs(a.frame - frame) - Math.abs(b.frame - frame));
+    if (moments.length) rows.push(el("div", { className: "afm-gt-moments" }, ...moments.slice(0, MAX_MOMENTS).sort((a, b) => a.frame - b.frame).map((m) => m.node)));
+    rows.push(el("div", { className: "afm-gt-foot afm-dim" }, lane && !here && !moments.length ? t("Fights in red, taller the more they mattered; the turning point in gold; chat in grey; a player leaving in their colour.") : t("Press or drag to go there")));
+    return el("div", { className: "afm-gt" }, ...rows);
   }
   function goToFight(f) {
     if (lensOf() === "map") {
@@ -3945,13 +4130,13 @@ function activate(api) {
       if (rep.unknownCommands > 0) this.root.append(w.hint(t("{n, plural, one {# command of a kind Aftermath does not know was skipped.} other {# commands of a kind Aftermath does not know were skipped.}}", { n: rep.unknownCommands })));
       const list = el("div", { className: "afm-players" });
       for (const p of entry.report.players) {
-        const readout2 = el("span", { className: "afm-live" });
+        const readout = el("span", { className: "afm-live" });
         const line = el(
           "div",
           { className: "afm-player" + (entry.hidden.has(p.player.id) ? " afm-off" : ""), title: entry.hidden.has(p.player.id) ? t("Show {name} on the map", { name: p.player.name }) : t("Hide {name} on the map", { name: p.player.name }) },
           el("span", { className: "afm-swatch", style: `background:${p.player.color}` }),
           el("span", { className: "afm-name" }, p.player.name, el("span", { className: "afm-race" }, RACES[p.player.race] ? translate(RACES[p.player.race]) : t("Random"))),
-          readout2
+          readout
         );
         line.addEventListener("click", () => {
           if (entry.hidden.has(p.player.id)) entry.hidden.delete(p.player.id);
@@ -3962,7 +4147,7 @@ function activate(api) {
           strip?.update();
         });
         list.append(line);
-        this.live.push({ el: readout2, p });
+        this.live.push({ el: readout, p });
       }
       this.root.append(list);
       const tabs = el("div", { className: "afm-tabs", role: "tablist" });
@@ -4404,12 +4589,12 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
       const frame = entry.frame;
       const tl = entry.played?.timeline ?? null;
       const at = tl ? sampleIndex(tl.samples.frame, frame) : -1;
-      for (const { el: readout2, p } of this.live) {
+      for (const { el: readout, p } of this.live) {
         const left = p.leftAt !== null && p.leftAt <= frame;
         const series2 = tl ? tl.samples.players.find((s) => s.slot === p.player.index) : void 0;
-        const supply = series2 && at >= 0 ? { used: series2.supplyUsed[at] ?? 0, max: series2.supplyMax[at] ?? 0 } : null;
-        readout2.textContent = left ? t("left {time}", { time: formatTime(p.leftAt) }) : supply ? `${supply.used}/${supply.max} \xB7 ${p.apm}` : t("{n} APM", { n: p.apm });
-        readout2.title = supply ? t("Supply {used} of {max} \xB7 {n} actions per minute over the game", { used: supply.used, max: supply.max, n: p.apm }) : t("Actions per minute over the game");
+        const supply = series2 && at >= 0 ? { used: supplyShown(series2.supplyUsed[at] ?? 0), max: supplyShown(series2.supplyMax[at] ?? 0) } : null;
+        readout.textContent = left ? t("left {time}", { time: formatTime(p.leftAt) }) : supply ? `${supply.used}/${supply.max} \xB7 ${p.apm}` : t("{n} APM", { n: p.apm });
+        readout.title = supply ? t("Supply {used} of {max} \xB7 {n} actions per minute over the game", { used: supply.used, max: supply.max, n: p.apm }) : t("Actions per minute over the game");
       }
       for (const s of this.steps) s.el.classList.toggle("afm-future", s.frame > frame);
       if (this.running?.el.isConnected) this.running.el.textContent = this.statusOf(this.running.entry);
@@ -4429,9 +4614,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
     eyesSelect = null;
     /** Where the pointer is over the graph, in CSS pixels from its left; null when it is not. */
     hover = null;
-    get canvasTitle() {
-      return t("Fights in red, taller the more they mattered; the turning point in gold; chat in grey; a player leaving in their colour. Point at the graph to read it; press or drag to go there.");
-    }
+    tip = null;
     constructor(body) {
       this.root = el("div", { className: "afm-tl" });
       body.append(this.root);
@@ -4450,19 +4633,8 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
         speed.blur();
       } });
       const chart = chartOf(entry);
-      const chartSelect = w.select([
-        ...entry.played?.adv ? [{ value: "lead", label: t("Army lead") }] : [],
-        { value: "apm", label: t("Actions per minute") },
-        ...entry.played ? [
-          { value: "armyValue", label: t("Army value") },
-          { value: "army", label: t("Army size") },
-          { value: "workers", label: t("Workers") },
-          { value: "supplyUsed", label: t("Supply") },
-          { value: "minerals", label: t("Minerals in the bank") },
-          { value: "gas", label: t("Gas in the bank") },
-          { value: "buildings", label: t("Buildings") }
-        ] : []
-      ], { value: chart, title: t("What the graph shows"), onChange: (v) => {
+      const charts = [...entry.played?.adv ? ["lead"] : [], "apm", ...entry.played ? ["armyValue", "army", "workers", "supplyUsed", "minerals", "gas", "buildings"] : []];
+      const chartSelect = w.select(charts.map((c) => ({ value: c, label: translate(CHART_LABELS[c]) })), { value: chart, title: t("What the graph shows"), onChange: (v) => {
         settings.chart = v;
         save();
         chartSelect.blur();
@@ -4506,8 +4678,10 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
         retry,
         chartSelect
       ));
-      const canvas = el("canvas", { title: this.canvasTitle });
+      const canvas = el("canvas");
       this.canvas = canvas;
+      this.tip?.dispose();
+      this.tip = tooltip(canvas, (at) => this.tipAt(at.offsetX, at.offsetY));
       const seekTo = (e) => {
         const r = canvas.getBoundingClientRect();
         if (current) seek((e.clientX - r.left) / Math.max(1, r.width) * current.report.frames);
@@ -4587,8 +4761,21 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
       this.statsButton.setAttribute("aria-pressed", String(onMap));
       this.statsButton.title = onMap ? t("Back to the game") : games > 1 ? t("Every replay of this map you have open, taken together: where players start, the bases they take, where they fight ({n} replays)", { n: games }) : t("Every replay of this map you have open, taken together: where players start, the bases they take, where they fight. Add more replays of the map there.");
       this.canvas?.classList.toggle("afm-faded", onMap);
-      if (this.canvas) this.canvas.title = onMap ? t("The timeline is one game's: press it to go back to that game") : this.canvasTitle;
       this.draw();
+      this.tip?.refresh();
+    }
+    /** The tooltip at a point over the canvas, CSS pixels from its corner. */
+    tipAt(x, y) {
+      const entry = current, c = this.canvas;
+      if (!entry || !c) return null;
+      if (lensOf() === "map") return t("The timeline is one game's: press it to go back to that game");
+      const frames = entry.report.frames || 1, w2 = Math.max(1, c.clientWidth);
+      const frame = Math.max(0, Math.min(frames, x / w2 * frames));
+      return graphTip(entry, chartOf(entry), frame, 4 / w2 * frames, y < LANE);
+    }
+    /** Ask the tooltip again: a picture it shows has arrived. */
+    refreshTip() {
+      this.tip?.refresh();
     }
     draw() {
       const c = this.canvas;
@@ -4745,21 +4932,12 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
       g.lineTo(x, ch);
       g.stroke();
       if (this.hover !== null) {
-        const hx = this.hover * dpr, frame = this.hover * dpr / cw * frames;
+        const hx = this.hover * dpr;
         g.strokeStyle = "rgba(255,255,255,0.35)";
         g.beginPath();
         g.moveTo(Math.round(hx) + 0.5, 0);
         g.lineTo(Math.round(hx) + 0.5, ch);
         g.stroke();
-        const text = [formatTime(frame), ...readout(entry, chart, frame, 2 * dpr / cw * frames)].join(" \xB7 ");
-        g.font = `${11 * dpr}px system-ui, sans-serif`;
-        g.textBaseline = "middle";
-        const tw = g.measureText(text).width, bw = tw + 10 * dpr, bh = 18 * dpr;
-        const bx = hx + 8 * dpr + bw > cw ? hx - 8 * dpr - bw : hx + 8 * dpr, by = graphTop + 2 * dpr;
-        g.fillStyle = "rgba(20,22,28,0.9)";
-        g.fillRect(bx, by, bw, bh);
-        g.fillStyle = "#e4e8ef";
-        g.fillText(text, bx + 5 * dpr, by + bh / 2);
       }
     }
   }

@@ -172,6 +172,21 @@ const HEAT_LABELS: Record<Exclude<HeatMode, "off">, string> = {
 /** The legend's title for what the map shows. */
 const LEGEND_TITLES: Record<Lens, string> = { watch: msg("The game"), orders: msg("The game and its orders"), map: msg("Map stats") };
 
+/** What the graph's choices are called, in its menu and over its tooltip. */
+const CHART_LABELS: Record<Chart, string> = {
+  lead: msg("Army lead"), apm: msg("Actions per minute"), armyValue: msg("Army value"), army: msg("Army size"), workers: msg("Workers"),
+  supplyUsed: msg("Supply"), minerals: msg("Minerals in the bank"), gas: msg("Gas in the bank"), buildings: msg("Buildings"),
+};
+/** How far back the tooltip looks to say how a number moved: ten seconds. */
+const TREND_FRAMES = FRAMES_PER_MINUTE / 6;
+/** How close to the pointer research, a base, chat or a player leaving is said: two seconds either side, or the pointer's width. */
+const MOMENT_FRAMES = FRAMES_PER_MINUTE / 30;
+const MAX_MOMENTS = 4;
+/** What a side lost, by type, the most first: this many icons, then a count of the rest. */
+const MAX_LOST_TYPES = 6;
+/** A race's town hall, for a base taken: Hatchery, Command Center, Nexus. */
+const HALLS: Record<number, number> = { 0: 131, 1: 106, 2: 154 };
+
 const FIGHT_KINDS: Record<FightKind, string> = { battle: msg("Battle"), workers: msg("Workers killed"), buildings: msg("Buildings destroyed") };
 
 /** Why a fight that mattered matters, as a mark in front of it: it turned the game, it decided a lot, or it was a big even trade. */
@@ -200,6 +215,32 @@ const STYLE = `
 .afm-tip-queue { display: flex; gap: 3px; }
 .afm-tip-icon { width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; background: var(--bg-1); border: 1px solid var(--border); border-radius: 3px; }
 .afm-tip-icon.afm-first { border-color: var(--gold, #d8b04a); }
+.afm-tip-fallback { position: fixed; display: block; pointer-events: none; z-index: 200; max-width: 360px; padding: 6px 8px; }
+.afm-gt { display: flex; flex-direction: column; gap: 6px; min-width: 230px; font-size: 12px; line-height: 1.35; }
+.afm-gt .afm-dim { color: var(--text-dim, #99a2b3); }
+.afm-gt-head { display: flex; align-items: baseline; gap: 10px; justify-content: space-between; }
+.afm-gt-head b { font-variant-numeric: tabular-nums; }
+.afm-gt-lead { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+.afm-gt-players { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto auto; column-gap: 6px; row-gap: 1px; align-items: center; }
+.afm-gt-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.afm-gt-num { text-align: right; font-variant-numeric: tabular-nums; }
+.afm-gt-delta { min-width: 46px; text-align: right; font-size: 11px; font-variant-numeric: tabular-nums; color: var(--text-dim, #99a2b3); }
+.afm-gt-delta.afm-up { color: var(--ok, #4caf50); }
+.afm-gt-delta.afm-down { color: var(--danger, #e05050); }
+.afm-gt-sub { grid-column: 2 / 5; font-size: 11px; margin-bottom: 3px; }
+.afm-gt-fight { display: flex; flex-direction: column; gap: 4px; padding-top: 6px; border-top: 1px solid var(--border, rgba(255,255,255,0.1)); }
+.afm-gt-ftitle { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; }
+.afm-gt-side { display: grid; grid-template-columns: 8px auto auto; column-gap: 6px; align-items: center; }
+.afm-gt-side .afm-gt-lost { grid-column: 1 / 4; display: flex; flex-wrap: wrap; gap: 3px 6px; padding-left: 14px; }
+.afm-gt-unit { display: inline-flex; align-items: center; gap: 1px; }
+.afm-gt-uname { font-size: 11px; }
+.afm-gt-count { font-size: 11px; font-variant-numeric: tabular-nums; }
+.afm-gi { width: 24px; height: 23px; flex: none; padding: 1px; box-sizing: content-box; background: #12151c; border: 1px solid rgba(255,255,255,0.08); border-radius: 3px; }
+.afm-gi-none { display: inline-block; background: none; border-color: transparent; }
+.afm-gt-moments { display: flex; flex-direction: column; gap: 2px; padding-top: 6px; border-top: 1px solid var(--border, rgba(255,255,255,0.1)); }
+.afm-gt-moment { display: flex; align-items: center; gap: 6px; }
+.afm-gt-mtext { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.afm-gt-foot { font-size: 11px; }
 .afm-busy .afm-spin { width: 16px; height: 16px; flex: none; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.22); border-top-color: var(--accent, #4fd1c5); animation: afm-spin 0.8s linear infinite; }
 @keyframes afm-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .afm-busy .afm-spin { animation-duration: 2.4s; } }
@@ -252,10 +293,10 @@ const STYLE = `
 .afm-toggle:disabled { opacity: 0.45; cursor: default; }
 .afm-toggle.afm-on { background: var(--accent, #4fd1c5); border-color: var(--accent, #4fd1c5); color: #10131a; }
 .afm .afm-ahead { color: var(--text, #e4e8ef); font-weight: 600; }
-.afm .afm-mark { display: inline-block; font-size: 10px; font-weight: 600; line-height: 14px; padding: 0 5px; border-radius: 7px; margin-right: 5px; vertical-align: 1px; }
-.afm .afm-mark.afm-turn { background: #f0c64a; color: #1b1d22; }
-.afm .afm-mark.afm-decisive { background: rgba(240,80,60,0.9); color: #fff; }
-.afm .afm-mark.afm-even { background: rgba(160,168,184,0.25); color: var(--text, #e4e8ef); }
+.afm .afm-mark, .afm-gt .afm-mark { display: inline-block; font-size: 10px; font-weight: 600; line-height: 14px; padding: 0 5px; border-radius: 7px; margin-right: 5px; vertical-align: 1px; }
+.afm .afm-mark.afm-turn, .afm-gt .afm-mark.afm-turn { background: #f0c64a; color: #1b1d22; }
+.afm .afm-mark.afm-decisive, .afm-gt .afm-mark.afm-decisive { background: rgba(240,80,60,0.9); color: #fff; }
+.afm .afm-mark.afm-even, .afm-gt .afm-mark.afm-even { background: rgba(160,168,184,0.25); color: var(--text, #e4e8ef); }
 .afm .afm-fold > summary { cursor: pointer; color: var(--text-dim, #99a2b3); padding: 2px 6px; }
 .afm .afm-fold > summary:hover { color: var(--text, #e4e8ef); }
 .afm .afm-chat div { padding: 1px 0; cursor: pointer; }
@@ -308,6 +349,32 @@ export function activate(api: PluginApi) {
   const save = () => api.storage.set("settings", settings);
   const w = api.ui.widgets;
   const el = api.ui.el;
+
+  /**
+   * The editor's tooltip over an element of Aftermath's, asked again as the pointer moves. An editor from before
+   * `ui.tooltip` gets a plain one of the plugin's own in the editor's tooltip style.
+   */
+  function tooltip(target: HTMLElement, content: (at: { offsetX: number; offsetY: number }) => HTMLElement | string | null): { refresh(): void; dispose(): void } {
+    if (typeof api.ui.tooltip === "function") return api.ui.tooltip(target, content, { maxWidth: 360 });
+    const tip = el("div", { className: "tooltip afm-tip-fallback", role: "tooltip" });
+    let last: PointerEvent | null = null;
+    const show = () => {
+      const r = target.getBoundingClientRect();
+      const body = last && target.isConnected ? content({ offsetX: last.clientX - r.left, offsetY: last.clientY - r.top }) : null;
+      if (!body || !last) { tip.remove(); return; }
+      tip.replaceChildren(body);
+      if (!tip.isConnected) document.body.append(tip);
+      const x = last.clientX + 14 + tip.offsetWidth > innerWidth - 8 ? last.clientX - 14 - tip.offsetWidth : last.clientX + 14;
+      const y = last.clientY + 18 + tip.offsetHeight > innerHeight - 8 ? last.clientY - 9 - tip.offsetHeight : last.clientY + 18;
+      tip.style.left = `${Math.max(8, x)}px`;
+      tip.style.top = `${Math.max(8, y)}px`;
+    };
+    const move = (e: PointerEvent) => { last = e; show(); };
+    const leave = () => { last = null; tip.remove(); };
+    target.addEventListener("pointermove", move);
+    target.addEventListener("pointerleave", leave);
+    return { refresh: () => { if (tip.isConnected) show(); }, dispose: () => { leave(); target.removeEventListener("pointermove", move); target.removeEventListener("pointerleave", leave); } };
+  }
 
   const loaded: Loaded[] = [];
   let nextId = 1;
@@ -1320,7 +1387,7 @@ export function activate(api: PluginApi) {
     overlay.redraw();
     game.redrawOver();
   }
-  const imageListener = api.graphics.onImageLoaded(() => { if (current && overlay.isVisible()) overlay.redraw(); if (lastHover) showHover(lastHover); });
+  const imageListener = api.graphics.onImageLoaded(() => { if (current && overlay.isVisible()) overlay.redraw(); if (lastHover) showHover(lastHover); strip?.refreshTip(); });
 
   /** A switch for the strip: a button that stays pressed while it is on. */
   function toggle(label: string, onClick: () => void): HTMLButtonElement {
@@ -1350,31 +1417,137 @@ export function activate(api: PluginApi) {
     return settings.chart;
   }
 
-  /** What the graph says at a moment, as short words for the readout under the pointer; and the fight there, if any. */
-  function readout(entry: Loaded, chart: Chart, frame: number, slack: number): string[] {
-    const out: string[] = [];
-    const shown = entry.report.players.filter((p) => !entry.hidden.has(p.player.id));
-    const nameOf = (index: number) => entry.report.players.find((p) => p.player.index === index)?.player.name ?? "";
+  /* ── The tooltip over the graph: the moment under the pointer, with the game's own icons ── */
+
+  /**
+   * A small picture for the tooltip: the game's button icon for a unit type, an upgrade or a technology; for a
+   * unit with no icon (an editor without them, or game data installed before it kept them), its picture on the map.
+   * Null until either has loaded (the tooltip is asked again when one arrives) and for an upgrade with no icon.
+   */
+  function gameIcon(kind: "unit" | "upgrade" | "tech", id: number, owner: number): HTMLElement | null {
+    let pic: PluginImage | null = null;
+    if (typeof api.graphics.icon === "function") {
+      pic = api.graphics.icon(kind, id);
+      if (!pic) api.graphics.requestIcons();
+    }
+    if (!pic && kind === "unit") {
+      pic = api.graphics.unitImage(id, { owner });
+      if (!pic) api.graphics.requestUnit(id);
+    }
+    if (!pic) return null;
+    // Drawn at the icon sheet's own size and shown smaller, so the icons line up; a unit's picture is fitted in.
+    const w = 36, h = 34, k = Math.min(w / pic.width, h / pic.height, 1);
+    const c = el("canvas", { className: "afm-gi", width: w, height: h }) as HTMLCanvasElement;
+    c.getContext("2d")?.drawImage(pic.image, (w - pic.width * k) / 2, (h - pic.height * k) / 2, pic.width * k, pic.height * k);
+    return c;
+  }
+
+  const number = (n: number) => Math.round(n).toLocaleString();
+  /** Supply as the game's console shows it: Zerglings and Scourge count half each, and a half shows as a whole. */
+  const supplyShown = (n: number) => Math.ceil(n);
+
+  /**
+   * What the tooltip says at a moment: each player's number on the graph and how it moved in the last ten seconds,
+   * their supply, workers, army and bank; the fight there with what each side lost, as icons; what happened close
+   * by (research done, a base taken, chat, a player leaving). `slack`: frames either side the pointer covers.
+   * `lane`: the pointer is over the marks above the graph, where it explains them when nothing is there.
+   */
+  function graphTip(entry: Loaded, chart: Chart, frame: number, slack: number, lane: boolean): HTMLElement {
+    const byIndex = new Map(entry.report.players.map((p) => [p.player.index, p]));
+    const nameOf = (index: number) => byIndex.get(index)?.player.name ?? "";
+    const swatch = (index: number) => el("span", { className: "afm-tip-swatch", style: `background:${byIndex.get(index)?.player.color ?? "#888"}` });
     const tl = entry.played?.timeline ?? null;
     const adv = entry.played?.adv ?? null;
+    const rows: HTMLElement[] = [el("div", { className: "afm-gt-head" }, el("b", {}, formatTime(frame)), el("span", { className: "afm-dim" }, translate(CHART_LABELS[chart])))];
+
     if (chart === "lead" && adv) {
       const i = sampleIndex(adv.frames, frame);
       const n = i >= 0 ? Math.round(adv.lead[i]) : 0;
-      out.push(n === 0 ? t("even") : t("{name} ahead by {n}", { name: nameOf(n > 0 ? adv.a : adv.b), n: Math.abs(n) }));
-    } else if (chart === "apm") {
-      const m = Math.floor(frame / FRAMES_PER_MINUTE);
-      for (const p of shown) out.push(`${p.player.name} ${p.perMinute[m] ?? 0}`);
-    } else if (tl && chart !== "lead") {
-      const i = sampleIndex(tl.samples.frame, frame);
-      for (const p of shown) { const v = i >= 0 ? series(tl, p.player.index, chart)?.[i] : undefined; if (v !== undefined) out.push(`${p.player.name} ${v}`); }
+      rows.push(el("div", { className: "afm-gt-lead" }, ...(n === 0 ? [t("even")] : [swatch(n > 0 ? adv.a : adv.b), t("{name} ahead by {n}", { name: nameOf(n > 0 ? adv.a : adv.b), n: number(Math.abs(n)) })])));
     }
-    // The fight that mattered most at that moment.
+
+    // The players: the graph's number, how it moved, and the rest of what the engine counted.
+    const at = tl ? sampleIndex(tl.samples.frame, frame) : -1;
+    const before = tl ? sampleIndex(tl.samples.frame, frame - TREND_FRAMES) : -1;
+    const minute = Math.floor(frame / FRAMES_PER_MINUTE);
+    const grid = el("div", { className: "afm-gt-players" });
+    for (const p of entry.report.players) {
+      if (entry.hidden.has(p.player.id)) continue;
+      const s = tl?.samples.players.find((x) => x.slot === p.player.index);
+      // An observer: in the game, with nothing in it.
+      if (s && !s.supplyMax.some((n) => n > 0)) continue;
+      const metric: Metric | null = chart === "lead" ? "armyValue" : chart === "apm" ? null : chart;
+      const value = metric ? (s && at >= 0 ? s[metric][at] : undefined) : p.perMinute[minute];
+      const was = metric && s && before >= 0 ? s[metric][before] : undefined;
+      const gone = p.leftAt !== null && p.leftAt <= frame;
+      const delta = value !== undefined && was !== undefined ? value - was : 0;
+      grid.append(
+        swatch(p.player.index),
+        el("span", { className: "afm-gt-name" }, p.player.name),
+        el("b", { className: "afm-gt-num" }, gone ? "" : value === undefined ? "–" : number(value)),
+        el("span", { className: `afm-gt-delta ${delta > 0 ? "afm-up" : delta < 0 ? "afm-down" : ""}` }, delta ? `${delta > 0 ? "▲" : "▼"} ${number(Math.abs(delta))}` : ""),
+      );
+      // The rest of the player's numbers, less the one the row already shows.
+      const parts = s && at >= 0 ? [
+        metric !== "supplyUsed" ? t("{used}/{max} supply", { used: supplyShown(s.supplyUsed[at]), max: supplyShown(s.supplyMax[at]) }) : null,
+        metric !== "workers" ? t("{n} workers", { n: s.workers[at] }) : null,
+        metric !== "armyValue" ? t("{n} army value", { n: number(s.armyValue[at]) }) : null,
+        metric !== "minerals" && metric !== "gas" ? t("{minerals} minerals, {gas} gas", { minerals: number(s.minerals[at]), gas: number(s.gas[at]) }) : null,
+      ].filter((x) => x !== null) : [];
+      const sub = gone ? t("left {time}", { time: formatTime(p.leftAt!) }) : parts.length ? parts.join(" · ") : null;
+      if (sub) grid.append(el("span", {}), el("span", { className: "afm-gt-sub afm-dim" }, sub));
+    }
+    rows.push(grid);
+
+    // The fight that mattered most there, and what each side lost in it.
     const here = (entry.played?.fights ?? []).filter((f) => frame >= f.from - slack && frame <= f.to + slack).sort((a, b) => b.importance - a.importance)[0];
     if (here && entry.played) {
       const mark = fightMark(here);
-      out.push(`${mark ? `${translate(mark.label)}: ` : ""}${translate(FIGHT_KINDS[here.kind])}, ${placeOf(here.x, here.y, entry.played.timeline.map)}`);
+      const box = el("div", { className: "afm-gt-fight" }, el("div", { className: "afm-gt-ftitle" },
+        mark ? el("span", { className: `afm-mark afm-${mark.id}` }, translate(mark.label)) : null,
+        el("b", {}, translate(FIGHT_KINDS[here.kind])),
+        el("span", { className: "afm-dim" }, `${placeOf(here.x, here.y, entry.played.timeline.map)} · ${formatTime(here.from)}–${formatTime(here.to)}`)));
+      for (const sd of here.sides) {
+        const types = [...sd.lostTypes].sort((a, b) => b[1] - a[1]);
+        const shown = types.slice(0, MAX_LOST_TYPES);
+        box.append(el("div", { className: "afm-gt-side" },
+          swatch(sd.player),
+          el("span", { className: "afm-gt-name" }, nameOf(sd.player)),
+          el("span", { className: "afm-dim" }, sd.lostValue > 0 ? t("lost {value}", { value: number(sd.lostValue) }) : t("lost {n}", { n: sd.lost })),
+          el("span", { className: "afm-gt-lost" }, ...shown.map(([type, n]) => el("span", { className: "afm-gt-unit", title: api.names.unit(type) },
+            gameIcon("unit", type, sd.player) ?? el("span", { className: "afm-gt-uname" }, api.names.unit(type)),
+            n > 1 ? el("span", { className: "afm-gt-count" }, `×${n}`) : null)),
+            types.length > shown.length ? el("span", { className: "afm-dim" }, `+${types.length - shown.length}`) : null)));
+      }
+      rows.push(box);
     }
-    return out;
+
+    // What happened close by, nearest first.
+    const near = Math.max(slack, MOMENT_FRAMES);
+    const moments: { frame: number; node: HTMLElement }[] = [];
+    const moment = (f: number, player: number | null, icon: HTMLElement | null, text: string) => {
+      if (Math.abs(f - frame) <= near) moments.push({ frame: f, node: el("div", { className: "afm-gt-moment" },
+        icon ?? el("span", { className: "afm-gi afm-gi-none" }), player !== null ? swatch(player) : null, el("span", { className: "afm-gt-mtext" }, text), el("span", { className: "afm-dim" }, formatTime(f))) });
+    };
+    for (const r of tl?.research ?? []) {
+      const name = r.kind === "tech" ? api.names.tech(r.id) : api.names.upgrade(r.id);
+      moment(r.frame, r.player, gameIcon(r.kind, r.id, r.player), r.kind === "upgrade" && r.level > 1 ? t("{name}, level {level}", { name, level: r.level }) : name);
+    }
+    for (const b of entry.played?.bases ?? []) {
+      const race = byIndex.get(b.player)?.player.race ?? 1;
+      moment(b.frame, b.player, gameIcon("unit", HALLS[race] ?? 106, b.player), t("Takes base {n}", { n: b.nth }));
+    }
+    for (const line of entry.report.chat) {
+      const p = entry.report.players.find((x) => x.player.id === line.player);
+      moment(line.frame, p?.player.index ?? null, null, `${p ? `${p.player.name}: ` : ""}${line.text}`);
+    }
+    for (const p of entry.report.players) if (p.leftAt !== null) moment(p.leftAt, p.player.index, null, t("{name} left the game", { name: p.player.name }));
+    moments.sort((a, b) => Math.abs(a.frame - frame) - Math.abs(b.frame - frame));
+    if (moments.length) rows.push(el("div", { className: "afm-gt-moments" }, ...moments.slice(0, MAX_MOMENTS).sort((a, b) => a.frame - b.frame).map((m) => m.node)));
+
+    // Over the marks with nothing there, what the marks are; elsewhere what a press does.
+    rows.push(el("div", { className: "afm-gt-foot afm-dim" }, lane && !here && !moments.length ? t("Fights in red, taller the more they mattered; the turning point in gold; chat in grey; a player leaving in their colour.") : t("Press or drag to go there")));
+    return el("div", { className: "afm-gt" }, ...rows);
   }
 
   /** To a fight: a moment before its first death, so it is seen to begin, with a flash round where things fell. */
@@ -1957,7 +2130,7 @@ export function activate(api: PluginApi) {
         const left = p.leftAt !== null && p.leftAt <= frame;
         const series = tl ? tl.samples.players.find((s) => s.slot === p.player.index) : undefined;
         // Short, so the name keeps its room: supply once the game is played through, then actions per minute.
-        const supply = series && at >= 0 ? { used: series.supplyUsed[at] ?? 0, max: series.supplyMax[at] ?? 0 } : null;
+        const supply = series && at >= 0 ? { used: supplyShown(series.supplyUsed[at] ?? 0), max: supplyShown(series.supplyMax[at] ?? 0) } : null;
         readout.textContent = left ? t("left {time}", { time: formatTime(p.leftAt!) }) : supply ? `${supply.used}/${supply.max} · ${p.apm}` : t("{n} APM", { n: p.apm });
         readout.title = supply ? t("Supply {used} of {max} · {n} actions per minute over the game", { used: supply.used, max: supply.max, n: p.apm }) : t("Actions per minute over the game");
       }
@@ -1980,9 +2153,7 @@ export function activate(api: PluginApi) {
     private eyesSelect: HTMLSelectElement | null = null;
     /** Where the pointer is over the graph, in CSS pixels from its left; null when it is not. */
     private hover: number | null = null;
-    private get canvasTitle(): string {
-      return t("Fights in red, taller the more they mattered; the turning point in gold; chat in grey; a player leaving in their colour. Point at the graph to read it; press or drag to go there.");
-    }
+    private tip: { refresh(): void; dispose(): void } | null = null;
 
     constructor(body: HTMLElement) {
       this.root = el("div", { className: "afm-tl" });
@@ -1999,19 +2170,8 @@ export function activate(api: PluginApi) {
       // A menu keeps the focus, and Space and the arrows with it: each gives it back once chosen.
       const speed = w.select([1, 2, 4, 8, 16, 32].map((n) => ({ value: n, label: `${n}×` })), { value: settings.speed, title: t("Playback speed"), onChange: (v) => { settings.speed = Number(v); save(); if (gameClock()) game.speed(settings.speed); speed.blur(); } });
       const chart = chartOf(entry);
-      const chartSelect = w.select([
-        ...(entry.played?.adv ? [{ value: "lead", label: t("Army lead") }] : []),
-        { value: "apm", label: t("Actions per minute") },
-        ...(entry.played ? [
-          { value: "armyValue", label: t("Army value") },
-          { value: "army", label: t("Army size") },
-          { value: "workers", label: t("Workers") },
-          { value: "supplyUsed", label: t("Supply") },
-          { value: "minerals", label: t("Minerals in the bank") },
-          { value: "gas", label: t("Gas in the bank") },
-          { value: "buildings", label: t("Buildings") },
-        ] : []),
-      ], { value: chart, title: t("What the graph shows"), onChange: (v) => { settings.chart = v as Chart; save(); chartSelect.blur(); this.draw(); } });
+      const charts: Chart[] = [...(entry.played?.adv ? ["lead" as const] : []), "apm", ...(entry.played ? ["armyValue", "army", "workers", "supplyUsed", "minerals", "gas", "buildings"] as const : [])];
+      const chartSelect = w.select(charts.map((c) => ({ value: c, label: translate(CHART_LABELS[c]) })), { value: chart, title: t("What the graph shows"), onChange: (v) => { settings.chart = v as Chart; save(); chartSelect.blur(); this.draw(); } });
       this.status = el("span", { className: "afm-dim afm-grow" });
       const retry = entry.failed && sim?.present && !running
         ? w.button(t("Try again"), { ghost: true, className: "sm", title: entry.failed, onClick: () => { queue.unshift(entry); pump(); } })
@@ -2040,8 +2200,10 @@ export function activate(api: PluginApi) {
         this.status, retry, chartSelect));
 
       // The lane of marks and the graph, one canvas: press or drag anywhere on it to go there.
-      const canvas = el("canvas", { title: this.canvasTitle }) as HTMLCanvasElement;
+      const canvas = el("canvas") as HTMLCanvasElement;
       this.canvas = canvas;
+      this.tip?.dispose();
+      this.tip = tooltip(canvas, (at) => this.tipAt(at.offsetX, at.offsetY));
       const seekTo = (e: PointerEvent) => {
         const r = canvas.getBoundingClientRect();
         if (current) seek(((e.clientX - r.left) / Math.max(1, r.width)) * current.report.frames);
@@ -2126,9 +2288,22 @@ export function activate(api: PluginApi) {
         : games > 1 ? t("Every replay of this map you have open, taken together: where players start, the bases they take, where they fight ({n} replays)", { n: games })
         : t("Every replay of this map you have open, taken together: where players start, the bases they take, where they fight. Add more replays of the map there.");
       this.canvas?.classList.toggle("afm-faded", onMap);
-      if (this.canvas) this.canvas.title = onMap ? t("The timeline is one game's: press it to go back to that game") : this.canvasTitle;
       this.draw();
+      this.tip?.refresh();
     }
+
+    /** The tooltip at a point over the canvas, CSS pixels from its corner. */
+    private tipAt(x: number, y: number): HTMLElement | string | null {
+      const entry = current, c = this.canvas;
+      if (!entry || !c) return null;
+      if (lensOf() === "map") return t("The timeline is one game's: press it to go back to that game");
+      const frames = entry.report.frames || 1, w = Math.max(1, c.clientWidth);
+      const frame = Math.max(0, Math.min(frames, (x / w) * frames));
+      return graphTip(entry, chartOf(entry), frame, (4 / w) * frames, y < LANE);
+    }
+
+    /** Ask the tooltip again: a picture it shows has arrived. */
+    refreshTip(): void { this.tip?.refresh(); }
 
     draw(): void {
       const c = this.canvas;
@@ -2270,20 +2445,11 @@ export function activate(api: PluginApi) {
       g.lineWidth = 1 * dpr;
       g.beginPath(); g.moveTo(x, 0); g.lineTo(x, ch); g.stroke();
 
-      // Under the pointer: the moment, what the graph says there, and the fight there if any.
+      // Under the pointer: where it is (the tooltip says what is there).
       if (this.hover !== null) {
-        const hx = this.hover * dpr, frame = (this.hover * dpr / cw) * frames;
+        const hx = this.hover * dpr;
         g.strokeStyle = "rgba(255,255,255,0.35)";
         g.beginPath(); g.moveTo(Math.round(hx) + 0.5, 0); g.lineTo(Math.round(hx) + 0.5, ch); g.stroke();
-        const text = [formatTime(frame), ...readout(entry, chart, frame, (2 * dpr / cw) * frames)].join(" · ");
-        g.font = `${11 * dpr}px system-ui, sans-serif`;
-        g.textBaseline = "middle";
-        const tw = g.measureText(text).width, bw = tw + 10 * dpr, bh = 18 * dpr;
-        const bx = hx + 8 * dpr + bw > cw ? hx - 8 * dpr - bw : hx + 8 * dpr, by = graphTop + 2 * dpr;
-        g.fillStyle = "rgba(20,22,28,0.9)";
-        g.fillRect(bx, by, bw, bh);
-        g.fillStyle = "#e4e8ef";
-        g.fillText(text, bx + 5 * dpr, by + bh / 2);
       }
     }
   }
