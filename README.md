@@ -137,6 +137,44 @@ game data is installed again (Help ▸ Game Data).
 
 The window needs a version of scmJS newer than 0.7.3.
 
+### Cast: the game with commentary
+
+With the scmjs.dev plugin signed in to an account the server offers casts to, an analysed
+replay has a **Cast…** button on the timeline. A cast is the game as a broadcast: the
+camera on the action, and two commentators talking over it — a play-by-play caster and an
+analyst who reads the builds, the economies and what each fight changes. The scmjs.dev AI
+writes what they say from what the game engine measured (the openings with their supply
+counts, the bases, the armies, what fell in each fight and what killed it) and what it
+knows of the game in general; where the server has voices set up, it reads it aloud. What
+is said is shown as captions too. The commentators know only those facts about the game:
+they do not see micro or spells, and say nothing about the players beyond their play.
+
+**Cast…** opens a window with the choices:
+
+- **Format**: the whole game, played fast through the quiet parts and at normal speed for
+  the key fights with no cuts (about half the length of the game), or the key moments only.
+- **Banter**: none, some or lots — what the two talk about when little is happening. Each
+  cast gives them a new pair of odd interests to bring up.
+- **Voices** or **captions only**, and **cards**: when the commentators talk about an
+  upgrade, a unit or a building, a card shows it with how far along it is.
+- **Notes** for the commentators, such as a language or what to talk about more.
+
+The window says about how long the cast will be, what it will likely cost from the
+account's balance, and how long it takes to make. Making one shows each step as it goes —
+writing the script part by part, voicing it line by line — and the window can be closed
+meanwhile: the timeline says when it is ready.
+
+Casts are kept in the browser with their voices, so watching one again costs nothing and
+needs no server. When a replay is opened again, the timeline offers its newest cast as
+**Watch cast**; the window lists the others to watch or delete. Past 30 casts or 300 MB the
+ones watched longest ago are let go. Casts are kept per browser and site: another browser
+or the desktop app has its own.
+
+While a cast plays, pausing pauses the voices and going somewhere else on the timeline ends
+it. Where the game itself is shown (the Game view), **Cinematic** takes it full screen
+without the editor: a broadcast bar with each player's numbers and the clock, a title card,
+a banner when a key fight begins, the winner at the end, and larger captions. Esc leaves.
+
 ### Map stats: many replays of one map
 
 One game says little about a map; twenty show which starts do well, which bases get taken
