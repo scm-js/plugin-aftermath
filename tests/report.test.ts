@@ -2,17 +2,19 @@ import { describe, expect, it } from "vitest";
 import type { ReplayTimeline } from "../vendor/scm-sim";
 import type { Fight } from "../fights";
 import type { Standing } from "../played";
+import type { Base } from "../story";
 import { clockOf, mapReport, winnerOf, VISIT_CELL, type GameInput } from "../report";
 
-const CC = 106, NEXUS = 154, DEPOT = 109;
+const CC = 106;
 const hall = (owner: number, x: number, y: number, from = 0, type = CC): Standing => ({ type, owner, x, y, from, done: from, to: null });
-const fight = (from: number, x: number, y: number, winner: number | null, value = 100): Fight => ({ from, to: from + 100, x, y, rect: { x0: x, y0: y, x1: x, y1: y }, losses: 5, value, winner, sides: [0, 1].map((player) => ({ player, lost: 1, lostValue: 0, killed: 1, killedValue: 0, army: 0, armyValue: 0, lostTypes: new Map() })) });
-const game = (standing: Standing[], fights: Fight[], winner: number | null, frames = 10000, at: [number, number][] = []): GameInput => ({
-  standing, fights, winner,
+const fight = (from: number, x: number, y: number, winner: number | null, value = 100, tier: Fight["tier"] = "major"): Fight => ({ from, to: from + 100, x, y, rect: { x0: x, y0: y, x1: x, y1: y }, points: [], losses: 5, value, winner, kind: "battle", tier, share: 0.2, turning: false, importance: 0.2, key: false, sides: [0, 1].map((player) => ({ player, lost: 1, lostValue: 0, killed: 1, killedValue: 0, army: 0, armyValue: 0, had: 10, lostTypes: new Map() })) });
+const game = (standing: Standing[], fights: Fight[], winner: number | null, frames = 10000, at: [number, number][] = [], bases: Base[] = []): GameInput => ({
+  standing, fights, winner, bases,
   timeline: { version: 2, frames, total: frames, ended: null, map: { width: 64, height: 64 }, players: [], events: [], research: [], samples: { every: 48, frame: [], players: [] },
     positions: at.length ? { every: 48, frame: [0], start: Uint32Array.from([0, at.length]), unit: Uint32Array.from(at.map((_, i) => i)), x: Uint16Array.from(at.map((p) => p[0])), y: Uint16Array.from(at.map((p) => p[1])) } : null } as ReplayTimeline,
 });
 const MAP = { width: 64, height: 64 };
+const base = (player: number, x: number, y: number, frame: number, nth: number): Base => ({ player, x, y, frame, nth, line: 0 });
 // Starts top left and bottom right; a natural beside each, and a base in the middle.
 const A = [200, 200] as const, B = [1800, 1800] as const, NAT_A = [200, 800] as const, NAT_B = [1800, 1200] as const, MID = [1024, 1024] as const;
 
@@ -37,18 +39,19 @@ describe("the map's report", () => {
 
   it("lists the bases taken: in how many games, when, and which base it was", () => {
     const r = mapReport([
-      game([hall(0, ...A), hall(1, ...B), hall(0, ...NAT_A, 3000), hall(0, ...MID, 9000), hall(1, ...NAT_B, 4000, NEXUS), hall(0, A[0] + 60, A[1], 5000), { ...hall(0, 500, 500, 100, DEPOT) }], [], null),
-      game([hall(0, ...A), hall(1, ...B), hall(0, NAT_A[0] + 30, NAT_A[1], 5000), hall(0, ...NAT_A, 8000)], [], null),
+      game([hall(0, ...A), hall(1, ...B)], [], null, 10000, [], [base(0, ...NAT_A, 3000, 2), base(0, ...MID, 9000, 3), base(1, ...NAT_B, 4000, 2)]),
+      game([hall(0, ...A), hall(1, ...B)], [], null, 10000, [], [base(0, NAT_A[0] + 30, NAT_A[1], 5000, 2)]),
     ], MAP);
     const taken = r.sites.filter((s) => s.taken > 0).map((s) => [Math.round(s.x / 100), Math.round(s.y / 100), s.starts, s.taken, s.medianFrame, s.medianOrder]);
-    // The natural twice (the second hall there in one game is not a second taking), the others once; a hall beside one's own start is no new base.
+    // The natural in both games, the others once: when it was first taken (the middle game's) and which base it was.
     expect(taken).toEqual([[2, 8, 0, 2, 3000, 2], [18, 12, 0, 1, 4000, 2], [10, 10, 0, 1, 9000, 3]]);
   });
 
   it("finds where the fighting is and whether the nearer player comes out ahead", () => {
     const starts = [hall(0, ...A), hall(1, ...B)];
     const r = mapReport([
-      game(starts, [fight(2000, 300, 700, 0), fight(6000, 1024, 1024, null)], 0),
+      // A skirmish says nothing of where the fighting is, nor when it starts.
+      game(starts, [fight(500, 1024, 1024, 0, 50, "minor"), fight(900, 1030, 1020, 1, 50, "minor"), fight(2000, 300, 700, 0), fight(6000, 1024, 1024, null)], 0),
       game(starts, [fight(3000, 320, 720, 1), fight(4000, 340, 690, 0), fight(7000, 1500, 300, 0)], 0),
     ], MAP);
     expect(r.spots.map((s) => [Math.round(s.x), s.fights, s.games, s.value, s.medianFrame, s.decided, s.nearerWon])).toEqual([[320, 3, 2, 300, 3000, 3, 2]]);

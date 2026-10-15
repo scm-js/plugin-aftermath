@@ -929,41 +929,22 @@ function plainText(s) {
 
 // ko.ts
 var KO = {
-  "A floating panel is dragged about and resized from its corner; a docked one sits in the right-hand column beside the map. The Dock and Float button in the panel does the same.": "\uB5A0 \uC788\uB294 \uD328\uB110\uC740 \uB04C\uC5B4\uC11C \uC62E\uAE30\uACE0 \uBAA8\uC11C\uB9AC\uB85C \uD06C\uAE30\uB97C \uBC14\uAFC9\uB2C8\uB2E4. \uB3C4\uD0B9\uD55C \uD328\uB110\uC740 \uB9F5 \uC606 \uC624\uB978\uCABD \uC5F4\uC5D0 \uB193\uC785\uB2C8\uB2E4. \uD328\uB110\uC758 \uB3C4\uD0B9/\uB744\uC6B0\uAE30 \uBC84\uD2BC\uB3C4 \uAC19\uC740 \uC77C\uC744 \uD569\uB2C8\uB2E4.",
-  "A replay records the orders players gave, not what happened, so Aftermath shows what was asked for: buildings placed, where units were sent, build orders and actions per minute.": "\uB9AC\uD50C\uB808\uC774\uB294 \uC2E4\uC81C\uB85C \uC77C\uC5B4\uB09C \uC77C\uC774 \uC544\uB2C8\uB77C \uD50C\uB808\uC774\uC5B4\uAC00 \uB0B4\uB9B0 \uBA85\uB839\uC744 \uAE30\uB85D\uD569\uB2C8\uB2E4. \uADF8\uB798\uC11C Aftermath\uB294 \uC694\uCCAD\uB41C \uAC83\uC744 \uBCF4\uC5EC \uC90D\uB2C8\uB2E4: \uC9C0\uC740 \uAC74\uBB3C, \uC720\uB2DB\uC744 \uBCF4\uB0B8 \uACF3, \uBE4C\uB4DC \uC624\uB354, \uBD84\uB2F9 \uD589\uB3D9 \uC218.",
   "A section claims more chunks than a replay can hold.": "\uD55C \uC139\uC158\uC774 \uB9AC\uD50C\uB808\uC774\uC5D0 \uB4E4\uC5B4\uAC08 \uC218 \uC788\uB294 \uAC83\uBCF4\uB2E4 \uB9CE\uC740 \uC870\uAC01\uC744 \uAC00\uC84C\uB2E4\uACE0 \uD569\uB2C8\uB2E4.",
   "A section claims to be larger than any replay.": "\uD55C \uC139\uC158\uC774 \uC5B4\uB5A4 \uB9AC\uD50C\uB808\uC774\uBCF4\uB2E4\uB3C4 \uD06C\uB2E4\uACE0 \uD569\uB2C8\uB2E4.",
   "A section holds more than its stated size.": "\uD55C \uC139\uC158\uC5D0 \uC801\uD78C \uD06C\uAE30\uBCF4\uB2E4 \uB9CE\uC740 \uB370\uC774\uD130\uAC00 \uB4E4\uC5B4 \uC788\uC2B5\uB2C8\uB2E4.",
   "A section's data does not unpack.": "\uD55C \uC139\uC158\uC758 \uB370\uC774\uD130\uB97C \uD480 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.",
   "A section's size is missing.": "\uD55C \uC139\uC158\uC758 \uD06C\uAE30\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.",
   "Actions per minute": "\uBD84\uB2F9 \uD589\uB3D9 \uC218",
-  "Actions per minute over the game \u2014 click to go there": "\uAC8C\uC784 \uC804\uCCB4\uC758 \uBD84\uB2F9 \uD589\uB3D9 \uC218 \u2014 \uD074\uB9AD\uD558\uBA74 \uADF8 \uC2DC\uC810\uC73C\uB85C \uAC11\uB2C8\uB2E4",
   "Aftermath opens StarCraft replays, files ending in .rep.": "Aftermath\uB294 .rep\uB85C \uB05D\uB098\uB294 StarCraft \uB9AC\uD50C\uB808\uC774 \uD30C\uC77C\uC744 \uC5FD\uB2C8\uB2E4.",
-  "All {n} replays of this map": "\uC774 \uB9F5\uC758 \uB9AC\uD50C\uB808\uC774 {n}\uAC1C \uBAA8\uB450",
-  "Build order": "\uBE4C\uB4DC \uC624\uB354",
   "Buildings": "\uAC74\uBB3C",
   "Capture the Flag": "\uAE43\uBC1C \uBE8F\uAE30",
   "Chat": "\uCC44\uD305",
-  "Close": "\uB2EB\uAE30",
-  "Close this replay": "\uC774 \uB9AC\uD50C\uB808\uC774 \uB2EB\uAE30",
   "Could not read {name}": "{name}\uC744(\uB97C) \uC77D\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4",
-  "Count the whole game rather than up to the timeline": "\uD0C0\uC784\uB77C\uC778\uAE4C\uC9C0\uAC00 \uC544\uB2C8\uB77C \uAC8C\uC784 \uC804\uCCB4\uB97C \uC149\uB2C8\uB2E4",
-  "Dock": "\uB3C4\uD0B9",
-  "Docked on the right": "\uC624\uB978\uCABD\uC5D0 \uB3C4\uD0B9",
-  "Drop replays (.rep) here, or": "\uB9AC\uD50C\uB808\uC774(.rep)\uB97C \uC5EC\uAE30\uC5D0 \uB04C\uC5B4 \uB193\uAC70\uB098",
-  "Float": "\uB744\uC6B0\uAE30",
-  "Float the panel over the map": "\uD328\uB110\uC744 \uB9F5 \uC704\uC5D0 \uB744\uC6C1\uB2C8\uB2E4",
-  "Floating over the map": "\uB9F5 \uC704\uC5D0 \uB5A0 \uC788\uC74C",
   "Free For All": "\uB09C\uC804",
   "Game type {n}": "\uAC8C\uC784 \uC720\uD615 {n}",
   "Go to the time": "\uADF8 \uC2DC\uAC04\uC73C\uB85C \uC774\uB3D9",
   "Go to the time and place": "\uADF8 \uC2DC\uAC04\uACFC \uC704\uCE58\uB85C \uC774\uB3D9",
   "Greed": "\uD0D0\uC695",
-  "Heat: all orders": "\uD788\uD2B8\uB9F5: \uBAA8\uB4E0 \uBA85\uB839",
-  "Heat: attacks": "\uD788\uD2B8\uB9F5: \uACF5\uACA9",
-  "Heat: buildings": "\uD788\uD2B8\uB9F5: \uAC74\uBB3C",
-  "Heat: minimap pings": "\uD788\uD2B8\uB9F5: \uBBF8\uB2C8\uB9F5 \uD551",
-  "Heat: moves": "\uD788\uD2B8\uB9F5: \uC774\uB3D9",
   "Ladder": "\uB798\uB354",
   "Melee": "\uBC00\uB9AC",
   "No builds, units or research ordered.": "\uBA85\uB839\uD55C \uAC74\uBB3C, \uC720\uB2DB, \uC5F0\uAD6C\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.",
@@ -971,20 +952,14 @@ var KO = {
   "Not a replay": "\uB9AC\uD50C\uB808\uC774\uAC00 \uC544\uB2D9\uB2C8\uB2E4",
   "One on One": "\uC77C\uB300\uC77C",
   "Open Replay\u2026": "\uB9AC\uD50C\uB808\uC774 \uC5F4\uAE30\u2026",
-  "Open the replay's map": "\uB9AC\uD50C\uB808\uC774\uC758 \uB9F5 \uC5F4\uAE30",
   "Ordered {n} times": "{n}\uBC88 \uBA85\uB839\uD568",
-  "Panel": "\uD328\uB110",
   "Pause": "\uC77C\uC2DC \uC815\uC9C0",
   "Play": "\uC7AC\uC0DD",
   "Playback speed": "\uC7AC\uC0DD \uC18D\uB3C4",
   "Protoss": "\uD504\uB85C\uD1A0\uC2A4",
-  "Put the panel in the right dock, beside the map": "\uD328\uB110\uC744 \uB9F5 \uC606 \uC624\uB978\uCABD \uB3C4\uD06C\uC5D0 \uB193\uC2B5\uB2C8\uB2E4",
   "Random": "\uBB34\uC791\uC704",
-  "Recent orders": "\uCD5C\uADFC \uBA85\uB839",
   "Replay map": "\uB9AC\uD50C\uB808\uC774 \uB9F5",
-  "Show": "\uD45C\uC2DC",
   "Show SCVs, Drones and Probes": "SCV, \uB4DC\uB860, \uD504\uB85C\uBE0C \uD45C\uC2DC",
-  "Show this player on the map": "\uC774 \uD50C\uB808\uC774\uC5B4\uB97C \uB9F5\uC5D0 \uD45C\uC2DC",
   "Slaughter": "\uD559\uC0B4",
   "Sudden Death": "\uC11C\uB4E0 \uB370\uC2A4",
   "Team Capture the Flag": "\uD300 \uAE43\uBC1C \uBE8F\uAE30",
@@ -992,13 +967,10 @@ var KO = {
   "Team Melee": "\uD300 \uBC00\uB9AC",
   "Terran": "\uD14C\uB780",
   "The file ends in the middle of a section.": "\uD30C\uC77C\uC774 \uC139\uC158 \uC911\uAC04\uC5D0\uC11C \uB05D\uB0A9\uB2C8\uB2E4.",
-  "The map in front is not the one this game was played on.": "\uC55E\uC5D0 \uC5F4\uB9B0 \uB9F5\uC740 \uC774 \uAC8C\uC784\uC744 \uD55C \uB9F5\uC774 \uC544\uB2D9\uB2C8\uB2E4.",
   "The replay's header is too short.": "\uB9AC\uD50C\uB808\uC774\uC758 \uD5E4\uB354\uAC00 \uB108\uBB34 \uC9E7\uC2B5\uB2C8\uB2E4.",
   "This is not a StarCraft replay.": "StarCraft \uB9AC\uD50C\uB808\uC774\uAC00 \uC544\uB2D9\uB2C8\uB2E4.",
   "Top vs Bottom": "\uD0D1 vs \uBC14\uD140",
   "Use Map Settings": "\uC720\uC988\uB9F5 \uC138\uD305",
-  "Where units were sent in the last 8 seconds": "\uC9C0\uB09C 8\uCD08 \uB3D9\uC548 \uC720\uB2DB\uC744 \uBCF4\uB0B8 \uACF3",
-  "Whole game": "\uAC8C\uC784 \uC804\uCCB4",
   "Workers": "\uC77C\uAFBC",
   "Zerg": "\uC800\uADF8",
   "before 1.18": "1.18 \uC774\uC804",
@@ -1006,50 +978,41 @@ var KO = {
   "{n, plural, one {# command of a kind Aftermath does not know was skipped.} other {# commands of a kind Aftermath does not know were skipped.}}": "Aftermath\uAC00 \uBAA8\uB974\uB294 \uC885\uB958\uC758 \uBA85\uB839 {n}\uAC1C\uB97C \uAC74\uB108\uB6F0\uC5C8\uC2B5\uB2C8\uB2E4.",
   "{n} APM": "{n} APM",
   "The game engine cannot run a game here.": "\uC5EC\uAE30\uC11C\uB294 \uAC8C\uC784 \uC5D4\uC9C4\uC774 \uAC8C\uC784\uC744 \uC2E4\uD589\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.",
-  "Could not play {name} through": "{name}\uC744(\uB97C) \uB05D\uAE4C\uC9C0 \uC2E4\uD589\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4",
-  "Played through to {time}, where the game stopped. Buildings, units, what was made and the graphs below are what happened.": "\uAC8C\uC784\uC774 \uBA48\uCD98 {time}\uAE4C\uC9C0 \uC2E4\uD589\uD588\uC2B5\uB2C8\uB2E4. \uC544\uB798\uC758 \uAC74\uBB3C, \uC720\uB2DB, \uC0DD\uC0B0 \uBAA9\uB85D\uACFC \uADF8\uB798\uD504\uB294 \uC2E4\uC81C\uB85C \uC77C\uC5B4\uB09C \uC77C\uC785\uB2C8\uB2E4.",
-  "Played through. Buildings, units, what was made and the graphs below are what happened.": "\uB05D\uAE4C\uC9C0 \uC2E4\uD589\uD588\uC2B5\uB2C8\uB2E4. \uC544\uB798\uC758 \uAC74\uBB3C, \uC720\uB2DB, \uC0DD\uC0B0 \uBAA9\uB85D\uACFC \uADF8\uB798\uD504\uB294 \uC2E4\uC81C\uB85C \uC77C\uC5B4\uB09C \uC77C\uC785\uB2C8\uB2E4.",
-  "Starting the game\u2026": "\uAC8C\uC784\uC744 \uC2DC\uC791\uD558\uB294 \uC911\u2026",
-  "Stop": "\uC911\uC9C0",
-  "Play the game through": "\uAC8C\uC784\uC744 \uB05D\uAE4C\uC9C0 \uC2E4\uD589",
-  "Another replay is being played through": "\uB2E4\uB978 \uB9AC\uD50C\uB808\uC774\uB97C \uC2E4\uD589\uD558\uB294 \uC911\uC785\uB2C8\uB2E4",
-  "Runs the whole game out of sight in the site's game engine, from your own copy of StarCraft, to show what happened and not only what was ordered. It takes about fifteen seconds for a twenty-minute game.": "\uC0AC\uC6A9\uC790\uC758 StarCraft \uBCF5\uC0AC\uBCF8\uC73C\uB85C \uC0AC\uC774\uD2B8\uC758 \uAC8C\uC784 \uC5D4\uC9C4\uC5D0\uC11C \uAC8C\uC784 \uC804\uCCB4\uB97C \uD654\uBA74 \uBC16\uC5D0\uC11C \uC2E4\uD589\uD574, \uB0B4\uB9B0 \uBA85\uB839\uBFD0 \uC544\uB2C8\uB77C \uC2E4\uC81C\uB85C \uC77C\uC5B4\uB09C \uC77C\uC744 \uBCF4\uC5EC \uC90D\uB2C8\uB2E4. 20\uBD84\uC9DC\uB9AC \uAC8C\uC784\uC5D0 \uC57D 15\uCD08\uAC00 \uAC78\uB9BD\uB2C8\uB2E4.",
-  "Units and buildings lost, and what they cost in minerals and gas": "\uC783\uC740 \uC720\uB2DB\uACFC \uAC74\uBB3C, \uADF8\uB9AC\uACE0 \uADF8 \uBE44\uC6A9(\uBBF8\uB124\uB784\uACFC \uAC00\uC2A4)",
-  "Lost {n}, worth {value}": "{n}\uAC1C \uC190\uC2E4, \uAC00\uCE58 {value}",
-  "Lost {n}": "{n}\uAC1C \uC190\uC2E4",
   "Army value": "\uBCD1\uB825 \uAC00\uCE58",
   "Army size": "\uBCD1\uB825 \uC218",
   "Supply": "\uBCF4\uAE09",
   "Minerals in the bank": "\uBCF4\uC720 \uBBF8\uB124\uB784",
   "Gas in the bank": "\uBCF4\uC720 \uAC00\uC2A4",
   "What the graph shows": "\uADF8\uB798\uD504\uC5D0 \uD45C\uC2DC\uD560 \uD56D\uBAA9",
-  "Click to go there": "\uD074\uB9AD\uD558\uBA74 \uADF8 \uC2DC\uC810\uC73C\uB85C \uC774\uB3D9\uD569\uB2C8\uB2E4",
   "Heat: where the armies were": "\uD788\uD2B8\uB9F5: \uBCD1\uB825\uC774 \uC788\uB358 \uACF3",
   "Heat: where units were lost": "\uD788\uD2B8\uB9F5: \uC720\uB2DB\uC744 \uC783\uC740 \uACF3",
-  "The buildings that stood at this moment; a site is drawn fainter until it is finished": "\uC774 \uC2DC\uC810\uC5D0 \uC11C \uC788\uB358 \uAC74\uBB3C\uC785\uB2C8\uB2E4. \uAC74\uC124 \uC911\uC778 \uAC74\uBB3C\uC740 \uC644\uC131\uB420 \uB54C\uAE4C\uC9C0 \uD750\uB9AC\uAC8C \uADF8\uB9BD\uB2C8\uB2E4",
-  "Every building ordered so far": "\uC9C0\uAE08\uAE4C\uC9C0 \uAC74\uC124 \uBA85\uB839\uC744 \uB0B4\uB9B0 \uBAA8\uB4E0 \uAC74\uBB3C",
-  "Units": "\uC720\uB2DB",
-  "Where every unit stood at this moment; workers are drawn smaller": "\uC774 \uC2DC\uC810\uC5D0 \uAC01 \uC720\uB2DB\uC774 \uC788\uB358 \uC704\uCE58\uC785\uB2C8\uB2E4. \uC77C\uAFBC\uC740 \uB354 \uC791\uAC8C \uADF8\uB9BD\uB2C8\uB2E4",
   "researched": "\uC5F0\uAD6C \uC644\uB8CC",
   "not finished": "\uC644\uC131\uB418\uC9C0 \uC54A\uC74C",
   "cancelled or destroyed {time}": "{time}\uC5D0 \uCDE8\uC18C\uB418\uAC70\uB098 \uD30C\uAD34\uB428",
   "lost {time}": "{time}\uC5D0 \uC783\uC74C",
   "done {time}": "{time}\uC5D0 \uC644\uC131",
   "Nothing was made.": "\uC0DD\uC0B0\uD55C \uAC83\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.",
-  "What was made": "\uC0DD\uC0B0 \uBAA9\uB85D",
-  "Playing the game: {time} of {total}": "\uAC8C\uC784 \uC2E4\uD589 \uC911: {total} \uC911 {time}",
-  "Play all {n} through": "{n}\uAC1C \uBAA8\uB450 \uB05D\uAE4C\uC9C0 \uC2E4\uD589",
-  "One after another; the heat maps can then add every game of this map together": "\uD558\uB098\uC529 \uCC28\uB840\uB85C \uC2E4\uD589\uD569\uB2C8\uB2E4. \uADF8 \uB4A4\uC5D0\uB294 \uC774 \uB9F5\uC758 \uBAA8\uB4E0 \uAC8C\uC784\uC744 \uD788\uD2B8\uB9F5\uC5D0 \uD569\uCE60 \uC218 \uC788\uC2B5\uB2C8\uB2E4",
-  "Playing {name} through; {n} more to go.": "{name} \uC2E4\uD589 \uC911, {n}\uAC1C \uB0A8\uC74C.",
-  "Playing {name} through.": "{name} \uC2E4\uD589 \uC911.",
   "Player {n}": "\uD50C\uB808\uC774\uC5B4 {n}",
   "Go to the fight": "\uC774 \uAD50\uC804\uC73C\uB85C \uC774\uB3D9",
   "{name}: {army} there when it began, lost {lost}, killed {killed}": "{name}: \uC2DC\uC791 \uC2DC \uBCD1\uB825 {army}, \uC190\uC2E4 {lost}, \uCC98\uCE58 {killed}",
   "{name}: lost {lost}, killed {killed}": "{name}: \uC190\uC2E4 {lost}, \uCC98\uCE58 {killed}",
-  "{name} lost {lost}": "{name} \uC190\uC2E4 {lost}",
+  "lost {lost}": "{lost} \uC783\uC74C",
   "No fights: nothing much was lost in one place at one time.": "\uAD50\uC804\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uD55C\uACF3\uC5D0\uC11C \uD55C\uAEBC\uBC88\uC5D0 \uC783\uC740 \uAC83\uC774 \uAC70\uC758 \uC5C6\uC2B5\uB2C8\uB2E4.",
   "Fights": "\uAD50\uC804",
-  "Losses close together in time and place. The side that came out ahead is in bold.": "\uC2DC\uAC04\uACFC \uC7A5\uC18C\uAC00 \uAC00\uAE4C\uC6B4 \uC190\uC2E4\uC744 \uD558\uB098\uC758 \uAD50\uC804\uC73C\uB85C \uBB36\uC5C8\uC2B5\uB2C8\uB2E4. \uC6B0\uC138\uD588\uB358 \uCABD\uC740 \uAD75\uAC8C \uD45C\uC2DC\uD569\uB2C8\uB2E4.",
+  "Battle": "\uAD50\uC804",
+  "Workers killed": "\uC77C\uAFBC \uD53C\uD574",
+  "Buildings destroyed": "\uAC74\uBB3C \uD30C\uAD34",
+  "Turning point": "\uC804\uD658\uC810",
+  "After this fight the player ahead in army stayed ahead to the end": "\uC774 \uAD50\uC804 \uB4A4\uB85C \uBCD1\uB825\uC5D0\uC11C \uC55E\uC120 \uD50C\uB808\uC774\uC5B4\uAC00 \uB05D\uAE4C\uC9C0 \uC55E\uC130\uC2B5\uB2C8\uB2E4",
+  "Decisive": "\uACB0\uC815\uC801",
+  "One side lost much of everything it had, and the other came out clearly ahead": "\uD55C\uCABD\uC774 \uAC00\uC9C4 \uAC83\uC758 \uC0C1\uB2F9 \uBD80\uBD84\uC744 \uC783\uC5C8\uACE0, \uB2E4\uB978 \uCABD\uC774 \uD655\uC2E4\uD788 \uC6B0\uC138\uD588\uC2B5\uB2C8\uB2E4",
+  "Even trade": "\uB300\uB4F1\uD55C \uAD50\uD658",
+  "Both sides lost about as much": "\uC591\uCABD\uC774 \uBE44\uC2B7\uD558\uAC8C \uC783\uC5C8\uC2B5\uB2C8\uB2E4",
+  "What fell was {percent}% of everything the players in it had": "\uC783\uC740 \uAC83\uC740 \uC774 \uAD50\uC804\uC758 \uD50C\uB808\uC774\uC5B4\uB4E4\uC774 \uAC00\uC9C4 \uC804\uBD80\uC758 {percent}%\uC785\uB2C8\uB2E4",
+  "Key moments": "\uD575\uC2EC \uC7A5\uBA74",
+  "Other fights": "\uADF8 \uBC16\uC758 \uAD50\uC804",
+  "{n, plural, one {# skirmish} other {# skirmishes}}": "\uC18C\uADDC\uBAA8 \uAD50\uC804 {n}\uAC1C",
+  "Each fight is weighed against everything the players had at the time, armies and workers. The key moments are the ones that mattered most; the side that came out ahead is in bold. N and Shift+N go to the next and the previous.": "\uAC01 \uAD50\uC804\uC740 \uADF8\uB54C \uD50C\uB808\uC774\uC5B4\uB4E4\uC774 \uAC00\uC9C4 \uC804\uBD80(\uBCD1\uB825\uACFC \uC77C\uAFBC)\uC5D0 \uACAC\uC8FC\uC5B4 \uAC00\uB2A0\uD569\uB2C8\uB2E4. \uD575\uC2EC \uC7A5\uBA74\uC740 \uAC00\uC7A5 \uC911\uC694\uD588\uB358 \uAD50\uC804\uC774\uBA70, \uC6B0\uC138\uD588\uB358 \uCABD\uC740 \uAD75\uAC8C \uD45C\uC2DC\uD569\uB2C8\uB2E4. N\uACFC Shift+N\uC73C\uB85C \uB2E4\uC74C\uACFC \uC774\uC804 \uC7A5\uBA74\uC73C\uB85C \uAC11\uB2C8\uB2E4.",
   "Go to its first kill": "\uCCAB \uCC98\uCE58 \uC2DC\uC810\uC73C\uB85C \uC774\uB3D9",
   "{n, plural, one {# kill} other {# kills}}, worth {value}": "{n}\uD68C \uCC98\uCE58, \uAC00\uCE58 {value}",
   "{n, plural, one {# kill} other {# kills}}": "{n}\uD68C \uCC98\uCE58",
@@ -1065,16 +1028,155 @@ var KO = {
   "Fights: {fights} in {games, plural, one {# game} other {# games}}; the nearer player ahead in {won} of {decided}": "\uAD50\uC804: {games}\uD310\uC5D0\uC11C {fights}\uD68C, \uAC00\uAE4C\uC6B4 \uCABD\uC774 {decided}\uD68C \uC911 {won}\uD68C \uC6B0\uC138",
   "Fights: {fights} in {games, plural, one {# game} other {# games}}": "\uAD50\uC804: {games}\uD310\uC5D0\uC11C {fights}\uD68C",
   "Go to where the fighting was": "\uAD50\uC804\uC774 \uC788\uB358 \uACF3\uC73C\uB85C \uC774\uB3D9",
-  "{n, plural, one {# game} other {# games}} played through": "{n}\uD310\uC744 \uB05D\uAE4C\uC9C0 \uC2E4\uD589\uD568",
   "usual length {time}": "\uBCF4\uD1B5 \uAE38\uC774 {time}",
   "first fight about {time}": "\uCCAB \uAD50\uC804 \uC57D {time}",
-  "This map": "\uC774 \uB9F5",
-  "Mark on the map": "\uB9F5\uC5D0 \uD45C\uC2DC",
-  "Rings at the starts and the bases taken, red circles where the fighting was": "\uC2DC\uC791 \uC704\uCE58\uC640 \uD655\uBCF4\uD55C \uAE30\uC9C0\uB294 \uACE0\uB9AC\uB85C, \uAD50\uC804\uC774 \uC788\uB358 \uACF3\uC740 \uBE68\uAC04 \uC6D0\uC73C\uB85C \uD45C\uC2DC\uD569\uB2C8\uB2E4",
-  "From few games this says little. Load more replays of this map and play them all through.": "\uAC8C\uC784 \uC218\uAC00 \uC801\uC73C\uBA74 \uC54C \uC218 \uC788\uB294 \uAC83\uC774 \uAC70\uC758 \uC5C6\uC2B5\uB2C8\uB2E4. \uC774 \uB9F5\uC758 \uB9AC\uD50C\uB808\uC774\uB97C \uB354 \uBD88\uB7EC\uC640 \uBAA8\uB450 \uB05D\uAE4C\uC9C0 \uC2E4\uD589\uD558\uC138\uC694.",
-  "{percent}% of the map's ground was never entered by any unit, water and cliffs included. Choose Ground never entered under Show to see it.": "\uB9F5\uC758 \uB545 \uC911 {percent}%\uC5D0\uB294 \uC5B4\uB5A4 \uC720\uB2DB\uB3C4 \uB4E4\uC5B4\uAC00\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4(\uBB3C\uACFC \uC808\uBCBD \uD3EC\uD568). \uD45C\uC2DC\uC5D0\uC11C '\uD55C \uBC88\uB3C4 \uB4E4\uC5B4\uAC00\uC9C0 \uC54A\uC740 \uB545'\uC744 \uACE0\uB974\uBA74 \uBCFC \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
   "The game engine on this site is an older one that plays replays from StarCraft 1.16.1 and earlier only.": "\uC774 \uC0AC\uC774\uD2B8\uC758 \uAC8C\uC784 \uC5D4\uC9C4\uC740 \uC774\uC804 \uBC84\uC804\uC774\uB77C StarCraft 1.16.1 \uC774\uC804\uC758 \uB9AC\uD50C\uB808\uC774\uB9CC \uC2E4\uD589\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
-  "From {time} the game played here is not the game in the replay: a player gave an order to a unit that had not been made. What is shown after that moment is not what happened, and this game is left out of the map's report.": "{time}\uBD80\uD130 \uC5EC\uAE30\uC11C \uC2E4\uD589\uB41C \uAC8C\uC784\uC740 \uB9AC\uD50C\uB808\uC774\uC758 \uAC8C\uC784\uACFC \uB2E4\uB985\uB2C8\uB2E4. \uC544\uC9C1 \uB9CC\uB4E4\uC5B4\uC9C0\uC9C0 \uC54A\uC740 \uC720\uB2DB\uC5D0 \uD50C\uB808\uC774\uC5B4\uAC00 \uBA85\uB839\uC744 \uB0B4\uB838\uC2B5\uB2C8\uB2E4. \uADF8 \uC2DC\uC810 \uC774\uD6C4\uC5D0 \uD45C\uC2DC\uB418\uB294 \uB0B4\uC6A9\uC740 \uC2E4\uC81C\uB85C \uC77C\uC5B4\uB09C \uC77C\uC774 \uC544\uB2C8\uBA70, \uC774 \uAC8C\uC784\uC740 \uB9F5 \uBCF4\uACE0\uC5D0\uC11C \uC81C\uC678\uB429\uB2C8\uB2E4."
+  "Build": "\uBE4C\uB4DC",
+  "Replay": "\uB9AC\uD50C\uB808\uC774",
+  "Could not open the map of {name}": "{name}\uC758 \uB9F5\uC744 \uC5F4\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4",
+  "Replay timeline": "\uB9AC\uD50C\uB808\uC774 \uD0C0\uC784\uB77C\uC778",
+  "Show {name} on the map": "{name}\uC744(\uB97C) \uB9F5\uC5D0 \uD45C\uC2DC",
+  "Hide {name} on the map": "{name}\uC744(\uB97C) \uB9F5\uC5D0\uC11C \uC228\uAE30\uAE30",
+  "Nobody wrote anything": "\uC544\uBB34\uB3C4 \uCC44\uD305\uD558\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4",
+  "Drop replays (.rep) here, or anywhere on the editor": "\uB9AC\uD50C\uB808\uC774(.rep)\uB97C \uC5EC\uAE30\uB098 \uD3B8\uC9D1\uAE30 \uC544\uBB34 \uACF3\uC5D0 \uB04C\uC5B4 \uB193\uC73C\uC138\uC694",
+  "Go to this replay's tab": "\uC774 \uB9AC\uD50C\uB808\uC774\uC758 \uD0ED\uC73C\uB85C \uAC00\uAE30",
+  "Open replays": "\uC5F4\uB9B0 \uB9AC\uD50C\uB808\uC774",
+  "Nothing to say about the map yet.": "\uC544\uC9C1 \uB9F5\uC5D0 \uB300\uD574 \uC54C \uC218 \uC788\uB294 \uAC83\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.",
+  "Supply {used} of {max} \xB7 {n} actions per minute over the game": "\uC778\uAD6C\uC218 {max} \uC911 {used} \xB7 \uAC8C\uC784 \uC804\uCCB4 \uBD84\uB2F9 \uD589\uB3D9 \uC218 {n}",
+  "Actions per minute over the game": "\uAC8C\uC784 \uC804\uCCB4\uC758 \uBD84\uB2F9 \uD589\uB3D9 \uC218",
+  "Try again": "\uB2E4\uC2DC \uC2DC\uB3C4",
+  "Fights in red, taller the more they mattered; the turning point in gold; chat in grey; a player leaving in their colour. Point at the graph to read it; press or drag to go there.": "\uBE68\uAC04\uC0C9\uC740 \uAD50\uC804\uC774\uBA70 \uC911\uC694\uD560\uC218\uB85D \uB192\uAC8C \uADF8\uB9BD\uB2C8\uB2E4. \uAE08\uC0C9\uC740 \uC804\uD658\uC810, \uD68C\uC0C9\uC740 \uCC44\uD305, \uD50C\uB808\uC774\uC5B4 \uC0C9\uC740 \uB098\uAC04 \uD50C\uB808\uC774\uC5B4\uC785\uB2C8\uB2E4. \uADF8\uB798\uD504\uB97C \uAC00\uB9AC\uD0A4\uBA74 \uAC12\uC744 \uC77D\uACE0, \uB204\uB974\uAC70\uB098 \uB04C\uBA74 \uADF8 \uC2DC\uC810\uC73C\uB85C \uAC11\uB2C8\uB2E4.",
+  "The game": "\uAC8C\uC784",
+  "Game": "\uAC8C\uC784",
+  "The game and its orders": "\uAC8C\uC784\uACFC \uBA85\uB839",
+  "O: what the players told their units to do in the last eight seconds, over the units drawn faintly": "O: \uCD5C\uADFC 8\uCD08 \uB3D9\uC548 \uD50C\uB808\uC774\uC5B4\uAC00 \uC720\uB2DB\uC5D0\uAC8C \uB0B4\uB9B0 \uBA85\uB839. \uC720\uB2DB\uC740 \uD750\uB9AC\uAC8C \uADF8\uB9BD\uB2C8\uB2E4",
+  "Back to the game, with the camera following the action": "\uAC8C\uC784\uC73C\uB85C \uB3CC\uC544\uAC00 \uCE74\uBA54\uB77C\uAC00 \uC911\uC694\uD55C \uC7A5\uBA74\uC744 \uB530\uB77C\uAC11\uB2C8\uB2E4",
+  "F: the camera follows the action as an observer would; scroll the map, or press here, to look around yourself": "F: \uCE74\uBA54\uB77C\uAC00 \uC635\uC800\uBC84\uCC98\uB7FC \uC911\uC694\uD55C \uC7A5\uBA74\uC744 \uB530\uB77C\uAC11\uB2C8\uB2E4. \uB9F5\uC744 \uC2A4\uD06C\uB864\uD558\uAC70\uB098 \uC5EC\uAE30\uB97C \uB204\uB974\uBA74 \uC9C1\uC811 \uB458\uB7EC\uBCFC \uC218 \uC788\uC2B5\uB2C8\uB2E4",
+  "F: follow the action as an observer would: the fights that matter, armies about to meet, new bases, the armies on the move": "F: \uC635\uC800\uBC84\uCC98\uB7FC \uC911\uC694\uD55C \uC7A5\uBA74\uC744 \uB530\uB77C\uAC11\uB2C8\uB2E4. \uC911\uC694\uD55C \uAD50\uC804, \uACE7 \uB9DE\uBD99\uC744 \uBCD1\uB825, \uC0C8 \uAE30\uC9C0, \uC6C0\uC9C1\uC774\uB294 \uBCD1\uB825",
+  "Space plays and pauses. \u2190 and \u2192 go 10 seconds back or on, a minute with Shift; N and Shift+N go to the next and the previous key moment; F follows the action or lets the camera go; O shows the orders; Home and End go to the start and the end.": "Space\uB85C \uC7AC\uC0DD\uD558\uACE0 \uBA48\uCDA5\uB2C8\uB2E4. \u2190\uC640 \u2192\uB294 10\uCD08 \uB4A4\uB098 \uC55E\uC73C\uB85C, Shift\uC640 \uD568\uAED8\uBA74 1\uBD84\uC785\uB2C8\uB2E4. N\uACFC Shift+N\uC740 \uB2E4\uC74C\uACFC \uC774\uC804 \uD575\uC2EC \uC7A5\uBA74, F\uB294 \uCE74\uBA54\uB77C\uAC00 \uB530\uB77C\uAC00\uAC8C \uD558\uAC70\uB098 \uB193\uC544 \uC8FC\uACE0, O\uB294 \uBA85\uB839\uC744 \uBCF4\uC5EC \uC90D\uB2C8\uB2E4. Home\uACFC End\uB294 \uCC98\uC74C\uACFC \uB05D\uC73C\uB85C \uAC11\uB2C8\uB2E4.",
+  "Spectate": "\uAD00\uC804",
+  "{a} and {b}, about to meet": "{a}\uC640(\uACFC) {b}, \uACE7 \uB9DE\uBD99\uC74C",
+  "{name} takes a base": "{name} \uAE30\uC9C0 \uD655\uC7A5",
+  "{name}'s main base": "{name}\uC758 \uBCF8\uC9C4",
+  "{name}'s army": "{name}\uC758 \uBCD1\uB825",
+  "The camera follows the game once it has been analysed": "\uAC8C\uC784 \uBD84\uC11D\uC774 \uB05D\uB098\uBA74 \uCE74\uBA54\uB77C\uAC00 \uAC8C\uC784\uC744 \uB530\uB77C\uAC11\uB2C8\uB2E4",
+  "Heat: where units were sent": "\uD788\uD2B8\uB9F5: \uC720\uB2DB\uC744 \uBCF4\uB0B8 \uACF3",
+  "Heat: where buildings went": "\uD788\uD2B8\uB9F5: \uAC74\uBB3C\uC744 \uC9C0\uC740 \uACF3",
+  "Orders": "\uBA85\uB839",
+  "{n, plural, one {# fight} other {# fights}}": "\uAD50\uC804 {n}\uD68C",
+  "won {wins} of {games}": "{games}\uD310 \uC911 {wins}\uC2B9",
+  "taken {n} of {games}": "{games}\uD310 \uC911 {n}\uBC88 \uAC00\uC838\uAC10",
+  "A start: how the players who started there did": "\uC2DC\uC791 \uC704\uCE58: \uC5EC\uAE30\uC11C \uC2DC\uC791\uD55C \uD50C\uB808\uC774\uC5B4\uC758 \uC131\uC801",
+  "A base: in how many games it was taken": "\uAE30\uC9C0: \uBA87 \uD310\uC5D0\uC11C \uAC00\uC838\uAC14\uB294\uC9C0",
+  "Where fights that mattered happen, over all the games": "\uBAA8\uB4E0 \uAC8C\uC784\uC5D0\uC11C \uC911\uC694\uD55C \uAD50\uC804\uC774 \uBC8C\uC5B4\uC9C4 \uACF3",
+  "A building; dashed while it goes up": "\uAC74\uBB3C. \uC9D3\uB294 \uC911\uC5D0\uB294 \uC810\uC120",
+  "A building ordered": "\uBA85\uB839\uC73C\uB85C \uC9C0\uC740 \uAC74\uBB3C",
+  "A unit, and a worker": "\uC720\uB2DB\uACFC \uC77C\uAFBC",
+  "A kill, from the killer": "\uCC98\uCE58. \uCC98\uCE58\uD55C \uC720\uB2DB\uC5D0\uC11C \uC774\uC5B4\uC9D0",
+  "A loss": "\uC190\uC2E4",
+  "A fight that matters, while it goes on": "\uBC8C\uC5B4\uC9C0\uACE0 \uC788\uB294 \uC911\uC694\uD55C \uAD50\uC804",
+  "Move": "\uC774\uB3D9",
+  "Attack or patrol": "\uACF5\uACA9 \uB610\uB294 \uC815\uCC30",
+  "Ability or spell": "\uB2A5\uB825 \uB610\uB294 \uB9C8\uBC95",
+  "Rally point": "\uC9D1\uACB0 \uC9C0\uC810",
+  "Minimap ping": "\uBBF8\uB2C8\uB9F5 \uD551",
+  "In the player's colour": "\uD50C\uB808\uC774\uC5B4 \uC0C9\uC73C\uB85C \uADF8\uB9BD\uB2C8\uB2E4",
+  "Legend": "\uBC94\uB840",
+  "A key to the marks, in the map's corner": "\uB9F5 \uAD6C\uC11D\uC5D0 \uD45C\uC2DC\uD558\uB294 \uAE30\uD638 \uC124\uBA85",
+  "even": "\uB300\uB4F1",
+  "{name} ahead by {n}": "{name} {n} \uC55E\uC12C",
+  "The summary shows once the game has been analysed, which is under way.": "\uAC8C\uC784 \uBD84\uC11D\uC774 \uB05D\uB098\uBA74 \uC694\uC57D\uC774 \uB098\uC635\uB2C8\uB2E4. \uBD84\uC11D \uC911\uC785\uB2C8\uB2E4.",
+  "The summary shows once the game has been analysed.": "\uAC8C\uC784 \uBD84\uC11D\uC774 \uB05D\uB098\uBA74 \uC694\uC57D\uC774 \uB098\uC635\uB2C8\uB2E4.",
+  "less than a minute": "1\uBD84 \uBBF8\uB9CC",
+  "{n, plural, one {# minute} other {# minutes}}": "{n}\uBD84",
+  "{name} won": "{name} \uC2B9\uB9AC",
+  "Who won cannot be told from the replay": "\uB9AC\uD50C\uB808\uC774\uB85C\uB294 \uC2B9\uC790\uB97C \uC54C \uC218 \uC5C6\uC2B5\uB2C8\uB2E4",
+  "{name} left at {time}": "{name} {time}\uC5D0 \uB098\uAC10",
+  "How long each player was ahead in army, and how long neither was far ahead": "\uAC01 \uD50C\uB808\uC774\uC5B4\uAC00 \uBCD1\uB825\uC5D0\uC11C \uC55E\uC120 \uC2DC\uAC04\uACFC, \uC5B4\uB290 \uCABD\uB3C4 \uD06C\uAC8C \uC55E\uC11C\uC9C0 \uC54A\uC740 \uC2DC\uAC04",
+  "Go to when the lead was largest": "\uACA9\uCC28\uAC00 \uAC00\uC7A5 \uCEF8\uB358 \uB54C\uB85C \uC774\uB3D9",
+  "{name} was ahead in army for {duration}, by up to {most} units at {time}": "{name}\uC774(\uAC00) {duration} \uB3D9\uC548 \uBCD1\uB825\uC5D0\uC11C \uC55E\uC130\uACE0, {time}\uC5D0 \uCD5C\uB300 {most}\uAE30 \uCC28\uC774",
+  "{name} was ahead in army for {duration}, by up to {most} at {time}": "{name}\uC774(\uAC00) {duration} \uB3D9\uC548 \uBCD1\uB825\uC5D0\uC11C \uC55E\uC130\uACE0, {time}\uC5D0 \uCD5C\uB300 {most} \uCC28\uC774",
+  "Who led": "\uB204\uAC00 \uC55E\uC130\uB098",
+  "Neither far ahead for {duration}": "{duration} \uB3D9\uC548 \uC5B4\uB290 \uCABD\uB3C4 \uD06C\uAC8C \uC55E\uC11C\uC9C0 \uC54A\uC74C",
+  "Largest army": "\uCD5C\uB300 \uBCD1\uB825",
+  "{n} units at {time}": "{time}\uC5D0 {n}\uAE30",
+  "Worth {n} at {time}": "{time}\uC5D0 \uAC00\uCE58 {n}",
+  "Most workers": "\uCD5C\uB300 \uC77C\uAFBC",
+  "APM": "APM",
+  "Bases": "\uAE30\uC9C0",
+  "The most bases at once, the start among them": "\uD55C \uBC88\uC5D0 \uAC00\uC9C4 \uAC00\uC7A5 \uB9CE\uC740 \uAE30\uC9C0 \uC218(\uC2DC\uC791 \uAE30\uC9C0 \uD3EC\uD568)",
+  "Lost": "\uC783\uC74C",
+  "{n, plural, one {# unit or building} other {# units and buildings}}": "\uC720\uB2DB\uACFC \uAC74\uBB3C {n}\uAC1C",
+  "Killed": "\uCC98\uCE58",
+  "In numbers": "\uC22B\uC790\uB85C \uBCF4\uAE30",
+  "{name} lost workers": "{name} \uC77C\uAFBC \uD53C\uD574",
+  "{name} lost buildings": "{name} \uAC74\uBB3C \uD53C\uD574",
+  "{name} won a battle": "{name} \uAD50\uC804 \uC2B9\uB9AC",
+  "An even battle": "\uB300\uB4F1\uD55C \uAD50\uC804",
+  "{name} took base {n}": "{name} {n}\uBC88\uC9F8 \uAE30\uC9C0",
+  "{name} left": "{name} \uB098\uAC10",
+  "How it went": "\uAC8C\uC784 \uD750\uB984",
+  "Army lead": "\uBCD1\uB825 \uACA9\uCC28",
+  "{name} ahead": "{name} \uC6B0\uC138",
+  "StarCraft replay": "\uC2A4\uD0C0\uD06C\uB798\uD504\uD2B8 \uB9AC\uD50C\uB808\uC774",
+  "Analysing the game\u2026": "\uAC8C\uC784\uC744 \uBD84\uC11D\uD558\uB294 \uC911\u2026",
+  "Analysing the game: {percent}%": "\uAC8C\uC784\uC744 \uBD84\uC11D\uD558\uB294 \uC911: {percent}%",
+  "Analysed up to {time}, where the game stopped.": "\uAC8C\uC784\uC774 \uBA48\uCD98 {time}\uAE4C\uC9C0 \uBD84\uC11D\uD588\uC2B5\uB2C8\uB2E4.",
+  "Analysed: the armies, fights and losses are shown.": "\uBD84\uC11D\uD588\uC2B5\uB2C8\uB2E4: \uBCD1\uB825, \uAD50\uC804, \uC190\uC2E4\uC744 \uBCF4\uC5EC \uC90D\uB2C8\uB2E4.",
+  "Could not analyse the game: {reason}": "\uAC8C\uC784\uC744 \uBD84\uC11D\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4: {reason}",
+  "Showing the orders given. On scmjs.dev the game is also analysed, to show what happened.": "\uB0B4\uB9B0 \uBA85\uB839\uC744 \uBCF4\uC5EC \uC90D\uB2C8\uB2E4. scmjs.dev\uC5D0\uC11C\uB294 \uAC8C\uC784\uC744 \uBD84\uC11D\uD574 \uC2E4\uC81C\uB85C \uC77C\uC5B4\uB09C \uC77C\uB3C4 \uBCF4\uC5EC \uC90D\uB2C8\uB2E4.",
+  "Waiting to be analysed.": "\uBD84\uC11D\uD560 \uCC28\uB840\uB97C \uAE30\uB2E4\uB9AC\uB294 \uC911\uC785\uB2C8\uB2E4.",
+  "The game engine plays the replay through in the background to see what really happened: the armies, the fights, what was lost. You can watch the replay meanwhile.": "\uAC8C\uC784 \uC5D4\uC9C4\uC774 \uB4A4\uC5D0\uC11C \uB9AC\uD50C\uB808\uC774\uB97C \uB05D\uAE4C\uC9C0 \uC2E4\uD589\uD574 \uC2E4\uC81C\uB85C \uC77C\uC5B4\uB09C \uC77C\uC744 \uC54C\uC544\uB0C5\uB2C8\uB2E4: \uBCD1\uB825, \uAD50\uC804, \uC783\uC740 \uAC83. \uADF8\uB3D9\uC548 \uB9AC\uD50C\uB808\uC774\uB97C \uBCFC \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+  "Each replay opens its map in a tab of its own, to look at and not to change. A replay records the orders players gave; where the site's game engine is beside the editor, each game is also analysed: the engine plays it through in the background to show what really happened.": "\uB9AC\uD50C\uB808\uC774\uB9C8\uB2E4 \uB9F5\uC774 \uC790\uAE30 \uD0ED\uC5D0\uC11C \uBCF4\uAE30 \uC804\uC6A9\uC73C\uB85C \uC5F4\uB9BD\uB2C8\uB2E4. \uB9AC\uD50C\uB808\uC774\uB294 \uD50C\uB808\uC774\uC5B4\uAC00 \uB0B4\uB9B0 \uBA85\uB839\uC744 \uAE30\uB85D\uD569\uB2C8\uB2E4. \uC0AC\uC774\uD2B8\uC758 \uAC8C\uC784 \uC5D4\uC9C4\uC774 \uD3B8\uC9D1\uAE30 \uC606\uC5D0 \uC788\uC73C\uBA74 \uAC8C\uC784\uB9C8\uB2E4 \uBD84\uC11D\uB3C4 \uD569\uB2C8\uB2E4: \uC5D4\uC9C4\uC774 \uB4A4\uC5D0\uC11C \uAC8C\uC784\uC744 \uB05D\uAE4C\uC9C0 \uC2E4\uD589\uD574 \uC2E4\uC81C\uB85C \uC77C\uC5B4\uB09C \uC77C\uC744 \uBCF4\uC5EC \uC90D\uB2C8\uB2E4.",
+  "What was ordered. Once the game has been analysed, this shows what was really made.": "\uB0B4\uB9B0 \uBA85\uB839\uC785\uB2C8\uB2E4. \uAC8C\uC784\uC744 \uBD84\uC11D\uD558\uBA74 \uC2E4\uC81C\uB85C \uC0DD\uC0B0\uB41C \uAC83\uC744 \uBCF4\uC5EC \uC90D\uB2C8\uB2E4.",
+  "The fights show once the game has been analysed, which is under way.": "\uAD50\uC804\uC740 \uAC8C\uC784\uC744 \uBD84\uC11D\uD558\uBA74 \uB098\uD0C0\uB0A9\uB2C8\uB2E4. \uC9C0\uAE08 \uBD84\uC11D\uD558\uB294 \uC911\uC785\uB2C8\uB2E4.",
+  "The fights show once the game has been analysed.": "\uAD50\uC804\uC740 \uAC8C\uC784\uC744 \uBD84\uC11D\uD558\uBA74 \uB098\uD0C0\uB0A9\uB2C8\uB2E4.",
+  "Map stats": "\uB9F5 \uD1B5\uACC4",
+  "{n} of these replays share a map with another of them. Open one replay of each map in a tab and put the others in that map's Map stats, where the games of a map are taken together? Or open every replay in a tab of its own?": "\uC774 \uB9AC\uD50C\uB808\uC774 \uC911 {n}\uAC1C\uB294 \uB2E4\uB978 \uB9AC\uD50C\uB808\uC774\uC640 \uAC19\uC740 \uB9F5\uC785\uB2C8\uB2E4. \uB9F5\uB9C8\uB2E4 \uB9AC\uD50C\uB808\uC774 \uD558\uB098\uB9CC \uD0ED\uC73C\uB85C \uC5F4\uACE0 \uB098\uBA38\uC9C0\uB294 \uADF8 \uB9F5\uC758 \uB9F5 \uD1B5\uACC4\uC5D0 \uB123\uC744\uAE4C\uC694? \uB9F5 \uD1B5\uACC4\uB294 \uD55C \uB9F5\uC758 \uAC8C\uC784\uB4E4\uC744 \uD568\uAED8 \uBD05\uB2C8\uB2E4. \uC544\uB2C8\uBA74 \uB9AC\uD50C\uB808\uC774\uB9C8\uB2E4 \uD0ED\uC744 \uC5F4\uAE4C\uC694?",
+  "Several replays of one map": "\uAC19\uC740 \uB9F5\uC758 \uB9AC\uD50C\uB808\uC774 \uC5EC\uB7EC \uAC1C",
+  "Use Map stats": "\uB9F5 \uD1B5\uACC4\uC5D0 \uB123\uAE30",
+  "A tab each": "\uAC01\uAC01 \uD0ED\uC73C\uB85C",
+  "{n, plural, one {# replay} other {# replays}} added to Map stats": "\uB9AC\uD50C\uB808\uC774 {n}\uAC1C\uB97C \uB9F5 \uD1B5\uACC4\uC5D0 \uB123\uC5C8\uC2B5\uB2C8\uB2E4",
+  "Each is analysed in the background, after the replays open in tabs. Map stats is under the map.": "\uD0ED\uC73C\uB85C \uC5F0 \uB9AC\uD50C\uB808\uC774 \uB2E4\uC74C\uC5D0 \uD558\uB098\uC529 \uB4A4\uC5D0\uC11C \uBD84\uC11D\uD569\uB2C8\uB2E4. \uB9F5 \uD1B5\uACC4\uB294 \uB9F5 \uC544\uB798\uC5D0 \uC788\uC2B5\uB2C8\uB2E4.",
+  "Map stats: {n} games of this map": "\uB9F5 \uD1B5\uACC4: \uC774 \uB9F5\uC758 \uAC8C\uC784 {n}\uD310",
+  "The replays of this map you have open can now be seen together: where players start, the bases they take, where they fight. Press Map stats under the map.": "\uC5F4\uC5B4 \uB454 \uC774 \uB9F5\uC758 \uB9AC\uD50C\uB808\uC774\uB97C \uC774\uC81C \uD568\uAED8 \uBCFC \uC218 \uC788\uC2B5\uB2C8\uB2E4. \uC5B4\uB514\uC11C \uC2DC\uC791\uD558\uB294\uC9C0, \uC5B4\uB290 \uAE30\uC9C0\uB97C \uAC00\uC838\uAC00\uB294\uC9C0, \uC5B4\uB514\uC11C \uC2F8\uC6B0\uB294\uC9C0. \uB9F5 \uC544\uB798\uC758 \uB9F5 \uD1B5\uACC4\uB97C \uB204\uB974\uC138\uC694.",
+  "{n, plural, one {# game} other {# games}} together": "\uAC8C\uC784 {n}\uD310 \uD568\uAED8",
+  "{n} being analysed": "{n}\uD310 \uBD84\uC11D \uC911",
+  "From {time} the game played here is not the game in the replay: a player gave an order to a unit that had not been made. What is shown after that moment is not what happened, and this game is left out of Map stats.": "{time}\uBD80\uD130 \uC5EC\uAE30\uC11C \uC2E4\uD589\uB41C \uAC8C\uC784\uC740 \uB9AC\uD50C\uB808\uC774\uC758 \uAC8C\uC784\uACFC \uB2E4\uB985\uB2C8\uB2E4. \uC544\uC9C1 \uB9CC\uB4E4\uC5B4\uC9C0\uC9C0 \uC54A\uC740 \uC720\uB2DB\uC5D0 \uD50C\uB808\uC774\uC5B4\uAC00 \uBA85\uB839\uC744 \uB0B4\uB838\uC2B5\uB2C8\uB2E4. \uADF8 \uC2DC\uC810 \uC774\uD6C4\uC5D0 \uD45C\uC2DC\uB418\uB294 \uB0B4\uC6A9\uC740 \uC2E4\uC81C\uB85C \uC77C\uC5B4\uB09C \uC77C\uC774 \uC544\uB2C8\uBA70, \uC774 \uAC8C\uC784\uC740 \uB9F5 \uD1B5\uACC4\uC5D0\uC11C \uC81C\uC678\uB429\uB2C8\uB2E4.",
+  "Map stats: every replay of this map you have open, taken together. Shown on the map while this tab is open.": "\uB9F5 \uD1B5\uACC4: \uC5F4\uC5B4 \uB454 \uC774 \uB9F5\uC758 \uB9AC\uD50C\uB808\uC774\uB97C \uBAA8\uB450 \uD568\uAED8 \uBD05\uB2C8\uB2E4. \uC774 \uD0ED\uC774 \uC5F4\uB824 \uC788\uB294 \uB3D9\uC548 \uB9F5\uC5D0 \uD45C\uC2DC\uB429\uB2C8\uB2E4.",
+  "this map": "\uC774 \uB9F5",
+  "Every replay of {map} you have open, taken together, and shown on the map while this tab is open.": "\uC5F4\uC5B4 \uB454 {map}\uC758 \uB9AC\uD50C\uB808\uC774\uB97C \uBAA8\uB450 \uD568\uAED8 \uBCF4\uACE0, \uC774 \uD0ED\uC774 \uC5F4\uB824 \uC788\uB294 \uB3D9\uC548 \uB9F5\uC5D0 \uD45C\uC2DC\uD569\uB2C8\uB2E4.",
+  "this replay": "\uC774 \uB9AC\uD50C\uB808\uC774",
+  "Watch this game in a tab of its own": "\uC774 \uAC8C\uC784\uC744 \uC790\uAE30 \uD0ED\uC5D0\uC11C \uBD05\uB2C8\uB2E4",
+  "Watch": "\uBCF4\uAE30",
+  "Put this game back into Map stats": "\uC774 \uAC8C\uC784\uC744 \uB9F5 \uD1B5\uACC4\uC5D0 \uB2E4\uC2DC \uB123\uC2B5\uB2C8\uB2E4",
+  "Leave this game out of Map stats": "\uC774 \uAC8C\uC784\uC744 \uB9F5 \uD1B5\uACC4\uC5D0\uC11C \uBE8D\uB2C8\uB2E4",
+  "Games": "\uAC8C\uC784",
+  "Add replays of this map\u2026": "\uC774 \uB9F5\uC758 \uB9AC\uD50C\uB808\uC774 \uCD94\uAC00\u2026",
+  "Replays added here are analysed in the background and counted, without a tab each. Replays of another map open in tabs of their own.": "\uC5EC\uAE30\uC11C \uCD94\uAC00\uD55C \uB9AC\uD50C\uB808\uC774\uB294 \uD0ED \uC5C6\uC774 \uB4A4\uC5D0\uC11C \uBD84\uC11D\uD574 \uC149\uB2C8\uB2E4. \uB2E4\uB978 \uB9F5\uC758 \uB9AC\uD50C\uB808\uC774\uB294 \uC790\uAE30 \uD0ED\uC73C\uB85C \uC5F4\uB9BD\uB2C8\uB2E4.",
+  "Here only the orders can be counted. On scmjs.dev each game is also analysed, and the starts, the bases and the fights are shown.": "\uC5EC\uAE30\uC11C\uB294 \uBA85\uB839\uB9CC \uC140 \uC218 \uC788\uC2B5\uB2C8\uB2E4. scmjs.dev\uC5D0\uC11C\uB294 \uAC8C\uC784\uB9C8\uB2E4 \uBD84\uC11D\uB3C4 \uD574\uC11C \uC2DC\uC791 \uC704\uCE58, \uAE30\uC9C0, \uAD50\uC804\uC744 \uBCF4\uC5EC \uC90D\uB2C8\uB2E4.",
+  "Heat map": "\uD788\uD2B8\uB9F5",
+  "Nothing counted yet: the games are still being analysed.": "\uC544\uC9C1 \uC13C \uAC8C\uC784\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uAC8C\uC784\uC744 \uBD84\uC11D\uD558\uB294 \uC911\uC785\uB2C8\uB2E4.",
+  "What the games show": "\uAC8C\uC784\uB4E4\uC774 \uBCF4\uC5EC \uC8FC\uB294 \uAC83",
+  "On the map: a white ring at each start, a green ring at each base taken, a red circle where the fights that mattered were.": "\uB9F5\uC5D0\uB294 \uC2DC\uC791 \uC704\uCE58\uB9C8\uB2E4 \uD770 \uACE0\uB9AC, \uAC00\uC838\uAC04 \uAE30\uC9C0\uB9C8\uB2E4 \uCD08\uB85D \uACE0\uB9AC, \uC911\uC694\uD55C \uAD50\uC804\uC774 \uBC8C\uC5B4\uC9C4 \uACF3\uC5D0 \uBE68\uAC04 \uC6D0\uC774 \uB098\uC635\uB2C8\uB2E4.",
+  "From few games this says little. Add more replays of this map.": "\uAC8C\uC784\uC774 \uC801\uC5B4\uC11C \uC54C \uC218 \uC788\uB294 \uAC83\uC774 \uC801\uC2B5\uB2C8\uB2E4. \uC774 \uB9F5\uC758 \uB9AC\uD50C\uB808\uC774\uB97C \uB354 \uCD94\uAC00\uD558\uC138\uC694.",
+  "{percent}% of the map's ground was never entered by any unit, water and cliffs included. Choose Ground never entered as the heat map to see it.": "\uB9F5 \uB545\uC758 {percent}%\uC5D0\uB294 \uC5B4\uB5A4 \uC720\uB2DB\uB3C4 \uB4E4\uC5B4\uAC00\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4(\uBB3C\uACFC \uC808\uBCBD \uD3EC\uD568). \uD788\uD2B8\uB9F5\uC5D0\uC11C \uD55C \uBC88\uB3C4 \uB4E4\uC5B4\uAC00\uC9C0 \uC54A\uC740 \uB545\uC744 \uACE0\uB974\uBA74 \uBCFC \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+  "analysing\u2026": "\uBD84\uC11D \uC911\u2026",
+  "analysing {percent}%": "\uBD84\uC11D \uC911 {percent}%",
+  "left out": "\uC81C\uC678\uB428",
+  "left out: differs from {time}": "\uC81C\uC678\uB428: {time}\uBD80\uD130 \uB2E4\uB984",
+  "could not be analysed": "\uBD84\uC11D\uD558\uC9C0 \uBABB\uD568",
+  "counted": "\uC148",
+  "waiting": "\uB300\uAE30 \uC911",
+  "Replays are analysed one at a time: the one in front first, then the others with a tab, then the ones only in Map stats.": "\uB9AC\uD50C\uB808\uC774\uB294 \uD558\uB098\uC529 \uBD84\uC11D\uD569\uB2C8\uB2E4. \uC55E\uC5D0 \uC788\uB294 \uAC83\uBD80\uD130, \uADF8\uB2E4\uC74C \uD0ED\uC774 \uC788\uB294 \uAC83, \uADF8\uB2E4\uC74C \uB9F5 \uD1B5\uACC4\uC5D0\uB9CC \uC788\uB294 \uAC83\uC785\uB2C8\uB2E4.",
+  "Map stats: {n, plural, one {# game} other {# games}} of this map together": "\uB9F5 \uD1B5\uACC4: \uC774 \uB9F5\uC758 \uAC8C\uC784 {n}\uD310 \uD568\uAED8",
+  "{n} still being analysed": "{n}\uD310 \uC544\uC9C1 \uBD84\uC11D \uC911",
+  "The timeline is one game's. Press it, Play or Map stats to go back to the game.": "\uD0C0\uC784\uB77C\uC778\uC740 \uAC8C\uC784 \uD558\uB098\uC758 \uAC83\uC785\uB2C8\uB2E4. \uD0C0\uC784\uB77C\uC778, \uC7AC\uC0DD, \uB9F5 \uD1B5\uACC4 \uC911 \uD558\uB098\uB97C \uB204\uB974\uBA74 \uAC8C\uC784\uC73C\uB85C \uB3CC\uC544\uAC11\uB2C8\uB2E4.",
+  "Map stats \xB7 {n}": "\uB9F5 \uD1B5\uACC4 \xB7 {n}",
+  "Back to the game": "\uAC8C\uC784\uC73C\uB85C \uB3CC\uC544\uAC00\uAE30",
+  "Every replay of this map you have open, taken together: where players start, the bases they take, where they fight ({n} replays)": "\uC5F4\uC5B4 \uB454 \uC774 \uB9F5\uC758 \uB9AC\uD50C\uB808\uC774\uB97C \uBAA8\uB450 \uD568\uAED8 \uBD05\uB2C8\uB2E4. \uC5B4\uB514\uC11C \uC2DC\uC791\uD558\uB294\uC9C0, \uC5B4\uB290 \uAE30\uC9C0\uB97C \uAC00\uC838\uAC00\uB294\uC9C0, \uC5B4\uB514\uC11C \uC2F8\uC6B0\uB294\uC9C0(\uB9AC\uD50C\uB808\uC774 {n}\uAC1C)",
+  "Every replay of this map you have open, taken together: where players start, the bases they take, where they fight. Add more replays of the map there.": "\uC5F4\uC5B4 \uB454 \uC774 \uB9F5\uC758 \uB9AC\uD50C\uB808\uC774\uB97C \uBAA8\uB450 \uD568\uAED8 \uBD05\uB2C8\uB2E4. \uC5B4\uB514\uC11C \uC2DC\uC791\uD558\uB294\uC9C0, \uC5B4\uB290 \uAE30\uC9C0\uB97C \uAC00\uC838\uAC00\uB294\uC9C0, \uC5B4\uB514\uC11C \uC2F8\uC6B0\uB294\uC9C0. \uAC70\uAE30\uC11C \uC774 \uB9F5\uC758 \uB9AC\uD50C\uB808\uC774\uB97C \uB354 \uCD94\uAC00\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+  "The timeline is one game's: press it to go back to that game": "\uD0C0\uC784\uB77C\uC778\uC740 \uAC8C\uC784 \uD558\uB098\uC758 \uAC83\uC785\uB2C8\uB2E4. \uB204\uB974\uBA74 \uADF8 \uAC8C\uC784\uC73C\uB85C \uB3CC\uC544\uAC11\uB2C8\uB2E4"
 };
 
 // played.ts
@@ -1138,6 +1240,42 @@ function madeRows(t, player, options = {}) {
     out.push({ ...r });
   }
   return out;
+}
+var MINERALS = /* @__PURE__ */ new Set([176, 177, 178]);
+var FIELD_LINK = 192;
+var MIN_FIELDS = 3;
+var HALL_REACH = 256;
+function mineralLines(t) {
+  const fields = t.events.filter((e) => e.frame === 0 && e.kind === "born" && MINERALS.has(e.type));
+  const root = fields.map((_, i) => i);
+  const find = (i) => root[i] === i ? i : root[i] = find(root[i]);
+  for (let i = 0; i < fields.length; i++) for (let j = i + 1; j < fields.length; j++) {
+    if (Math.hypot(fields[i].x - fields[j].x, fields[i].y - fields[j].y) <= FIELD_LINK) root[find(i)] = find(j);
+  }
+  const groups = /* @__PURE__ */ new Map();
+  fields.forEach((_, i) => {
+    const g = find(i);
+    groups.set(g, [...groups.get(g) ?? [], i]);
+  });
+  const lines = [];
+  const lineOf = /* @__PURE__ */ new Map();
+  for (const [g, members] of groups) {
+    if (members.length < MIN_FIELDS) continue;
+    lineOf.set(g, lines.length);
+    lines.push({ x: members.reduce((a, i) => a + fields[i].x, 0) / members.length, y: members.reduce((a, i) => a + fields[i].y, 0) / members.length, fields: members.length });
+  }
+  return { lines, fields: fields.map((f, i) => ({ x: f.x, y: f.y, line: lineOf.get(find(i)) ?? -1 })) };
+}
+function lineAt(m, x, y) {
+  let best = -1, bestD = HALL_REACH;
+  for (const f of m.fields) {
+    const d = Math.hypot(f.x - x, f.y - y);
+    if (d <= bestD) {
+      bestD = d;
+      best = f.line;
+    }
+  }
+  return best;
 }
 function buildings(t) {
   const out = [];
@@ -1251,19 +1389,46 @@ function series(t, player, metric) {
 // fights.ts
 var GAP_FRAMES = 240;
 var RADIUS = 480;
+var JOIN_GAP = 240;
+var JOIN_RADIUS = 800;
 var MIN_LOSSES = 4;
 var MIN_VALUE = 400;
 var PRESENT = RADIUS * 1.5;
 var AHEAD = 0.2;
+var DECISIVE = 0.4;
+var MAJOR_SHARE = 0.12;
+var MAJOR_OWN = 0.25;
+var MOSTLY = 0.5;
+var LEAD = 0.25;
+var MIN_LEAD_VALUE = 600;
+var MIN_LEAD_UNITS = 4;
+var TURN_AFTER = 480;
+var TURN_BEFORE = 1440;
+var KEY_MINUTES = 6;
+var MIN_KEYS = 3;
+var MAX_KEYS = 8;
+var FRAMES_PER_MINUTE2 = 6e4 / 42;
 var RESOURCES2 = /* @__PURE__ */ new Set([176, 177, 178, 188]);
+var MERGES = /* @__PURE__ */ new Map([[67, 68], [61, 63]]);
+var WORKER_OF = [41, 7, 64];
 var fell = (e, ignored) => e.kind === "died" && e.owner <= 7 && e.type < 203 && !NOT_MADE.has(e.type) && !RESOURCES2.has(e.type) && !ignored.has(e.unit);
+function merged(t) {
+  const out = /* @__PURE__ */ new Set();
+  const morphs = t.events.filter((e) => e.kind === "morph" && e.from !== void 0 && MERGES.get(e.from) === e.type);
+  if (!morphs.length) return out;
+  for (const e of t.events) {
+    if (e.kind !== "died" || e.by !== void 0 || !MERGES.has(e.type)) continue;
+    if (morphs.some((m) => m.from === e.type && m.owner === e.owner && Math.abs(m.frame - e.frame) <= 8 && Math.hypot(m.x - e.x, m.y - e.y) <= 64)) out.add(e.unit);
+  }
+  return out;
+}
 function kills(t) {
   const out = [];
   for (const e of t.events) if (e.kind === "died" && e.by !== void 0 && e.owner <= 7 && (e.byOwner ?? 99) <= 7) out.push({ frame: e.frame, x: e.x, y: e.y, fromX: e.byX ?? e.x, fromY: e.byY ?? e.y, player: e.owner, by: e.byOwner });
   return out;
 }
 function fights(t, cost, index) {
-  const ignored = /* @__PURE__ */ new Set();
+  const ignored = merged(t);
   const open = [], closed = [];
   for (const e of t.events) {
     if (e.kind === "born" && e.hallucination) {
@@ -1294,35 +1459,51 @@ function fights(t, cost, index) {
   for (let i = 0; i < closed.length; i++) {
     for (let j = i + 1; j < closed.length; j++) {
       const a = closed[i], b = closed[j];
-      if (b.deaths[0].frame - a.last > GAP_FRAMES) break;
-      if (Math.hypot(a.sx / a.deaths.length - b.sx / b.deaths.length, a.sy / a.deaths.length - b.sy / b.deaths.length) > RADIUS) continue;
+      if (b.deaths[0].frame - a.last > JOIN_GAP) break;
+      if (Math.hypot(a.sx / a.deaths.length - b.sx / b.deaths.length, a.sy / a.deaths.length - b.sy / b.deaths.length) > JOIN_RADIUS) continue;
       a.deaths.push(...b.deaths);
       a.deaths.sort((x, y) => x.frame - y.frame);
       a.sx += b.sx;
       a.sy += b.sy;
       a.last = Math.max(a.last, b.last);
       closed.splice(j, 1);
-      j--;
+      j = i;
     }
   }
+  const costed = t.events.some((e) => e.kind === "died" && cost(e.type) > 0);
+  const weigh = (type) => costed ? cost(type) : 1;
+  const races = new Map(t.players.map((p) => [p.slot, p.race]));
+  const hadAt = (player, frame) => {
+    const q = t.samples.players.find((p) => p.slot === player);
+    const i = sampleAt(t.samples.frame, frame);
+    if (!q || i < 0) return 0;
+    const workers = q.workers[i] ?? 0, worker = WORKER_OF[races.get(player) ?? 1] ?? 7;
+    return costed ? (q.armyValue[i] ?? 0) + workers * cost(worker) : (q.army[i] ?? 0) + workers;
+  };
   const out = [];
   for (const f of closed) {
     const sides = /* @__PURE__ */ new Map();
     const side = (player) => {
       let s = sides.get(player);
       if (!s) {
-        s = { player, lost: 0, lostValue: 0, killed: 0, killedValue: 0, army: 0, armyValue: 0, lostTypes: /* @__PURE__ */ new Map() };
+        s = { player, lost: 0, lostValue: 0, killed: 0, killedValue: 0, army: 0, armyValue: 0, had: 0, lostTypes: /* @__PURE__ */ new Map() };
         sides.set(player, s);
       }
       return s;
     };
     let value = 0, x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    let weight = 0, workers = 0, buildings2 = 0;
+    const lostWeight = /* @__PURE__ */ new Map();
     for (const e of f.deaths) {
-      const v = cost(e.type), s = side(e.owner);
+      const v = cost(e.type), s = side(e.owner), wt = weigh(e.type);
       s.lost++;
       s.lostValue += v;
       s.lostTypes.set(e.type, (s.lostTypes.get(e.type) ?? 0) + 1);
       value += v;
+      weight += wt;
+      lostWeight.set(e.owner, (lostWeight.get(e.owner) ?? 0) + wt);
+      if (WORKERS2.has(e.type)) workers += wt;
+      else if (isBuilding(e.type)) buildings2 += wt;
       if (e.byOwner !== void 0 && e.byOwner <= 7 && e.byOwner !== e.owner) {
         const k = side(e.byOwner);
         k.killed++;
@@ -1351,12 +1532,57 @@ function fights(t, cost, index) {
     }
     const list = [...sides.values()].sort((a, b) => a.player - b.player);
     const score = (s) => value > 0 ? s.killedValue - s.lostValue : s.killed - s.lost;
-    const ranked = [...list].sort((a, b) => score(b) - score(a));
+    const ranked2 = [...list].sort((a, b) => score(b) - score(a));
     const total = value > 0 ? value : f.deaths.length;
-    const winner = ranked.length > 1 && score(ranked[0]) - score(ranked[1]) > total * AHEAD ? ranked[0].player : null;
-    out.push({ from, to: f.last, x, y, rect: { x0, y0, x1, y1 }, losses: f.deaths.length, value, sides: list, winner });
+    const winner = ranked2.length > 1 && score(ranked2[0]) - score(ranked2[1]) > total * AHEAD ? ranked2[0].player : null;
+    let had = 0, ownWorst = 0, loserWorst = 0;
+    for (const s of list) {
+      const lost = lostWeight.get(s.player) ?? 0;
+      s.had = Math.max(hadAt(s.player, from - 1), lost);
+      had += s.had;
+      const own = s.had > 0 ? lost / s.had : 0;
+      ownWorst = Math.max(ownWorst, own);
+      if (s.player !== winner) loserWorst = Math.max(loserWorst, own);
+    }
+    const share = had > 0 ? Math.min(1, weight / had) : 0;
+    const tier = winner !== null && loserWorst >= DECISIVE ? "decisive" : share >= MAJOR_SHARE || ownWorst >= MAJOR_OWN ? "major" : "minor";
+    const kind = buildings2 >= weight * MOSTLY ? "buildings" : workers >= weight * MOSTLY ? "workers" : "battle";
+    const importance = share + (winner !== null ? loserWorst / 2 : 0);
+    out.push({ from, to: f.last, x, y, rect: { x0, y0, x1, y1 }, points: f.deaths.map((e) => ({ frame: e.frame, x: e.x, y: e.y })), losses: f.deaths.length, value, sides: list, winner, kind, tier, share, turning: false, importance, key: false });
   }
-  return out.sort((a, b) => a.from - b.from);
+  out.sort((a, b) => a.from - b.from);
+  const turn = turningFight(t, out, costed);
+  if (turn) turn.turning = turn.key = true;
+  const decisive = out.filter((f) => f.tier === "decisive").length;
+  const keys = Math.min(MAX_KEYS, Math.max(MIN_KEYS, decisive, Math.round(t.frames / FRAMES_PER_MINUTE2 / KEY_MINUTES)));
+  const ranked = out.filter((f) => f.tier !== "minor" && !f.turning).sort((a, b) => b.importance - a.importance);
+  for (const f of ranked.slice(0, keys - (turn ? 1 : 0))) f.key = true;
+  return out;
+}
+function turningFight(t, list, costed) {
+  const frames = t.samples.frame;
+  const players = t.samples.players.filter((q) => q.workers.some((n) => n > 0));
+  if (players.length !== 2 || !frames.length) return null;
+  const [a, b] = players;
+  const army = (q, i) => (costed ? q.armyValue[i] : q.army[i]) ?? 0;
+  let state = 0, last = 0, changed = -1;
+  for (let i = 0; i < frames.length; i++) {
+    const va = army(a, i), vb = army(b, i), room = Math.max(costed ? MIN_LEAD_VALUE : MIN_LEAD_UNITS, LEAD * Math.max(va, vb));
+    const now = va - vb > room ? 1 : vb - va > room ? -1 : state && Math.sign(va - vb) === state ? state : 0;
+    if (now !== 0 && now !== last) {
+      last = now;
+      changed = frames[i];
+    }
+    state = now;
+  }
+  if (!last || changed < 0) return null;
+  const leader = last > 0 ? a.slot : b.slot;
+  let best = null;
+  for (const f of list) {
+    if (f.tier === "minor" || f.winner !== leader || f.from > changed + TURN_AFTER || f.to < changed - TURN_BEFORE) continue;
+    if (!best || f.value > best.value || f.value === best.value && f.losses > best.losses) best = f;
+  }
+  return best;
 }
 function topKillers(t, cost, limit = 8) {
   const by = /* @__PURE__ */ new Map();
@@ -1436,23 +1662,16 @@ function mapReport(games, map) {
         if (game.winner === player) s.startWins++;
       }
     }
-    const taken = /* @__PURE__ */ new Map(), count = /* @__PURE__ */ new Map(), mine = /* @__PURE__ */ new Map();
-    for (const b of [...game.standing].sort((a, c) => a.from - c.from)) {
-      if (b.from === 0 || !HALLS.has(b.type)) continue;
-      const home = startOf.get(b.owner);
-      if (home && Math.hypot(home.x - b.x, home.y - b.y) <= SITE_RADIUS) continue;
-      const s = siteAt(b.x, b.y), had = mine.get(b.owner) ?? /* @__PURE__ */ new Set();
-      mine.set(b.owner, had);
-      if (had.has(s)) continue;
-      had.add(s);
-      const order = (count.get(b.owner) ?? 1) + 1;
-      count.set(b.owner, order);
-      s.orders.push(order);
-      if (!taken.has(s)) taken.set(s, b.from);
+    const taken = /* @__PURE__ */ new Map();
+    for (const b of game.bases) {
+      const s = siteAt(b.x, b.y);
+      s.orders.push(b.nth);
+      if (!taken.has(s)) taken.set(s, b.frame);
     }
     for (const [s, frame] of taken) s.frames.push(frame);
-    if (game.fights.length) firstFights.push(game.fights[0].from);
-    for (const f of game.fights) {
+    const fights2 = game.fights.filter((f) => f.tier !== "minor");
+    if (fights2.length) firstFights.push(fights2[0].from);
+    for (const f of fights2) {
       let s = nearest(spots, f.x, f.y, SPOT_RADIUS);
       if (!s) {
         s = { sx: 0, sy: 0, n: 0, fights: 0, games: /* @__PURE__ */ new Set(), value: 0, frames: [], decided: 0, nearerWon: 0 };
@@ -1524,18 +1743,303 @@ function winnerOf(players, standing) {
   return holding.length === 1 && players.length > 1 ? holding[0].index : null;
 }
 
+// director.ts
+var GROUP_CELL = 256;
+var MIN_ARMY_VALUE = 300;
+var MIN_ARMY_UNITS = 3;
+var MEETING = 640;
+var FIGHT_BEFORE = 96;
+var FIGHT_AFTER = 48;
+var BASE_LOOK = 192;
+var FRONT = 120;
+var MIN_HOLD = 3;
+var ARMY_HOLD = 8;
+var BETTER = 1.4;
+var MIN_SHOT = 3;
+var HALLS2 = /* @__PURE__ */ new Set([106, 131, 154]);
+function groupsAt(t, index, sample, cost) {
+  const p = t.positions;
+  if (!p) return [];
+  const cells = /* @__PURE__ */ new Map();
+  for (let r = p.start[sample]; r < p.start[sample + 1]; r++) {
+    const u = p.unit[r], type = index.type[u], owner = index.owner[u];
+    if (owner < 0 || owner > 7 || !counted(type) || WORKERS2.has(type) || isBuilding(type)) continue;
+    const cx = Math.floor(p.x[r] / GROUP_CELL), cy = Math.floor(p.y[r] / GROUP_CELL), k = `${owner}:${cx}:${cy}`;
+    let c = cells.get(k);
+    if (!c) {
+      c = { player: owner, cx, cy, sx: 0, sy: 0, value: 0, units: 0 };
+      cells.set(k, c);
+    }
+    c.sx += p.x[r];
+    c.sy += p.y[r];
+    c.value += cost(type);
+    c.units++;
+  }
+  const out = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const [k, c] of cells) {
+    if (seen.has(k)) continue;
+    const g = { player: c.player, sx: 0, sy: 0, value: 0, units: 0 };
+    const stack = [k];
+    seen.add(k);
+    while (stack.length) {
+      const cell = cells.get(stack.pop());
+      g.sx += cell.sx;
+      g.sy += cell.sy;
+      g.value += cell.value;
+      g.units += cell.units;
+      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+        const n = `${c.player}:${cell.cx + dx}:${cell.cy + dy}`;
+        if (!seen.has(n) && cells.has(n)) {
+          seen.add(n);
+          stack.push(n);
+        }
+      }
+    }
+    out.push({ player: g.player, x: g.sx / g.units, y: g.sy / g.units, value: g.value, units: g.units });
+  }
+  return out;
+}
+function direct(t, index, fights2, bases2, cost) {
+  const p = t.positions;
+  if (!p || !p.frame.length) return [];
+  const costed = t.events.some((e) => e.kind === "died" && cost(e.type) > 0);
+  const isArmy = (g) => costed ? g.value >= MIN_ARMY_VALUE : g.units >= MIN_ARMY_UNITS;
+  const weight = (g) => costed ? g.value / 300 : g.units / 6;
+  const homes = /* @__PURE__ */ new Map();
+  for (const e of t.events) {
+    if (e.frame > 0) break;
+    if (e.kind === "born" && HALLS2.has(e.type) && e.owner <= 7 && !homes.has(e.owner)) homes.set(e.owner, { x: e.x, y: e.y });
+  }
+  const candidates = (i, frame, previous2) => {
+    const out = [];
+    fights2.forEach((f, n) => {
+      if (frame < f.from - FIGHT_BEFORE || frame > f.to + FIGHT_AFTER) return;
+      let sx = 0, sy = 0, k = 0;
+      for (const pt of f.points) {
+        if (pt.frame > frame + 24) break;
+        if (pt.frame >= frame - FRONT) {
+          sx += pt.x;
+          sy += pt.y;
+          k++;
+        }
+      }
+      const base = f.tier === "minor" ? (f.kind === "workers" ? 30 : 15) + Math.min(30, f.value / 100) : 100 + 200 * f.importance;
+      out.push({ kind: "fight", key: `f${n}`, score: base, x: k ? sx / k : f.x, y: k ? sy / k : f.y, players: f.sides.map((s) => s.player), fight: f });
+    });
+    const groups = groupsAt(t, index, i, cost).filter(isArmy);
+    const mains = /* @__PURE__ */ new Map();
+    for (const g of groups) {
+      const m = mains.get(g.player);
+      if (!m || g.value + g.units > m.value + m.units) mains.set(g.player, g);
+    }
+    for (const [player, g] of mains) {
+      const before = previous2.get(player), moved = before ? Math.hypot(g.x - before.x, g.y - before.y) / 64 : 0;
+      out.push({ kind: "army", key: `a${player}`, score: 10 + weight(g) + Math.min(10, moved), x: g.x, y: g.y, players: [player] });
+    }
+    for (let a = 0; a < groups.length; a++) for (let b = a + 1; b < groups.length; b++) {
+      const ga = groups[a], gb = groups[b];
+      if (ga.player === gb.player || Math.hypot(ga.x - gb.x, ga.y - gb.y) > MEETING) continue;
+      const players = [ga.player, gb.player].sort((x, y) => x - y);
+      out.push({ kind: "meeting", key: `m${players.join("-")}`, score: 40 + weight(ga) + weight(gb), x: (ga.x + gb.x) / 2, y: (ga.y + gb.y) / 2, players });
+    }
+    bases2.forEach((b, n) => {
+      if (frame >= b.frame && frame <= b.frame + BASE_LOOK) out.push({ kind: "base", key: `b${n}`, score: 35, x: b.x, y: b.y, players: [b.player], base: b });
+    });
+    for (const [player, g] of mains) previous2.set(player, g);
+    for (const [player, at] of homes) out.push({ kind: "home", key: `h${player}`, score: 2, x: at.x, y: at.y, players: [player] });
+    return out;
+  };
+  const shots = [];
+  let cur = null;
+  const previous = /* @__PURE__ */ new Map();
+  for (let i = 0; i < p.frame.length; i++) {
+    const frame = p.frame[i];
+    const list = candidates(i, frame, previous);
+    if (!list.length) {
+      if (cur) cur.held++;
+      continue;
+    }
+    const best = list.reduce((a, b) => b.score > a.score ? b : a);
+    const same = cur ? list.find((c) => c.key === cur.key) : void 0;
+    let keep = false;
+    if (cur && same) {
+      const tired = (same.kind === "army" || same.kind === "home") && cur.held >= ARMY_HOLD;
+      keep = same.kind === "fight" ? best.score < same.score * BETTER || best.kind !== "fight" : cur.held < MIN_HOLD ? best.kind !== "fight" || best.score < same.score * BETTER : !tired && best.score < same.score * BETTER;
+    }
+    if (keep && same && cur) {
+      cur.shot.path.push({ frame, x: same.x, y: same.y });
+      cur.shot.to = frame;
+      cur.held++;
+      continue;
+    }
+    const top = (from) => from.reduce((a, b) => !a || b.score > a.score ? b : a, null);
+    const pick = cur && same && (same.kind === "army" || same.kind === "home") && best.key === cur.key ? top(list.filter((c) => !c.players.some((pl) => cur.shot.players.includes(pl)))) ?? top(list.filter((c) => c.key !== cur.key)) ?? best : best;
+    if (cur && pick.key === cur.key) {
+      cur.shot.path.push({ frame, x: pick.x, y: pick.y });
+      cur.shot.to = frame;
+      cur.held = 0;
+      continue;
+    }
+    const shot = { kind: pick.kind, from: frame, to: frame, players: pick.players, path: [{ frame, x: pick.x, y: pick.y }], ...pick.fight ? { fight: pick.fight } : {}, ...pick.base ? { base: pick.base } : {} };
+    if (cur) cur.shot.to = frame;
+    shots.push(shot);
+    cur = { shot, key: pick.key, held: 0 };
+  }
+  if (cur) cur.shot.to = Math.max(cur.shot.to, t.frames);
+  const every = p.frame.length > 1 ? p.frame[1] - p.frame[0] : 48;
+  for (let i = shots.length - 2; i >= 0; i--) {
+    if (shots[i].to - shots[i].from >= MIN_SHOT * every) continue;
+    shots[i + 1].from = shots[i].from;
+    shots.splice(i, 1);
+  }
+  return shots;
+}
+function shotAt(shots, frame) {
+  let lo = 0, hi = shots.length;
+  while (lo < hi) {
+    const mid = lo + hi >> 1;
+    if (shots[mid].from <= frame) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo - 1;
+}
+function lookAt(shot, frame) {
+  const path = shot.path;
+  let i = 0;
+  while (i + 1 < path.length && path[i + 1].frame <= frame) i++;
+  const a = path[i], b = path[i + 1];
+  if (!b || frame <= a.frame) return { x: a.x, y: a.y };
+  const k = Math.min(1, (frame - a.frame) / Math.max(1, b.frame - a.frame));
+  return { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k };
+}
+
+// story.ts
+var HALLS3 = /* @__PURE__ */ new Set([106, 131, 154]);
+var LEAD2 = 0.1;
+var MIN_LEAD_VALUE2 = 300;
+var MIN_LEAD_UNITS2 = 2;
+function playing(t) {
+  return t.samples.players.filter((q) => q.workers.some((n) => n > 0));
+}
+function advantage(t) {
+  const players = playing(t);
+  if (players.length !== 2 || !t.samples.frame.length) return null;
+  const [a, b] = players;
+  const byCount = !players.some((q) => q.armyValue.some((n) => n > 0));
+  const army = (q, i) => (byCount ? q.army[i] : q.armyValue[i]) ?? 0;
+  return { a: a.slot, b: b.slot, frames: t.samples.frame, lead: t.samples.frame.map((_, i) => army(a, i) - army(b, i)), byCount };
+}
+function leads(t, adv) {
+  const out = { a: { player: adv.a, frames: 0, most: 0, at: 0 }, b: { player: adv.b, frames: 0, most: 0, at: 0 }, even: 0 };
+  const qa = t.samples.players.find((q) => q.slot === adv.a), qb = t.samples.players.find((q) => q.slot === adv.b);
+  const army = (q, i) => (adv.byCount ? q.army[i] : q.armyValue[i]) ?? 0;
+  const end = Math.min(t.frames, adv.frames.length ? adv.frames[adv.frames.length - 1] + t.samples.every : 0);
+  adv.frames.forEach((frame, i) => {
+    const span = Math.max(0, (i + 1 < adv.frames.length ? adv.frames[i + 1] : end) - frame);
+    const lead = adv.lead[i], room = Math.max(adv.byCount ? MIN_LEAD_UNITS2 : MIN_LEAD_VALUE2, LEAD2 * Math.max(army(qa, i), army(qb, i)));
+    const side = lead > room ? out.a : -lead > room ? out.b : null;
+    if (!side) {
+      out.even += span;
+      return;
+    }
+    side.frames += span;
+    if (Math.abs(lead) > side.most) {
+      side.most = Math.abs(lead);
+      side.at = frame;
+    }
+  });
+  return out;
+}
+function bases(standing, minerals, landings = []) {
+  const arrivals = [
+    ...standing.filter((b) => HALLS3.has(b.type) && b.owner <= 7 && (b.from === 0 || b.done !== null)).map((b) => ({ player: b.owner, frame: b.from, x: b.x, y: b.y })),
+    ...landings
+  ].sort((a, b) => a.frame - b.frame);
+  const out = [];
+  const had = /* @__PURE__ */ new Map();
+  for (const a of arrivals) {
+    const line = lineAt(minerals, a.x, a.y);
+    if (line < 0) continue;
+    const mine = had.get(a.player) ?? /* @__PURE__ */ new Set();
+    had.set(a.player, mine);
+    if (mine.has(line)) continue;
+    mine.add(line);
+    if (a.frame === 0) continue;
+    out.push({ player: a.player, frame: a.frame, x: a.x, y: a.y, line, nth: out.filter((o) => o.player === a.player).length + 2 });
+  }
+  return out;
+}
+function totals(t, taken, cost) {
+  const players = playing(t);
+  const byCount = !players.some((q) => q.armyValue.some((n) => n > 0));
+  const out = /* @__PURE__ */ new Map();
+  for (const q of players) {
+    const row = { player: q.slot, armyMost: 0, armyAt: 0, workersMost: Math.max(0, ...q.workers), bases: 1, lost: 0, lostUnits: 0, killed: 0, killedUnits: 0 };
+    q.armyValue.forEach((_, i) => {
+      const n = (byCount ? q.army[i] : q.armyValue[i]) ?? 0;
+      if (n > row.armyMost) {
+        row.armyMost = n;
+        row.armyAt = t.samples.frame[i];
+      }
+    });
+    out.set(q.slot, row);
+  }
+  for (const b of taken) {
+    const row = out.get(b.player);
+    if (row) row.bases = Math.max(row.bases, b.nth);
+  }
+  const ignored = merged(t);
+  for (const e of t.events) {
+    if (e.kind === "born" && e.hallucination) {
+      ignored.add(e.unit);
+      continue;
+    }
+    if (e.kind !== "died" || !counted(e.type) || ignored.has(e.unit)) continue;
+    const v = cost(e.type), lost = out.get(e.owner);
+    if (lost) {
+      lost.lost += v;
+      lost.lostUnits++;
+    }
+    const by = e.byOwner !== void 0 && e.byOwner !== e.owner ? out.get(e.byOwner) : void 0;
+    if (by) {
+      by.killed += v;
+      by.killedUnits++;
+    }
+  }
+  return [...out.values()];
+}
+function story(fights2, taken, left) {
+  const out = [
+    ...fights2.filter((f) => f.key).map((fight) => ({ kind: "fight", frame: fight.from, fight })),
+    ...taken.map((base) => ({ kind: "base", frame: base.frame, base })),
+    ...left.map((l) => ({ kind: "left", frame: l.frame, player: l.player }))
+  ];
+  return out.sort((x, y) => x.frame - y.frame);
+}
+function hardestHit(f) {
+  let worst = null, most = -1;
+  for (const s of f.sides) {
+    const n = f.value > 0 ? s.lostValue : s.lost;
+    if (n > most) {
+      most = n;
+      worst = s.player;
+    }
+  }
+  return worst;
+}
+
 // plugin.ts
-var DEFAULTS = { buildings: true, orders: true, heat: "off", wholeGame: false, allReplays: false, speed: 8, docked: false, workers: false, units: true, chart: "apm", marks: true };
+var DEFAULTS = { orders: false, legend: true, heat: "losses", speed: 8, workers: false, chart: "lead", tab: "summary", version: 5 };
+var FRONT_FRAMES = 120;
+var FIGHT_LEAD = 48;
+var TWINS = /* @__PURE__ */ new Set([37, 47]);
 var TRAIL_FRAMES = 8 * 24;
 var KILL_FRAMES = 36;
 var NEW_FRAMES = 6 * 24;
 var SAME_MAP = 0.9;
-var HEAT_KINDS = {
-  orders: /* @__PURE__ */ new Set(["move", "attack", "patrol", "ability"]),
-  move: /* @__PURE__ */ new Set(["move"]),
-  attack: /* @__PURE__ */ new Set(["attack", "patrol"]),
-  ping: /* @__PURE__ */ new Set(["ping"])
-};
+var LANE = 16;
+var SENT = /* @__PURE__ */ new Set(["move", "attack", "patrol", "ability"]);
 var msg2 = (text) => text;
 var RACES = [msg2("Zerg"), msg2("Terran"), msg2("Protoss")];
 var GAME_TYPES = {
@@ -1553,162 +2057,446 @@ var GAME_TYPES = {
   13: msg2("Team Capture the Flag"),
   15: msg2("Top vs Bottom")
 };
+var TABS = [
+  { id: "summary", label: msg2("Game") },
+  { id: "build", label: msg2("Build") },
+  { id: "fights", label: msg2("Fights") },
+  { id: "chat", label: msg2("Chat") },
+  { id: "map", label: msg2("Map stats") }
+];
+var HEAT_LABELS = {
+  losses: msg2("Heat: where units were lost"),
+  presence: msg2("Heat: where the armies were"),
+  orders: msg2("Heat: where units were sent"),
+  buildings: msg2("Heat: where buildings went"),
+  unvisited: msg2("Ground never entered")
+};
+var LEGEND_TITLES = { watch: msg2("The game"), orders: msg2("The game and its orders"), map: msg2("Map stats") };
+var FIGHT_KINDS = { battle: msg2("Battle"), workers: msg2("Workers killed"), buildings: msg2("Buildings destroyed") };
+function fightMark(f) {
+  if (f.turning) return { id: "turn", label: msg2("Turning point"), why: msg2("After this fight the player ahead in army stayed ahead to the end") };
+  if (f.tier === "decisive") return { id: "decisive", label: msg2("Decisive"), why: msg2("One side lost much of everything it had, and the other came out clearly ahead") };
+  if (f.tier === "major" && f.winner === null) return { id: "even", label: msg2("Even trade"), why: msg2("Both sides lost about as much") };
+  return null;
+}
 var STYLE = `
-.afm { display: flex; flex-direction: column; gap: 8px; font-size: 12px; flex: 1; min-height: 0; overflow: auto; }
+.afm { display: flex; flex-direction: column; gap: 8px; font-size: 12px; flex: 1; min-height: 0; }
 .afm > * { flex-shrink: 0; }
 .afm .afm-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.afm .afm-row select { flex: 1; min-width: 0; }
 .afm .afm-title { font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .afm .afm-dim { color: var(--text-dim, #99a2b3); line-height: 1.35; }
 .afm .afm-warn { color: var(--warn, #e6b95c); line-height: 1.35; }
 .afm .afm-drop { border: 1px dashed var(--border, #3a4150); border-radius: 6px; padding: 14px 10px; text-align: center; color: var(--text-dim, #99a2b3); }
 .afm.afm-dragging .afm-drop, .afm.afm-dragging { outline: 2px dashed var(--accent, #4fd1c5); outline-offset: -2px; }
-.afm .afm-time { font-variant-numeric: tabular-nums; min-width: 88px; text-align: right; }
-.afm input[type=range] { flex: 1; min-width: 0; margin: 0; }
-.afm table { border-collapse: collapse; width: 100%; }
-.afm td { padding: 2px 4px; white-space: nowrap; }
-.afm td.afm-name { overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
-.afm td.afm-num { text-align: right; font-variant-numeric: tabular-nums; }
-.afm .afm-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; }
-.afm canvas.afm-apm { width: 100%; height: 72px; display: block; cursor: pointer; }
+.afm .afm-players { display: flex; flex-direction: column; gap: 1px; }
+.afm .afm-player { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; gap: 6px; padding: 3px 4px; border-radius: 4px; cursor: pointer; }
+.afm .afm-player:hover { background: var(--hover, rgba(255,255,255,0.06)); }
+.afm .afm-player.afm-off { opacity: 0.4; }
+.afm .afm-player .afm-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.afm .afm-player .afm-race { color: var(--text-dim, #99a2b3); margin-left: 4px; }
+.afm .afm-player .afm-live { font-variant-numeric: tabular-nums; color: var(--text-dim, #99a2b3); white-space: nowrap; }
+.afm .afm-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+.afm .afm-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border, #3a4150); }
+.afm .afm-tabs button { background: none; border: 0; border-bottom: 2px solid transparent; color: var(--text-dim, #99a2b3); padding: 4px 3px; cursor: pointer; font: inherit; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.afm .afm-tabs button:hover { color: var(--text, #e4e8ef); }
+.afm .afm-tabs button.afm-on { color: var(--text, #e4e8ef); border-bottom-color: var(--accent, #4fd1c5); }
+.afm .afm-tabs button:disabled { opacity: 0.4; cursor: default; }
+.afm .afm-body { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 8px; }
+.afm .afm-body > * { flex-shrink: 0; }
 .afm .afm-step .afm-end { color: var(--text-dim, #99a2b3); font-size: 11px; }
 .afm .afm-step.afm-gone > span:nth-child(2) { text-decoration: line-through; text-decoration-color: var(--text-dim, #99a2b3); }
-.afm .afm-list { max-height: 240px; overflow: auto; border: 1px solid var(--border, #3a4150); border-radius: 4px; }
 .afm .afm-step { display: grid; grid-template-columns: 44px 1fr; gap: 6px; padding: 2px 6px; cursor: pointer; }
 .afm .afm-step:hover { background: var(--hover, rgba(255,255,255,0.06)); }
 .afm .afm-step.afm-future { opacity: 0.45; }
 .afm .afm-step .afm-t { font-variant-numeric: tabular-nums; color: var(--text-dim, #99a2b3); }
 .afm .afm-step.afm-hall { font-weight: 600; }
-.afm .afm-chat { max-height: 140px; overflow: auto; }
-.afm .afm-chat div { padding: 1px 0; }
+.afm .afm-fight { padding-top: 3px; padding-bottom: 3px; }
+.afm .afm-fight .afm-sides, .afm .afm-fold .afm-step { font-size: 11px; color: var(--text-dim, #99a2b3); }
+.afm .afm-result { font-size: 13px; font-weight: 600; }
+.afm .afm-result .afm-end { font-weight: 400; }
+.afm .afm-leadbar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: rgba(128,128,128,0.25); margin: 2px 0 4px; }
+.afm .afm-leadbar > span { display: block; min-width: 0; }
+.afm .afm-line { padding: 2px 0; cursor: pointer; line-height: 1.35; }
+.afm .afm-line:hover { color: var(--text, #e4e8ef); background: var(--hover, rgba(255,255,255,0.06)); }
+.afm .afm-table { display: grid; gap: 2px 8px; font-variant-numeric: tabular-nums; }
+.afm .afm-table > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.afm .afm-table .afm-th { text-align: right; }
+.afm .afm-table > span:not(.afm-dim):not(:first-child) { text-align: right; }
+.afm .afm-step.afm-quiet { color: var(--text-dim, #99a2b3); }
+.afm-toggles { display: inline-flex; gap: 4px; flex: 0 0 auto; }
+.afm-toggle { background: none; border: 1px solid var(--border, #3a4150); border-radius: 5px; color: var(--text-dim, #99a2b3); font: inherit; padding: 2px 8px; cursor: pointer; }
+.afm-toggle:hover:not(:disabled) { color: var(--text, #e4e8ef); }
+.afm-toggle:disabled { opacity: 0.45; cursor: default; }
+.afm-toggle.afm-on { background: var(--accent, #4fd1c5); border-color: var(--accent, #4fd1c5); color: #10131a; }
+.afm .afm-ahead { color: var(--text, #e4e8ef); font-weight: 600; }
+.afm .afm-mark { display: inline-block; font-size: 10px; font-weight: 600; line-height: 14px; padding: 0 5px; border-radius: 7px; margin-right: 5px; vertical-align: 1px; }
+.afm .afm-mark.afm-turn { background: #f0c64a; color: #1b1d22; }
+.afm .afm-mark.afm-decisive { background: rgba(240,80,60,0.9); color: #fff; }
+.afm .afm-mark.afm-even { background: rgba(160,168,184,0.25); color: var(--text, #e4e8ef); }
+.afm .afm-fold > summary { cursor: pointer; color: var(--text-dim, #99a2b3); padding: 2px 6px; }
+.afm .afm-fold > summary:hover { color: var(--text, #e4e8ef); }
+.afm .afm-chat div { padding: 1px 0; cursor: pointer; }
+.afm .afm-chat div.afm-future { opacity: 0.45; }
+.afm-tl { display: flex; flex-direction: column; gap: 6px; flex: 1; min-height: 0; font-size: 12px; }
+.afm-tl > .afm-row { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.afm-tl .afm-time { font-variant-numeric: tabular-nums; min-width: 92px; }
+.afm-tl .afm-dim { color: var(--text-dim, #99a2b3); }
+.afm-tl .afm-grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.afm-tl select, .afm-tl button { flex: 0 0 auto; width: auto; }
+.afm-tl > .afm-row > button:first-child { min-width: 64px; }
+.afm-tl canvas { flex: 1; min-height: 40px; width: 100%; display: block; cursor: pointer; touch-action: none; }
+.afm-tl canvas.afm-faded { opacity: 0.3; }
+.afm .afm-game { padding: 2px 0; }
+.afm .afm-game > label { display: flex; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.afm .afm-game.afm-out { opacity: 0.55; }
+.afm .afm-game .afm-sub { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; padding-left: 22px; font-size: 11px; color: var(--text-dim, #99a2b3); }
+.afm .afm-game .afm-names { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.afm .afm-link { background: none; border: 0; padding: 0; font: inherit; color: var(--accent, #4fd1c5); cursor: pointer; }
+.afm .afm-link:hover { text-decoration: underline; }
 `;
 function activate(api) {
   api.i18n.register({ ko: KO });
   const t = api.i18n.t;
   const translate = (text) => api.i18n.t(text);
-  const settings = { ...DEFAULTS, ...api.storage.get("settings", {}) };
+  const placeOf = (x, y, map) => {
+    const clock = clockOf(x, y, map.width * 32, map.height * 32);
+    return clock ? t("{n} o'clock", { n: clock }) : t("the middle");
+  };
+  const stored = api.storage.get("settings", {});
+  const version = stored.version ?? 0, oldLens = stored.lens;
+  for (const old of ["docked", "buildings", "units", "marks", "lens", "wholeGame", "allReplays"]) delete stored[old];
+  if (version < 4) delete stored.orders;
+  const settings = { ...DEFAULTS, ...stored };
+  if (version < 2) {
+    settings.chart = DEFAULTS.chart;
+    settings.tab = DEFAULTS.tab;
+  }
+  if (version < 4) settings.orders = oldLens === "orders";
+  if (version < 3) {
+    const old = stored.heat;
+    settings.heat = old === "move" || old === "attack" || old === "ping" ? "orders" : old === void 0 || old === "off" ? DEFAULTS.heat : settings.heat;
+  }
+  settings.version = DEFAULTS.version;
   const save = () => api.storage.set("settings", settings);
+  const w = api.ui.widgets;
+  const el = api.ui.el;
   const loaded = [];
   let nextId = 1;
   let current = null;
-  let frame = 0;
-  let playing = false;
+  let playing2 = false;
   let raf = 0;
   let lastTick = 0;
-  const hidden = /* @__PURE__ */ new Set();
-  let matches = false;
-  let panel = null;
-  let view = null;
   const style = document.createElement("style");
   style.textContent = STYLE;
   document.head.append(style);
-  async function load(files) {
+  async function load(files, into = null) {
     const reps = files.filter((f) => /\.rep$/i.test(f.name));
     if (!reps.length) {
       if (files.length) api.ui.toast({ kind: "warn", title: t("Not a replay"), detail: t("Aftermath opens StarCraft replays, files ending in .rep.") });
       return;
     }
-    let first = null;
+    void api.data.load();
+    void api.graphics.load();
+    const batch = [];
     for (const file of reps) {
       try {
         const bytes = new Uint8Array(await file.arrayBuffer());
         const replay = await parseReplay(bytes);
-        const entry = { id: nextId++, fileName: file.name, report: analyse(replay), map: readChk(replay.chk), bytes, played: null };
-        loaded.push(entry);
-        first ??= entry;
+        const id = nextId++, map = readChk(replay.chk);
+        const group = [...loaded, ...batch].find((l) => likeness(map, l.map) >= SAME_MAP)?.group ?? id;
+        batch.push({ id, fileName: file.name, report: analyse(replay), map, bytes, docId: null, group, excluded: false, frame: 0, hidden: /* @__PURE__ */ new Set(), played: null, failed: null });
       } catch (err) {
         const detail = err instanceof ReplayError ? translate(err.message) : String(err);
         api.ui.toast({ kind: "error", title: t("Could not read {name}", { name: file.name }), detail });
         api.log("Aftermath:", file.name, err);
       }
     }
-    if (!first) return;
-    void api.data.load();
-    void api.graphics.load();
-    await select(first, true);
+    if (!batch.length) return;
+    const tabbed = [], quiet = [];
+    if (into) {
+      for (const e of batch) (e.group === into.group ? quiet : tabbed).push(e);
+    } else {
+      const groups = /* @__PURE__ */ new Map();
+      for (const e of batch) groups.set(e.group, [...groups.get(e.group) ?? [], e]);
+      const shared = [...groups.values()].filter((g) => g.length > 1);
+      const together = shared.length > 0 && await api.ui.confirm(
+        t("{n} of these replays share a map with another of them. Open one replay of each map in a tab and put the others in that map's Map stats, where the games of a map are taken together? Or open every replay in a tab of its own?", { n: shared.reduce((n, g) => n + g.length, 0) }),
+        { title: t("Several replays of one map"), confirmLabel: t("Use Map stats"), cancelLabel: t("A tab each") }
+      );
+      for (const g of groups.values()) {
+        if (!together || g.length < 2) tabbed.push(...g);
+        else if (hasTab(g[0].group)) quiet.push(...g);
+        else {
+          tabbed.push(g[0]);
+          quiet.push(...g.slice(1));
+        }
+      }
+    }
+    for (const entry of tabbed) {
+      for (const p of entry.report.players) for (const pl of p.placements) api.graphics.requestUnit(pl.unit);
+      loaded.push(entry);
+      if (!await openTab(entry)) {
+        loaded.splice(loaded.indexOf(entry), 1);
+        continue;
+      }
+      queue.push(entry);
+    }
+    const added = quiet.filter((e) => hasTab(e.group));
+    for (const entry of added) {
+      loaded.push(entry);
+      queue.push(entry);
+    }
+    if (added.length) {
+      reportCache = null;
+      heatCache = null;
+      side?.render();
+      strip?.update();
+      overlay.redraw();
+      if (!into) api.ui.toast({ kind: "ok", title: t("{n, plural, one {# replay} other {# replays}} added to Map stats", { n: added.length }), detail: t("Each is analysed in the background, after the replays open in tabs. Map stats is under the map.") });
+    }
+    pump();
   }
-  async function select(entry, openMap) {
-    stop();
-    current = entry;
-    frame = 0;
-    hidden.clear();
-    heatCache = null;
-    checkMap();
-    if (!matches && openMap) await openReplayMap();
-    for (const p of entry.report.players) for (const pl of p.placements) api.graphics.requestUnit(pl.unit);
-    showPanel();
-    view?.render();
-    overlay.show();
-    overlay.redraw();
-    if (matches) void api.view.reveal({ x0: 0, y0: 0, x1: entry.map.width, y1: entry.map.height }, { fit: true, animate: false, margin: 0 });
+  const hasTab = (group) => loaded.some((l) => l.group === group && l.docId !== null);
+  async function openTab(entry) {
+    if (entry.docId !== null) {
+      api.document.activate(entry.docId);
+      return true;
+    }
+    const base = entry.fileName.replace(/\.rep$/i, "").replace(/[\\/:*?"<>|]/g, "_") || t("Replay map");
+    opening = entry;
+    const ok = await api.document.open(entry.report.replay.chk, `${base}.scx`, { viewOnly: { label: t("Replay") } });
+    opening = null;
+    if (!ok) {
+      api.ui.toast({ kind: "error", title: t("Could not open the map of {name}", { name: entry.fileName }) });
+      return false;
+    }
+    entry.docId ??= api.document.id();
+    if (settings.tab === "map") settings.tab = gameTab;
+    sync();
+    if (current === entry) startView(entry);
+    return true;
   }
+  function startView(entry) {
+    const first = entry.report.players[0];
+    const start = first ? api.query.startLocations().find((s) => s.owner === first.player.index) : void 0;
+    const built = first?.placements[0];
+    api.view.setZoom(1);
+    if (start) api.view.center(start.tx, start.ty);
+    else if (built) api.view.center(built.tx, built.ty);
+    else api.view.center(Math.floor(entry.map.width / 2), Math.floor(entry.map.height / 2));
+  }
+  let opening = null;
   function remove(entry) {
     const at = loaded.indexOf(entry);
     if (at < 0) return;
     if (running?.entry === entry) running.controller.abort();
+    const q = queue.indexOf(entry);
+    if (q >= 0) queue.splice(q, 1);
     loaded.splice(at, 1);
     if (current === entry) {
       stop();
-      current = loaded[Math.min(at, loaded.length - 1)] ?? null;
-      frame = 0;
-      hidden.clear();
-      checkMap();
+      current = null;
     }
     heatCache = null;
-    view?.render();
+    reportCache = null;
+  }
+  function sync() {
+    const open = new Set(api.document.list().map((d) => d.id));
+    for (const l of [...loaded]) if (l.docId !== null && !open.has(l.docId)) remove(l);
+    for (const l of [...loaded]) if (l.docId === null && l !== opening && !hasTab(l.group)) remove(l);
+    const id = api.document.id();
+    if (opening && opening.docId === null && id !== null && !loaded.some((l) => l.docId === id)) opening.docId = id;
+    const next = loaded.find((l) => l.docId !== null && l.docId === id) ?? null;
+    if (next !== current) {
+      stop();
+      current = next;
+      heatCache = null;
+      sideHidden = false;
+      stripHidden = false;
+    }
+    bindKeys(current !== null);
+    if (current) {
+      showSide();
+      showStrip();
+      overlay.show();
+    } else {
+      closeStrip();
+      if (!sideAsked) closeSide();
+    }
+    side?.render();
+    strip?.render();
     overlay.redraw();
-  }
-  async function openReplayMap() {
-    if (!current) return;
-    const name = plainText(current.report.replay.header.mapName) || t("Replay map");
-    const ok = await api.document.open(current.report.replay.chk, `${name.replace(/[\\/:*?"<>|]/g, "_")}.scx`, { into: "new" });
-    if (ok) checkMap();
-  }
-  function checkMap() {
-    const scn = api.document.scenario();
-    const info = api.document.info();
-    matches = !!(current && scn && info && likeness(current.map, { width: info.width, height: info.height, tileset: info.era & 7, tiles: scn.tiles }) >= SAME_MAP);
   }
   function seek(f) {
     if (!current) return;
-    frame = Math.max(0, Math.min(current.report.frames, Math.round(f)));
-    view?.update();
+    if (lensOf() === "map") showStats(false);
+    current.frame = Math.max(0, Math.min(current.report.frames, Math.round(f)));
+    tick();
+  }
+  const cam = { following: true, x: -1, y: -1, shot: -1, last: 0, asked: [] };
+  const CUT = 640;
+  function follow() {
+    const entry = current;
+    if (!entry?.played?.shots.length || lensOf() === "map" || !cam.following || entry.docId === null || api.document.id() !== entry.docId) return;
+    if (movedByUser()) {
+      cam.following = false;
+      cam.asked = [];
+      return;
+    }
+    const shots = entry.played.shots, i = shotAt(shots, entry.frame);
+    if (i < 0) return;
+    const target = lookAt(shots[i], entry.frame);
+    const now = performance.now(), dt = Math.min(0.1, (now - cam.last) / 1e3);
+    cam.last = now;
+    if (!playing2 || cam.x < 0 || Math.hypot(target.x - cam.x, target.y - cam.y) > CUT) {
+      cam.x = target.x;
+      cam.y = target.y;
+    } else {
+      const k = 1 - Math.exp(-dt / 0.35);
+      cam.x += (target.x - cam.x) * k;
+      cam.y += (target.y - cam.y) * k;
+    }
+    cam.shot = i;
+    lookTo(cam.x / 32, cam.y / 32);
+  }
+  function lensOf() {
+    if (settings.tab === "map" && sidePanel?.isOpen()) return "map";
+    return settings.orders ? "orders" : "watch";
+  }
+  let gameTab = settings.tab === "map" ? "summary" : settings.tab;
+  settings.tab = gameTab;
+  function showStats(on) {
+    if (!current || on === (lensOf() === "map")) return;
+    if (on) {
+      if (settings.tab !== "map") gameTab = settings.tab;
+      settings.tab = "map";
+      sideHidden = false;
+      showSide(true);
+    } else if (settings.tab === "map") settings.tab = gameTab;
+    save();
+    heatCache = null;
+    side?.render();
+    tick();
+  }
+  const mapGames = (of) => loaded.filter((l) => l.group === of.group);
+  const partedAt = (l) => l.played?.timeline.check?.parted ?? null;
+  function counted2(of) {
+    const games = mapGames(of).filter((l) => !l.excluded);
+    return sim?.present ? games.filter((l) => l.played && partedAt(l) === null) : games;
+  }
+  const waitingOf = (of) => sim?.present ? mapGames(of).filter((l) => !l.excluded && !l.played && !l.failed).length : 0;
+  function lookTo(tx, ty) {
+    api.view.center(tx, ty);
+    cam.asked.push({ x: tx, y: ty });
+    if (cam.asked.length > 8) cam.asked.shift();
+  }
+  function movedByUser() {
+    if (!current || !cam.asked.length) return false;
+    const v = api.view.visible(), hw = (v.x1 - v.x0) / 2, hh = (v.y1 - v.y0) / 2;
+    const cx = (v.x0 + v.x1) / 2, cy = (v.y0 + v.y1) / 2;
+    const clamp = (n, lo, hi) => hi < lo ? (lo + hi) / 2 : Math.max(lo, Math.min(hi, n));
+    return !cam.asked.some((a) => Math.abs(clamp(a.x, hw, current.map.width - hw) - cx) <= 2.5 && Math.abs(clamp(a.y, hh, current.map.height - hh) - cy) <= 2.5);
+  }
+  function setFollowing(on) {
+    cam.following = on;
+    cam.asked = [];
+    cam.x = -1;
+    if (on) follow();
+    overlay.redraw();
+    strip?.update();
+  }
+  function captionOf(entry, shot) {
+    const map = entry.played.timeline.map;
+    const nameOf = (index) => entry.report.players.find((p) => p.player.index === index)?.player.name ?? t("Player {n}", { n: index + 1 });
+    const at = shot.path[0];
+    if (shot.kind === "fight" && shot.fight) {
+      const f = shot.fight, mark = fightMark(f);
+      return [mark ? translate(mark.label) : null, translate(FIGHT_KINDS[f.kind]), placeOf(f.x, f.y, map)].filter(Boolean).join(" \xB7 ");
+    }
+    if (shot.kind === "meeting") return `${t("{a} and {b}, about to meet", { a: nameOf(shot.players[0]), b: nameOf(shot.players[1]) })} \xB7 ${placeOf(at.x, at.y, map)}`;
+    if (shot.kind === "base") return `${t("{name} takes a base", { name: nameOf(shot.players[0]) })} \xB7 ${placeOf(at.x, at.y, map)}`;
+    if (shot.kind === "home") return t("{name}'s main base", { name: nameOf(shot.players[0]) });
+    const here = lookAt(shot, entry.frame);
+    return `${t("{name}'s army", { name: nameOf(shot.players[0]) })} \xB7 ${placeOf(here.x, here.y, map)}`;
+  }
+  function tick() {
+    follow();
+    side?.update();
+    strip?.update();
     overlay.redraw();
   }
   function play() {
-    if (!current || playing) return;
-    if (frame >= current.report.frames) frame = 0;
-    playing = true;
+    if (!current || playing2) return;
+    if (lensOf() === "map") showStats(false);
+    if (current.frame >= current.report.frames) current.frame = 0;
+    playing2 = true;
     lastTick = performance.now();
-    const tick = (now) => {
-      if (!playing || !current) return;
+    const step2 = (now) => {
+      if (!playing2 || !current) return;
       const dt = now - lastTick;
       lastTick = now;
-      frame = Math.min(current.report.frames, frame + dt / FRAME_MS * settings.speed);
-      if (frame >= current.report.frames) playing = false;
-      view?.update();
-      overlay.redraw();
-      if (playing) raf = requestAnimationFrame(tick);
+      current.frame = Math.min(current.report.frames, current.frame + dt / FRAME_MS * settings.speed);
+      if (current.frame >= current.report.frames) playing2 = false;
+      tick();
+      if (playing2) raf = requestAnimationFrame(step2);
     };
-    raf = requestAnimationFrame(tick);
-    view?.update();
+    raf = requestAnimationFrame(step2);
+    strip?.update();
   }
   function stop() {
-    playing = false;
+    playing2 = false;
     cancelAnimationFrame(raf);
-    view?.update();
+    strip?.update();
+  }
+  let keys = [];
+  function bindKeys(on) {
+    if (on === keys.length > 0) return;
+    for (const k of keys) k.dispose();
+    keys = [];
+    if (!on) return;
+    const by = (seconds) => () => {
+      if (current) seek(current.frame + seconds * FRAMES_PER_MINUTE / 60);
+    };
+    keys = [
+      api.hotkeys.add("Space", () => playing2 ? stop() : play()),
+      api.hotkeys.add("ArrowLeft", by(-10)),
+      api.hotkeys.add("ArrowRight", by(10)),
+      api.hotkeys.add("Shift+ArrowLeft", by(-60)),
+      api.hotkeys.add("Shift+ArrowRight", by(60)),
+      api.hotkeys.add("Home", () => seek(0)),
+      api.hotkeys.add("End", () => {
+        if (current) seek(current.report.frames);
+      }),
+      api.hotkeys.add("F", () => spectate()),
+      api.hotkeys.add("O", () => showOrders(!settings.orders)),
+      api.hotkeys.add("N", () => keyMoment(1)),
+      api.hotkeys.add("Shift+N", () => keyMoment(-1))
+    ];
+  }
+  function keyMoment(step2) {
+    const entry = current;
+    if (!entry?.played) return;
+    const list = entry.played.fights.filter((f2) => f2.key);
+    const f = step2 > 0 ? list.find((x) => x.from - FIGHT_LEAD > entry.frame + 1) : [...list].reverse().find((x) => x.from - FIGHT_LEAD < entry.frame - 24);
+    if (f) goToFight(f);
   }
   let sim = null;
-  const simWatch = api.services.watch("scm-sim.engine", (service) => {
-    sim = service;
-    view?.render();
-  });
   let running = null;
+  const queue = [];
+  function pump() {
+    if (running || !sim?.present || !queue.length) return;
+    let i = queue.findIndex((l) => l === current);
+    if (i < 0) i = queue.findIndex((l) => l.docId !== null);
+    const [next] = queue.splice(Math.max(0, i), 1);
+    void playThrough(next).then(pump);
+  }
+  const announced = /* @__PURE__ */ new Set();
   async function playThrough(entry) {
-    if (!sim?.present || running || entry.played) return;
+    if (!sim?.present || running || entry.played || !loaded.includes(entry)) return;
     const run = { entry, controller: new AbortController(), fraction: -1 };
     running = run;
-    view?.render();
+    entry.failed = null;
+    strip?.render();
     try {
       const state = await sim.status();
       if (!state.available) throw new Error(state.reason ?? t("The game engine cannot run a game here."));
@@ -1718,49 +2506,61 @@ function activate(api) {
         signal: run.controller.signal,
         onProgress: (p) => {
           run.fraction = p.stage === "playing" && p.frames > 0 ? p.frame / p.frames : -1;
-          view?.progress();
+          if (entry === current) strip?.update();
+          else if (current?.group === entry.group && lensOf() === "map") side?.update();
         }
       });
       await api.data.load();
       const units = api.data.units();
-      const cost = (type) => units ? (units.mineralCost[type] ?? 0) + (units.vespeneCost[type] ?? 0) : 0;
+      const cost = (type) => units ? ((units.mineralCost[type] ?? 0) + (units.vespeneCost[type] ?? 0)) / (TWINS.has(type) ? 2 : 1) : 0;
       const index = unitIndex(timeline);
-      entry.played = { timeline, standing: buildings(timeline), index, lost: lossPoints(timeline), lostBy: losses(timeline, cost), fights: fights(timeline, cost, index), kills: kills(timeline), killers: topKillers(timeline, cost) };
+      const landings = entry.report.players.flatMap((p) => p.placements.filter((pl) => pl.landed && TOWN_HALLS.has(pl.unit)).map((pl) => {
+        const size = api.palette.unitSize(pl.unit);
+        return { player: p.player.index, frame: pl.frame, x: pl.tx * 32 + size.width / 2, y: pl.ty * 32 + size.height / 2 };
+      }));
+      const standing = buildings(timeline), fights2 = fights(timeline, cost, index), taken = bases(standing, mineralLines(timeline), landings);
+      entry.played = {
+        timeline,
+        standing,
+        index,
+        lost: lossPoints(timeline),
+        lostBy: losses(timeline, cost),
+        fights: fights2,
+        kills: kills(timeline),
+        killers: topKillers(timeline, cost),
+        adv: advantage(timeline),
+        bases: taken,
+        totals: totals(timeline, taken, cost),
+        shots: direct(timeline, index, fights2, taken, cost)
+      };
       for (const b of entry.played.standing) api.graphics.requestUnit(b.type);
     } catch (err) {
       if (err?.name !== "AbortError") {
-        api.ui.toast({ kind: "error", title: t("Could not play {name} through", { name: entry.fileName }), detail: err instanceof Error ? err.message : String(err) });
+        entry.failed = err instanceof Error ? err.message : String(err);
         api.log("Aftermath:", entry.fileName, err);
       }
     } finally {
       if (running === run) running = null;
       heatCache = null;
-      view?.render();
-      overlay.redraw();
+      reportCache = null;
+      if (current && current.group === entry.group) {
+        side?.render();
+        strip?.render();
+        overlay.redraw();
+      }
+      announce(entry);
     }
   }
-  let queued = 0;
-  async function playAll() {
-    if (running || queued) return;
-    const todo = loaded.filter((l) => !l.played);
-    queued = todo.length;
-    for (const entry of todo) {
-      if (!loaded.includes(entry)) {
-        queued--;
-        continue;
-      }
-      await playThrough(entry);
-      queued--;
-      if (!entry.played) break;
-    }
-    queued = 0;
-    view?.render();
+  function announce(entry) {
+    if (!current || current.group !== entry.group || announced.has(entry.group) || lensOf() === "map" || counted2(entry).length < 2) return;
+    announced.add(entry.group);
+    api.ui.toast({ title: t("Map stats: {n} games of this map", { n: counted2(entry).length }), detail: t("The replays of this map you have open can now be seen together: where players start, the bases they take, where they fight. Press Map stats under the map.") });
   }
   let reportCache = null;
   function currentReport() {
     if (!current) return null;
     const map = current.map;
-    const games = loaded.filter((l) => l.played && (l.played.timeline.check?.parted ?? null) === null && (l === current || likeness(map, l.map) >= SAME_MAP));
+    const games = counted2(current).filter((l) => l.played);
     if (!games.length) return null;
     const key = games.map((l) => l.id).join(",");
     if (reportCache?.key === key) return reportCache.report;
@@ -1768,6 +2568,7 @@ function activate(api) {
       timeline: l.played.timeline,
       standing: l.played.standing,
       fights: l.played.fights,
+      bases: l.played.bases,
       winner: winnerOf(l.report.players.map((p) => ({ index: p.player.index, left: p.leftAt !== null })), l.played.standing)
     })), map);
     reportCache = { key, report };
@@ -1775,14 +2576,18 @@ function activate(api) {
   }
   let heatCache = null;
   function heatSources() {
-    if (!current) return [];
-    if (!settings.allReplays) return [{ report: current.report, players: current.report.players.filter((p) => !hidden.has(p.player.id)) }];
-    return loaded.filter((l) => l === current || likeness(current.map, l.map) >= SAME_MAP).map((l) => ({ report: l.report, players: l.report.players }));
+    return current ? counted2(current).map((l) => ({ report: l.report, players: l.report.players })) : [];
   }
   const playedOf = (report) => loaded.find((l) => l.report === report)?.played ?? null;
+  function heatMode() {
+    if (!current || lensOf() !== "map") return "off";
+    const h = settings.heat;
+    return !counted2(current).some((l) => l.played) && (h === "presence" || h === "losses" || h === "unvisited") ? "orders" : h;
+  }
   function heatCanvas() {
-    if (!current || settings.heat === "off") return null;
-    if (settings.heat === "unvisited") {
+    const mode = heatMode();
+    if (!current || mode === "off") return null;
+    if (mode === "unvisited") {
       const report = currentReport();
       if (!report) return null;
       const key2 = `unvisited/${reportCache.key}`;
@@ -1803,12 +2608,10 @@ function activate(api) {
       heatCache = { key: key2, grid: { width: cw, height: ch, cell: 0, values: new Float32Array(0), max: 0 }, canvas: canvas2 };
       return canvas2;
     }
-    const whole = settings.wholeGame || settings.allReplays;
-    const until = whole ? void 0 : Math.floor(frame / 12) * 12;
     const sources = heatSources();
-    const played = settings.heat === "presence" || settings.heat === "losses";
+    const played = mode === "presence" || mode === "losses";
     if (played && !sources.some((s) => playedOf(s.report))) return null;
-    const key = [settings.heat, until ?? "all", played ? sources.filter((s) => playedOf(s.report)).length : "", sources.map((s) => `${s.report.replay.header.started?.getTime()}:${s.players.map((p) => p.player.id).join(".")}`).join("|")].join("/");
+    const key = [mode, counted2(current).map((l) => l.id).join(".")].join("/");
     if (heatCache?.key === key) return heatCache.canvas;
     const { width, height } = current.map;
     const points = function* () {
@@ -1817,11 +2620,11 @@ function activate(api) {
           const pl = playedOf(s.report);
           if (!pl) continue;
           const shown = new Set(s.players.map((p) => p.player.index));
-          for (const pt of settings.heat === "losses" ? pl.lost : presencePoints(pl.timeline, pl.index)) if (shown.has(pt.player)) yield { ...pt, kind: "move" };
+          for (const pt of mode === "losses" ? pl.lost : presencePoints(pl.timeline, pl.index)) if (shown.has(pt.player)) yield { ...pt, kind: "move" };
           continue;
         }
         for (const p of s.players) {
-          if (settings.heat === "buildings") {
+          if (mode === "buildings") {
             for (const pl of p.placements) {
               const size = api.palette.unitSize(pl.unit);
               yield { frame: pl.frame, player: pl.player, x: pl.tx * 32 + size.width / 2, y: pl.ty * 32 + size.height / 2, kind: "move" };
@@ -1830,7 +2633,7 @@ function activate(api) {
         }
       }
     };
-    const grid = heat(points(), width, height, { until, kinds: settings.heat === "buildings" || settings.heat === "presence" || settings.heat === "losses" ? void 0 : HEAT_KINDS[settings.heat] });
+    const grid = heat(points(), width, height, { kinds: mode === "orders" ? SENT : void 0 });
     const canvas = heatCache?.canvas ?? document.createElement("canvas");
     canvas.width = grid.width;
     canvas.height = grid.height;
@@ -1850,193 +2653,236 @@ function activate(api) {
     heatCache = { key, grid, canvas };
     return canvas;
   }
-  const standing = (p) => p.frame <= frame;
   function draw(ctx, v) {
-    if (!current || !matches) return;
+    if (!current || current.docId === null || api.document.id() !== current.docId) return;
+    const cur = current;
+    const frame = cur.frame;
     const s = v.tilePx / 32;
-    const hc = heatCanvas();
-    if (hc) {
-      const x0 = v.x(0), y0 = v.y(0);
-      ctx.save();
-      ctx.imageSmoothingEnabled = true;
-      ctx.drawImage(hc, x0, y0, v.x(current.map.width * 32) - x0, v.y(current.map.height * 32) - y0);
-      ctx.restore();
-    }
-    const players = current.report.players.filter((p) => !hidden.has(p.player.id));
-    const done = current.played;
-    if (done) {
-      const byIndex = new Map(players.map((p) => [p.player.index, p]));
-      if (settings.buildings) {
-        for (const b of done.standing) {
-          if (b.from > frame || b.to !== null && b.to <= frame) continue;
-          const p = byIndex.get(b.owner);
-          if (!p) continue;
-          const size = api.palette.unitSize(b.type);
-          const w2 = size.width * s, h = size.height * s;
-          const x = v.x(b.x) - w2 / 2, y = v.y(b.y) - h / 2;
-          const built = b.done !== null && b.done <= frame;
-          ctx.fillStyle = withAlpha(p.player.color, built ? 0.22 : 0.1);
-          ctx.fillRect(x, y, w2, h);
-          const img = s >= 0.4 ? api.graphics.unitImage(b.type, { owner: p.player.index }) : null;
-          if (img) {
-            ctx.globalAlpha = built ? 0.9 : 0.4;
-            ctx.drawImage(img.image, x + w2 / 2 - img.width * s / 2, y + h / 2 - img.height * s / 2, img.width * s, img.height * s);
-            ctx.globalAlpha = 1;
-          }
-          const age = frame - b.from;
-          ctx.strokeStyle = p.player.color;
-          ctx.lineWidth = age < NEW_FRAMES ? 3 : 1.5;
-          if (!built) ctx.setLineDash([4, 3]);
-          ctx.strokeRect(x + 0.5, y + 0.5, w2 - 1, h - 1);
-          ctx.setLineDash([]);
+    const lens = lensOf();
+    const players = cur.report.players.filter((p) => !cur.hidden.has(p.player.id));
+    const byIndex = new Map(players.map((p) => [p.player.index, p]));
+    const done = cur.played;
+    if (lens === "map") {
+      const hc = heatCanvas();
+      if (hc) {
+        const x0 = v.x(0), y0 = v.y(0);
+        ctx.save();
+        ctx.imageSmoothingEnabled = true;
+        ctx.drawImage(hc, x0, y0, v.x(cur.map.width * 32) - x0, v.y(cur.map.height * 32) - y0);
+        ctx.restore();
+      }
+      const report = currentReport();
+      if (report) {
+        for (const spot of report.spots) {
+          const x = v.x(spot.x), y = v.y(spot.y);
+          markSpot(ctx, x, y, Math.max(10, (64 + Math.min(8, spot.fights) * 16) * s));
+          label(ctx, t("{n, plural, one {# fight} other {# fights}}", { n: spot.fights }), x, y, "#ff9a8a");
+        }
+        for (const site of report.sites) {
+          const x = v.x(site.x), y = v.y(site.y), r = Math.max(8, 80 * s);
+          markSite(ctx, x, y, r, site.starts > 0);
+          const text = site.starts ? site.startDecided ? t("won {wins} of {games}", { wins: site.startWins, games: site.startDecided }) : "" : t("taken {n} of {games}", { n: site.taken, games: report.games });
+          if (text) label(ctx, text, x, y - r - 8, site.starts ? "#ffffff" : "#8fe0b0");
         }
       }
-      if (settings.units) {
-        const r = Math.max(1.5, Math.min(5, 4 * s));
-        unitsAt(done.timeline, frame, (unit, ux, uy) => {
-          const type = done.index.type[unit];
-          const p = byIndex.get(done.index.owner[unit]);
-          if (!p || type < 0 || isBuilding(type)) return;
-          ctx.fillStyle = p.player.color;
-          ctx.globalAlpha = WORKERS2.has(type) ? 0.55 : 1;
-          ctx.beginPath();
-          ctx.arc(v.x(ux), v.y(uy), WORKERS2.has(type) ? r * 0.7 : r, 0, Math.PI * 2);
-          ctx.fill();
-        });
-        ctx.globalAlpha = 1;
+      if (settings.legend) legend(ctx, lens, done !== null);
+      const n = counted2(cur).length, waiting = waitingOf(cur);
+      pill(ctx, [
+        t("Map stats"),
+        plainText(cur.report.replay.header.mapName) || null,
+        t("{n, plural, one {# game} other {# games}} together", { n }),
+        waiting ? t("{n} being analysed", { n: waiting }) : null
+      ].filter(Boolean).join(" \xB7 "), []);
+      return;
+    }
+    if (done) {
+      for (const b of done.standing) {
+        if (b.from > frame || b.to !== null && b.to <= frame) continue;
+        const p = byIndex.get(b.owner);
+        if (!p) continue;
+        const size = api.palette.unitSize(b.type);
+        const w2 = size.width * s, h = size.height * s;
+        const built = b.done !== null && b.done <= frame;
+        markBuilding(ctx, v.x(b.x) - w2 / 2, v.y(b.y) - h / 2, w2, h, p.player.color, !built ? "site" : frame - b.from < NEW_FRAMES ? "new" : "built", s >= 0.4 ? api.graphics.unitImage(b.type, { owner: p.player.index }) : null, s);
+      }
+    } else {
+      for (const p of players) {
+        for (const pl of p.placements) {
+          if (pl.frame > frame) break;
+          const size = api.palette.unitSize(pl.unit);
+          const w2 = size.width * s, h = size.height * s;
+          markBuilding(ctx, v.x(pl.tx * 32), v.y(pl.ty * 32), w2, h, p.player.color, frame - pl.frame < NEW_FRAMES ? "new" : "built", s >= 0.4 ? api.graphics.unitImage(pl.unit, { owner: p.player.index }) : null, s);
+        }
+      }
+    }
+    if (done) {
+      const r = Math.max(1.5, Math.min(5, 4 * s));
+      ctx.globalAlpha = lens === "orders" ? 0.35 : 1;
+      unitsAt(done.timeline, frame, (unit, ux, uy) => {
+        const type = done.index.type[unit];
+        const p = byIndex.get(done.index.owner[unit]);
+        if (!p || type < 0 || isBuilding(type)) return;
+        markUnit(ctx, v.x(ux), v.y(uy), r, p.player.color, WORKERS2.has(type));
+      });
+      ctx.globalAlpha = 1;
+    }
+    if (lens === "watch" && done) {
+      for (const f of done.fights) {
+        if (f.tier === "minor" || frame < f.from - 24 || frame > f.to + FRONT_FRAMES) continue;
+        let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+        for (const pt of f.points) {
+          if (pt.frame > frame + 24) break;
+          if (pt.frame < frame - FRONT_FRAMES) continue;
+          bx0 = Math.min(bx0, pt.x);
+          by0 = Math.min(by0, pt.y);
+          bx1 = Math.max(bx1, pt.x);
+          by1 = Math.max(by1, pt.y);
+        }
+        if (bx0 === Infinity) continue;
+        const pad = 64, x0 = v.x(bx0 - pad), y0 = v.y(by0 - pad);
+        markFightBox(ctx, x0, y0, v.x(bx1 + pad) - x0, v.y(by1 + pad) - y0, f.turning, f.key);
+        const mark = fightMark(f);
+        ctx.textAlign = "left";
+        label(ctx, mark ? `${translate(mark.label)} \xB7 ${translate(FIGHT_KINDS[f.kind])}` : translate(FIGHT_KINDS[f.kind]), x0, y0 - 9, f.turning ? "#f0c64a" : "#ff9a8a");
       }
       const shots = done.kills;
       for (let i = firstAfter(shots, frame - KILL_FRAMES); i < shots.length && shots[i].frame <= frame; i++) {
         const k = shots[i], p = byIndex.get(k.by);
         if (!p || !byIndex.has(k.player)) continue;
-        ctx.strokeStyle = withAlpha(p.player.color, 0.9 * (1 - (frame - k.frame) / KILL_FRAMES));
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(v.x(k.fromX), v.y(k.fromY));
-        ctx.lineTo(v.x(k.x), v.y(k.y));
-        ctx.stroke();
+        markKill(ctx, v.x(k.fromX), v.y(k.fromY), v.x(k.x), v.y(k.y), withAlpha(p.player.color, 0.9 * (1 - (frame - k.frame) / KILL_FRAMES)));
       }
       const lost = done.lost;
       for (let i = firstAfter(lost, frame - NEW_FRAMES); i < lost.length && lost[i].frame <= frame; i++) {
         const p = byIndex.get(lost[i].player);
         if (!p) continue;
         const k = (frame - lost[i].frame) / NEW_FRAMES;
-        ctx.strokeStyle = withAlpha(p.player.color, 1 - k);
-        ctx.lineWidth = 1.5;
-        const x = v.x(lost[i].x), y = v.y(lost[i].y), d = 3 + k * 6;
-        ctx.beginPath();
-        ctx.moveTo(x - d, y - d);
-        ctx.lineTo(x + d, y + d);
-        ctx.moveTo(x + d, y - d);
-        ctx.lineTo(x - d, y + d);
-        ctx.stroke();
-      }
-    } else if (settings.buildings) {
-      for (const p of players) {
-        for (const pl of p.placements) {
-          if (!standing(pl)) break;
-          const size = api.palette.unitSize(pl.unit);
-          const x = v.x(pl.tx * 32), y = v.y(pl.ty * 32);
-          const w2 = size.width * s, h = size.height * s;
-          ctx.fillStyle = withAlpha(p.player.color, 0.22);
-          ctx.fillRect(x, y, w2, h);
-          const img = s >= 0.4 ? api.graphics.unitImage(pl.unit, { owner: p.player.index }) : null;
-          if (img) {
-            ctx.globalAlpha = 0.85;
-            ctx.drawImage(img.image, x + w2 / 2 - img.width * s / 2, y + h / 2 - img.height * s / 2, img.width * s, img.height * s);
-            ctx.globalAlpha = 1;
-          }
-          const age = frame - pl.frame;
-          ctx.strokeStyle = p.player.color;
-          ctx.lineWidth = age < NEW_FRAMES ? 3 : 1.5;
-          ctx.strokeRect(x + 0.5, y + 0.5, w2 - 1, h - 1);
-          if (age < NEW_FRAMES) {
-            const k = age / NEW_FRAMES;
-            ctx.strokeStyle = withAlpha(p.player.color, 1 - k);
-            ctx.lineWidth = 2;
-            const grow = 4 + k * 18 * Math.max(0.5, s);
-            ctx.strokeRect(x - grow, y - grow, w2 + grow * 2, h + grow * 2);
-          }
-        }
+        markLoss(ctx, v.x(lost[i].x), v.y(lost[i].y), 3 + k * 6, withAlpha(p.player.color, 1 - k));
       }
     }
-    if (settings.orders) {
+    if (lens === "orders" || !done) {
+      const r = Math.max(2.5, 5 * Math.min(1, s * 2));
       for (const p of players) {
         const clicks = p.clicks;
-        let i = firstAfter(clicks, frame - TRAIL_FRAMES);
-        for (; i < clicks.length && clicks[i].frame <= frame; i++) {
+        for (let i = firstAfter(clicks, frame - TRAIL_FRAMES); i < clicks.length && clicks[i].frame <= frame; i++) {
           const c = clicks[i];
           const k = 1 - (frame - c.frame) / TRAIL_FRAMES;
-          const x = v.x(c.x), y = v.y(c.y);
-          const r = Math.max(2.5, 5 * Math.min(1, s * 2));
           ctx.globalAlpha = Math.max(0.1, k);
-          ctx.strokeStyle = ctx.fillStyle = p.player.color;
-          ctx.lineWidth = 2;
-          if (c.kind === "attack" || c.kind === "patrol") {
-            ctx.beginPath();
-            ctx.moveTo(x - r, y - r);
-            ctx.lineTo(x + r, y + r);
-            ctx.moveTo(x + r, y - r);
-            ctx.lineTo(x - r, y + r);
-            ctx.stroke();
-          } else if (c.kind === "ping") {
-            ctx.beginPath();
-            ctx.arc(x, y, r + (1 - k) * 30, 0, Math.PI * 2);
-            ctx.stroke();
-          } else if (c.kind === "rally") {
-            ctx.fillRect(x - r / 2, y - r * 1.6, r * 1.2, r * 0.9);
-            ctx.fillRect(x - r / 2, y - r * 1.6, 1.5, r * 1.8);
-          } else if (c.kind === "ability") {
-            ctx.beginPath();
-            ctx.arc(x, y, r, 0, Math.PI * 2);
-            ctx.stroke();
-          } else {
-            ctx.beginPath();
-            ctx.arc(x, y, r * 0.7, 0, Math.PI * 2);
-            ctx.fill();
-          }
+          markOrder(ctx, c.kind, v.x(c.x), v.y(c.y), r, p.player.color, k);
         }
-        ctx.globalAlpha = 1;
+      }
+      ctx.globalAlpha = 1;
+    }
+    if (settings.legend) legend(ctx, lens, done !== null);
+    caption(ctx, cur);
+  }
+  function caption(ctx, entry) {
+    const shots = entry.played?.shots ?? [];
+    const i = cam.following && shots.length ? shotAt(shots, entry.frame) : -1;
+    if (i < 0) return;
+    pill(ctx, captionOf(entry, shots[i]), shots[i].players.map((pl) => entry.report.players.find((p) => p.player.index === pl)?.player.color ?? "#888"));
+  }
+  function pill(ctx, text, colours) {
+    const viewW = ctx.canvas.width / (window.devicePixelRatio || 1);
+    ctx.font = "600 12px system-ui, sans-serif";
+    const tw = ctx.measureText(text).width, sw = colours.length * 12, w2 = tw + sw + 20, h = 24;
+    const x0 = Math.round(viewW / 2 - w2 / 2), y0 = 10;
+    ctx.fillStyle = "rgba(14,16,22,0.82)";
+    ctx.fillRect(x0, y0, w2, h);
+    colours.forEach((colour, n) => {
+      ctx.fillStyle = colour;
+      ctx.fillRect(x0 + 10 + n * 12, y0 + 8, 8, 8);
+    });
+    ctx.fillStyle = "#e4e8ef";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(text, x0 + 10 + sw, y0 + h / 2 + 0.5);
+    ctx.textAlign = "start";
+    ctx.textBaseline = "alphabetic";
+  }
+  function legend(ctx, lens, analysed) {
+    const grey = "#c8cdd7";
+    const items = [];
+    if (lens === "map") {
+      items.push(
+        [(x, y) => markSite(ctx, x, y, 6, true), t("A start: how the players who started there did")],
+        [(x, y) => markSite(ctx, x, y, 6, false), t("A base: in how many games it was taken")],
+        [(x, y) => markSpot(ctx, x, y, 6), t("Where fights that mattered happen, over all the games")]
+      );
+      const mode = heatMode();
+      if (mode !== "off") items.push([(x, y) => {
+        const g = ctx.createLinearGradient(x - 7, 0, x + 7, 0);
+        g.addColorStop(0, "rgb(40,80,220)");
+        g.addColorStop(0.5, "rgb(250,220,60)");
+        g.addColorStop(1, "rgb(240,50,40)");
+        ctx.fillStyle = g;
+        ctx.fillRect(x - 7, y - 3, 14, 6);
+      }, translate(HEAT_LABELS[mode])]);
+    } else {
+      items.push([(x, y) => markBuilding(ctx, x - 6, y - 4, 12, 8, grey, "built", null, 1), analysed ? t("A building; dashed while it goes up") : t("A building ordered")]);
+      if (analysed) items.push([(x, y) => {
+        markUnit(ctx, x - 3, y, 3.5, grey, false);
+        markUnit(ctx, x + 4, y, 3.5, grey, true);
+      }, t("A unit, and a worker")]);
+      if (lens === "watch" && analysed) {
+        items.push(
+          [(x, y) => markKill(ctx, x - 7, y + 3, x + 7, y - 3, grey), t("A kill, from the killer")],
+          [(x, y) => markLoss(ctx, x, y, 4, grey), t("A loss")],
+          [(x, y) => markFightBox(ctx, x - 7, y - 5, 14, 10, false, true), t("A fight that matters, while it goes on")]
+        );
+      }
+      if (lens === "orders" || !analysed) {
+        items.push(
+          [(x, y) => markOrder(ctx, "move", x, y, 4, grey, 1), t("Move")],
+          [(x, y) => markOrder(ctx, "attack", x, y, 4, grey, 1), t("Attack or patrol")],
+          [(x, y) => markOrder(ctx, "ability", x, y, 4, grey, 1), t("Ability or spell")],
+          [(x, y) => markOrder(ctx, "rally", x + 1, y + 2, 4, grey, 1), t("Rally point")],
+          [(x, y) => markOrder(ctx, "ping", x, y, 4, grey, 1), t("Minimap ping")]
+        );
       }
     }
-    const report = settings.marks ? currentReport() : null;
-    if (report) {
-      const label = (text, x, y, colour) => {
-        ctx.font = "600 11px system-ui, sans-serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = "rgba(0,0,0,0.75)";
-        ctx.strokeText(text, x, y);
-        ctx.fillStyle = colour;
-        ctx.fillText(text, x, y);
-      };
-      for (const spot of report.spots) {
-        const x = v.x(spot.x), y = v.y(spot.y), r = Math.max(10, (64 + Math.min(8, spot.fights) * 16) * s);
-        ctx.fillStyle = "rgba(235,70,60,0.14)";
-        ctx.strokeStyle = "rgba(235,70,60,0.9)";
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        label(`${spot.fights}\xD7`, x, y, "#ff9a8a");
-      }
-      for (const site of report.sites) {
-        const x = v.x(site.x), y = v.y(site.y), r = Math.max(8, 80 * s);
-        ctx.strokeStyle = site.starts ? "rgba(255,255,255,0.9)" : "rgba(120,220,160,0.9)";
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([5, 4]);
-        ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        const text = site.starts ? site.startDecided ? `${site.startWins}/${site.startDecided}` : "" : `${site.taken}/${report.games}`;
-        if (text) label(text, x, y - r - 8, site.starts ? "#ffffff" : "#8fe0b0");
-      }
-      ctx.textAlign = "start";
-      ctx.textBaseline = "alphabetic";
+    const title = translate(LEGEND_TITLES[lens]);
+    const note = lens === "map" ? null : t("In the player's colour");
+    ctx.font = "11px system-ui, sans-serif";
+    const widest = Math.max(...items.map(([, text]) => ctx.measureText(text).width), note ? ctx.measureText(note).width : 0);
+    const lineH = 17, padX = 8, width = Math.ceil(widest) + 34 + padX * 2;
+    const height = (items.length + 1 + (note ? 1 : 0)) * lineH + 8;
+    const viewH = ctx.canvas.height / (window.devicePixelRatio || 1);
+    const x0 = 10, y0 = viewH - height - 10;
+    ctx.fillStyle = "rgba(14,16,22,0.82)";
+    ctx.fillRect(x0, y0, width, height);
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.font = "600 11px system-ui, sans-serif";
+    ctx.fillStyle = "#e4e8ef";
+    ctx.fillText(title, x0 + padX, y0 + 4 + lineH / 2);
+    ctx.font = "11px system-ui, sans-serif";
+    items.forEach(([mark, text], i) => {
+      const y = y0 + 4 + (i + 1.5) * lineH;
+      ctx.save();
+      mark(x0 + padX + 12, y);
+      ctx.restore();
+      ctx.fillStyle = "#c8cdd7";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "left";
+      ctx.font = "11px system-ui, sans-serif";
+      ctx.fillText(text, x0 + padX + 30, y);
+    });
+    if (note) {
+      ctx.fillStyle = "#99a2b3";
+      ctx.fillText(note, x0 + padX, y0 + 4 + (items.length + 1.5) * lineH);
     }
+  }
+  function label(ctx, text, x, y, colour) {
+    ctx.font = "600 11px system-ui, sans-serif";
+    if (ctx.textAlign === "start") ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "rgba(0,0,0,0.75)";
+    ctx.strokeText(text, x, y);
+    ctx.fillStyle = colour;
+    ctx.fillText(text, x, y);
+    ctx.textAlign = "start";
+    ctx.textBaseline = "alphabetic";
   }
   const overlay = api.ui.overlay({
     name: "Aftermath",
@@ -2047,75 +2893,170 @@ function activate(api) {
   const imageListener = api.graphics.onImageLoaded(() => {
     if (current && overlay.isVisible()) overlay.redraw();
   });
-  function showPanel() {
-    if (panel?.isOpen()) return;
-    const place = settings.docked ? { dock: "right", grow: true } : { width: 330, height: Math.min(680, Math.max(360, window.innerHeight - 220)), resizable: true };
+  function toggle(label2, onClick) {
+    const b = el("button", { type: "button", className: "afm-toggle" }, label2);
+    b.addEventListener("click", () => {
+      b.blur();
+      onClick();
+    });
+    return b;
+  }
+  function spectate() {
+    if (lensOf() === "map") {
+      showStats(false);
+      setFollowing(true);
+      return;
+    }
+    setFollowing(!cam.following);
+  }
+  function showOrders(on) {
+    settings.orders = on;
+    save();
+    overlay.redraw();
+    strip?.update();
+  }
+  function chartOf(entry) {
+    if (!entry.played) return "apm";
+    if (settings.chart === "lead" && !entry.played.adv) return "armyValue";
+    return settings.chart;
+  }
+  function readout(entry, chart, frame, slack) {
+    const out = [];
+    const shown = entry.report.players.filter((p) => !entry.hidden.has(p.player.id));
+    const nameOf = (index) => entry.report.players.find((p) => p.player.index === index)?.player.name ?? "";
+    const tl = entry.played?.timeline ?? null;
+    const adv = entry.played?.adv ?? null;
+    if (chart === "lead" && adv) {
+      const i = sampleIndex(adv.frames, frame);
+      const n = i >= 0 ? Math.round(adv.lead[i]) : 0;
+      out.push(n === 0 ? t("even") : t("{name} ahead by {n}", { name: nameOf(n > 0 ? adv.a : adv.b), n: Math.abs(n) }));
+    } else if (chart === "apm") {
+      const m = Math.floor(frame / FRAMES_PER_MINUTE);
+      for (const p of shown) out.push(`${p.player.name} ${p.perMinute[m] ?? 0}`);
+    } else if (tl && chart !== "lead") {
+      const i = sampleIndex(tl.samples.frame, frame);
+      for (const p of shown) {
+        const v = i >= 0 ? series(tl, p.player.index, chart)?.[i] : void 0;
+        if (v !== void 0) out.push(`${p.player.name} ${v}`);
+      }
+    }
+    const here = (entry.played?.fights ?? []).filter((f) => frame >= f.from - slack && frame <= f.to + slack).sort((a, b) => b.importance - a.importance)[0];
+    if (here && entry.played) {
+      const mark = fightMark(here);
+      out.push(`${mark ? `${translate(mark.label)}: ` : ""}${translate(FIGHT_KINDS[here.kind])}, ${placeOf(here.x, here.y, entry.played.timeline.map)}`);
+    }
+    return out;
+  }
+  function goToFight(f) {
+    if (lensOf() === "map") {
+      gameTab = "fights";
+      showStats(false);
+    }
+    if (current?.played?.shots.length) {
+      seek(Math.max(0, f.from - FIGHT_LEAD));
+      setFollowing(true);
+      api.view.flash({ rect: { x0: Math.max(0, Math.floor(f.rect.x0 / 32) - 2), y0: Math.max(0, Math.floor(f.rect.y0 / 32) - 2), x1: Math.ceil(f.rect.x1 / 32) + 2, y1: Math.ceil(f.rect.y1 / 32) + 2 }, kind: "attention" });
+      return;
+    }
+    const rect = { x0: Math.max(0, Math.floor(f.rect.x0 / 32) - 2), y0: Math.max(0, Math.floor(f.rect.y0 / 32) - 2), x1: Math.ceil(f.rect.x1 / 32) + 2, y1: Math.ceil(f.rect.y1 / 32) + 2 };
+    goTo(Math.max(0, f.from - FIGHT_LEAD), f.x, f.y, rect);
+  }
+  function goTo(frame, x, y, rect) {
+    cam.following = false;
+    seek(frame);
+    api.view.center(Math.floor(x / 32), Math.floor(y / 32));
+    if (rect) api.view.flash({ rect, kind: "attention" });
+  }
+  let sidePanel = null;
+  let side = null;
+  let stripPanel = null;
+  let strip = null;
+  let sideHidden = false;
+  let stripHidden = false;
+  let sideAsked = false;
+  let closing = false;
+  function showSide(force = false) {
+    if (sidePanel?.isOpen() || sideHidden && !force) return;
     const handle = api.ui.panel({
       title: "Aftermath",
-      ...place,
+      dock: "right",
+      grow: true,
       mount(body) {
-        const v = new PanelView(body);
-        view = v;
+        const v = new SideView(body);
+        side = v;
         v.render();
         return () => {
-          if (view === v) view = null;
+          if (side === v) side = null;
         };
       },
-      // Moving between the dock and the float closes one panel and opens another; the old
-      // one's close must not take the new one with it.
       onClose: () => {
-        if (panel === handle) {
-          panel = null;
-          view = null;
-          stop();
-        }
+        if (sidePanel !== handle) return;
+        sidePanel = null;
+        side = null;
+        sideAsked = false;
+        if (!closing) sideHidden = true;
+        heatCache = null;
+        overlay.redraw();
+        strip?.update();
       }
     });
-    panel = handle;
+    sidePanel = handle;
+    overlay.redraw();
   }
-  function setDocked(docked) {
-    if (settings.docked === docked) return;
-    settings.docked = docked;
-    save();
-    if (!panel?.isOpen()) return;
-    const old = panel;
-    panel = null;
-    old.close();
-    showPanel();
+  function closeSide() {
+    closing = true;
+    sidePanel?.close();
+    closing = false;
   }
-  const moveDock = () => setDocked(!settings.docked);
-  let dockField = null;
-  api.ui.preferencesPage({
-    mount(body) {
-      const w2 = api.ui.widgets;
-      dockField = w2.select([{ value: "float", label: t("Floating over the map") }, { value: "right", label: t("Docked on the right") }], { value: settings.docked ? "right" : "float" });
-      body.append(
-        w2.form([{ label: t("Panel"), field: dockField }]),
-        w2.hint(t("A floating panel is dragged about and resized from its corner; a docked one sits in the right-hand column beside the map. The Dock and Float button in the panel does the same."))
-      );
-      return () => {
-        dockField = null;
-      };
-    },
-    apply() {
-      if (dockField) setDocked(dockField.value === "right");
-    },
-    reset() {
-      if (dockField) dockField.value = DEFAULTS.docked ? "right" : "float";
+  const bottomDock = typeof api.ui.fileType === "function";
+  function showStrip() {
+    if (stripPanel?.isOpen() || stripHidden) return;
+    const handle = api.ui.panel({
+      title: t("Replay timeline"),
+      ...bottomDock ? { dock: "bottom", height: 170 } : { width: 640, height: 200, resizable: true },
+      mount(body) {
+        const v = new StripView(body);
+        strip = v;
+        v.render();
+        return () => {
+          if (strip === v) strip = null;
+        };
+      },
+      onClose: () => {
+        if (stripPanel !== handle) return;
+        stripPanel = null;
+        strip = null;
+        stop();
+        if (!closing) stripHidden = true;
+      }
+    });
+    stripPanel = handle;
+  }
+  function closeStrip() {
+    closing = true;
+    stripPanel?.close();
+    closing = false;
+  }
+  function sampleIndex(frames, frame) {
+    let lo = 0, hi = frames.length;
+    while (lo < hi) {
+      const mid = lo + hi >> 1;
+      if (frames[mid] <= frame) lo = mid + 1;
+      else hi = mid;
     }
-  });
-  const w = api.ui.widgets;
-  class PanelView {
+    return lo - 1;
+  }
+  class SideView {
     root;
-    slider = null;
-    timeLabel = null;
-    playButton = null;
-    apm = null;
+    /** The players' live readouts, refreshed with the clock. */
+    live = [];
+    /** The list rows that belong to a moment, greyed while it is still to come. */
     steps = [];
     buildPlayer = -1;
-    bar = null;
+    /** Map stats' line for the game the engine is playing, refreshed with its progress. */
+    running = null;
     constructor(body) {
-      this.root = api.ui.el("div", { className: "afm" });
+      this.root = el("div", { className: "afm" });
       body.append(this.root);
       body.addEventListener("dragover", (e) => {
         if (!e.dataTransfer?.types.includes("Files")) return;
@@ -2129,204 +3070,128 @@ function activate(api) {
         if (!files.length) return;
         e.preventDefault();
         e.stopPropagation();
-        void load(files);
+        void load(files, current && lensOf() === "map" ? current : null);
       });
     }
     render() {
       this.root.replaceChildren();
+      this.live = [];
       this.steps = [];
-      const el = api.ui.el;
-      const openButton = w.button(t("Open Replay\u2026"), { onClick: () => void pick() });
-      const dockButton = w.button(settings.docked ? t("Float") : t("Dock"), {
-        ghost: true,
-        title: settings.docked ? t("Float the panel over the map") : t("Put the panel in the right dock, beside the map"),
-        onClick: moveDock
-      });
-      if (!current) {
-        this.root.append(
-          el("div", { className: "afm-drop" }, t("Drop replays (.rep) here, or")),
-          w.row(openButton, dockButton),
-          w.hint(t("A replay records the orders players gave, not what happened, so Aftermath shows what was asked for: buildings placed, where units were sent, build orders and actions per minute."))
-        );
+      this.running = null;
+      const entry = current;
+      if (!entry) {
+        this.renderEmpty();
         return;
       }
-      const rep = current.report.replay;
-      const entry = current;
-      const choices = loaded.map((l) => ({ value: l.id, label: `${plainText(l.report.replay.header.mapName) || l.fileName} \u2014 ${l.report.players.map((p) => p.player.name).join(", ")}` }));
-      this.root.append(
-        loaded.length > 1 ? w.row(w.select(choices, { value: current.id, onChange: (id) => {
-          const l = loaded.find((x) => x.id === Number(id));
-          if (l) void select(l, true);
-        } })) : el("div", { className: "afm-title", title: current.fileName }, plainText(rep.header.mapName) || current.fileName),
-        w.row(openButton, w.button(t("Close"), { ghost: true, title: t("Close this replay"), onClick: () => remove(entry) }), el("span", { style: "flex:1" }), dockButton)
-      );
+      const rep = entry.report.replay;
       const facts = [
         (GAME_TYPES[rep.header.gameType] ? translate(GAME_TYPES[rep.header.gameType]) : null) ?? t("Game type {n}", { n: rep.header.gameType }),
-        formatTime(current.report.frames),
+        formatTime(entry.report.frames),
         rep.header.started ? rep.header.started.toLocaleDateString() : null,
         rep.format === "legacy" ? t("before 1.18") : rep.format === "1.18" ? "1.18\u20131.20" : "1.21+"
       ].filter(Boolean).join(" \xB7 ");
-      this.root.append(el("div", { className: "afm-dim" }, facts));
-      this.bar = null;
-      if (entry.played) {
-        const tl = entry.played.timeline;
-        this.root.append(el("div", { className: "afm-dim" }, tl.frames < tl.total ? t("Played through to {time}, where the game stopped. Buildings, units, what was made and the graphs below are what happened.", { time: formatTime(tl.frames) }) : t("Played through. Buildings, units, what was made and the graphs below are what happened.")));
-        const parted = tl.check?.parted ?? null;
-        if (parted !== null) this.root.append(el("div", { className: "afm-warn" }, t("From {time} the game played here is not the game in the replay: a player gave an order to a unit that had not been made. What is shown after that moment is not what happened, and this game is left out of the map's report.", { time: formatTime(parted) })));
-        if (running) this.root.append(el("div", { className: "afm-dim" }, queued > 1 ? t("Playing {name} through; {n} more to go.", { name: running.entry.fileName, n: queued - 1 }) : t("Playing {name} through.", { name: running.entry.fileName })));
-      } else if (running?.entry === entry) {
-        const run = running;
-        const bar = w.progressBar({ value: null, label: t("Starting the game\u2026") });
-        this.bar = bar;
-        this.root.append(bar, w.row(w.button(t("Stop"), { ghost: true, onClick: () => run.controller.abort() })));
-        this.progress();
-      } else if (sim?.present) {
-        const unplayed = loaded.filter((l) => !l.played).length;
-        this.root.append(
-          w.row(
-            w.button(t("Play the game through"), { primary: true, disabled: running !== null, title: running ? t("Another replay is being played through") : void 0, onClick: () => void playThrough(entry) }),
-            unplayed > 1 && w.button(t("Play all {n} through", { n: unplayed }), { disabled: running !== null, title: t("One after another; the heat maps can then add every game of this map together"), onClick: () => void playAll() })
-          ),
-          w.hint(t("Runs the whole game out of sight in the site's game engine, from your own copy of StarCraft, to show what happened and not only what was ordered. It takes about fifteen seconds for a twenty-minute game."))
-        );
-        if (running) this.root.append(el("div", { className: "afm-dim" }, queued > 1 ? t("Playing {name} through; {n} more to go.", { name: running.entry.fileName, n: queued - 1 }) : t("Playing {name} through.", { name: running.entry.fileName })));
-      }
-      if (!matches) {
-        this.root.append(
-          el("div", { className: "afm-warn" }, t("The map in front is not the one this game was played on.")),
-          w.row(w.button(t("Open the replay's map"), { primary: true, onClick: () => void openReplayMap().then(() => this.render()) }))
-        );
-      }
+      this.root.append(
+        el("div", { className: "afm-title", title: entry.fileName }, plainText(rep.header.mapName) || entry.fileName),
+        el("div", { className: "afm-dim" }, facts)
+      );
+      const parted = entry.played?.timeline.check?.parted ?? null;
+      if (parted !== null) this.root.append(el("div", { className: "afm-warn" }, t("From {time} the game played here is not the game in the replay: a player gave an order to a unit that had not been made. What is shown after that moment is not what happened, and this game is left out of Map stats.", { time: formatTime(parted) })));
       if (rep.unknownCommands > 0) this.root.append(w.hint(t("{n, plural, one {# command of a kind Aftermath does not know was skipped.} other {# commands of a kind Aftermath does not know were skipped.}}", { n: rep.unknownCommands })));
-      this.playButton = w.button("", { onClick: () => playing ? stop() : play() });
-      this.slider = el("input", { type: "range", min: "0", max: String(current.report.frames), step: "1", value: String(frame) });
-      this.slider.addEventListener("input", () => seek(Number(this.slider.value)));
-      this.timeLabel = el("span", { className: "afm-time" });
-      const speed = w.select([1, 2, 4, 8, 16, 32].map((n) => ({ value: n, label: `${n}\xD7` })), { value: settings.speed, title: t("Playback speed"), onChange: (v) => {
-        settings.speed = Number(v);
-        save();
-      } });
-      speed.style.flex = "0 0 auto";
-      this.root.append(w.row(this.playButton, this.slider), w.row(this.timeLabel, el("span", { style: "flex:1" }), speed));
-      const table = el("table");
-      for (const p of current.report.players) {
-        const tick = w.checkbox("", { value: !hidden.has(p.player.id), title: t("Show this player on the map"), onChange: (on) => {
-          if (on) hidden.delete(p.player.id);
-          else hidden.add(p.player.id);
+      const list = el("div", { className: "afm-players" });
+      for (const p of entry.report.players) {
+        const readout2 = el("span", { className: "afm-live" });
+        const line = el(
+          "div",
+          { className: "afm-player" + (entry.hidden.has(p.player.id) ? " afm-off" : ""), title: entry.hidden.has(p.player.id) ? t("Show {name} on the map", { name: p.player.name }) : t("Hide {name} on the map", { name: p.player.name }) },
+          el("span", { className: "afm-swatch", style: `background:${p.player.color}` }),
+          el("span", { className: "afm-name" }, p.player.name, el("span", { className: "afm-race" }, RACES[p.player.race] ? translate(RACES[p.player.race]) : t("Random"))),
+          readout2
+        );
+        line.addEventListener("click", () => {
+          if (entry.hidden.has(p.player.id)) entry.hidden.delete(p.player.id);
+          else entry.hidden.add(p.player.id);
           heatCache = null;
           overlay.redraw();
-          this.drawApm();
-        } });
-        table.append(el(
-          "tr",
-          {},
-          el("td", {}, tick),
-          el("td", {}, el("span", { className: "afm-swatch", style: `background:${p.player.color}` })),
-          el("td", { className: "afm-name", title: p.player.name }, p.player.name),
-          el("td", {}, RACES[p.player.race] ? translate(RACES[p.player.race]) : t("Random")),
-          el("td", { className: "afm-num", title: t("Actions per minute") }, t("{n} APM", { n: p.apm })),
-          el("td", { className: "afm-dim" }, p.leftAt === null ? "" : t("left {time}", { time: formatTime(p.leftAt) }))
-        ));
-        if (entry.played) {
-          const lost = entry.played.lostBy.get(p.player.index) ?? { units: 0, value: 0 };
-          const text = lost.value > 0 ? t("Lost {n}, worth {value}", { n: lost.units, value: lost.value }) : t("Lost {n}", { n: lost.units });
-          table.append(el("tr", {}, el("td"), el("td"), el("td", { className: "afm-dim", colSpan: 4, title: t("Units and buildings lost, and what they cost in minerals and gas") }, text)));
-        }
+          this.render();
+          strip?.update();
+        });
+        list.append(line);
+        this.live.push({ el: readout2, p });
       }
-      this.root.append(table);
-      const chart = entry.played ? settings.chart : "apm";
-      if (entry.played) {
-        this.root.append(w.row(w.select([
-          { value: "apm", label: t("Actions per minute") },
-          { value: "armyValue", label: t("Army value") },
-          { value: "army", label: t("Army size") },
-          { value: "workers", label: t("Workers") },
-          { value: "supplyUsed", label: t("Supply") },
-          { value: "minerals", label: t("Minerals in the bank") },
-          { value: "gas", label: t("Gas in the bank") },
-          { value: "buildings", label: t("Buildings") }
-        ], { value: chart, title: t("What the graph shows"), onChange: (v) => {
-          settings.chart = v;
+      this.root.append(list);
+      const tabs = el("div", { className: "afm-tabs", role: "tablist" });
+      for (const tab2 of TABS) {
+        const empty = tab2.id === "chat" && entry.report.chat.length === 0;
+        const title = empty ? t("Nobody wrote anything") : tab2.id === "map" ? t("Map stats: every replay of this map you have open, taken together. Shown on the map while this tab is open.") : void 0;
+        const b = el("button", { className: settings.tab === tab2.id ? "afm-on" : "", role: "tab", type: "button", disabled: empty, title }, translate(tab2.label));
+        b.addEventListener("click", () => {
+          if (tab2.id === "map") {
+            showStats(true);
+            return;
+          }
+          gameTab = tab2.id;
+          if (lensOf() === "map") {
+            showStats(false);
+            return;
+          }
+          settings.tab = tab2.id;
           save();
           this.render();
-        } })));
+        });
+        tabs.append(b);
       }
-      this.apm = el("canvas", { className: "afm-apm", title: chart === "apm" ? t("Actions per minute over the game \u2014 click to go there") : t("Click to go there") });
-      this.apm.addEventListener("click", (e) => {
-        const r = this.apm.getBoundingClientRect();
-        seek((e.clientX - r.left) / r.width * current.report.frames);
-      });
-      this.root.append(this.apm);
-      const heatSelect = w.select([
-        { value: "off", label: t("No heat map") },
-        { value: "orders", label: t("Heat: all orders") },
-        { value: "move", label: t("Heat: moves") },
-        { value: "attack", label: t("Heat: attacks") },
-        { value: "buildings", label: t("Heat: buildings") },
-        { value: "ping", label: t("Heat: minimap pings") },
-        ...entry.played ? [{ value: "presence", label: t("Heat: where the armies were") }, { value: "losses", label: t("Heat: where units were lost") }, { value: "unvisited", label: t("Ground never entered") }] : []
-      ], { value: !entry.played && (settings.heat === "presence" || settings.heat === "losses" || settings.heat === "unvisited") ? "off" : settings.heat, onChange: (v) => {
-        settings.heat = v;
-        save();
-        heatCache = null;
-        overlay.redraw();
-        this.render();
-      } });
-      const sameMap = loaded.filter((l) => likeness(entry.map, l.map) >= SAME_MAP).length;
-      this.root.append(w.group(
-        t("Show"),
-        w.row(
-          w.checkbox(t("Buildings"), { value: settings.buildings, title: entry.played ? t("The buildings that stood at this moment; a site is drawn fainter until it is finished") : t("Every building ordered so far"), onChange: (on) => {
-            settings.buildings = on;
-            save();
-            overlay.redraw();
-          } }),
-          entry.played ? w.checkbox(t("Units"), { value: settings.units, title: t("Where every unit stood at this moment; workers are drawn smaller"), onChange: (on) => {
-            settings.units = on;
-            save();
-            overlay.redraw();
-          } }) : null,
-          w.checkbox(t("Recent orders"), { value: settings.orders, title: t("Where units were sent in the last 8 seconds"), onChange: (on) => {
-            settings.orders = on;
-            save();
-            overlay.redraw();
-          } })
-        ),
-        w.row(heatSelect),
-        settings.heat !== "off" && settings.heat !== "unvisited" && w.row(
-          w.checkbox(t("Whole game"), { value: settings.wholeGame, title: t("Count the whole game rather than up to the timeline"), disabled: settings.allReplays, onChange: (on) => {
-            settings.wholeGame = on;
-            save();
-            heatCache = null;
-            overlay.redraw();
-          } }),
-          sameMap > 1 && w.checkbox(t("All {n} replays of this map", { n: sameMap }), { value: settings.allReplays, onChange: (on) => {
-            settings.allReplays = on;
-            save();
-            heatCache = null;
-            overlay.redraw();
-            this.render();
-          } })
-        )
-      ));
-      const players = current.report.players;
+      const body = el("div", { className: "afm-body" });
+      this.root.append(tabs, body);
+      const tab = settings.tab === "chat" && entry.report.chat.length === 0 ? "build" : settings.tab;
+      if (tab === "summary") this.renderSummary(body, entry);
+      else if (tab === "build") this.renderBuild(body, entry);
+      else if (tab === "fights") this.renderFights(body, entry);
+      else if (tab === "chat") this.renderChat(body, entry);
+      else this.renderMap(body, entry);
+      this.update();
+    }
+    renderEmpty() {
+      const open = loaded.filter((l) => l.docId !== null);
+      this.root.append(
+        el("div", { className: "afm-drop" }, t("Drop replays (.rep) here, or anywhere on the editor")),
+        w.row(w.button(t("Open Replay\u2026"), { primary: true, onClick: () => void pick() })),
+        w.hint(t("Each replay opens its map in a tab of its own, to look at and not to change. A replay records the orders players gave; where the site's game engine is beside the editor, each game is also analysed: the engine plays it through in the background to show what really happened."))
+      );
+      if (open.length) {
+        const rows = el("div");
+        for (const l of open) {
+          const line = el("div", { className: "afm-step", title: t("Go to this replay's tab") }, el("span", { className: "afm-t" }, formatTime(l.report.frames)), el("span", {}, l.fileName));
+          line.addEventListener("click", () => {
+            if (l.docId !== null) api.document.activate(l.docId);
+          });
+          rows.append(line);
+        }
+        this.root.append(w.group(t("Open replays"), rows));
+      }
+    }
+    renderBuild(body, entry) {
+      const players = entry.report.players;
       if (!players.some((p) => p.player.id === this.buildPlayer)) this.buildPlayer = players[0]?.player.id ?? -1;
       const who = w.select(players.map((p) => ({ value: p.player.id, label: p.player.name })), { value: this.buildPlayer, onChange: (id) => {
         this.buildPlayer = Number(id);
         this.render();
       } });
-      const list = el("div", { className: "afm-list" });
+      const workers = w.checkbox(t("Workers"), { value: settings.workers, title: t("Show SCVs, Drones and Probes"), onChange: (on) => {
+        settings.workers = on;
+        save();
+        this.render();
+      } });
+      body.append(w.row(who, workers));
+      const list = el("div");
       const pr = players.find((p) => p.player.id === this.buildPlayer);
-      const goTo = (frame2, x, y, type) => {
-        seek(frame2);
+      const toBuilding = (frame, x, y, type) => {
         const size = api.palette.unitSize(type);
         const tw = Math.max(1, Math.ceil(size.width / 32)), th = Math.max(1, Math.ceil(size.height / 32));
         const tx = Math.max(0, Math.floor(x / 32 - tw / 2)), ty = Math.max(0, Math.floor(y / 32 - th / 2));
-        api.view.center(Math.floor(x / 32), Math.floor(y / 32));
-        api.view.flash({ rect: { x0: tx, y0: ty, x1: tx + tw, y1: ty + th }, kind: "attention" });
+        goTo(frame, x, y, { x0: tx, y0: ty, x1: tx + tw, y1: ty + th });
       };
-      let rowCount = 0;
       if (entry.played && pr) {
+        let count = 0;
         for (const row of madeRows(entry.played.timeline, pr.player.index, { workers: settings.workers })) {
           const name = row.kind === "upgrade" ? `${api.names.upgrade(row.id)} ${row.level ?? ""}`.trim() : row.kind === "tech" ? api.names.tech(row.id) : api.names.unit(row.id);
           const hall = row.kind === "unit" && TOWN_HALLS.has(row.id);
@@ -2338,188 +3203,528 @@ function activate(api) {
             el("span", {}, row.count > 1 ? `${name} \xD7${row.count}` : name, end ? el("span", { className: "afm-end" }, ` \xB7 ${end}`) : null)
           );
           line.addEventListener("click", () => {
-            if (row.kind === "unit") goTo(row.frame, row.x, row.y, row.id);
+            if (row.kind === "unit") toBuilding(row.frame, row.x, row.y, row.id);
             else seek(row.frame);
           });
           list.append(line);
           this.steps.push({ el: line, frame: row.frame });
-          rowCount++;
+          count++;
         }
-        if (!rowCount) list.append(el("div", { className: "afm-dim", style: "padding:6px" }, t("Nothing was made.")));
+        if (!count) list.append(el("div", { className: "afm-dim" }, t("Nothing was made.")));
       } else {
         const rows = pr ? buildOrderRows(pr.build, { workers: settings.workers }) : [];
         for (const step2 of rows) {
           const name = step2.kind === "upgrade" ? api.names.upgrade(step2.id) : step2.kind === "tech" ? api.names.tech(step2.id) : api.names.unit(step2.id);
           const hall = step2.kind === "build" && TOWN_HALLS.has(step2.id);
-          const row = el(
+          const line = el(
             "div",
             { className: "afm-step" + (hall ? " afm-hall" : ""), title: step2.placement ? t("Go to the time and place") : t("Go to the time") },
             el("span", { className: "afm-t" }, formatTime(step2.frame)),
             el("span", { title: step2.count > 1 ? t("Ordered {n} times", { n: step2.count }) : void 0 }, step2.count > 1 ? `${name} \xD7${step2.count}` : name)
           );
-          row.addEventListener("click", () => {
-            seek(step2.frame);
+          line.addEventListener("click", () => {
             const pl = step2.placement;
-            if (pl) {
-              const size = api.palette.unitSize(pl.unit);
-              const rect = { x0: pl.tx, y0: pl.ty, x1: pl.tx + Math.max(1, Math.ceil(size.width / 32)), y1: pl.ty + Math.max(1, Math.ceil(size.height / 32)) };
-              api.view.center(Math.floor((rect.x0 + rect.x1) / 2), Math.floor((rect.y0 + rect.y1) / 2));
-              api.view.flash({ rect, kind: "attention" });
+            if (!pl) {
+              seek(step2.frame);
+              return;
             }
+            const size = api.palette.unitSize(pl.unit);
+            const rect = { x0: pl.tx, y0: pl.ty, x1: pl.tx + Math.max(1, Math.ceil(size.width / 32)), y1: pl.ty + Math.max(1, Math.ceil(size.height / 32)) };
+            goTo(step2.frame, (rect.x0 + rect.x1) / 2 * 32, (rect.y0 + rect.y1) / 2 * 32, rect);
           });
-          list.append(row);
-          this.steps.push({ el: row, frame: step2.frame });
+          list.append(line);
+          this.steps.push({ el: line, frame: step2.frame });
         }
-        if (!rows.length) list.append(el("div", { className: "afm-dim", style: "padding:6px" }, t("No builds, units or research ordered.")));
+        if (!rows.length) list.append(el("div", { className: "afm-dim" }, t("No builds, units or research ordered.")));
+        if (rows.length) body.append(w.hint(t("What was ordered. Once the game has been analysed, this shows what was really made.")));
       }
-      const workers = w.checkbox(t("Workers"), { value: settings.workers, title: t("Show SCVs, Drones and Probes"), onChange: (on) => {
-        settings.workers = on;
-        save();
-        this.render();
-      } });
-      this.root.append(w.group(entry.played ? t("What was made") : t("Build order"), w.row(who, workers), list));
-      if (entry.played) {
-        const byIndex = new Map(players.map((p) => [p.player.index, p.player]));
-        const nameOf = (index) => byIndex.get(index)?.name ?? t("Player {n}", { n: index + 1 });
-        const amount = (count, value) => value > 0 ? `${count} (${value})` : String(count);
-        const fightList = el("div", { className: "afm-list" });
-        for (const f of entry.played.fights) {
-          const sides = f.sides.filter((sd) => byIndex.has(sd.player));
+      body.append(list);
+    }
+    /** Who lost what in a fight, a swatch and a number a side, the side that came out ahead in bold. */
+    sides(entry, f) {
+      const byIndex = new Map(entry.report.players.map((p) => [p.player.index, p.player]));
+      const nameOf = (index) => byIndex.get(index)?.name ?? t("Player {n}", { n: index + 1 });
+      const amount = (count, value) => value > 0 ? `${count} (${value})` : String(count);
+      return f.sides.filter((sd) => byIndex.has(sd.player)).flatMap((sd, i) => [
+        i ? el("span", { className: "afm-end" }, " \xB7 ") : null,
+        el(
+          "span",
+          { className: f.winner === sd.player ? "afm-ahead" : "", title: sd.army ? t("{name}: {army} there when it began, lost {lost}, killed {killed}", { name: nameOf(sd.player), army: amount(sd.army, sd.armyValue), lost: amount(sd.lost, sd.lostValue), killed: amount(sd.killed, sd.killedValue) }) : t("{name}: lost {lost}, killed {killed}", { name: nameOf(sd.player), lost: amount(sd.lost, sd.lostValue), killed: amount(sd.killed, sd.killedValue) }) },
+          el("span", { className: "afm-swatch", style: `background:${byIndex.get(sd.player).color}` }),
+          ` ${t("lost {lost}", { lost: amount(sd.lost, sd.lostValue) })}`
+        )
+      ]);
+    }
+    renderSummary(body, entry) {
+      if (!entry.played) {
+        body.append(w.hint(running?.entry === entry ? t("The summary shows once the game has been analysed, which is under way.") : t("The summary shows once the game has been analysed.")));
+        return;
+      }
+      const played = entry.played;
+      const players = entry.report.players;
+      const byIndex = new Map(players.map((p) => [p.player.index, p]));
+      const nameOf = (index) => byIndex.get(index)?.player.name ?? t("Player {n}", { n: index + 1 });
+      const swatch = (index) => el("span", { className: "afm-swatch", style: `background:${byIndex.get(index)?.player.color ?? "#888"}` });
+      const map = played.timeline.map;
+      const minutes = (frames) => frames < FRAMES_PER_MINUTE ? t("less than a minute") : t("{n, plural, one {# minute} other {# minutes}}", { n: Math.round(frames / FRAMES_PER_MINUTE) });
+      const winner = winnerOf(players.map((p) => ({ index: p.player.index, left: p.leftAt !== null })), played.standing);
+      const gone = players.filter((p) => p.leftAt !== null && p.player.index !== winner).sort((a, b) => a.leftAt - b.leftAt);
+      body.append(el(
+        "div",
+        { className: "afm-result" },
+        ...winner !== null ? [swatch(winner), ` ${t("{name} won", { name: nameOf(winner) })}`] : [t("Who won cannot be told from the replay")],
+        winner !== null && gone.length ? el("span", { className: "afm-end" }, ` \xB7 ${t("{name} left at {time}", { name: gone[gone.length - 1].player.name, time: formatTime(gone[gone.length - 1].leftAt) })}`) : null
+      ));
+      const adv = played.adv;
+      if (adv) {
+        const l = leads(played.timeline, adv);
+        const all = Math.max(1, l.a.frames + l.b.frames + l.even);
+        const bar = el(
+          "div",
+          { className: "afm-leadbar", title: t("How long each player was ahead in army, and how long neither was far ahead") },
+          el("span", { style: `flex:${l.a.frames / all};background:${byIndex.get(adv.a)?.player.color ?? "#888"}` }),
+          el("span", { style: `flex:${l.even / all}` }),
+          el("span", { style: `flex:${l.b.frames / all};background:${byIndex.get(adv.b)?.player.color ?? "#888"}` })
+        );
+        const lines = [l.a, l.b].filter((side2) => side2.frames > 0).map((side2) => {
+          const line = el("div", { className: "afm-line", title: t("Go to when the lead was largest") }, swatch(side2.player), ` ${adv.byCount ? t("{name} was ahead in army for {duration}, by up to {most} units at {time}", { name: nameOf(side2.player), duration: minutes(side2.frames), most: Math.round(side2.most), time: formatTime(side2.at) }) : t("{name} was ahead in army for {duration}, by up to {most} at {time}", { name: nameOf(side2.player), duration: minutes(side2.frames), most: Math.round(side2.most), time: formatTime(side2.at) })}`);
+          line.addEventListener("click", () => seek(side2.at));
+          return line;
+        });
+        body.append(w.group(t("Who led"), bar, ...lines, l.even > 0 ? el("div", { className: "afm-dim" }, t("Neither far ahead for {duration}", { duration: minutes(l.even) })) : null));
+      }
+      const rows = played.totals.filter((r) => byIndex.has(r.player));
+      if (rows.length) {
+        const costed = rows.some((r) => r.lost > 0 || r.killed > 0);
+        const byCount = adv?.byCount ?? false;
+        const table = el("div", { className: "afm-table", style: `grid-template-columns: minmax(0, 1fr) repeat(${rows.length}, minmax(0, max-content))` });
+        table.append(el("span", {}), ...rows.map((r) => el("span", { className: "afm-th", title: nameOf(r.player) }, swatch(r.player))));
+        const row = (label2, value, title) => {
+          table.append(el("span", { className: "afm-dim" }, label2), ...rows.map((r) => el("span", { title: title?.(r) }, value(r))));
+        };
+        row(t("Largest army"), (r) => String(Math.round(r.armyMost)), (r) => byCount ? t("{n} units at {time}", { n: r.armyMost, time: formatTime(r.armyAt) }) : t("Worth {n} at {time}", { n: r.armyMost, time: formatTime(r.armyAt) }));
+        row(t("Most workers"), (r) => String(r.workersMost));
+        row(t("Bases"), (r) => String(r.bases), () => t("The most bases at once, the start among them"));
+        row(t("Lost"), (r) => String(costed ? r.lost : r.lostUnits), (r) => t("{n, plural, one {# unit or building} other {# units and buildings}}", { n: r.lostUnits }));
+        row(t("Killed"), (r) => String(costed ? r.killed : r.killedUnits), (r) => t("{n, plural, one {# unit or building} other {# units and buildings}}", { n: r.killedUnits }));
+        row(t("APM"), (r) => String(byIndex.get(r.player)?.apm ?? 0), () => t("Actions per minute over the game"));
+        body.append(w.group(t("In numbers"), table));
+      }
+      const list = el("div");
+      const left = players.filter((p) => p.leftAt !== null).map((p) => ({ player: p.player.index, frame: p.leftAt }));
+      for (const line of story(played.fights, played.bases, left)) {
+        let row;
+        if (line.kind === "fight") {
+          const f = line.fight, mark = fightMark(f);
+          const who = f.kind === "battle" ? f.winner : hardestHit(f);
+          const what = f.kind === "workers" ? t("{name} lost workers", { name: nameOf(who) }) : f.kind === "buildings" ? t("{name} lost buildings", { name: nameOf(who) }) : who !== null ? t("{name} won a battle", { name: nameOf(who) }) : t("An even battle");
+          row = el(
+            "div",
+            { className: "afm-step afm-fight", title: t("Go to the fight") },
+            el("span", { className: "afm-t" }, formatTime(f.from)),
+            el(
+              "span",
+              {},
+              el("div", {}, mark ? el("span", { className: `afm-mark afm-${mark.id}`, title: translate(mark.why) }, translate(mark.label)) : null, who !== null ? swatch(who) : null, ` ${what}`, el("span", { className: "afm-end" }, ` \xB7 ${placeOf(f.x, f.y, map)}`)),
+              el("div", { className: "afm-sides" }, ...this.sides(entry, f))
+            )
+          );
+          row.addEventListener("click", () => goToFight(f));
+        } else if (line.kind === "base") {
+          const b = line.base;
+          row = el(
+            "div",
+            { className: "afm-step afm-quiet", title: t("Go to the time and place") },
+            el("span", { className: "afm-t" }, formatTime(b.frame)),
+            el("span", {}, swatch(b.player), ` ${t("{name} took base {n}", { name: nameOf(b.player), n: b.nth })}`, el("span", { className: "afm-end" }, ` \xB7 ${placeOf(b.x, b.y, map)}`))
+          );
+          row.addEventListener("click", () => goTo(b.frame, b.x, b.y));
+        } else {
+          row = el(
+            "div",
+            { className: "afm-step afm-quiet", title: t("Go to the time") },
+            el("span", { className: "afm-t" }, formatTime(line.frame)),
+            el("span", {}, swatch(line.player), ` ${t("{name} left", { name: nameOf(line.player) })}`)
+          );
+          const at = line.frame;
+          row.addEventListener("click", () => seek(at));
+        }
+        list.append(row);
+        this.steps.push({ el: row, frame: line.frame });
+      }
+      body.append(w.group(t("How it went"), list));
+    }
+    renderFights(body, entry) {
+      if (!entry.played) {
+        body.append(w.hint(running?.entry === entry ? t("The fights show once the game has been analysed, which is under way.") : t("The fights show once the game has been analysed.")));
+        return;
+      }
+      const byIndex = new Map(entry.report.players.map((p) => [p.player.index, p.player]));
+      const map = entry.played.timeline.map;
+      const sidesOf = (f) => this.sides(entry, f);
+      const bigLine = (f) => {
+        const mark = fightMark(f);
+        const line = el(
+          "div",
+          { className: "afm-step afm-fight", title: `${t("Go to the fight")}
+${t("What fell was {percent}% of everything the players in it had", { percent: Math.max(1, Math.round(f.share * 100)) })}` },
+          el("span", { className: "afm-t" }, formatTime(f.from)),
+          el(
+            "span",
+            {},
+            el("div", {}, mark ? el("span", { className: `afm-mark afm-${mark.id}`, title: translate(mark.why) }, translate(mark.label)) : null, translate(FIGHT_KINDS[f.kind]), el("span", { className: "afm-end" }, ` \xB7 ${placeOf(f.x, f.y, map)}`)),
+            el("div", { className: "afm-sides" }, ...sidesOf(f))
+          )
+        );
+        line.addEventListener("click", () => goToFight(f));
+        this.steps.push({ el: line, frame: f.from });
+        return line;
+      };
+      const fights2 = entry.played.fights;
+      const key = fights2.filter((f) => f.key), other = fights2.filter((f) => !f.key && f.tier !== "minor"), minor = fights2.filter((f) => f.tier === "minor");
+      if (!fights2.length) body.append(el("div", { className: "afm-dim" }, t("No fights: nothing much was lost in one place at one time.")));
+      if (key.length) body.append(w.group(t("Key moments"), ...key.map(bigLine)));
+      if (other.length) body.append(w.group(t("Other fights"), ...other.map(bigLine)));
+      if (minor.length) {
+        const fold = el("details", { className: "afm-fold" }, el("summary", {}, t("{n, plural, one {# skirmish} other {# skirmishes}}", { n: minor.length })));
+        for (const f of minor) {
+          const line = el("div", { className: "afm-step", title: t("Go to the fight") }, el("span", { className: "afm-t" }, formatTime(f.from)), el("span", {}, ...sidesOf(f)));
+          line.addEventListener("click", () => goToFight(f));
+          this.steps.push({ el: line, frame: f.from });
+          fold.append(line);
+        }
+        body.append(fold);
+      }
+      if (fights2.length) body.append(w.hint(t("Each fight is weighed against everything the players had at the time, armies and workers. The key moments are the ones that mattered most; the side that came out ahead is in bold. N and Shift+N go to the next and the previous.")));
+      if (entry.played.killers.length) {
+        const top = el("div");
+        for (const k of entry.played.killers) {
+          const owner = byIndex.get(k.player);
           const line = el(
             "div",
-            { className: "afm-step", title: t("Go to the fight") },
-            el("span", { className: "afm-t" }, formatTime(f.from)),
-            el("span", {}, ...sides.flatMap((sd, i) => [
-              i ? el("span", { className: "afm-end" }, " \xB7 ") : null,
-              el("span", { style: `color:${byIndex.get(sd.player).color};${f.winner === sd.player ? "font-weight:600" : ""}`, title: sd.army ? t("{name}: {army} there when it began, lost {lost}, killed {killed}", { name: nameOf(sd.player), army: amount(sd.army, sd.armyValue), lost: amount(sd.lost, sd.lostValue), killed: amount(sd.killed, sd.killedValue) }) : t("{name}: lost {lost}, killed {killed}", { name: nameOf(sd.player), lost: amount(sd.lost, sd.lostValue), killed: amount(sd.killed, sd.killedValue) }) }, t("{name} lost {lost}", { name: nameOf(sd.player), lost: amount(sd.lost, sd.lostValue) }))
-            ]))
+            { className: "afm-step", title: t("Go to its first kill") },
+            el("span", { className: "afm-t" }, formatTime(k.frame)),
+            el("span", {}, el("span", { style: owner ? `color:${owner.color}` : "" }, api.names.unit(k.type)), el("span", { className: "afm-end" }, " \xB7 " + (k.value > 0 ? t("{n, plural, one {# kill} other {# kills}}, worth {value}", { n: k.kills, value: k.value }) : t("{n, plural, one {# kill} other {# kills}}", { n: k.kills }))))
           );
-          line.addEventListener("click", () => {
-            seek(Math.max(0, f.from - 48));
-            const rect = { x0: Math.max(0, Math.floor(f.rect.x0 / 32) - 2), y0: Math.max(0, Math.floor(f.rect.y0 / 32) - 2), x1: Math.ceil(f.rect.x1 / 32) + 2, y1: Math.ceil(f.rect.y1 / 32) + 2 };
-            api.view.center(Math.floor(f.x / 32), Math.floor(f.y / 32));
-            api.view.flash({ rect, kind: "attention" });
-          });
-          fightList.append(line);
-          this.steps.push({ el: line, frame: f.from });
+          line.addEventListener("click", () => goTo(Math.max(0, k.frame - 24), k.x, k.y));
+          top.append(line);
         }
-        if (!entry.played.fights.length) fightList.append(el("div", { className: "afm-dim", style: "padding:6px" }, t("No fights: nothing much was lost in one place at one time.")));
-        this.root.append(w.group(t("Fights"), fightList, w.hint(t("Losses close together in time and place. The side that came out ahead is in bold."))));
-        if (entry.played.killers.length) {
-          const top = el("div", { className: "afm-list" });
-          for (const k of entry.played.killers) {
-            const owner = byIndex.get(k.player);
-            const line = el(
-              "div",
-              { className: "afm-step", title: t("Go to its first kill") },
-              el("span", { className: "afm-t" }, formatTime(k.frame)),
-              el("span", {}, el("span", { style: owner ? `color:${owner.color}` : "" }, api.names.unit(k.type)), el("span", { className: "afm-end" }, " \xB7 " + (k.value > 0 ? t("{n, plural, one {# kill} other {# kills}}, worth {value}", { n: k.kills, value: k.value }) : t("{n, plural, one {# kill} other {# kills}}", { n: k.kills }))))
-            );
-            line.addEventListener("click", () => {
-              seek(Math.max(0, k.frame - 24));
-              api.view.center(Math.floor(k.x / 32), Math.floor(k.y / 32));
-            });
-            top.append(line);
-          }
-          this.root.append(w.group(t("Most kills"), top));
-        }
+        body.append(w.group(t("Most kills"), top));
       }
-      const report = entry.played ? currentReport() : null;
-      if (report) {
-        const place = (clock) => clock ? t("{n} o'clock", { n: clock }) : t("the middle");
-        const go = (x, y, radius) => {
-          const tx = Math.floor(x / 32), ty = Math.floor(y / 32);
-          api.view.center(tx, ty);
-          api.view.flash({ rect: { x0: Math.max(0, tx - radius), y0: Math.max(0, ty - radius), x1: tx + radius, y1: ty + radius }, kind: "attention" });
-        };
-        const rowOf = (head, text, title, click, x = -1, y = -1) => {
-          const line = el("div", { className: "afm-step", title }, el("span", { className: "afm-t" }, head), el("span", {}, text, x < 0 ? null : el("span", { className: "afm-end" }, ` \xB7 ${Math.floor(x / 32)}, ${Math.floor(y / 32)}`)));
-          line.style.gridTemplateColumns = "70px 1fr";
-          line.addEventListener("click", click);
-          return line;
-        };
-        const list2 = el("div", { className: "afm-list" });
-        for (const site of report.sites.filter((x) => x.starts > 0)) {
-          list2.append(rowOf(
-            place(site.clock),
-            site.startDecided ? t("Start: {n, plural, one {# player} other {# players}}, won {wins} of {decided}", { n: site.starts, wins: site.startWins, decided: site.startDecided }) : t("Start: {n, plural, one {# player} other {# players}}", { n: site.starts }),
-            t("Go to this start location"),
-            () => go(site.x, site.y, 4),
-            site.x,
-            site.y
-          ));
-        }
-        for (const site of report.sites.filter((x) => !x.starts && x.taken > 0)) {
-          list2.append(rowOf(
-            place(site.clock),
-            t("Base: taken in {taken} of {games}, about {time}, usually base {order}", { taken: site.taken, games: report.games, time: formatTime(site.medianFrame ?? 0), order: site.medianOrder ?? 2 }),
-            t("Go to this base"),
-            () => go(site.x, site.y, 4),
-            site.x,
-            site.y
-          ));
-        }
-        for (const spot of report.spots.slice(0, 8)) {
-          list2.append(rowOf(
-            place(spot.clock),
-            spot.decided ? t("Fights: {fights} in {games, plural, one {# game} other {# games}}; the nearer player ahead in {won} of {decided}", { fights: spot.fights, games: spot.games, won: spot.nearerWon, decided: spot.decided }) : t("Fights: {fights} in {games, plural, one {# game} other {# games}}", { fights: spot.fights, games: spot.games }),
-            t("Go to where the fighting was"),
-            () => go(spot.x, spot.y, 8),
-            spot.x,
-            spot.y
-          ));
-        }
-        const facts2 = [
-          t("{n, plural, one {# game} other {# games}} played through", { n: report.games }),
-          t("usual length {time}", { time: formatTime(report.medianFrames) }),
-          report.medianFirstFight !== null ? t("first fight about {time}", { time: formatTime(report.medianFirstFight) }) : null
-        ].filter(Boolean).join(" \xB7 ");
-        this.root.append(w.group(
-          t("This map"),
-          el("div", { className: "afm-dim" }, facts2),
-          w.row(w.checkbox(t("Mark on the map"), { value: settings.marks, title: t("Rings at the starts and the bases taken, red circles where the fighting was"), onChange: (on) => {
-            settings.marks = on;
-            save();
-            overlay.redraw();
-          } })),
-          list2,
-          w.hint(report.games < 3 ? t("From few games this says little. Load more replays of this map and play them all through.") : t("{percent}% of the map's ground was never entered by any unit, water and cliffs included. Choose Ground never entered under Show to see it.", { percent: Math.round(report.neverEntered * 100) }))
+    }
+    renderChat(body, entry) {
+      const players = entry.report.players;
+      const byId = new Map(players.map((p) => [p.player.id, p.player]));
+      const bySlot = new Map(entry.report.replay.players.map((p) => [p.slot, p]));
+      const chat = el("div", { className: "afm-chat" });
+      for (const line of entry.report.chat) {
+        const p = bySlot.get(line.player) ?? byId.get(line.player);
+        const row = el("div", {}, el("span", { className: "afm-dim" }, formatTime(line.frame) + " "), el("b", { style: p ? `color:${p.color}` : "" }, (p?.name ?? "?") + ": "), line.text);
+        row.addEventListener("click", () => seek(line.frame));
+        chat.append(row);
+        this.steps.push({ el: row, frame: line.frame });
+      }
+      body.append(chat);
+    }
+    renderMap(body, entry) {
+      const games = mapGames(entry), inStats = new Set(counted2(entry));
+      const report = currentReport();
+      const mapName = plainText(entry.report.replay.header.mapName) || t("this map");
+      body.append(el("div", { className: "afm-dim" }, t("Every replay of {map} you have open, taken together, and shown on the map while this tab is open.", { map: mapName })));
+      const rows = el("div", { className: "afm-games" });
+      this.running = null;
+      for (const l of games) {
+        const status = el("span", { className: "afm-status" }, this.statusOf(l));
+        if (running?.entry === l) this.running = { el: status, entry: l };
+        if (l.failed) status.title = l.failed;
+        const names = l.report.players.map((p) => p.player.name).join(", ");
+        const open = l === entry ? el("span", { className: "afm-dim" }, t("this replay")) : el("button", { className: "afm-link", type: "button", title: t("Watch this game in a tab of its own") }, t("Watch"));
+        if (l !== entry) open.addEventListener("click", () => void openTab(l));
+        rows.append(el(
+          "div",
+          { className: "afm-game" + (inStats.has(l) ? "" : " afm-out"), title: names },
+          w.checkbox(l.fileName, {
+            value: !l.excluded,
+            title: l.excluded ? t("Put this game back into Map stats") : t("Leave this game out of Map stats"),
+            onChange: (on) => {
+              l.excluded = !on;
+              reportCache = null;
+              heatCache = null;
+              overlay.redraw();
+              this.render();
+              strip?.update();
+            }
+          }),
+          el("div", { className: "afm-sub" }, el("span", { className: "afm-names" }, `${formatTime(l.report.frames)} \xB7 ${names}`), status, open)
         ));
       }
-      if (current.report.chat.length) {
-        const byId = new Map(players.map((p) => [p.player.id, p.player]));
-        const bySlot = new Map(rep.players.map((p) => [p.slot, p]));
-        const chat = el("div", { className: "afm-chat" });
-        for (const line of current.report.chat) {
-          const p = bySlot.get(line.player) ?? byId.get(line.player);
-          const row = el("div", {}, el("span", { className: "afm-dim" }, formatTime(line.frame) + " "), el("b", { style: p ? `color:${p.color}` : "" }, (p?.name ?? "?") + ": "), line.text);
-          row.style.cursor = "pointer";
-          row.addEventListener("click", () => seek(line.frame));
-          chat.append(row);
-        }
-        this.root.append(w.group(t("Chat"), chat));
+      body.append(w.group(
+        t("Games"),
+        rows,
+        w.row(w.button(t("Add replays of this map\u2026"), { primary: games.length < 2, className: "sm", title: t("Replays added here are analysed in the background and counted, without a tab each. Replays of another map open in tabs of their own."), onClick: () => void pick(entry) })),
+        !sim?.present ? w.hint(t("Here only the orders can be counted. On scmjs.dev each game is also analysed, and the starts, the bases and the fights are shown.")) : null
+      ));
+      const mode = heatMode();
+      const anyPlayed = [...inStats].some((l) => l.played);
+      const heatSelect = w.select([
+        { value: "off", label: t("No heat map") },
+        ...anyPlayed ? ["losses", "presence"].map((h) => ({ value: h, label: translate(HEAT_LABELS[h]) })) : [],
+        ...["orders", "buildings"].map((h) => ({ value: h, label: translate(HEAT_LABELS[h]) })),
+        ...anyPlayed ? [{ value: "unvisited", label: translate(HEAT_LABELS.unvisited) }] : []
+      ], { value: mode === "off" && settings.heat !== "off" ? settings.heat : mode, onChange: (v) => {
+        settings.heat = v;
+        save();
+        heatCache = null;
+        overlay.redraw();
+        this.render();
+      } });
+      body.append(w.group(t("Heat map"), w.row(heatSelect)));
+      if (!report) {
+        const waiting = waitingOf(entry);
+        if (sim?.present) body.append(w.hint(waiting ? t("Nothing counted yet: the games are still being analysed.") : t("Nothing to say about the map yet.")));
+        return;
       }
-      this.update();
-      requestAnimationFrame(() => this.drawApm());
+      const place = (clock) => clock ? t("{n} o'clock", { n: clock }) : t("the middle");
+      const go = (x, y, radius) => {
+        const tx = Math.floor(x / 32), ty = Math.floor(y / 32);
+        api.view.center(tx, ty);
+        api.view.flash({ rect: { x0: Math.max(0, tx - radius), y0: Math.max(0, ty - radius), x1: tx + radius, y1: ty + radius }, kind: "attention" });
+      };
+      const rowOf = (head, text, title, click, x = -1, y = -1) => {
+        const line = el("div", { className: "afm-step", title }, el("span", { className: "afm-t" }, head), el("span", {}, text, x < 0 ? null : el("span", { className: "afm-end" }, ` \xB7 ${Math.floor(x / 32)}, ${Math.floor(y / 32)}`)));
+        line.style.gridTemplateColumns = "70px 1fr";
+        line.addEventListener("click", click);
+        return line;
+      };
+      const list = el("div");
+      for (const site of report.sites.filter((x) => x.starts > 0)) {
+        list.append(rowOf(
+          place(site.clock),
+          site.startDecided ? t("Start: {n, plural, one {# player} other {# players}}, won {wins} of {decided}", { n: site.starts, wins: site.startWins, decided: site.startDecided }) : t("Start: {n, plural, one {# player} other {# players}}", { n: site.starts }),
+          t("Go to this start location"),
+          () => go(site.x, site.y, 4),
+          site.x,
+          site.y
+        ));
+      }
+      for (const site of report.sites.filter((x) => !x.starts && x.taken > 0)) {
+        list.append(rowOf(
+          place(site.clock),
+          t("Base: taken in {taken} of {games}, about {time}, usually base {order}", { taken: site.taken, games: report.games, time: formatTime(site.medianFrame ?? 0), order: site.medianOrder ?? 2 }),
+          t("Go to this base"),
+          () => go(site.x, site.y, 4),
+          site.x,
+          site.y
+        ));
+      }
+      for (const spot of report.spots.slice(0, 8)) {
+        list.append(rowOf(
+          place(spot.clock),
+          spot.decided ? t("Fights: {fights} in {games, plural, one {# game} other {# games}}; the nearer player ahead in {won} of {decided}", { fights: spot.fights, games: spot.games, won: spot.nearerWon, decided: spot.decided }) : t("Fights: {fights} in {games, plural, one {# game} other {# games}}", { fights: spot.fights, games: spot.games }),
+          t("Go to where the fighting was"),
+          () => go(spot.x, spot.y, 8),
+          spot.x,
+          spot.y
+        ));
+      }
+      const facts = [
+        t("{n, plural, one {# game} other {# games}} together", { n: report.games }),
+        t("usual length {time}", { time: formatTime(report.medianFrames) }),
+        report.medianFirstFight !== null ? t("first fight about {time}", { time: formatTime(report.medianFirstFight) }) : null
+      ].filter(Boolean).join(" \xB7 ");
+      body.append(w.group(
+        t("What the games show"),
+        el("div", { className: "afm-dim" }, facts),
+        el("div", { className: "afm-dim" }, t("On the map: a white ring at each start, a green ring at each base taken, a red circle where the fights that mattered were.")),
+        list,
+        w.hint(report.games < 3 ? t("From few games this says little. Add more replays of this map.") : t("{percent}% of the map's ground was never entered by any unit, water and cliffs included. Choose Ground never entered as the heat map to see it.", { percent: Math.round(report.neverEntered * 100) }))
+      ));
     }
-    /** What moves with the clock: the slider, the time, the build list's past and future, the APM cursor. */
+    /** Where a game of Map stats stands, in a word or two. */
+    statusOf(l) {
+      const parted = partedAt(l);
+      if (running?.entry === l) return running.fraction < 0 ? t("analysing\u2026") : t("analysing {percent}%", { percent: Math.floor(running.fraction * 100) });
+      if (l.excluded) return t("left out");
+      if (parted !== null) return t("left out: differs from {time}", { time: formatTime(parted) });
+      if (l.failed) return t("could not be analysed");
+      if (l.played) return t("counted");
+      if (queue.includes(l)) return t("waiting");
+      return sim?.present ? "" : t("counted");
+    }
+    /** What moves with the clock: the players' numbers, and which rows are still to come. */
     update() {
-      if (!current || !this.slider) return;
-      this.slider.value = String(Math.round(frame));
-      this.timeLabel.textContent = `${formatTime(frame)} / ${formatTime(current.report.frames)}`;
-      this.playButton.textContent = playing ? t("Pause") : t("Play");
+      const entry = current;
+      if (!entry) return;
+      const frame = entry.frame;
+      const tl = entry.played?.timeline ?? null;
+      const at = tl ? sampleIndex(tl.samples.frame, frame) : -1;
+      for (const { el: readout2, p } of this.live) {
+        const left = p.leftAt !== null && p.leftAt <= frame;
+        const series2 = tl ? tl.samples.players.find((s) => s.slot === p.player.index) : void 0;
+        const supply = series2 && at >= 0 ? { used: series2.supplyUsed[at] ?? 0, max: series2.supplyMax[at] ?? 0 } : null;
+        readout2.textContent = left ? t("left {time}", { time: formatTime(p.leftAt) }) : supply ? `${supply.used}/${supply.max} \xB7 ${p.apm}` : t("{n} APM", { n: p.apm });
+        readout2.title = supply ? t("Supply {used} of {max} \xB7 {n} actions per minute over the game", { used: supply.used, max: supply.max, n: p.apm }) : t("Actions per minute over the game");
+      }
       for (const s of this.steps) s.el.classList.toggle("afm-future", s.frame > frame);
-      this.drawApm();
+      if (this.running?.el.isConnected) this.running.el.textContent = this.statusOf(this.running.entry);
     }
-    /** How far the engine is with the replay it is playing. */
-    progress() {
-      if (!this.bar || !running || running.entry !== current) return;
-      if (running.fraction < 0) this.bar.set(null, t("Starting the game\u2026"));
-      else this.bar.set(running.fraction, t("Playing the game: {time} of {total}", { time: formatTime(running.fraction * current.report.frames), total: formatTime(current.report.frames) }));
+  }
+  class StripView {
+    root;
+    playButton = null;
+    timeLabel = null;
+    status = null;
+    canvas = null;
+    resize = null;
+    spectateButton = null;
+    ordersButton = null;
+    legendButton = null;
+    statsButton = null;
+    /** Where the pointer is over the graph, in CSS pixels from its left; null when it is not. */
+    hover = null;
+    get canvasTitle() {
+      return t("Fights in red, taller the more they mattered; the turning point in gold; chat in grey; a player leaving in their colour. Point at the graph to read it; press or drag to go there.");
     }
-    drawApm() {
-      const c = this.apm;
-      if (!c || !current || !c.isConnected) return;
+    constructor(body) {
+      this.root = el("div", { className: "afm-tl" });
+      body.append(this.root);
+    }
+    render() {
+      this.root.replaceChildren();
+      this.resize?.disconnect();
+      const entry = current;
+      if (!entry) return;
+      this.playButton = w.button("", { primary: true, className: "sm", title: t("Space plays and pauses. \u2190 and \u2192 go 10 seconds back or on, a minute with Shift; N and Shift+N go to the next and the previous key moment; F follows the action or lets the camera go; O shows the orders; Home and End go to the start and the end."), onClick: () => playing2 ? stop() : play() });
+      this.timeLabel = el("span", { className: "afm-time" });
+      const speed = w.select([1, 2, 4, 8, 16, 32].map((n) => ({ value: n, label: `${n}\xD7` })), { value: settings.speed, title: t("Playback speed"), onChange: (v) => {
+        settings.speed = Number(v);
+        save();
+        speed.blur();
+      } });
+      const chart = chartOf(entry);
+      const chartSelect = w.select([
+        ...entry.played?.adv ? [{ value: "lead", label: t("Army lead") }] : [],
+        { value: "apm", label: t("Actions per minute") },
+        ...entry.played ? [
+          { value: "armyValue", label: t("Army value") },
+          { value: "army", label: t("Army size") },
+          { value: "workers", label: t("Workers") },
+          { value: "supplyUsed", label: t("Supply") },
+          { value: "minerals", label: t("Minerals in the bank") },
+          { value: "gas", label: t("Gas in the bank") },
+          { value: "buildings", label: t("Buildings") }
+        ] : []
+      ], { value: chart, title: t("What the graph shows"), onChange: (v) => {
+        settings.chart = v;
+        save();
+        chartSelect.blur();
+        this.draw();
+      } });
+      this.status = el("span", { className: "afm-dim afm-grow" });
+      const retry = entry.failed && sim?.present && !running ? w.button(t("Try again"), { ghost: true, className: "sm", title: entry.failed, onClick: () => {
+        queue.unshift(entry);
+        pump();
+      } }) : null;
+      this.spectateButton = toggle(t("Spectate"), () => spectate());
+      this.ordersButton = toggle(t("Orders"), () => showOrders(!settings.orders));
+      this.ordersButton.title = t("O: what the players told their units to do in the last eight seconds, over the units drawn faintly");
+      this.legendButton = toggle(t("Legend"), () => {
+        settings.legend = !settings.legend;
+        save();
+        overlay.redraw();
+        this.update();
+      });
+      this.legendButton.title = t("A key to the marks, in the map's corner");
+      this.statsButton = toggle(t("Map stats"), () => showStats(lensOf() !== "map"));
+      this.root.append(el(
+        "div",
+        { className: "afm-row" },
+        this.playButton,
+        this.timeLabel,
+        speed,
+        el("span", { className: "afm-toggles" }, this.spectateButton, this.ordersButton, this.statsButton, this.legendButton),
+        this.status,
+        retry,
+        chartSelect
+      ));
+      const canvas = el("canvas", { title: this.canvasTitle });
+      this.canvas = canvas;
+      const seekTo = (e) => {
+        const r = canvas.getBoundingClientRect();
+        if (current) seek((e.clientX - r.left) / Math.max(1, r.width) * current.report.frames);
+      };
+      canvas.addEventListener("pointerdown", (e) => {
+        if (e.button !== 0) return;
+        canvas.setPointerCapture(e.pointerId);
+        seekTo(e);
+      });
+      canvas.addEventListener("pointermove", (e) => {
+        if (canvas.hasPointerCapture(e.pointerId)) seekTo(e);
+        this.hover = e.clientX - canvas.getBoundingClientRect().left;
+        this.draw();
+      });
+      canvas.addEventListener("pointerleave", () => {
+        this.hover = null;
+        this.draw();
+      });
+      this.root.append(canvas);
+      this.resize = new ResizeObserver(() => this.draw());
+      this.resize.observe(canvas);
+      this.update();
+    }
+    /** What moves with the clock, and the engine's progress. */
+    update() {
+      const entry = current;
+      if (!entry || !this.playButton) return;
+      this.playButton.textContent = playing2 ? t("Pause") : t("Play");
+      this.timeLabel.textContent = `${formatTime(entry.frame)} / ${formatTime(entry.report.frames)}`;
+      let line = "";
+      let why = "";
+      if (running?.entry === entry) {
+        line = running.fraction < 0 ? t("Analysing the game\u2026") : t("Analysing the game: {percent}%", { percent: Math.floor(running.fraction * 100) });
+        why = t("The game engine plays the replay through in the background to see what really happened: the armies, the fights, what was lost. You can watch the replay meanwhile.");
+      } else if (entry.played) {
+        const tl = entry.played.timeline;
+        line = tl.frames < tl.total ? t("Analysed up to {time}, where the game stopped.", { time: formatTime(tl.frames) }) : t("Analysed: the armies, fights and losses are shown.");
+      } else if (entry.failed) {
+        line = t("Could not analyse the game: {reason}", { reason: entry.failed });
+      } else if (!sim?.present) {
+        line = t("Showing the orders given. On scmjs.dev the game is also analysed, to show what happened.");
+      } else if (queue.includes(entry)) {
+        line = t("Waiting to be analysed.");
+        why = t("Replays are analysed one at a time: the one in front first, then the others with a tab, then the ones only in Map stats.");
+      }
+      const onMap = lensOf() === "map";
+      if (onMap) {
+        const n = counted2(entry).length, waiting = waitingOf(entry);
+        line = [t("Map stats: {n, plural, one {# game} other {# games}} of this map together", { n }), waiting ? t("{n} still being analysed", { n: waiting }) : null].filter(Boolean).join(" \xB7 ");
+        why = t("The timeline is one game's. Press it, Play or Map stats to go back to the game.");
+      }
+      this.status.textContent = line;
+      this.status.title = why || line;
+      const shots = (entry.played?.shots.length ?? 0) > 0;
+      const following = shots && cam.following && !onMap;
+      this.spectateButton.classList.toggle("afm-on", following);
+      this.spectateButton.setAttribute("aria-pressed", String(following));
+      this.spectateButton.disabled = !shots;
+      this.spectateButton.title = !shots ? t("The camera follows the game once it has been analysed") : onMap ? t("Back to the game, with the camera following the action") : following ? t("F: the camera follows the action as an observer would; scroll the map, or press here, to look around yourself") : t("F: follow the action as an observer would: the fights that matter, armies about to meet, new bases, the armies on the move");
+      this.ordersButton.classList.toggle("afm-on", settings.orders);
+      this.ordersButton.setAttribute("aria-pressed", String(settings.orders));
+      this.legendButton.classList.toggle("afm-on", settings.legend);
+      this.legendButton.setAttribute("aria-pressed", String(settings.legend));
+      const games = mapGames(entry).length;
+      this.statsButton.textContent = games > 1 ? t("Map stats \xB7 {n}", { n: games }) : t("Map stats");
+      this.statsButton.classList.toggle("afm-on", onMap);
+      this.statsButton.setAttribute("aria-pressed", String(onMap));
+      this.statsButton.title = onMap ? t("Back to the game") : games > 1 ? t("Every replay of this map you have open, taken together: where players start, the bases they take, where they fight ({n} replays)", { n: games }) : t("Every replay of this map you have open, taken together: where players start, the bases they take, where they fight. Add more replays of the map there.");
+      this.canvas?.classList.toggle("afm-faded", onMap);
+      if (this.canvas) this.canvas.title = onMap ? t("The timeline is one game's: press it to go back to that game") : this.canvasTitle;
+      this.draw();
+    }
+    draw() {
+      const c = this.canvas;
+      const entry = current;
+      if (!c || !entry || !c.isConnected) return;
       const dpr = window.devicePixelRatio || 1;
       const cw = Math.max(1, Math.round(c.clientWidth * dpr)), ch = Math.max(1, Math.round(c.clientHeight * dpr));
       if (c.width !== cw || c.height !== ch) {
@@ -2528,91 +3733,317 @@ function activate(api) {
       }
       const g = c.getContext("2d");
       g.clearRect(0, 0, cw, ch);
-      const frames = current.report.frames || 1;
-      const players = current.report.players;
-      const tl = current.played?.timeline ?? null;
-      const metric = tl && settings.chart !== "apm" ? settings.chart : null;
-      const lines = players.map((p) => {
-        const values = metric ? series(tl, p.player.index, metric) ?? [] : p.perMinute;
-        const at = metric ? (i) => tl.samples.frame[i] : (i) => Math.min(frames, (i + 0.5) * FRAMES_PER_MINUTE);
-        return { p, values, at };
-      });
-      let max = 1;
-      for (const l of lines) for (const n of l.values) max = Math.max(max, n);
-      const pad = 4 * dpr;
-      const xOf = (f) => f / frames * cw;
-      const yOf = (n) => ch - pad - n / max * (ch - pad * 2);
+      const frames = entry.report.frames || 1;
+      const xOf = (f) => Math.min(frames, Math.max(0, f)) / frames * cw;
+      const lane = LANE * dpr;
+      const graphTop = lane + 2 * dpr;
+      const graphH = Math.max(1, ch - graphTop);
+      g.fillStyle = "rgba(128,128,128,0.12)";
+      g.fillRect(0, 0, cw, lane);
+      if (running?.entry === entry && running.fraction > 0) {
+        g.fillStyle = "rgba(79,209,197,0.22)";
+        g.fillRect(0, 0, cw * running.fraction, lane);
+      }
+      for (const line of entry.report.chat) {
+        g.fillStyle = "rgba(200,205,215,0.7)";
+        g.fillRect(Math.round(xOf(line.frame)), lane * 0.15, Math.max(1, dpr), lane * 0.3);
+      }
+      if (entry.played) {
+        for (const f of entry.played.fights) {
+          const [top, alpha] = f.key ? [0.45, 1] : f.tier !== "minor" ? [0.65, 0.75] : [0.85, 0.4];
+          g.fillStyle = `rgba(240,80,60,${alpha})`;
+          g.fillRect(xOf(f.from), lane * top, Math.max(2 * dpr, xOf(f.to) - xOf(f.from)), lane * (0.97 - top));
+          if (!f.turning) continue;
+          const x2 = xOf(f.from);
+          g.fillStyle = "#f0c64a";
+          g.beginPath();
+          g.moveTo(x2 - 4 * dpr, 0);
+          g.lineTo(x2 + 4 * dpr, 0);
+          g.lineTo(x2, lane * 0.42);
+          g.closePath();
+          g.fill();
+        }
+      }
+      for (const p of entry.report.players) {
+        if (p.leftAt === null) continue;
+        const x2 = xOf(p.leftAt);
+        g.fillStyle = p.player.color;
+        g.beginPath();
+        g.moveTo(x2, 0);
+        g.lineTo(x2 + 4 * dpr, lane * 0.5);
+        g.lineTo(x2, lane);
+        g.closePath();
+        g.fill();
+      }
+      const pad = 3 * dpr;
       g.strokeStyle = "rgba(128,128,128,0.25)";
       g.lineWidth = 1;
-      for (let m = 1; m * FRAMES_PER_MINUTE < frames; m++) {
-        if (m % 5) continue;
-        g.beginPath();
-        g.moveTo(xOf(m * FRAMES_PER_MINUTE), 0);
-        g.lineTo(xOf(m * FRAMES_PER_MINUTE), ch);
-        g.stroke();
-      }
-      for (const { p, values, at } of lines) {
-        if (hidden.has(p.player.id)) continue;
-        g.strokeStyle = p.player.color;
-        g.lineWidth = 1.5 * dpr;
-        g.beginPath();
-        values.forEach((n, i) => {
-          const x = xOf(Math.min(frames, at(i)));
-          if (i === 0) g.moveTo(x, yOf(n));
-          else g.lineTo(x, yOf(n));
-        });
-        g.stroke();
-      }
       g.fillStyle = "rgba(160,168,184,0.9)";
       g.font = `${10 * dpr}px system-ui, sans-serif`;
-      g.textBaseline = "top";
-      g.fillText(String(Math.round(max)), 3 * dpr, 2 * dpr);
-      if (current.played) {
-        g.fillStyle = "rgba(240,80,60,0.9)";
-        for (const f of current.played.fights) g.fillRect(xOf(f.from), ch - 3 * dpr, Math.max(2 * dpr, xOf(f.to) - xOf(f.from)), 3 * dpr);
+      g.textBaseline = "bottom";
+      for (let m = 5; m * FRAMES_PER_MINUTE < frames; m += 5) {
+        const x2 = Math.round(xOf(m * FRAMES_PER_MINUTE)) + 0.5;
+        g.beginPath();
+        g.moveTo(x2, graphTop);
+        g.lineTo(x2, ch);
+        g.stroke();
+        g.fillText(`${m}:00`, x2 + 3 * dpr, ch - 1 * dpr);
       }
-      g.strokeStyle = "rgba(255,255,255,0.8)";
+      const chart = chartOf(entry);
+      const adv = entry.played?.adv ?? null;
+      if (chart === "lead" && adv && entry.played) {
+        for (const f of entry.played.fights) {
+          if (!f.key) continue;
+          g.fillStyle = f.turning ? "rgba(240,198,74,0.16)" : "rgba(240,80,60,0.1)";
+          g.fillRect(xOf(f.from), graphTop, Math.max(2 * dpr, xOf(f.to) - xOf(f.from)), graphH);
+        }
+        let max = 1;
+        for (const n of adv.lead) max = Math.max(max, Math.abs(n));
+        const mid = graphTop + graphH / 2, half = graphH / 2 - pad;
+        const yOf = (n) => mid - n / max * half;
+        const colourOf = (index) => entry.report.players.find((p) => p.player.index === index)?.player.color ?? "#a0a8b8";
+        const shape = () => {
+          g.beginPath();
+          g.moveTo(xOf(adv.frames[0]), mid);
+          adv.lead.forEach((n, i) => g.lineTo(xOf(adv.frames[i]), yOf(n)));
+          g.lineTo(xOf(adv.frames[adv.frames.length - 1]), mid);
+          g.closePath();
+        };
+        for (const [side2, y0, y1] of [[adv.a, graphTop, mid], [adv.b, mid, ch]]) {
+          g.save();
+          g.beginPath();
+          g.rect(0, y0, cw, y1 - y0);
+          g.clip();
+          shape();
+          g.fillStyle = withAlpha(colourOf(side2), 0.45);
+          g.fill();
+          g.restore();
+        }
+        g.strokeStyle = "rgba(128,128,128,0.5)";
+        g.beginPath();
+        g.moveTo(0, Math.round(mid) + 0.5);
+        g.lineTo(cw, Math.round(mid) + 0.5);
+        g.stroke();
+        g.strokeStyle = "rgba(230,233,240,0.85)";
+        g.lineWidth = 1.25 * dpr;
+        g.beginPath();
+        adv.lead.forEach((n, i) => {
+          const x2 = xOf(adv.frames[i]);
+          if (i === 0) g.moveTo(x2, yOf(n));
+          else g.lineTo(x2, yOf(n));
+        });
+        g.stroke();
+        const nameOf = (index) => entry.report.players.find((p) => p.player.index === index)?.player.name ?? "";
+        g.font = `600 ${10 * dpr}px system-ui, sans-serif`;
+        g.textBaseline = "top";
+        g.fillStyle = colourOf(adv.a);
+        g.fillText(`${t("{name} ahead", { name: nameOf(adv.a) })} \xB7 ${Math.round(max)}`, 3 * dpr, graphTop + 1 * dpr);
+        g.textBaseline = "bottom";
+        g.fillStyle = colourOf(adv.b);
+        g.fillText(t("{name} ahead", { name: nameOf(adv.b) }), 3 * dpr, ch - 12 * dpr);
+      } else {
+        const tl = entry.played?.timeline ?? null;
+        const metric = tl && chart !== "apm" && chart !== "lead" ? chart : null;
+        const lines = entry.report.players.map((p) => {
+          const values = metric ? series(tl, p.player.index, metric) ?? [] : p.perMinute;
+          const at = metric ? (i) => tl.samples.frame[i] : (i) => Math.min(frames, (i + 0.5) * FRAMES_PER_MINUTE);
+          return { p, values, at };
+        });
+        let max = 1;
+        for (const l of lines) if (!entry.hidden.has(l.p.player.id)) for (const n of l.values) max = Math.max(max, n);
+        const yOf = (n) => graphTop + graphH - pad - n / max * (graphH - pad * 2);
+        for (const { p, values, at } of lines) {
+          if (entry.hidden.has(p.player.id)) continue;
+          g.strokeStyle = p.player.color;
+          g.lineWidth = 1.5 * dpr;
+          g.beginPath();
+          values.forEach((n, i) => {
+            const x2 = xOf(at(i));
+            if (i === 0) g.moveTo(x2, yOf(n));
+            else g.lineTo(x2, yOf(n));
+          });
+          g.stroke();
+        }
+        g.fillStyle = "rgba(160,168,184,0.9)";
+        g.textBaseline = "top";
+        g.fillText(String(Math.round(max)), 3 * dpr, graphTop + 1 * dpr);
+      }
+      const x = Math.round(xOf(entry.frame)) + 0.5;
+      g.strokeStyle = "rgba(255,255,255,0.9)";
       g.lineWidth = 1 * dpr;
       g.beginPath();
-      g.moveTo(xOf(frame), 0);
-      g.lineTo(xOf(frame), ch);
+      g.moveTo(x, 0);
+      g.lineTo(x, ch);
       g.stroke();
+      if (this.hover !== null) {
+        const hx = this.hover * dpr, frame = this.hover * dpr / cw * frames;
+        g.strokeStyle = "rgba(255,255,255,0.35)";
+        g.beginPath();
+        g.moveTo(Math.round(hx) + 0.5, 0);
+        g.lineTo(Math.round(hx) + 0.5, ch);
+        g.stroke();
+        const text = [formatTime(frame), ...readout(entry, chart, frame, 2 * dpr / cw * frames)].join(" \xB7 ");
+        g.font = `${11 * dpr}px system-ui, sans-serif`;
+        g.textBaseline = "middle";
+        const tw = g.measureText(text).width, bw = tw + 10 * dpr, bh = 18 * dpr;
+        const bx = hx + 8 * dpr + bw > cw ? hx - 8 * dpr - bw : hx + 8 * dpr, by = graphTop + 2 * dpr;
+        g.fillStyle = "rgba(20,22,28,0.9)";
+        g.fillRect(bx, by, bw, bh);
+        g.fillStyle = "#e4e8ef";
+        g.fillText(text, bx + 5 * dpr, by + bh / 2);
+      }
     }
   }
-  async function pick() {
+  async function pick(into = null) {
     const files = await api.ui.pickFiles({ accept: ".rep", multiple: true });
-    if (files.length) await load(files);
+    if (files.length) await load(files, into);
   }
   api.commands.register({ id: "open-replay", title: msg2("Open Replay\u2026"), run: () => void pick() });
-  api.commands.register({ id: "panel", title: "Aftermath", run: () => {
-    showPanel();
-    view?.render();
-  } });
-  api.menu.add("File", { label: msg2("Open Replay\u2026"), icon: "plugin", after: "Open Recent", command: "open-replay" });
-  api.menu.add("View", { label: "Aftermath", icon: "plugin", command: "panel" });
-  api.events.on("document", () => {
-    checkMap();
-    heatCache = null;
-    view?.render();
-    overlay.redraw();
-  });
-  api.events.on("terrain", () => {
-    if (!current) return;
-    const was = matches;
-    checkMap();
-    if (was !== matches) {
-      view?.render();
-      overlay.redraw();
+  api.commands.register({
+    id: "panel",
+    title: "Aftermath",
+    run: () => {
+      if (current) {
+        sideHidden = false;
+        stripHidden = false;
+        showSide();
+        showStrip();
+        return;
+      }
+      if (sidePanel?.isOpen()) {
+        closeSide();
+        return;
+      }
+      sideAsked = true;
+      showSide(true);
     }
   });
-  api.events.on("language", () => view?.render());
+  api.menu.add("File", { label: msg2("Open Replay\u2026"), icon: "plugin", after: "Open Recent", command: "open-replay" });
+  api.menu.add("View", { label: "Aftermath", icon: "plugin", command: "panel" });
+  if (bottomDock) api.ui.fileType({ name: msg2("StarCraft replay"), extensions: [".rep"], open: (files) => void load(files) });
+  const simWatch = api.services.watch("scm-sim.engine", (service) => {
+    sim = service;
+    pump();
+    strip?.render();
+  });
+  api.events.on("document", () => sync());
+  api.events.on("view", () => {
+    if (!cam.following || !current?.played?.shots.length || lensOf() === "map" || api.document.id() !== current.docId || !movedByUser()) return;
+    cam.following = false;
+    cam.asked = [];
+    overlay.redraw();
+    strip?.update();
+  });
+  api.events.on("language", () => {
+    side?.render();
+    strip?.render();
+  });
   return () => {
     stop();
+    bindKeys(false);
     running?.controller.abort();
     simWatch.dispose();
     imageListener.dispose();
     style.remove();
   };
+}
+function markBuilding(ctx, x, y, w, h, colour, state, img, scale) {
+  ctx.fillStyle = withAlpha(colour, state === "site" ? 0.1 : 0.22);
+  ctx.fillRect(x, y, w, h);
+  if (img) {
+    const a = ctx.globalAlpha;
+    ctx.globalAlpha = a * (state === "site" ? 0.4 : 0.9);
+    ctx.drawImage(img.image, x + w / 2 - img.width * scale / 2, y + h / 2 - img.height * scale / 2, img.width * scale, img.height * scale);
+    ctx.globalAlpha = a;
+  }
+  ctx.strokeStyle = colour;
+  ctx.lineWidth = state === "new" ? 3 : 1.5;
+  if (state === "site") ctx.setLineDash([4, 3]);
+  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  ctx.setLineDash([]);
+}
+function markUnit(ctx, x, y, r, colour, worker) {
+  const a = ctx.globalAlpha;
+  ctx.globalAlpha = a * (worker ? 0.55 : 1);
+  ctx.fillStyle = colour;
+  ctx.beginPath();
+  ctx.arc(x, y, worker ? r * 0.7 : r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = a;
+}
+function markKill(ctx, x0, y0, x1, y1, colour) {
+  ctx.strokeStyle = colour;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x0, y0);
+  ctx.lineTo(x1, y1);
+  ctx.stroke();
+}
+function markLoss(ctx, x, y, d, colour) {
+  ctx.strokeStyle = colour;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x - d, y - d);
+  ctx.lineTo(x + d, y + d);
+  ctx.moveTo(x + d, y - d);
+  ctx.lineTo(x - d, y + d);
+  ctx.stroke();
+}
+function markFightBox(ctx, x, y, w, h, turning, key) {
+  ctx.strokeStyle = turning ? "rgba(240,198,74,0.9)" : "rgba(240,80,60,0.85)";
+  ctx.lineWidth = key ? 2 : 1.5;
+  ctx.setLineDash([6, 4]);
+  ctx.strokeRect(x + 0.5, y + 0.5, w, h);
+  ctx.setLineDash([]);
+}
+function markOrder(ctx, kind, x, y, r, colour, k) {
+  ctx.strokeStyle = ctx.fillStyle = colour;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  if (kind === "attack" || kind === "patrol") {
+    ctx.moveTo(x - r, y - r);
+    ctx.lineTo(x + r, y + r);
+    ctx.moveTo(x + r, y - r);
+    ctx.lineTo(x - r, y + r);
+    ctx.stroke();
+  } else if (kind === "ping") {
+    ctx.lineWidth = 1.5;
+    ctx.arc(x, y, r * 0.6, 0, Math.PI * 2);
+    ctx.moveTo(x + r + 3 + (1 - k) * 30, y);
+    ctx.arc(x, y, r + 3 + (1 - k) * 30, 0, Math.PI * 2);
+    ctx.stroke();
+  } else if (kind === "rally") {
+    ctx.fillRect(x - r / 2, y - r * 1.6, r * 1.2, r * 0.9);
+    ctx.fillRect(x - r / 2, y - r * 1.6, 1.5, r * 1.8);
+  } else if (kind === "ability") {
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.stroke();
+  } else {
+    ctx.moveTo(x, y - r);
+    ctx.lineTo(x + r * 0.8, y);
+    ctx.lineTo(x, y + r);
+    ctx.lineTo(x - r * 0.8, y);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+function markSpot(ctx, x, y, r) {
+  ctx.fillStyle = "rgba(235,70,60,0.14)";
+  ctx.strokeStyle = "rgba(235,70,60,0.9)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+}
+function markSite(ctx, x, y, r, start) {
+  ctx.strokeStyle = start ? "rgba(255,255,255,0.9)" : "rgba(120,220,160,0.9)";
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([5, 4]);
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
 }
 function firstAfter(list, frame) {
   let lo = 0, hi = list.length;

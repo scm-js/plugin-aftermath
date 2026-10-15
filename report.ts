@@ -7,6 +7,7 @@
 import type { ReplayTimeline } from "./vendor/scm-sim";
 import type { Fight } from "./fights";
 import type { Standing } from "./played";
+import type { Base } from "./story";
 
 /** Command Center, Hatchery, Nexus: what makes a place a base. */
 const HALLS = new Set([106, 131, 154]);
@@ -22,6 +23,8 @@ export interface GameInput {
   timeline: ReplayTimeline;
   standing: readonly Standing[];
   fights: readonly Fight[];
+  /** The bases taken after the start, at mineral lines (`story.ts`). */
+  bases: readonly Base[];
   /** The game's player number of whoever won, or null when that cannot be told. */
   winner: number | null;
 }
@@ -119,26 +122,19 @@ export function mapReport(games: readonly GameInput[], map: { width: number; hei
       s.starts++;
       if (game.winner !== null) { s.startDecided++; if (game.winner === player) s.startWins++; }
     }
-    // The bases built after: each place once a player, in the order that player took them.
-    const taken = new Map<SiteAcc, number>(), count = new Map<number, number>(), mine = new Map<number, Set<SiteAcc>>();
-    for (const b of [...game.standing].sort((a, c) => a.from - c.from)) {
-      if (b.from === 0 || !HALLS.has(b.type)) continue;
-      const home = startOf.get(b.owner);
-      if (home && Math.hypot(home.x - b.x, home.y - b.y) <= SITE_RADIUS) continue;
-      const s = siteAt(b.x, b.y), had = mine.get(b.owner) ?? new Set<SiteAcc>();
-      mine.set(b.owner, had);
-      if (had.has(s)) continue;
-      had.add(s);
-      const order = (count.get(b.owner) ?? 1) + 1;
-      count.set(b.owner, order);
-      s.orders.push(order);
-      if (!taken.has(s)) taken.set(s, b.from);
+    // The bases taken after: each mineral line once a player, with which base it was for them.
+    const taken = new Map<SiteAcc, number>();
+    for (const b of game.bases) {
+      const s = siteAt(b.x, b.y);
+      s.orders.push(b.nth);
+      if (!taken.has(s)) taken.set(s, b.frame);
     }
     for (const [s, frame] of taken) s.frames.push(frame);
 
-    // The fights, by place; the nearer player is the one whose start is closer.
-    if (game.fights.length) firstFights.push(game.fights[0].from);
-    for (const f of game.fights) {
+    // The fights that mattered, by place (a skirmish says little about a map); the nearer player is the one whose start is closer.
+    const fights = game.fights.filter((f) => f.tier !== "minor");
+    if (fights.length) firstFights.push(fights[0].from);
+    for (const f of fights) {
       let s = nearest(spots, f.x, f.y, SPOT_RADIUS);
       if (!s) { s = { sx: 0, sy: 0, n: 0, fights: 0, games: new Set(), value: 0, frames: [], decided: 0, nearerWon: 0 }; spots.push(s); }
       s.sx += f.x; s.sy += f.y; s.n++;

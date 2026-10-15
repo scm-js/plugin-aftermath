@@ -60,6 +60,107 @@ describe("fights", () => {
   });
 });
 
+describe("how much a fight mattered", () => {
+  const DRONE = 41, HT = 67, ARCHON = 68, BUNKER = 125;
+  /** Samples every 48 frames, the same numbers throughout unless `at` says otherwise from that frame. */
+  const samples = (frames: number, players: { slot: number; army: number; armyValue: number; workers: number; at?: [number, number][] }[]) => {
+    const frame = Array.from({ length: Math.ceil(frames / 48) }, (_, i) => i * 48);
+    return {
+      every: 48, frame,
+      players: players.map((p) => {
+        const value = (f: number) => [...(p.at ?? [])].reverse().find(([from]) => f >= from)?.[1] ?? p.armyValue;
+        return { slot: p.slot, minerals: frame.map(() => 0), gas: frame.map(() => 0), supplyUsed: frame.map(() => 0), supplyMax: frame.map(() => 0), workers: frame.map(() => p.workers), army: frame.map(() => p.army), armyValue: frame.map(value), buildings: frame.map(() => 1) };
+      }),
+    };
+  };
+  const players = [{ slot: 0, name: "a", race: 1 }, { slot: 1, name: "b", race: 0 }];
+
+  it("calls a fight decisive when one side lost much of what it had, and a few units lost in passing minor", () => {
+    next = 0;
+    const tanks = Array.from({ length: 4 }, () => born(TANK, 0)), lings = Array.from({ length: 40 }, () => born(ZERGLING, 1));
+    const events = [...tanks, ...lings,
+      // A: four zerglings lost in passing, from an army of 40 and twenty drones.
+      ...lings.slice(0, 4).map((l, i) => died(500 + i, l, 300, 300, tanks[0])),
+      // B: twenty more, and a tank, far off and later.
+      ...lings.slice(4, 24).map((l, i) => died(3000 + i * 4, l, 2000, 2000, tanks[1])), died(3050, tanks[2], 2010, 2000, lings[30]),
+    ];
+    const t = timeline(events, { players, samples: samples(5000, [{ slot: 0, army: 4, armyValue: 1000, workers: 20 }, { slot: 1, army: 40, armyValue: 1000, workers: 20 }]) });
+    const [a, b] = fights(t, cost, unitIndex(t));
+    // B: the zerg lost 500 of 2000 (half its army and its drones at 50), the terran 250 of 2000.
+    expect([a.tier, a.kind, b.tier, b.kind, b.winner]).toEqual(["minor", "battle", "major", "battle", 0]);
+    expect(b.sides.map((s) => [s.player, s.lostValue, s.had])).toEqual([[0, 250, 2000], [1, 500, 2000]]);
+    expect(b.share).toBeCloseTo(750 / 4000);
+    // The zerg loses all but a few: decisive.
+    next = 0;
+    const tanks2 = Array.from({ length: 4 }, () => born(TANK, 0)), lings2 = Array.from({ length: 40 }, () => born(ZERGLING, 1));
+    const t2 = timeline([...tanks2, ...lings2, ...lings2.map((l, i) => died(3000 + i * 2, l, 2000, 2000, tanks2[0]))], { players, samples: samples(5000, [{ slot: 0, army: 4, armyValue: 1000, workers: 20 }, { slot: 1, army: 40, armyValue: 1000, workers: 20 }]) });
+    expect(fights(t2, cost, unitIndex(t2)).map((f) => [f.tier, f.winner])).toEqual([["decisive", 0]]);
+  });
+
+  it("says when a fight was about workers or buildings", () => {
+    next = 0;
+    const tank = born(TANK, 0), drones = Array.from({ length: 6 }, () => born(DRONE, 1)), bunkers = Array.from({ length: 4 }, () => born(BUNKER, 0)), ling = born(ZERGLING, 1), marine = born(MARINE, 0);
+    const t = timeline([tank, ...drones, ...bunkers, ling,
+      ...drones.map((d, i) => died(1000 + i * 10, d, 500, 500, tank)),
+      ...bunkers.map((b, i) => died(4000 + i * 10, b, 2500, 2500, ling)), died(4040, marine, 2500, 2500, ling)]);
+    expect(fights(t, cost, unitIndex(t)).map((f) => f.kind)).toEqual(["workers", "buildings"]);
+  });
+
+  it("leaves out the templar that went into an Archon", () => {
+    next = 0;
+    const hts = Array.from({ length: 8 }, () => born(HT, 1));
+    const events: UnitEvent[] = [...hts];
+    // Four pairs merge: one becomes the Archon, the other leaves with no killer, at that moment and place.
+    for (let i = 0; i < 8; i += 2) {
+      events.push({ frame: 1000 + i, kind: "morph", unit: hts[i].unit, type: ARCHON, owner: 1, x: 500, y: 500, from: HT });
+      events.push({ frame: 1000 + i, kind: "died", unit: hts[i + 1].unit, type: HT, owner: 1, x: 510, y: 500 });
+    }
+    const t = timeline(events);
+    expect(fights(t, cost, unitIndex(t))).toEqual([]);
+  });
+
+  it("makes one fight of one that pauses and comes again nearby", () => {
+    next = 0;
+    const a = Array.from({ length: 10 }, () => born(MARINE, 0)), b = Array.from({ length: 10 }, () => born(MARINE, 1));
+    const t = timeline([...a, ...b,
+      ...a.slice(0, 5).map((u, i) => died(1000 + i, u, 500, 500, b[0])),
+      // Eight seconds later, twenty tiles on.
+      ...b.slice(0, 5).map((u, i) => died(1200 + i, u, 1140, 500, a[9]))]);
+    expect(fights(t, cost, unitIndex(t)).map((f) => [f.from, f.to, f.losses])).toEqual([[1000, 1204, 10]]);
+  });
+
+  it("finds the fight that turned the game, and picks a few key moments for its length", () => {
+    next = 0;
+    const tanks = Array.from({ length: 30 }, () => born(TANK, 0)), lings = Array.from({ length: 200 }, () => born(ZERGLING, 1));
+    const events: UnitEvent[] = [...tanks, ...lings];
+    let l = 0;
+    // Five skirmishes the zerg wins a little of; then at 6000 a fight that costs the terran most of its army.
+    for (let k = 0; k < 5; k++) for (let i = 0; i < 4; i++) events.push(died(1000 + k * 600 + i, lings[l++], 300 + k * 900, 300, tanks[0]));
+    for (let i = 0; i < 20; i++) events.push(died(6000 + i * 3, tanks[i], 2000, 2000, lings[150]));
+    events.sort((x, y) => x.frame - y.frame);
+    // The terran leads in army until the fight; the zerg after it to the end.
+    const t = timeline(events, { frames: 9000, players, samples: samples(9000, [
+      { slot: 0, army: 30, armyValue: 7500, workers: 30, at: [[6100, 2500]] },
+      { slot: 1, army: 200, armyValue: 5000, workers: 30 },
+    ]) });
+    const list = fights(t, cost, unitIndex(t));
+    const turn = list.filter((f) => f.turning);
+    expect(turn.map((f) => [f.from, f.winner, f.tier])).toEqual([[6000, 1, "decisive"]]);
+    // Six minutes and more played: at least three key moments, but never a skirmish among them.
+    expect(list.filter((f) => f.key).every((f) => f.tier !== "minor")).toBe(true);
+    expect(list.filter((f) => f.key)).toContain(turn[0]);
+  });
+
+  it("weighs by count where the editor has no costs", () => {
+    next = 0;
+    const a = Array.from({ length: 10 }, () => born(MARINE, 0)), b = Array.from({ length: 10 }, () => born(MARINE, 1));
+    const t = timeline([...a, ...b, ...b.slice(0, 8).map((u, i) => died(1000 + i, u, 500, 500, a[0])), died(1010, a[1], 500, 500, b[9])],
+      { players, samples: samples(5000, [{ slot: 0, army: 10, armyValue: 0, workers: 0 }, { slot: 1, army: 10, armyValue: 0, workers: 0 }]) });
+    const [f] = fights(t, () => 0, unitIndex(t));
+    expect([f.value, f.winner, f.tier, f.share]).toEqual([0, 0, "decisive", 9 / 20]);
+  });
+});
+
 describe("kills", () => {
   it("lists the units that killed the most, and each kill for the map", () => {
     next = 0;

@@ -22,85 +22,133 @@ Aftermath reads the orders without re-running the game, so it shows what players
 - a unit in the build order was ordered, not necessarily made;
 - the heat maps count where players clicked, not where units ended up or where they died.
 
-## Playing the game through
+## Analysing the game
 
-In the editor at scmjs.dev, Aftermath can do more: **Play the game through** runs the whole
-game out of sight in the site's game engine and shows what happened. It needs your own copy
-of StarCraft given to the site (the Game Data page), and takes about fifteen seconds for a
-twenty-minute game. The replay stays in your browser.
+In the editor at scmjs.dev, Aftermath does more: every replay you open is analysed. The
+site's game engine plays the whole game through in the background, out of sight, to see
+what happened. You can watch the replay while it does. It needs your own copy of StarCraft
+given to the site (the Game Data page), and takes about fifteen seconds for a twenty-minute
+game. Several replays are analysed one after another; the timeline says how far it has got.
+The replay stays in your browser.
 
-Afterwards the panel shows what happened instead of what was ordered:
+Afterwards Aftermath shows what happened instead of what was ordered:
 
-- **Buildings** are the ones that stood at the moment on the timeline. A site is drawn
-  fainter with a dashed edge until it is finished, and a building that was cancelled or
-  destroyed goes when it did.
-- **Units** draws every unit where it stood, moving as the timeline plays; workers are
-  smaller. A small cross marks where something was just lost.
-- **What was made** replaces the build order: everything a player really started, when it
-  was finished, and when it was lost. A Zerg unit is dated from its egg. A line struck
-  through never finished.
-- **The players** table adds what each lost: how many units and buildings, and what they
-  cost.
+- On the map, **buildings** are the ones that stood at the moment on the
+  timeline. A site is drawn fainter with a dashed edge until it is finished, and a building
+  that was cancelled or destroyed goes when it did. **Units** are dots where they stood,
+  moving as the timeline plays; workers are smaller and fainter. A small cross marks where
+  something was just lost.
+- **Build** lists what was made instead of what was ordered: everything a player really
+  started, when it was finished, and when it was lost. A Zerg unit is dated from its egg. A
+  line struck through never finished.
+- **The players** show their supply as the timeline moves.
 - **The graph** can show army value, army size, workers, supply, minerals or gas in the
-  bank, or buildings, in place of actions per minute.
-- Two more **heat maps**: where the armies were (workers left out) and where units were
-  lost.
+  bank, or buildings, in place of actions per minute. In a game of two it opens on the
+  **army lead**: one army less the other, filled in the colour of whoever is ahead, with
+  the key fights shaded behind it (the turning point in gold), so you can see what each
+  fight did to the lead.
+- **Game**, the tab a replay opens on:
+  - who won, and how it ended;
+  - **Who led**: a bar the length of the game in the colour of whoever was ahead in army,
+    and how long each was ahead and by how much at most (click to go there);
+  - **In numbers**: each player's largest army, most workers, bases, what they lost and
+    killed (by cost), and actions per minute, a column per player under their colour;
+  - **How it went**: the key fights, the bases taken and who left, in order. Click a line
+    to go to the moment and the place.
+- Three more **heat maps** in **Map stats**: where units were lost, where the armies
+  were (workers left out), and the ground no unit ever entered.
+- **Fights**: losses close together in time and place are one fight, and a fight that
+  pauses and starts again nearby is still one. Each fight is weighed against everything
+  the players had at that moment, armies and workers, so four Zerglings lost in passing
+  count for little and a fight that cost a player half of everything counts for a lot.
+  - **Key moments**: the fights that mattered most, about one for every six minutes
+    played (at least three, at most eight). Every decisive fight is among them.
+    **Turning point** marks the fight after which the player ahead in army stayed ahead
+    to the end (games of two players only). **Decisive** means one side lost at least
+    two fifths of everything it had while the other came out clearly ahead. **Even
+    trade** means both lost about as much.
+  - **Other fights**: the rest of the fights that mattered.
+  - **Skirmishes**, folded away: the small ones.
 
-- **Fights**: losses close together in time and place are one fight. Each line gives when
-  it began and what each side lost, with the side that came out ahead in bold; hover a
-  name for what that side had there, lost and killed. Click a line to go to the moment and
-  the place. The fights are also marked in red along the bottom of the graph.
+  Each fight says what it was (a battle, workers killed, or buildings destroyed), where on
+  the map as a clock face, and what each side lost, with the side that came out ahead in
+  bold. Hover a side for what it had there, lost and killed. Click a fight to go to the
+  moment and the place, or press **N** and **Shift+N** for the next and the previous key
+  moment. While a fight goes on, a dashed box on the map follows where things are falling.
+  Two High or Dark Templar merging into an Archon are not counted as a loss.
 - **Most kills**: the units that killed the most. Click one to go to its first kill.
 - On the map, a thin line runs for a moment from a unit to what it just killed.
 
-Recent orders, the order heat maps and the chat stay as they are.
+The orders (the **Orders** switch), the heat maps of orders and the chat stay as they are.
 
 A kill is the game's own credit, so a Reaver gets its Scarab's kills and a Carrier its
 Interceptors'. What a Spider Mine kills is credited to nobody. When several units fall in
 the same instant, which killer goes with which victim is the likeliest pairing, not a
 certain one.
 
-### Many replays of one map
+### Map stats: many replays of one map
 
-Load several replays and **Play all N through** runs them one after another. With **All N
-replays of this map** ticked, the heat maps then add every game together: where armies
-went across all of them, and where units were lost. One game says little about a map;
-twenty show which paths and chokes are used and where the fighting happens.
+One game says little about a map; twenty show which starts do well, which bases get taken
+and when, and where the fighting happens. **Map stats** takes every replay you have open of
+a map together and shows what they say about the map itself. It is a tab of the right-hand
+column and a switch under the map; the switch says how many replays of the map you have
+open once there is more than one.
 
-**This map**, at the bottom of the panel, reads every game played through on the map in
-front as a report on the map itself. Places are named as on a clock face, with their tile:
+To fill it, open several replays of a map:
+
+- drop or pick them all at once, and Aftermath asks whether to open one tab of the map and
+  put the rest in its Map stats, or open a tab for each;
+- or press **Add replays of this map…** in Map stats. Replays added there get no tab of
+  their own; replays of another map open in their own tabs.
+
+The **Games** list at the top shows every replay of the map: its length, its players, and
+whether it is counted, waiting, being analysed, could not be analysed, or left out. Untick
+one to leave it out of everything Map stats shows; **Watch** opens it in a tab. Replays
+without a tab go when the last tab of their map closes. When a second game of a map has
+been analysed while you watch another, Aftermath says once that Map stats has something to
+compare.
+
+Everything in Map stats counts the same games, each whole: the lines, the rings on the map
+and the heat map. Places are named as on a clock face, with their tile:
 
 - **Start** lines: how many players started at each location and how many of them won.
   The winner is the one player who never left, or else the only one with a building
   standing at the end; a game where that cannot be told is left out of the count.
-- **Base** lines: every place a Command Center, Hatchery or Nexus was built away from its
-  owner's start. In how many games it was taken, about when (the middle game's time), and
-  which base it usually was for the player who took it.
+- **Base** lines: every mineral line other than a player's start where a Command Center,
+  Hatchery or Nexus was finished, or a Command Center flown in and landed (when its Land
+  order was given). A hall with no mineral field within eight tiles (a macro Hatchery, a
+  proxy, a Command Center built to fly elsewhere) is not a base, and a second hall at a
+  line a player already had is not a new one. In how many games it was taken, about when
+  (the middle game's time), and which base it usually was for the player who took it. The
+  **Game** tab's bases and Spectate's look at a new base count the same way.
 - **Fights** lines: the places where fights happened in more than one instance, how many
   and in how many games, and how often the player who started nearer came out ahead. A
   place where the nearer player usually loses is hard to hold.
-- The share of the map's ground no unit ever entered. Pick **Ground never entered** under
-  Show to shade it in red. Water and cliffs are part of it, so read it for the walkable
-  ground you expected to be used and was not.
+- The share of the map's ground no unit ever entered. Pick **Ground never entered** as the
+  heat map to shade it in red. Water and cliffs are part of it, so read it for the
+  walkable ground you expected to be used and was not.
 
-**Mark on the map** draws the report over the map: a white ring at each start with its
-wins, a green ring at each base with the games it was taken in, and a red circle where
-the fighting was with its count. Click a line to go to its place.
+While Map stats is open, the map shows it: a line at the top names the map and how many
+games are taken together, a white ring at each start with how its
+players did ("won 1 of 2"), a green ring at each base with the games it was taken in
+("taken 3 of 4"), and a red circle where the fights that mattered were, with how many
+(skirmishes are left out). Click a line to go to its place.
 
 Different versions of a map count as the same map when nine tenths of the terrain agree.
 
-The button is only there where the editor has the engine beside it, which is scmjs.dev. In
-the desktop app and an editor hosted elsewhere, Aftermath works from the orders alone.
+The analysis only happens where the editor has the engine beside it, which is scmjs.dev. In
+the desktop app and an editor hosted elsewhere, Aftermath works from the orders alone, and
+Map stats has only the heat maps of the orders and of the buildings ordered.
 Replays from every version play: one written by StarCraft 1.18 or Remastered is rewritten in
 1.16.1's form first, since the engine is 1.16.1's game. Two kinds of Remastered game cannot be
-played through, and Aftermath says which when you try: a game on a map that uses Remastered's
+analysed, and Aftermath says which when you try: a game on a map that uses Remastered's
 added terrain, unless your copy of StarCraft on the site was made from a Remastered
 installation, and a game that held more than 1,700 units at once.
 
 A replay holds the players' orders and nothing to compare the game against. So while the game
 is played, every order is checked against it: an order for a unit that has not been made yet
 means the game on screen is no longer the one that was recorded. When that happens Aftermath
-shows the moment, and leaves the game out of the map's report.
+shows the moment, and leaves the game out of Map stats.
 
 ## Install
 
@@ -114,48 +162,90 @@ and press **Add**. To pin a version, add a ref: `github:scm-js/plugin-aftermath@
 
 ## Use
 
-**File ▸ Open Replay…** picks one or more `.rep` files; you can also drop them on the
-Aftermath panel. Replays from every version of the game are read: from before 1.18, from
-1.18 to 1.20, and from 1.21 on.
+**File ▸ Open Replay…** picks one or more `.rep` files. You can also drop replays anywhere
+on the editor, or pick one in **File ▸ Open**. Replays from every version of the game are
+read: from before 1.18, from 1.18 to 1.20, and from 1.21 on.
 
-The replay carries a copy of the map. When the map in front is the one the game was played
-on (the same size and tileset and at least nine tenths of the same terrain, so a copy you
-have edited since still counts), Aftermath draws over it. Otherwise it opens the replay's
-copy in a new tab. **View ▸ Aftermath** brings the panel back after you close it.
+Each replay opens the map it was played on in a tab of its own, marked with an eye. The map
+is there to look at: it can't be changed or saved (**File ▸ Edit a Copy** opens one you can
+change). Switching tabs switches replays, each keeping its own place on the timeline, and
+closing the tab closes the replay. With an ordinary map in front, Aftermath's panels go
+away; **View ▸ Aftermath** opens the panel anyway, to drop replays on.
 
-The panel, from the top:
+While a replay's tab is in front:
 
-- **Which replay**, when several are loaded, **Open Replay…**, **Close**, which closes the
-  replay and leaves the map open, and **Dock** / **Float**: the panel floats over the map
-  at first; **Dock** moves it into the right-hand column beside the map, and it stays
-  there next time. The same choice is on the plugin's page in **Edit ▸ Preferences ▸
-  Plugins ▸ Aftermath**.
-- **The game**: its type, length, date and the game version that wrote it.
-- **The timeline**: **Play** / **Pause**, a slider, and the speed. 1× is the game's own
-  speed at Fastest.
-- **The players**: colour, name, race, actions per minute over the time they were in the
-  game, and when they left. Untick a player to hide them on the map.
-- **Actions per minute** through the game, one line per player. Click it to go to that
-  moment.
-- **Show**:
-  - **Buildings**: every building ordered up to the timeline, in the player's colour, with
-    a ring around the ones ordered in the last few seconds.
-  - **Recent orders**: where units were sent in the last eight seconds. A dot is a move, a
-    cross an attack or patrol, a ring an ability, a flag a rally point, and a widening
-    circle a minimap ping.
-  - **Heat**: all orders, moves, attacks, buildings or minimap pings, counted up to the
-    timeline or over the **Whole game**. With several replays of the same map loaded,
-    **All N replays of this map** adds them together. One game says little about a map;
-    twenty say more.
-- **Build order**: one player's buildings, units, upgrades and research in order. Workers
-  are left out unless you tick **Workers**, and orders for the same unit next to each other
-  are joined (`Zergling ×12` is twelve presses of the button, not necessarily twelve
-  Zerglings). Town halls are in bold. Click a line to go to that moment and, for a
-  building, to the place.
-- **Chat**, when there was any. Click a line to go to that moment.
+**Under the map**, the timeline:
 
-The overlay is listed under **View ▸ Overlays** and in the Layers panel, and switches off
-there like any other. Aftermath never changes the map.
+- **Play** / **Pause**, the time, and the speed. 1× is the game's own speed at Fastest.
+  **Space** plays and pauses, **←** and **→** go ten seconds back or on (a minute with
+  **Shift**), **N** and **Shift+N** go to the next and the previous key moment, **F**
+  follows the action or lets the camera go, **O** shows the orders, and **Home** and
+  **End** go to the start and the end. These keys belong to the replay only while its tab
+  is in front.
+- Four switches, lit while they are on: **Spectate** (the camera follows the action, see
+  below), **Orders** (the recent orders over the units drawn faintly), **Map stats** (every
+  replay of the map together, see above) and **Legend** (a key to the marks in the map's
+  bottom-left corner).
+- How the analysis is going, or that it is done.
+- The graph's menu: actions per minute, or, once the game is analysed, the army lead (in a
+  game of two), army value, army size, workers, supply, minerals or gas in the bank, or
+  buildings.
+- A lane of marks along the game: fights in red, taller the more they mattered, with the
+  turning point marked in gold; chat in grey; and a player leaving in their colour. Under
+  it, the graph. Point at either to read the moment, what the graph says there and the
+  fight there; press or drag to go to that moment. Drag the strip's top edge to make it
+  taller.
+
+**In the right-hand column**, the replay:
+
+- **The game**: the map's name, the game type, length, date and the game version that wrote
+  it.
+- **The players**, a line each: colour, name, race, and their actions per minute (with
+  supply once the game is analysed), or when they left. Click a player to hide them
+  on the map and the graph, and again to bring them back.
+- Five tabs:
+  - **Game**, once the game is analysed (see above).
+  - **Build**: one player's buildings, units, upgrades and research in order. Workers are
+    left out unless you tick **Workers**, and orders for the same unit next to each other
+    are joined (`Zergling ×12` is twelve presses of the button, not necessarily twelve
+    Zerglings). Town halls are in bold. Click a line to go to that moment and, for a
+    building, to the place.
+  - **Fights** and **Most kills**, once the game is analysed.
+  - **Chat**, when there was any. Click a line to go to that moment.
+  - **Map stats**: every replay of this map you have open, taken together, shown on the
+    map while the tab is open (see above and below).
+
+**On the map**, the game at the moment on the timeline. Marks are in the player's colour:
+every building ordered up to the timeline (or, once the game is analysed, the ones
+standing), with a thick edge while it is new; the units, kills and losses once the game is
+analysed, and a dashed box around a fight that matters while it goes on. Until the game is
+analysed, the recent orders are shown too, since they are all there is.
+
+**Spectate**, on unless you turn it off: once the game is analysed, the camera follows the
+action the way an observer would. Aftermath works out where to look for the whole game: a
+fight that matters (from a few seconds before it starts, held until it is over), two armies
+about to meet, a new base going down, and otherwise each player's main army on the move,
+taking turns; early on, before there are armies, it looks at the players' main bases in
+turn. A line at the top of the map says what the camera shows. Scroll the map, or go to a
+place from the panel, and the camera lets go (the switch goes dark); press **F** or the
+switch and it follows again. Going to a fight, or **N** and **Shift+N**, keep it following.
+
+**Orders** adds where units were sent in the last eight seconds, over the units drawn
+faintly. A diamond is a move, a cross an attack or patrol, a ring an ability, a flag a
+rally point, and a double ring, the outer one widening, a minimap ping.
+
+**Map stats**: while it is open, the map shows every replay of the map together instead of
+the game, and the camera stays where you put it. The timeline is faded, since it belongs to
+one game. A heat map is chosen in Map stats: where units were lost, where the armies were,
+where units were sent, where buildings went, or the ground never entered, over every game
+counted. The **Map stats** switch, **Spectate**, **Play**, a press on the timeline, or going
+to a fight brings the game back, on the tab you had open.
+
+The overlay is listed under **View ▸ Overlays** and switches off there like any other.
+Aftermath never changes a map.
+
+An editor from before view-only maps opens the replay's map as an ordinary tab, and an
+editor from before the strip under the map floats the timeline over the map instead.
 
 ## Development
 
@@ -175,7 +265,7 @@ each of them as well.
 | `replay.ts` | Reads a `.rep`: the sections, the header, every command and the map. |
 | `analysis.ts` | Per-player build orders, placements, clicks and actions per minute; the heat grid. |
 | `chk.ts` | The map's size, tileset and tiles, and whether two maps are the same one. |
-| `plugin.ts` | The panel, the playback clock and the overlay. |
+| `plugin.ts` | The tabs, the two panels, the playback clock and the overlay. |
 
 The reader follows the replay format as [screp](https://github.com/icza/screp) (Apache-2.0)
 documents it in code. Sections from before 1.18 are unpacked with
