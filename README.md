@@ -86,6 +86,95 @@ Interceptors'. What a Spider Mine kills is credited to nobody. When several unit
 the same instant, which killer goes with which victim is the likeliest pairing, not a
 certain one.
 
+### The Analysis window
+
+**Analysis** in the timeline strip (or **View ▸ Replay Analysis**) opens a large window
+beside the replay, for reading a game at length. It can be resized, and the button in its
+title, or a double-click on the title, makes it fill the map's area. Every chart follows
+the replay's clock; point at one for the numbers there, and press or drag to go to that
+moment. Its first tab is **Economy**:
+
+- A card for each player: income a minute on average, what they left unspent on average,
+  and how long and how often they were supply blocked. Under the cards, a sentence
+  comparing the two players in a game of two.
+- One chart: **Income**, **Unspent** or **Workers** over the game, with **Both**,
+  **Minerals** or **Gas** for the first two. Under it, on the same time, a lane for each
+  player marked where they stood at their supply limit (below 200).
+- **Bases and mining**, folded: for each base a player mined from (Main, Base 2, …), how
+  many workers were there minute by minute, by colour. Two a field mine at the full rate.
+  Point at a minute for the numbers, press it to go there. Workers inside a refinery are
+  not on the map, so these are mineral workers.
+- **All the numbers**, folded: mined, income, unspent, supply blocked and the most
+  workers, as a table.
+
+Income needs the game engine to count what was mined, which an engine from before
+October 2026 does not; then the rest is shown without it.
+
+The second tab is **Tech**:
+
+- A card for each player: the furthest tier they reached and when (a Lair or Hive; a
+  Factory or Science Facility; for Protoss a Citadel, Robotics Facility or Stargate, then a
+  Templar Archives, Fleet Beacon or Arbiter Tribunal), how many upgrade levels and
+  technologies they finished, and their tech buildings in the order they were finished, as
+  the game's icons. Under the cards, a sentence comparing the two players in a game of two;
+  tier timings are compared only between players of the same race.
+- One chart: a lane for each player with a bar for the first of each tech building, from
+  its site to when it was finished, and a bar for each upgrade level and technology, from
+  when the research began to when it was done. Point at a bar for its times, or between
+  bars for what each player had under way then.
+- **Army over the game**, folded: for each player, how many of each unit they had at the
+  end of every minute, by colour against the most they had of it. Workers and Overlords
+  are left out, and a sieged tank counts as a tank.
+- **All the timings**, folded: every tech building and research, with when each player had
+  it done; the earlier of two is marked.
+
+The game engine sees research finish at its samples, two seconds apart, so a research
+bar can end up to two seconds late; its start is that end less the research time from the
+game's data. Without the game's data, research shows only when it was done.
+The icons need a copy of the game data installed since October 15 2026; with an older one,
+the cards name the buildings instead and the army shows each unit's picture, until the
+game data is installed again (Help ▸ Game Data).
+
+The window needs a version of scmJS newer than 0.7.3.
+
+### Cast: the game with commentary
+
+With the scmjs.dev plugin signed in to an account the server offers casts to, an analysed
+replay has a **Cast…** button on the timeline. A cast is the game as a broadcast: the
+camera on the action, and two commentators talking over it — a play-by-play caster and an
+analyst who reads the builds, the economies and what each fight changes. The scmjs.dev AI
+writes what they say from what the game engine measured (the openings with their supply
+counts, the bases, the armies, what fell in each fight and what killed it) and what it
+knows of the game in general; where the server has voices set up, it reads it aloud. What
+is said is shown as captions too. The commentators know only those facts about the game:
+they do not see micro or spells, and say nothing about the players beyond their play.
+
+**Cast…** opens a window with the choices:
+
+- **Format**: the whole game, played fast through the quiet parts and at normal speed for
+  the key fights with no cuts (about half the length of the game), or the key moments only.
+- **Banter**: none, some or lots — what the two talk about when little is happening. Each
+  cast gives them a new pair of odd interests to bring up.
+- **Voices** or **captions only**, and **cards**: when the commentators talk about an
+  upgrade, a unit or a building, a card shows it with how far along it is.
+- **Notes** for the commentators, such as a language or what to talk about more.
+
+The window says about how long the cast will be, what it will likely cost from the
+account's balance, and how long it takes to make. Making one shows each step as it goes —
+writing the script part by part, voicing it line by line — and the window can be closed
+meanwhile: the timeline says when it is ready.
+
+Casts are kept in the browser with their voices, so watching one again costs nothing and
+needs no server. When a replay is opened again, the timeline offers its newest cast as
+**Watch cast**; the window lists the others to watch or delete. Past 30 casts or 300 MB the
+ones watched longest ago are let go. Casts are kept per browser and site: another browser
+or the desktop app has its own.
+
+While a cast plays, pausing pauses the voices and going somewhere else on the timeline ends
+it. Where the game itself is shown (the Game view), **Cinematic** takes it full screen
+without the editor: a broadcast bar with each player's numbers and the clock, a title card,
+a banner when a key fight begins, the winner at the end, and larger captions. Esc leaves.
+
 ### Map stats: many replays of one map
 
 One game says little about a map; twenty show which starts do well, which bases get taken

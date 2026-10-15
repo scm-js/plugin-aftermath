@@ -35,7 +35,7 @@ import { analyse, buildOrderRows, formatTime, FRAMES_PER_MINUTE, heat, TOWN_HALL
 import { likeness, plainText, readChk, type ChkInfo } from "./chk";
 import { FRAME_MS, parseReplay, ReplayError } from "./replay";
 import { KO } from "./ko";
-import { buildings as standingBuildings, isBuilding, losses, lossPoints, madeRows, mineralLines, presencePoints, series, unitIndex, unitsAt, WORKERS, type Metric, type Point, type Standing, type UnitIndex } from "./played";
+import { buildings as standingBuildings, isBuilding, losses, lossPoints, madeRows, mineralLines, presencePoints, sampleAt, series, unitIndex, unitsAt, WORKERS, type Metric, type Point, type Standing, type UnitIndex } from "./played";
 import { fights as findFights, kills as findKills, topKillers, type Fight, type FightKind, type Kill, type Killer } from "./fights";
 import { clockOf, mapReport, winnerOf, type MapReport } from "./report";
 import { direct, lookAt, shotAt, type Shot } from "./director";
@@ -43,6 +43,12 @@ import { cameraTrack, trackAt, type CameraTrack } from "./camera";
 import { advantage, bases as takenBases, hardestHit, leads, story, totals, type Advantage, type Base, type PlayerTotals } from "./story";
 import type { ReplayTimeline, ScmSimService, ViewHover, ViewHoverUnit } from "./vendor/scm-sim";
 import { GameView } from "./gameview";
+import { castCards, castInput, castSegments, estimate, highlightClips, schedule, type CastCard, type CastGame, type CastInput, type CastLine, type CastOptions, type Schedule } from "./cast";
+import type { Durations } from "./tech";
+import { Reel } from "./castplay";
+import { CastStore, KEEP_BYTES, KEEP_CASTS, batches, castKey, estimate as castEstimate, readStream, replayKey, writingProgress, type KeptCast, type Writing } from "./castmake";
+import type { ScmjsAccountService } from "./vendor/scmjs-dev";
+import { InsightView, type InsightGame, type Metric as InsightMetric, type Resource } from "./insight";
 
 /* ── State ──────────────────────────────────────────────── */
 
@@ -67,6 +73,19 @@ interface Settings {
   chart: Chart;
   /** The side panel's tab. */
   tab: Tab;
+  /** The Analysis window's tab, and the resource its economy charts show. */
+  insightTab: string;
+  resource: Resource;
+  /** What the economy's chart shows. */
+  insightMetric: InsightMetric;
+  /** How a cast is made: the whole game or its key moments, and how much banter. */
+  castFormat: CastOptions["format"];
+  castBanter: CastOptions["banter"];
+  /** Cards on screen for what the commentators talk about: an upgrade, a unit, with how far along it is. */
+  castCards: boolean;
+  /** The next cast voiced or in captions only, and the notes for its commentators. */
+  castVoiced: boolean;
+  castNotes: string;
   /**
    * 2 from 0.8, when the army lead and the summary came; 3 when the map's marks went into views; 4 when the views became
    * switches; 5 when Map stats came, its heat counting the same games as its marks, always whole.
@@ -74,7 +93,7 @@ interface Settings {
   version: number;
 }
 
-const DEFAULTS: Settings = { orders: false, legend: true, heat: "losses", speed: 8, workers: false, chart: "lead", tab: "summary", version: 5 };
+const DEFAULTS: Settings = { orders: false, legend: true, heat: "losses", speed: 8, workers: false, chart: "lead", tab: "summary", insightTab: "economy", resource: "both", insightMetric: "income", castFormat: "game", castBanter: "light", castCards: true, castVoiced: true, castNotes: "", version: 5 };
 
 interface Loaded {
   id: number;
@@ -198,8 +217,26 @@ function fightMark(f: Fight): { id: string; label: string; why: string } | null 
 }
 
 const STYLE = `
+.afm-cinema { background: #000; }
+.afm-cinema .afm-tip, .afm-cinema .afm-busy { display: none; }
+.afm-cinema-layer { position: absolute; inset: 0; z-index: 4; cursor: none; }
+.afm-cinema-layer.afm-awake { cursor: default; }
+.afm-cinema-controls { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; gap: 8px; opacity: 0; transition: opacity 0.25s; }
+.afm-cinema-layer.afm-awake .afm-cinema-controls { opacity: 1; }
+.afm-cinema-controls button { font: 600 13px system-ui, sans-serif; padding: 7px 14px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.25); background: rgba(10,12,16,0.8); color: #f0f3f8; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { .afm-cinema-controls { transition: none; } }
+.afm-cast-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 14px; }
+.afm-cast-head .afm-dim { font-variant-numeric: tabular-nums; }
+.afm-cast-story { margin: 4px 0; padding: 8px 12px; border-left: 3px solid var(--accent, #4fd1c5); color: var(--text-dim, #99a2b3); font-style: italic; line-height: 1.45; max-height: 9em; overflow: auto; }
+.afm-cast-error { margin: 4px 0; color: var(--danger, #e05050); }
+.afm-cast-kept { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--border, rgba(255,255,255,0.08)); }
+.afm-cast-kept:last-child { border-bottom: none; }
+.afm-cast-kept > div:first-child { min-width: 0; }
+.afm-cast-kept .afm-dim { font-size: 12px; overflow-wrap: anywhere; }
+.afm-cast-estimate { margin: 6px 0; font-size: 12px; }
 .afm-busy { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2; display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 8px; background: rgba(10, 12, 16, 0.8); color: #e8ecf2; font-size: 13px; pointer-events: none; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4); white-space: nowrap; }
 .afm-busy[hidden] { display: none; }
+.afm-settling iframe { opacity: 0; }
 .afm-over { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
 .afm-tip { position: absolute; z-index: 3; pointer-events: none; display: block; max-width: 280px; padding: 6px 8px; }
 .afm-tip[hidden] { display: none; }
@@ -241,6 +278,59 @@ const STYLE = `
 .afm-gt-moment { display: flex; align-items: center; gap: 6px; }
 .afm-gt-mtext { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .afm-gt-foot { font-size: 11px; }
+.afm-insight { flex: 1; min-height: 0; display: flex; flex-direction: column; font-size: 12px; }
+.afm-insight-empty { padding: 24px 8px; color: var(--text-dim, #99a2b3); }
+.afm-insight-tabs { flex: 1; min-height: 0; }
+.afm-insight-tabs > .tab-panel { overflow: auto; padding: 0 4px 16px 0; }
+.afm-it-section { margin-top: 16px; }
+.afm-it-note { margin: 6px 0 0; font-size: 11px; max-width: 70ch; }
+.afm-insight .afm-dim { color: var(--text-dim, #99a2b3); }
+.afm-it-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; margin-top: 12px; }
+.afm-it-card { padding: 10px 12px 12px; background: var(--bg-2, rgba(255,255,255,0.03)); border: 1px solid var(--border, rgba(255,255,255,0.08)); border-top: 3px solid; border-radius: 6px; }
+.afm-it-card-name { display: flex; align-items: center; gap: 6px; font-weight: 600; margin-bottom: 6px; min-width: 0; }
+.afm-it-hero { font-size: 26px; font-weight: 600; line-height: 1.1; color: var(--text, #e4e8ef); }
+.afm-it-unit { font-size: 12px; font-weight: normal; color: var(--text-dim, #99a2b3); margin-left: 6px; }
+.afm-it-card-line { margin-top: 3px; }
+.afm-it-card-line:nth-of-type(3) { margin-bottom: 8px; }
+.afm-it-verdict { margin: 12px 0 0; font-size: 13px; color: var(--text, #e4e8ef); }
+.afm-it-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin-bottom: 8px; }
+.afm-it-controls .seg + .seg { padding-left: 12px; border-left: 1px solid var(--border, rgba(255,255,255,0.12)); }
+.afm-it-about { font-size: 11px; }
+.afm-it-chart { display: flex; flex-direction: column; gap: 2px; }
+.afm-chart-canvas { display: block; width: 100%; cursor: crosshair; touch-action: none; }
+.afm-insight details { margin-top: 14px; }
+.afm-it-table { border-collapse: collapse; font-variant-numeric: tabular-nums; margin-top: 6px; }
+.afm-it-table th, .afm-it-table td { padding: 3px 14px 3px 0; text-align: right; font-weight: normal; white-space: nowrap; }
+.afm-it-table tbody th { text-align: left; color: var(--text-dim, #99a2b3); cursor: help; }
+.afm-it-table thead th { padding-bottom: 6px; }
+.afm-it-table td { color: var(--text, #e4e8ef); }
+.afm-it-player { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.afm-it-row { display: flex; align-items: center; gap: 6px; }
+.afm-it-row .afm-gt-name { flex: 1; min-width: 0; }
+.afm-it-key { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; margin: 6px 0 8px; font-size: 11px; }
+.afm-it-key-step { display: inline-flex; align-items: center; gap: 4px; }
+.afm-it-key .afm-it-sat-cell { width: 12px; height: 12px; display: inline-block; cursor: default; }
+.afm-it-sat-wrap { overflow-x: auto; padding-bottom: 4px; }
+.afm-it-sat { display: grid; gap: 2px; align-items: center; min-width: 100%; }
+.afm-it-sat-min { font-size: 10px; text-align: left; white-space: nowrap; overflow: visible; }
+.afm-it-sat-line { display: flex; align-items: center; gap: 6px; min-width: 0; padding-right: 8px; white-space: nowrap; }
+.afm-it-sat-line .afm-gt-name { flex: none; }
+.afm-it-sat-line .afm-dim { font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
+.afm-it-sat-cell { height: 14px; background: rgba(255,255,255,0.04); border-radius: 2px; cursor: pointer; }
+.afm-ti { display: inline-flex; flex: none; width: 24px; height: 23px; padding: 1px; box-sizing: content-box; background: #12151c; border: 1px solid rgba(255,255,255,0.08); border-radius: 3px; vertical-align: middle; }
+.afm-ti canvas { width: 100%; height: 100%; }
+.afm-ti-sm { width: 18px; height: 17px; }
+.afm-ti-text { width: auto; height: auto; padding: 2px 5px; font-size: 10px; line-height: 1.3; color: var(--text-dim, #99a2b3); background: rgba(255,255,255,0.04); white-space: nowrap; }
+.afm-ti-empty { display: none; }
+.afm-ti-path { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 8px; }
+.afm-ti-key { display: inline-flex; align-items: center; gap: 6px; }
+.afm-ti-key-bar { display: inline-block; width: 22px; height: 10px; border-radius: 3px; background: rgba(228,232,239,0.7); }
+.afm-ti-key-bar.afm-ti-quiet { background: rgba(228,232,239,0.35); }
+.afm-ti-table tbody th.afm-ti-group { padding-top: 10px; color: var(--text, #e4e8ef); font-weight: 600; cursor: default; }
+.afm-ti-name { display: inline-flex; align-items: center; gap: 6px; }
+.afm-ti-table td { cursor: pointer; }
+.afm-ti-table td.afm-ti-first { color: var(--accent, #4fd1c5); }
+.afm-it-sat-line .afm-ti-sm { width: 14px; height: 13px; }
 .afm-busy .afm-spin { width: 16px; height: 16px; flex: none; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.22); border-top-color: var(--accent, #4fd1c5); animation: afm-spin 0.8s linear infinite; }
 @keyframes afm-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .afm-busy .afm-spin { animation-duration: 2.4s; } }
@@ -407,7 +497,7 @@ export function activate(api: PluginApi) {
     seeking: () => { strip?.update(); showBusy(); },
     hover: (h) => showHover(h),
   }, "Replay", {
-    loading: (name) => t("Starting the game of {name}…", { name }),
+    loading: (name) => t("Loading {name}…", { name }),
     failed: (message) => t("The game could not be shown: {message}", { message }),
   });
   /* ── The tooltip over the game: what the console would have said of the unit under the pointer ── */
@@ -527,7 +617,9 @@ export function activate(api: PluginApi) {
     if (entry.docId === null) return;
     if (!offered.has(entry.id)) {
       offered.add(entry.id);
-      void game.offer(entry, true).then((ok) => { if (!ok) offered.delete(entry.id); });
+      // (The game opens where the map does, not where the editor's view stood when the tab came in.)
+      const at = startTile(entry);
+      void game.offer(entry, true, { x: at.tx * 32 + 16, y: at.ty * 32 + 16 }).then((ok) => { if (!ok) offered.delete(entry.id); });
       return;
     }
     if (game.shown && !game.holds(entry.id)) handOver(true);
@@ -636,13 +728,17 @@ export function activate(api: PluginApi) {
    * location (or where they first built, on a map without one for them).
    */
   function startView(entry: Loaded): void {
+    const at = startTile(entry);
+    api.view.setZoom(1);
+    api.view.center(at.tx, at.ty);
+  }
+  function startTile(entry: Loaded): { tx: number; ty: number } {
     const first = entry.report.players[0];
     const start = first ? api.query.startLocations().find((s) => s.owner === first.player.index) : undefined;
     const built = first?.placements[0];
-    api.view.setZoom(1);
-    if (start) api.view.center(start.tx, start.ty);
-    else if (built) api.view.center(built.tx, built.ty);
-    else api.view.center(Math.floor(entry.map.width / 2), Math.floor(entry.map.height / 2));
+    if (start) return { tx: start.tx, ty: start.ty };
+    if (built) return { tx: built.tx, ty: built.ty };
+    return { tx: Math.floor(entry.map.width / 2), ty: Math.floor(entry.map.height / 2) };
   }
 
   /** The replay whose map is being opened: the tab that appears is its. */
@@ -674,6 +770,7 @@ export function activate(api: PluginApi) {
     if (opening && opening.docId === null && id !== null && !loaded.some((l) => l.docId === id)) opening.docId = id;
     const next = loaded.find((l) => l.docId !== null && l.docId === id) ?? null;
     if (next !== current) {
+      endCast();
       stop();
       current = next;
       heatCache = null;
@@ -870,6 +967,7 @@ export function activate(api: PluginApi) {
     follow();
     side?.update();
     strip?.update();
+    insight?.update();
     // (The map is under the game: only what is drawn over the game.)
     if (!game.shown) overlay.redraw();
     else game.redrawOver();
@@ -938,6 +1036,636 @@ export function activate(api: PluginApi) {
     const list = entry.played.fights.filter((f) => f.key);
     const f = step > 0 ? list.find((x) => x.from - FIGHT_LEAD > entry.frame + 1) : [...list].reverse().find((x) => x.from - FIGHT_LEAD < entry.frame - 24);
     if (f) goToFight(f);
+  }
+
+  /* ── The cast: two commentators over the game (the scmjs.dev server writes and voices them) ── */
+
+  /** The scmjs.dev sign-in, when that plugin is on and shares it. */
+  let account: ScmjsAccountService | null = null;
+  /** What the server offers this caller: a cast at all, voices for it and their price; null until asked, or when it offers none. */
+  let castOffer: { speech: boolean; usdPer1kChars: number | null } | null = null;
+  /** A cast ready to watch: what was sent, the lines, their voices and when each is said, and the cards they show. */
+  interface Made { key: string; input: CastInput; lines: CastLine[]; voices: (AudioBuffer | null)[]; plan: Schedule; cards: Map<string, CastCard> }
+  /** Casts ready this session, by their key; the browser keeps them too (`store`), so watching again costs nothing. */
+  const casts = new Map<string, Made>();
+  const store = new CastStore();
+  /** The cast playing: the replay, its reel, what it plays, and the speed to give back after. */
+  const casting = { entry: null as Loaded | null, error: null as string | null, reel: null as Reel | null, made: null as Made | null, speed: 0 };
+
+  /** A cast being made: what for, how far it has got, and how to stop it. One at a time. */
+  interface Making {
+    entry: Loaded;
+    key: string;
+    options: CastOptions;
+    voiced: boolean;
+    notes: string;
+    started: number;
+    stage: "reading" | "planning" | "writing" | "voicing" | "timing";
+    stretches: number;
+    cards: number;
+    writing: Writing;
+    voicedLines: number;
+    lines: number;
+    abort: AbortController;
+    error: string | null;
+  }
+  let making: Making | null = null;
+  /** The cast just made for a replay (its key), until it is watched: the strip offers it. */
+  const ready = new Map<number, string>();
+  /** The newest cast kept in the browser for a replay (its key): the strip offers that too, after the editor reopens. */
+  const keptFor = new Map<number, string>();
+  /** Replays whose kept casts have been looked up. */
+  const keptChecked = new WeakSet<Loaded>();
+  async function refreshKept(entry: Loaded): Promise<void> {
+    keptChecked.add(entry);
+    const kept = await store.forReplay(await replayOf(entry));
+    if (kept.length) keptFor.set(entry.id, kept[0].key); else keptFor.delete(entry.id);
+    if (current === entry) strip?.render();
+  }
+  /** Whatever shows the making (the Cast window), told when it moves. */
+  const makingWatchers = new Set<() => void>();
+  const makingMoved = () => { for (const w of makingWatchers) w(); strip?.update(); };
+  /** Each replay's file as a key for the casts kept of it. */
+  const replayKeys = new WeakMap<Loaded, Promise<string>>();
+  const replayOf = (entry: Loaded): Promise<string> => { let k = replayKeys.get(entry); if (!k) { k = replayKey(entry.bytes); replayKeys.set(entry, k); } return k; };
+
+  /** Ask the server what it offers this caller: the cast recipe allowed, whether it voices, at what price. */
+  async function askOffer(): Promise<void> {
+    const a = account;
+    // (A guest has no session: the server would refuse the cast whatever its info says.)
+    if (!a || a.state().kind === "guest") { castOffer = null; strip?.render(); return; }
+    try {
+      const res = await fetch(`${a.serverUrl()}/v1/info`, { headers: a.headers() });
+      const info = (await res.json()) as { recipes?: { name: string; enabled: boolean }[]; speech?: boolean; speechUsdPer1kChars?: number };
+      if (a !== account) return;
+      castOffer = info.recipes?.some((r) => r.name === "cast" && r.enabled) ? { speech: !!info.speech, usdPer1kChars: info.speechUsdPer1kChars ?? null } : null;
+    } catch {
+      castOffer = null;
+    }
+    strip?.render();
+  }
+
+  async function call<T>(path: string, body: unknown, signal: AbortSignal): Promise<T> {
+    const a = account;
+    if (!a) throw new Error(t("Sign in to scmjs.dev to make a cast."));
+    const res = await fetch(`${a.serverUrl()}${path}`, { method: "POST", headers: { ...a.headers(), "content-type": "application/json" }, body: JSON.stringify({ protocol: 1, ...(body as object) }), signal });
+    const json = (await res.json().catch(() => null)) as { error?: { message?: string }; remaining?: { balanceUsd?: number } } | null;
+    if (!res.ok || !json) throw new Error(json?.error?.message ?? t("The server answered {status}.", { status: res.status }));
+    if (typeof json.remaining?.balanceUsd === "number") a.noteBalance(json.remaining.balanceUsd);
+    return json as T;
+  }
+
+  /** The script, streamed: how far it has got is told as it is written, and the storyline as soon as it is there. */
+  async function writeScript(input: CastInput, m: Making): Promise<{ lines: CastLine[]; storyline: string; interests?: { caster: string; analyst: string } }> {
+    const a = account;
+    if (!a) throw new Error(t("Sign in to scmjs.dev to make a cast."));
+    const res = await fetch(`${a.serverUrl()}/v1/recipes/cast`, {
+      method: "POST", headers: { ...a.headers(), "content-type": "application/json", accept: "text/event-stream" },
+      body: JSON.stringify({ protocol: 1, input }), signal: m.abort.signal,
+    });
+    if (!res.ok || !res.body) {
+      const json = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+      throw new Error(json?.error?.message ?? t("The server answered {status}.", { status: res.status }));
+    }
+    let text = "", output: { lines: CastLine[]; storyline: string; interests?: { caster: string; analyst: string } } | null = null, failed: string | null = null;
+    await readStream(res.body, (e: { event: string; [key: string]: unknown }) => {
+      if (e.event === "thinking" && m.stage === "reading") { m.stage = "planning"; makingMoved(); }
+      else if (e.event === "delta" && typeof e.text === "string") {
+        text += e.text;
+        // (A second answer — the server asking again — starts over.)
+        const again = [...text.matchAll(/\{\s*"storyline"/g)];
+        if (again.length > 1) text = text.slice(again[again.length - 1].index);
+        m.stage = "writing";
+        m.writing = writingProgress(text);
+        makingMoved();
+      } else if (e.event === "result") {
+        output = e.output as typeof output;
+        const balance = (e.remaining as { balanceUsd?: number } | undefined)?.balanceUsd;
+        if (typeof balance === "number") a.noteBalance(balance);
+      } else if (e.event === "error") failed = (e.error as { message?: string } | undefined)?.message ?? t("The server could not write the cast.");
+    });
+    if (failed) throw new Error(failed);
+    if (!output) throw new Error(t("The server stopped before the cast was written."));
+    return output;
+  }
+
+  /** StarEdit's names, without the race in front ("Terran Marine" is a Marine to a commentator). */
+  const plainName = (name: string) => name.replace(/^(Terran|Zerg|Protoss) /, "");
+
+  /** What the cast is written from: the game as Aftermath measured it, with the game's tables for research times. */
+  async function castGameOf(entry: Loaded): Promise<CastGame> {
+    const done = entry.played!, map = done.timeline.map;
+    const players = entry.report.players.filter((p) => done.timeline.samples.players.some((q) => q.slot === p.player.index));
+    // (The game's tables say how long research takes, so a card's progress starts when the research did.)
+    await api.data.load();
+    const tables = { units: api.data.units(), upgrades: api.data.upgrades(), techs: api.data.techs() };
+    const durations: Durations | undefined = tables.units && tables.upgrades && tables.techs
+      ? (kind, id, level) => kind === "unit" ? (tables.units!.buildTime[id] ?? null)
+        : kind === "upgrade" ? tables.upgrades!.timeCost[id] + tables.upgrades!.timeFactor[id] * (level - 1)
+        : (tables.techs!.researchTime[id] ?? null)
+      : undefined;
+    return {
+      map: plainText(entry.report.replay.header.mapName),
+      timeline: done.timeline,
+      players: players.map((p) => ({ index: p.player.index, name: p.player.name, race: p.player.race, leftAt: p.leftAt, build: p.build })),
+      fights: done.fights,
+      bases: done.bases,
+      winner: winnerOf(players.map((p) => ({ index: p.player.index, left: p.leftAt !== null })), done.standing),
+      names: {
+        unit: (id) => plainName(api.names.unit(id)), upgrade: (id) => api.names.upgrade(id), tech: (id) => api.names.tech(id),
+        place: (x, y) => { const c = clockOf(x, y, map.width * 32, map.height * 32); return c ? `${c} o'clock` : "the middle"; },
+      },
+      durations,
+    };
+  }
+
+  /** The stretches a cast of this replay would have, in this format. */
+  const clipsOf = (entry: Loaded, format: CastOptions["format"]) =>
+    format === "game" ? castSegments(entry.played!.fights, entry.played!.timeline.frames) : highlightClips(entry.played!.fights, entry.played!.timeline.frames);
+  /** Seconds a cast of this replay would be on screen. */
+  const castSeconds = (entry: Loaded, format: CastOptions["format"]) =>
+    clipsOf(entry, format).reduce((n, c) => n + ((c.to - c.from) * FRAME_MS) / 1000 / (c.speed ?? 1), 0);
+
+  /** Each clip's voice decoded, and when each line is said; with its cards. */
+  async function ready_(key: string, input: CastInput, lines: CastLine[], clips: (ArrayBuffer | null)[], game: CastGame): Promise<Made> {
+    const ctx = new AudioContext();
+    let voices: (AudioBuffer | null)[];
+    try {
+      // (decodeAudioData takes the buffer it is given: the kept copy stays whole.)
+      voices = await Promise.all(clips.map(async (c) => { if (!c) return null; try { return await ctx.decodeAudioData(c.slice(0)); } catch { return null; } }));
+    } finally {
+      void ctx.close();
+    }
+    const plan = schedule(lines, voices.map((v, i) => v?.duration ?? estimate(lines[i].text)), input.moments);
+    return { key, input, lines, voices, plan, cards: new Map(castCards(game).map((c) => [c.id, c])) };
+  }
+
+  /** Make a cast of a replay: write it (streamed), voice it in batches, time it, keep it. */
+  async function makeCast(entry: Loaded, options: CastOptions, voiced: boolean, notes: string): Promise<void> {
+    if (making || !entry.played) return;
+    const replay = await replayOf(entry);
+    const m: Making = {
+      entry, key: castKey(replay, options, voiced, notes), options, voiced, notes, started: Date.now(), stage: "reading", stretches: 0, cards: 0,
+      writing: { storyline: null, lines: 0, stretch: -1 }, voicedLines: 0, lines: 0, abort: new AbortController(), error: null,
+    };
+    making = m;
+    makingMoved();
+    strip?.render();
+    try {
+      const clips = clipsOf(entry, options.format);
+      if (!clips.length) throw new Error(t("This game has no key moments to cast."));
+      const game = await castGameOf(entry);
+      const input = castInput(game, clips, notes.trim() || undefined, options);
+      input.seed = Math.floor(Math.random() * 2_000_000_000);
+      m.stretches = input.moments.length;
+      m.cards = castCards(game).length;
+      makingMoved();
+      const written = await writeScript(input, m);
+      const lines = written.lines;
+      m.lines = lines.length;
+      let clipFiles: (ArrayBuffer | null)[] = lines.map(() => null);
+      if (voiced) {
+        m.stage = "voicing";
+        makingMoved();
+        const parts = batches(lines);
+        let next = 0;
+        const lanes = Array.from({ length: Math.min(2, parts.length) }, async () => {
+          while (next < parts.length) {
+            const part = parts[next++];
+            const spoken = await call<{ clips: { audio: string }[] }>("/v1/speech", { lines: part.items.map((l: CastLine) => ({ speaker: l.speaker, text: l.text })) }, m.abort.signal);
+            spoken.clips.forEach((c, i) => { clipFiles[part.from + i] = Uint8Array.from(atob(c.audio), (ch) => ch.charCodeAt(0)).buffer; });
+            m.voicedLines += part.items.length;
+            makingMoved();
+          }
+        });
+        await Promise.all(lanes);
+        clipFiles = [...clipFiles];
+      }
+      m.stage = "timing";
+      makingMoved();
+      const made = await ready_(m.key, input, lines, clipFiles, game);
+      casts.set(m.key, made);
+      await store.put({ key: m.key, replay, options, voiced, notes, made: Date.now(), input, lines, storyline: written.storyline, interests: written.interests ?? null, clips: clipFiles });
+      if (making === m) making = null;
+      ready.set(entry.id, m.key);
+      keptFor.set(entry.id, m.key);
+      api.ui.toast({ kind: "ok", title: t("The cast is ready"), detail: t("Watch it from the Cast window or the timeline.") });
+      makingMoved();
+      strip?.render();
+    } catch (err) {
+      if ((err as Error)?.name === "AbortError") { if (making === m) making = null; }
+      else m.error = err instanceof Error ? err.message : String(err);
+      makingMoved();
+      strip?.render();
+    }
+  }
+
+  /** A kept cast, made ready to watch: from this session, or from the browser's store. */
+  async function madeOf(entry: Loaded, key: string): Promise<Made | null> {
+    const have = casts.get(key);
+    if (have) return have;
+    const kept = await store.get(key);
+    if (!kept) return null;
+    const made = await ready_(key, kept.input as CastInput, kept.lines, kept.clips, await castGameOf(entry));
+    casts.set(key, made);
+    return made;
+  }
+
+  /** Watch a cast of the replay in front. `ctx` is made on the click that asked, so the browser lets its sound out. */
+  async function watchCast(made: Made, ctx: AudioContext | null): Promise<void> {
+    const entry = current;
+    if (!entry?.played) { void ctx?.close(); return; }
+    if (casting.entry) endCast();
+    ready.delete(entry.id);
+    void store.touch(made.key);
+    casting.entry = entry;
+    casting.error = null;
+    casting.speed = settings.speed;
+    casting.made = made;
+    cinema.castStarted = performance.now();
+    cinema.lastMoment = -1;
+    cinema.banner = null;
+    setFollowing(true);
+    casting.reel = new Reel({
+      frame: () => (gameClock() ? (game.seeking ? null : game.frameNow(settings.speed)) : current?.frame ?? null),
+      seek: (f) => seek(f),
+      // (The strip is drawn again so its speed menu says the speed the stretch plays at.)
+      speed: (n) => { settings.speed = n; if (gameClock()) game.speed(n); strip?.render(); },
+      play: () => play(),
+      pause: () => stop(),
+      playing: () => playing,
+      changed: () => redraw(),
+      ended: () => endCast(),
+    }, made.input.moments, made.plan, made.voices, made.voices.some(Boolean) ? ctx : (void ctx?.close(), null));
+    casting.reel.start();
+    strip?.render();
+  }
+
+  /** Stop the cast playing, and give the replay its speed back. */
+  function endCast(): void {
+    if (!casting.entry) return;
+    const reel = casting.reel;
+    casting.reel = null;
+    casting.made = null;
+    casting.entry = null;
+    void setCinema(false);
+    if (reel) {
+      reel.stop();
+      settings.speed = casting.speed;
+      save();
+      if (gameClock()) game.speed(settings.speed);
+    }
+    redraw();
+    strip?.render();
+  }
+
+  /** What the making is at, in a few words, for the strip and the window. */
+  function makingLine(m: Making): string {
+    switch (m.stage) {
+      case "reading": return t("Reading the game");
+      case "planning": return t("Planning the story");
+      case "writing": return m.writing.stretch >= 0
+        ? t("Writing the script: part {n} of {of}, {lines} lines so far", { n: m.writing.stretch + 1, of: m.stretches, lines: m.writing.lines })
+        : t("Writing the script");
+      case "voicing": return t("Voicing: {n} of {of} lines", { n: m.voicedLines, of: m.lines });
+      case "timing": return t("Timing it");
+    }
+  }
+
+  /** The Cast window: how to make a cast of the replay in front, the casts kept of it, and a cast being made. */
+  function openCastWindow(): void {
+    const entry = current;
+    if (!entry?.played || !castOffer) return;
+    const el = api.ui.el;
+    api.ui.dialog({
+      title: t("Cast this game"),
+      size: "md",
+      buttons: [],
+      mount: (body, dialog) => {
+        let timer = 0;
+        const draw = async () => {
+          if (!dialog.isOpen()) return;
+          const m = making && making.entry === entry ? making : null;
+          body.replaceChildren(m ? progressView(m) : await optionsView());
+        };
+        // While a cast is being made, the window follows it (and its clock moves every second).
+        const watcher = () => { void draw(); };
+        makingWatchers.add(watcher);
+        timer = window.setInterval(() => { if (making?.entry === entry && !making.error) void draw(); }, 1000);
+
+        const progressView = (m: Making): HTMLElement => {
+          const elapsed = Math.floor((Date.now() - m.started) / 1000);
+          const step = (label: string, state: "done" | "busy" | "todo" | "error", detail?: string) => {
+            const line = w.statusLine();
+            const text = detail ? `${label} — ${detail}` : label;
+            if (state === "busy") line.busy(text);
+            else line.set(state === "todo" ? el("span", { className: "afm-dim" }, text) : text, state === "done" ? "ok" : state === "error" ? "error" : undefined);
+            return line;
+          };
+          const order = ["reading", "planning", "writing", "voicing", "timing"] as const;
+          const at = order.indexOf(m.stage);
+          const state = (i: number) => (m.error && i === at ? "error" : i < at ? "done" : i === at ? "busy" : "todo");
+          const writingAt = Math.max(order.indexOf("planning"), Math.min(at, order.indexOf("writing")));
+          const rows = [
+            step(t("Read the game"), at > 0 ? "done" : state(0), m.stretches ? t("{n} parts, {cards} cards", { n: m.stretches, cards: m.cards }) : undefined),
+            step(t("Writing the script"), at > 2 ? "done" : state(writingAt), at > 2 ? t("{n} lines", { n: m.lines }) : m.stage === "planning" ? t("planning the story") : m.writing.stretch >= 0 ? t("part {n} of {of}, {lines} lines so far", { n: m.writing.stretch + 1, of: m.stretches, lines: m.writing.lines }) : undefined),
+            ...(m.voiced ? [step(t("Voicing"), at > 3 ? "done" : state(3), at >= 3 ? t("{n} of {of} lines", { n: m.voicedLines, of: m.lines }) : undefined)] : []),
+            step(t("Timing it"), state(4)),
+          ];
+          // (Only the storyline's first sentence, about the openings: the rest tells how the game ends.)
+          const opening = m.writing.storyline ? /^.*?[.!?](?=\s|$)/.exec(m.writing.storyline.trim())?.[0] ?? null : null;
+          const story = opening ? el("blockquote", { className: "afm-cast-story" }, opening) : null;
+          const cancel = w.button(m.error ? t("Back") : t("Cancel"), { onClick: () => { m.abort.abort(); if (making === m) making = null; makingMoved(); strip?.render(); void draw(); } });
+          const again = m.error ? w.button(t("Try again"), { primary: true, onClick: () => { if (making === m) making = null; void makeCast(entry, m.options, m.voiced, m.notes); } }) : null;
+          return w.column(
+            el("div", { className: "afm-cast-head" }, el("b", {}, m.error ? t("The cast could not be made") : t("Making the cast")), el("span", { className: "afm-dim" }, formatTime((elapsed * 1000) / FRAME_MS))),
+            ...rows,
+            ...(story ? [story] : []),
+            ...(m.error ? [el("p", { className: "afm-cast-error" }, m.error)] : [w.hint(t("You can close this window and keep watching the replay; the timeline says when the cast is ready."))]),
+            w.row(cancel, ...(again ? [again] : [])),
+          );
+        };
+
+        const optionsView = async (): Promise<HTMLElement> => {
+          const replay = await replayOf(entry);
+          const kept = await store.forReplay(replay);
+          const offer = castOffer;
+          let format = settings.castFormat, banter = settings.castBanter, voiced = settings.castVoiced && !!offer?.speech, notes = settings.castNotes;
+          const estimateLine = el("p", { className: "afm-dim afm-cast-estimate" });
+          const update = () => {
+            const e = castEstimate(castSeconds(entry, format), { format, banter }, voiced ? offer?.usdPer1kChars ?? null : null);
+            const usd = e.scriptUsd + e.voiceUsd;
+            estimateLine.textContent = t("About {minutes} minutes long · about ${usd} from your balance · usually {from}–{to} minutes to make", {
+              minutes: Math.round(e.minutes), usd: usd.toFixed(2), from: e.making[0], to: e.making[1],
+            });
+            const same = kept.find((k: KeptCast) => k.key === castKey(replay, { format, banter }, voiced, notes));
+            make.textContent = same ? t("Make a new one") : t("Make cast");
+          };
+          const formatPick = w.segmented([{ value: "game", label: t("Whole game") }, { value: "highlights", label: t("Key moments") }], { value: format, onChange: (v) => { format = v as CastOptions["format"]; settings.castFormat = format; save(); update(); } });
+          const banterPick = w.select([{ value: "off", label: t("No banter") }, { value: "light", label: t("Some banter") }, { value: "lots", label: t("Lots of banter") }], { value: banter, onChange: (v) => { banter = v as CastOptions["banter"]; settings.castBanter = banter; save(); update(); } });
+          const voicePick = w.segmented([{ value: "voiced", label: t("Voiced") }, { value: "captions", label: t("Captions only") }], { value: voiced ? "voiced" : "captions", onChange: (v) => { voiced = v === "voiced" && !!offer?.speech; settings.castVoiced = v === "voiced"; save(); update(); } });
+          if (!offer?.speech) voicePick.set("captions");
+          const cardsPick = w.checkbox(t("Show upgrades and units on screen"), { value: settings.castCards, onChange: (v) => { settings.castCards = v; save(); redraw(); } });
+          const notesField = w.text({ value: notes, placeholder: t("Optional: a language, a tone, what to talk about more…"), onChange: (v) => { notes = v.slice(0, 300); settings.castNotes = notes; save(); update(); } });
+          const make = w.button(t("Make cast"), { primary: true, onClick: () => { void makeCast(entry, { format, banter }, voiced, notes); } });
+          const keptRows = kept.map((k: KeptCast) => {
+            const label = [k.options.format === "game" ? t("Whole game") : t("Key moments"), k.options.banter === "off" ? t("No banter") : k.options.banter === "lots" ? t("Lots of banter") : t("Some banter"), k.voiced ? t("Voiced") : t("Captions only")].join(" · ");
+            const watch = w.button(t("Watch"), { primary: true, onClick: async () => {
+              const ctx = k.voiced ? new AudioContext() : null;
+              const made = await madeOf(entry, k.key);
+              if (!made) { void ctx?.close(); return; }
+              dialog.close();
+              void watchCast(made, ctx);
+            } });
+            const remove = w.button(t("Delete"), { onClick: async () => { await store.remove(k.key); casts.delete(k.key); if (ready.get(entry.id) === k.key) ready.delete(entry.id); await refreshKept(entry); void draw(); } });
+            return el("div", { className: "afm-cast-kept" },
+              el("div", {}, el("b", {}, label), el("div", { className: "afm-dim" }, [k.notes ? `“${k.notes}”` : null, k.interests ? t("{caster} and {analyst}", k.interests) : null, t("made {when}", { when: new Date(k.made).toLocaleString() })].filter(Boolean).join(" · "))),
+              w.row(watch, remove));
+          });
+          update();
+          const room = await store.usage();
+          const roomLine = room.casts ? w.hint(t("Kept in this browser: {n, plural, one {# cast} other {# casts}}, {mb} MB. Past {max} casts or {maxMb} MB, the ones watched longest ago go.", { n: room.casts, mb: Math.round(room.bytes / 1048576), max: KEEP_CASTS, maxMb: Math.round(KEEP_BYTES / 1048576) })) : null;
+          return w.column(
+            ...(keptRows.length ? [w.group(t("Made before"), ...keptRows, ...(roomLine ? [roomLine] : []))] : []),
+            w.group(t("A new cast"),
+              w.form([
+                { label: t("Format"), field: formatPick },
+                { label: t("Banter"), field: banterPick },
+                { label: t("Voices"), field: voicePick },
+                { label: t("Cards"), field: cardsPick },
+                { label: t("Notes"), field: notesField },
+              ]),
+              ...(!offer?.speech ? [w.hint(t("This server has no voices set up: the cast is shown as captions."))] : []),
+              estimateLine,
+              w.row(make)),
+          );
+        };
+
+        void draw();
+        return () => { makingWatchers.delete(watcher); clearInterval(timer); };
+      },
+    });
+  }
+
+  /* ── The cinematic view: the Game view full screen, dressed as a broadcast ── */
+
+  /**
+   * Whether the cinematic view is on (the Game view is the full-screen element), its controls, and what it shows for a
+   * moment: the title card from when the cast started, a banner when a key fight begins.
+   */
+  const cinema = { on: false, controls: null as HTMLElement | null, idle: 0, castStarted: 0, lastMoment: -1, banner: null as { text: string; at: number } | null };
+  /** The cinematic view needs the Game view: the game drawn by its engine, in an element of Aftermath's own. */
+  const cinemaPossible = () => !!current && game.shown && game.holds(current.id) && typeof game.root?.requestFullscreen === "function";
+
+  async function setCinema(on: boolean): Promise<void> {
+    if (on) {
+      const root = game.root;
+      if (!cinemaPossible() || !root) return;
+      try { await root.requestFullscreen(); } catch { api.ui.toast({ kind: "warn", title: t("The browser would not go full screen.") }); }
+    } else if (document.fullscreenElement && document.fullscreenElement === game.root) {
+      await document.exitFullscreen().catch(() => {});
+    }
+  }
+
+  /** In or out of full screen (Esc included): the broadcast dress goes on or comes off. */
+  function onFullscreen(): void {
+    const root = game.root;
+    const on = !!root && document.fullscreenElement === root;
+    if (on === cinema.on) return;
+    cinema.on = on;
+    root?.classList.toggle("afm-cinema", on);
+    cinema.controls?.remove();
+    cinema.controls = null;
+    if (on && root) {
+      // Over the game, a layer that hears the pointer (the game's own page would take it): moving shows the controls.
+      const layer = el("div", { className: "afm-cinema-layer" });
+      const pause = el("button", { type: "button" }, playing ? t("Pause") : t("Play")) as HTMLButtonElement;
+      const exit = el("button", { type: "button" }, t("Leave the cinematic view")) as HTMLButtonElement;
+      pause.addEventListener("click", (e) => { e.stopPropagation(); if (playing) stop(); else play(); pause.textContent = playing ? t("Pause") : t("Play"); });
+      exit.addEventListener("click", (e) => { e.stopPropagation(); void setCinema(false); });
+      const bar = el("div", { className: "afm-cinema-controls" }, pause, exit);
+      layer.append(bar);
+      layer.addEventListener("pointermove", () => {
+        layer.classList.add("afm-awake");
+        clearTimeout(cinema.idle);
+        cinema.idle = window.setTimeout(() => layer.classList.remove("afm-awake"), 2500);
+      });
+      root.append(layer);
+      cinema.controls = layer;
+    }
+    redraw();
+    strip?.render();
+  }
+  document.addEventListener("fullscreenchange", onFullscreen);
+
+  /** A map's name as a broadcast says it: what follows the last bar (\`| iCCup | Fighting Spirit\` is Fighting Spirit). */
+  const mapTitle = (entry: Loaded) => plainText(entry.report.replay.header.mapName).split("|").map((x) => x.trim()).filter(Boolean).pop() ?? "";
+
+  /** The broadcast's bar along the top: each player's name, race and numbers, the game's clock in the middle. */
+  function broadcastBar(ctx: CanvasRenderingContext2D, entry: Loaded, frame: number): void {
+    const dpr = window.devicePixelRatio || 1, W = ctx.canvas.width / dpr;
+    const tl = entry.played?.timeline;
+    const players = entry.report.players.filter((p) => !tl || tl.samples.players.some((q) => q.slot === p.player.index));
+    const h = 58;
+    const grad = ctx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, "rgba(6,8,12,0.92)"); grad.addColorStop(1, "rgba(6,8,12,0.72)");
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, W, h);
+    const i = tl ? sampleAt(tl.samples.frame, frame) : -1;
+    const race = (r: number) => (r === 0 ? t("Zerg") : r === 1 ? t("Terran") : t("Protoss"));
+    const side = (p: PlayerReport, right: boolean) => {
+      const q = tl?.samples.players.find((s) => s.slot === p.player.index);
+      const x = right ? W - 24 : 24;
+      ctx.textAlign = right ? "right" : "left"; ctx.textBaseline = "alphabetic";
+      ctx.fillStyle = p.player.color; ctx.fillRect(right ? W - 8 : 0, 0, 8, h);
+      ctx.font = "800 19px system-ui, sans-serif"; ctx.fillStyle = "#f4f6fa";
+      ctx.fillText(p.player.name, x, 25);
+      ctx.font = "600 12px system-ui, sans-serif"; ctx.fillStyle = p.player.color;
+      const stats = q && i >= 0
+        ? `${race(p.player.race)} · ${t("Supply {used}/{max}", { used: supplyShown(q.supplyUsed[i] ?? 0), max: supplyShown(q.supplyMax[i] ?? 0) })} · ${t("{n} workers", { n: q.workers[i] ?? 0 })} · ${t("army {value}", { value: number(q.armyValue[i] ?? 0) })}`
+        : race(p.player.race);
+      ctx.fillText(stats, x, 45);
+    };
+    if (players.length >= 1) side(players[0], false);
+    if (players.length >= 2) side(players[1], true);
+    ctx.textAlign = "center";
+    ctx.font = "800 22px system-ui, sans-serif"; ctx.fillStyle = "#f4f6fa";
+    ctx.fillText(formatTime(frame), W / 2, 28);
+    ctx.font = "600 11px system-ui, sans-serif"; ctx.fillStyle = "#9aa3b2";
+    ctx.fillText(mapTitle(entry).toUpperCase(), W / 2, 46);
+    ctx.textAlign = "start";
+  }
+
+  /** A card in the middle of the screen for a moment: the title at the start, the result at the end. */
+  function centreCard(ctx: CanvasRenderingContext2D, lines: { text: string; font: string; colour: string }[], alpha: number): void {
+    if (alpha <= 0) return;
+    const dpr = window.devicePixelRatio || 1, W = ctx.canvas.width / dpr, H = ctx.canvas.height / dpr;
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, alpha);
+    ctx.fillStyle = "rgba(6,8,12,0.78)";
+    const h = 40 + lines.length * 40;
+    ctx.fillRect(0, H / 2 - h / 2, W, h);
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    lines.forEach((l, k) => { ctx.font = l.font; ctx.fillStyle = l.colour; ctx.fillText(l.text, W / 2, H / 2 - h / 2 + 40 + k * 40); });
+    ctx.restore();
+  }
+
+  /** The broadcast's dress over the game, in the cinematic view: the bar, the title, a key fight's banner, the result. */
+  function cinemaDress(ctx: CanvasRenderingContext2D, entry: Loaded): void {
+    const frame = (gameClock() ? game.frameNow(settings.speed) : null) ?? entry.frame;
+    broadcastBar(ctx, entry, frame);
+    const reel = casting.reel, made = casting.made;
+    if (!reel || !made || casting.entry !== entry) return;
+    const now = performance.now();
+    const players = entry.report.players.filter((p) => made.input.game.players.some((q) => q.id === p.player.index));
+    // The title, for the first seconds.
+    const since = (now - cinema.castStarted) / 1000;
+    if (since < 6 && players.length >= 2) {
+      centreCard(ctx, [
+        { text: `${players[0].player.name}  vs  ${players[1].player.name}`, font: "800 34px system-ui, sans-serif", colour: "#f4f6fa" },
+        { text: mapTitle(entry), font: "600 16px system-ui, sans-serif", colour: "#9aa3b2" },
+      ], since < 5 ? 1 : 6 - since);
+    }
+    // A banner when a key fight begins.
+    const at = reel.progress().moment;
+    if (at !== cinema.lastMoment) {
+      cinema.lastMoment = at;
+      const m = made.input.moments[at];
+      if (m && (m.speed ?? 1) === 1 && m.title) cinema.banner = { text: m.title, at: now };
+    }
+    const b = cinema.banner;
+    if (b && now - b.at < 6000) {
+      const dpr = window.devicePixelRatio || 1, W = ctx.canvas.width / dpr;
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, (6000 - (now - b.at)) / 600);
+      ctx.font = "800 15px system-ui, sans-serif";
+      const label = t("Key fight").toUpperCase(), tw = ctx.measureText(`${label}   ${b.text}`).width + 36;
+      ctx.fillStyle = "#e05050"; ctx.fillRect(W / 2 - tw / 2, 70, tw, 30);
+      ctx.fillStyle = "#ffffff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(`${label}   ${b.text}`, W / 2, 85);
+      ctx.restore();
+    }
+    // The result, over the last frame.
+    const last = made.input.moments[made.input.moments.length - 1];
+    const winner = made.input.game.players.find((p) => p.result === "won");
+    if (last && winner && frame >= last.to / (FRAME_MS / 1000) - 24) {
+      const who = entry.report.players.find((p) => p.player.index === winner.id)?.player;
+      centreCard(ctx, [{ text: t("{name} wins", { name: winner.name }), font: "800 34px system-ui, sans-serif", colour: who?.color ?? "#f4f6fa" }], 1);
+    }
+  }
+
+  /**
+   * The card of what is being talked about, at the top left of the view: its icon, whose it is, its name, and how far
+   * along it is at the frame the game shows — a bar while it is being made or researched, when it was done after.
+   */
+  function castCard(ctx: CanvasRenderingContext2D): void {
+    const id = settings.castCards ? casting.reel?.card() : null;
+    const entry = casting.entry;
+    if (!id || !entry) return;
+    const card = casting.made?.cards.get(id);
+    if (!card) return;
+    const frame = (gameClock() ? game.frameNow(settings.speed) : null) ?? entry.frame;
+    const who = entry.report.players.find((p) => p.player.index === card.player)?.player;
+    const name = card.kind === "unit" ? plainName(api.names.unit(card.type)).replace(/\s*\([^)]*\)\s*$/, "")
+      : card.kind === "tech" ? api.names.tech(card.type)
+      : card.level > 1 ? `${api.names.upgrade(card.type)} ${card.level}` : api.names.upgrade(card.type);
+    const making = frame < card.done && card.done > card.start;
+    const share = making ? Math.max(0, Math.min(1, (frame - card.start) / (card.done - card.start))) : 1;
+    const status = making
+      ? t("{what} · {time} left", { what: card.kind === "unit" ? (isBuilding(card.type) ? t("Building") : t("In production")) : t("Researching"), time: formatTime(card.done - frame) })
+      : frame < card.start ? t("Ordered") : t("Done at {time}", { time: formatTime(card.done) });
+    // The icon: the game's button for it, or for a unit with none, its picture.
+    let pic: PluginImage | null = null;
+    if (typeof api.graphics.icon === "function") { pic = api.graphics.icon(card.kind, card.type); if (!pic) api.graphics.requestIcons(); }
+    if (!pic && card.kind === "unit") { pic = api.graphics.unitImage(card.type, { owner: card.player }); if (!pic) api.graphics.requestUnit(card.type); }
+    // (Below the line the editor writes at the map's top left.)
+    const x0 = 14, y0 = cinema.on ? 72 : 36, w = 280, h = 70, colour = who?.color ?? "#888";
+    ctx.fillStyle = "rgba(10,12,16,0.84)";
+    ctx.fillRect(x0, y0, w, h);
+    ctx.fillStyle = colour;
+    ctx.fillRect(x0, y0, 4, h);
+    const box = 44;
+    if (pic) { const k = Math.min(box / pic.width, box / pic.height); ctx.drawImage(pic.image, x0 + 14 + (box - pic.width * k) / 2, y0 + 13 + (box - pic.height * k) / 2, pic.width * k, pic.height * k); }
+    const tx = x0 + 14 + box + 12, tw = w - (tx - x0) - 12;
+    ctx.textBaseline = "top"; ctx.textAlign = "left";
+    ctx.font = "600 11px system-ui, sans-serif"; ctx.fillStyle = colour;
+    ctx.fillText(who?.name ?? "", tx, y0 + 10, tw);
+    ctx.font = "700 14px system-ui, sans-serif"; ctx.fillStyle = "#f0f3f8";
+    ctx.fillText(name, tx, y0 + 25, tw);
+    ctx.fillStyle = "rgba(255,255,255,0.14)"; ctx.fillRect(tx, y0 + 46, tw, 5);
+    ctx.fillStyle = making ? colour : "#7fd18b"; ctx.fillRect(tx, y0 + 46, tw * share, 5);
+    ctx.font = "500 11px system-ui, sans-serif"; ctx.fillStyle = "#b9c0cc";
+    ctx.fillText(status, tx, y0 + 54, tw);
+    ctx.textAlign = "start"; ctx.textBaseline = "alphabetic";
+  }
+
+  /** What is being said, at the bottom of the view: the speaker and the line. */
+  function subtitle(ctx: CanvasRenderingContext2D): void {
+    const said = casting.reel?.caption();
+    if (!said) return;
+    const dpr = window.devicePixelRatio || 1, viewW = ctx.canvas.width / dpr, viewH = ctx.canvas.height / dpr;
+    const who = said.speaker === "caster" ? t("Caster") : t("Analyst");
+    const big = cinema.on, size = big ? 22 : 15;
+    ctx.font = `500 ${size}px system-ui, sans-serif`;
+    const maxW = Math.min(big ? 1000 : 720, viewW - 40);
+    const words = said.text.split(" "), rows: string[] = [];
+    let row = "";
+    for (const word of words) {
+      const next = row ? `${row} ${word}` : word;
+      if (ctx.measureText(next).width > maxW && row) { rows.push(row); row = word; } else row = next;
+    }
+    if (row) rows.push(row);
+    const lineH = Math.round(size * 1.4), h = rows.length * lineH + 30, w = Math.max(...rows.map((r) => ctx.measureText(r).width), 120) + 28;
+    const x0 = Math.round(viewW / 2 - w / 2), y0 = Math.round(viewH - h - (big ? 48 : 24));
+    ctx.fillStyle = "rgba(10,12,16,0.78)";
+    ctx.fillRect(x0, y0, w, h);
+    ctx.font = "700 11px system-ui, sans-serif";
+    ctx.fillStyle = said.speaker === "caster" ? "#f2c14e" : "#7fc8f8";
+    ctx.textBaseline = "top"; ctx.textAlign = "left";
+    ctx.fillText(who.toUpperCase(), x0 + 14, y0 + 9);
+    ctx.font = `500 ${size}px system-ui, sans-serif`;
+    ctx.fillStyle = "#f0f3f8";
+    rows.forEach((r, i) => ctx.fillText(r, x0 + 14, y0 + 24 + i * lineH));
+    ctx.textAlign = "start"; ctx.textBaseline = "alphabetic";
   }
 
   /* ── Playing the game through (the scm-sim plugin's engine), one replay after another ── */
@@ -1241,8 +1969,11 @@ export function activate(api: PluginApi) {
 
     // The orders of the last few seconds: in Orders, and in Watch until the game is analysed (they are all there is then).
     if (lens === "orders" || !done) drawOrders(ctx, v, players, frame);
-    if (settings.legend) legend(ctx, lens, done !== null);
+    // (A cast is a broadcast: no legend under its captions.)
+    if (settings.legend && !casting.reel) legend(ctx, lens, done !== null);
     caption(ctx, cur);
+    subtitle(ctx);
+    castCard(ctx);
   }
 
   /** The orders of the last few seconds, each fading as it gets older. */
@@ -1268,11 +1999,15 @@ export function activate(api: PluginApi) {
     const cur = current;
     if (!cur || !game.holds(cur.id) || lensOf() === "map") return;
     const players = cur.report.players.filter((p) => !cur.hidden.has(p.player.id));
+    // (The cinematic view is a broadcast: its own dress, no editor marks.)
+    if (cinema.on) { cinemaDress(ctx, cur); subtitle(ctx); castCard(ctx); return; }
     if (settings.orders) {
       drawOrders(ctx, v, players, game.frameNow(settings.speed) ?? cur.frame);
-      if (settings.legend) legend(ctx, "orders", cur.played !== null, true);
+      if (settings.legend && !casting.reel) legend(ctx, "orders", cur.played !== null, true);
     }
     caption(ctx, cur);
+    subtitle(ctx);
+    castCard(ctx);
   }
 
   /** Spectate's line at the top of the map: what the camera shows, while it follows. */
@@ -1616,6 +2351,76 @@ export function activate(api: PluginApi) {
     redraw();
   }
   function closeSide(): void { closing = true; sidePanel?.close(); closing = false; }
+
+  /* ── The Analysis window ── */
+
+  // Built of the editor's tabs and segmented buttons (plugin API 1.51); an older editor does without it.
+  const insightPossible = typeof w.tabs === "function" && typeof w.segmented === "function";
+  let insightPanel: PanelHandle | null = null;
+  let insight: InsightView | null = null;
+
+  /** The game in front, as the Analysis window reads it; null with why not. */
+  function insightGame(): { game: InsightGame | null; why: string } {
+    const entry = current;
+    if (!entry) return { game: null, why: t("Open a replay to analyse it.") };
+    if (!entry.played) {
+      return { game: null, why: entry.failed ? t("The game could not be analysed: {message}", { message: entry.failed })
+        : running?.entry === entry ? t("The game is being analysed. The charts appear when it is done.")
+        : sim?.present ? t("The game is waiting to be analysed.")
+        : t("The charts need the game to be played through, which scmjs.dev does.") };
+    }
+    const tl = entry.played.timeline;
+    return {
+      why: "",
+      game: {
+        timeline: tl,
+        lines: insightLines(tl),
+        index: entry.played.index,
+        map: tl.map,
+        players: entry.report.players.map((p) => ({ slot: p.player.index, name: p.player.name, color: p.player.color, leftAt: p.leftAt, hidden: entry.hidden.has(p.player.id) })),
+      },
+    };
+  }
+  const linesOf = new WeakMap<ReplayTimeline, ReturnType<typeof mineralLines>>();
+  function insightLines(tl: ReplayTimeline) {
+    let l = linesOf.get(tl);
+    if (!l) { l = mineralLines(tl); linesOf.set(tl, l); }
+    return l;
+  }
+
+  /** What the window shows changed: another replay in front, its analysis arrived, a player hidden. */
+  function refreshInsight(): void {
+    if (!insight) return;
+    const { game, why } = insightGame();
+    insight.show(game, why);
+  }
+
+  function openInsight(): void {
+    if (!insightPossible) return;
+    if (insightPanel?.isOpen()) return;
+    insightPanel = api.ui.panel({
+      title: t("Replay Analysis"),
+      width: 900,
+      height: 620,
+      resizable: true,
+      maximizable: true,
+      mount(body) {
+        const view = new InsightView(body, {
+          api, t,
+          frame: () => current?.frame ?? 0,
+          seek: (f) => seek(f),
+          placeOf: (x, y, map) => placeOf(x, y, map),
+          tooltip: (target, content) => tooltip(target, content),
+          settings: { get tab() { return settings.insightTab; }, set tab(v) { settings.insightTab = v; }, get resource() { return settings.resource; }, set resource(v) { settings.resource = v; }, get metric() { return settings.insightMetric; }, set metric(v) { settings.insightMetric = v; } },
+          save,
+        });
+        insight = view;
+        refreshInsight();
+        return () => { view.dispose(); if (insight === view) insight = null; };
+      },
+      onClose: () => { insightPanel = null; },
+    });
+  }
 
   // An editor from before the strip under the map (which came with `ui.fileType`) floats the timeline instead.
   const bottomDock = typeof api.ui.fileType === "function";
@@ -2163,6 +2968,8 @@ export function activate(api: PluginApi) {
     render(): void {
       this.root.replaceChildren();
       this.resize?.disconnect();
+      // (Whatever makes the strip draw again — another replay, its analysis, a player hidden — the Analysis window hears too.)
+      refreshInsight();
       const entry = current;
       if (!entry) return;
       this.playButton = w.button("", { primary: true, className: "sm", title: t("Space plays and pauses. ← and → go 10 seconds back or on, a minute with Shift; N and Shift+N go to the next and the previous key moment; F follows the action or lets the camera go; O shows the orders; Home and End go to the start and the end."), onClick: () => (playing ? stop() : play()) });
@@ -2181,6 +2988,38 @@ export function activate(api: PluginApi) {
       this.ordersButton = toggle(t("Orders"), () => showOrders(!settings.orders));
       this.legendButton = toggle(t("Legend"), () => { settings.legend = !settings.legend; save(); redraw(); this.update(); });
       this.statsButton = toggle(t("Map stats"), () => showStats(lensOf() !== "map"));
+      // The Analysis window, on an editor with the tabs it is built of.
+      // The cast, when the scmjs.dev server offers one to this account and the game has been analysed: the Cast window,
+      // or the cast just made, or Stop while one plays.
+      // (A replay's kept casts are looked up once, when it is open and analysed and the server offers casts.)
+      if (castOffer && entry.played && !keptChecked.has(entry)) void refreshKept(entry);
+      const watchKey = ready.get(entry.id) ?? keptFor.get(entry.id);
+      const castState = casting.entry === entry ? "playing" : making?.entry === entry ? (making.error ? "failed" : "making") : watchKey ? "ready" : "idle";
+      const castButton = castOffer && entry.played
+        ? w.button(castState === "playing" ? t("Stop cast") : castState === "making" ? t("Making the cast…") : castState === "ready" ? t("Watch cast") : t("Cast…"), {
+          className: "sm", primary: castState === "ready",
+          title: t("A broadcast of this game: two commentators, written and voiced by the scmjs.dev AI, with the camera on the action"),
+          onClick: async () => {
+            if (castState === "playing") { endCast(); return; }
+            if (castState === "ready") {
+              const key = watchKey!;
+              const ctx = new AudioContext();
+              const made = await madeOf(entry, key);
+              if (made) void watchCast(made, ctx); else void ctx.close();
+              return;
+            }
+            openCastWindow();
+          },
+        })
+        : null;
+      // (With a cast to watch, the window — a new cast, the others kept — is a button of its own.)
+      const castMore = castButton && castState === "ready" ? w.button(t("Cast…"), { className: "sm", title: t("Make a new cast, or watch another kept in this browser"), onClick: () => openCastWindow() }) : null;
+      const cinemaButton = castButton && castState === "playing" && cinemaPossible()
+        ? w.button(t("Cinematic"), { className: "sm", title: t("The game full screen, dressed as a broadcast, without the editor around it. Esc leaves."), onClick: () => { void setCinema(true); } })
+        : null;
+      const castCardsButton = castButton && castState === "playing" ? toggle(t("Cards"), () => { settings.castCards = !settings.castCards; save(); redraw(); this.render(); }) : null;
+      if (castCardsButton) { castCardsButton.title = t("Show a card on the game for the upgrade, unit or building the commentators are talking about"); castCardsButton.classList.toggle("afm-on", settings.castCards); castCardsButton.setAttribute("aria-pressed", String(settings.castCards)); }
+      const analysis = insightPossible ? w.button(t("Analysis"), { className: "sm", title: t("Open the Analysis window: the game's economy and tech in charts and numbers"), onClick: () => openInsight() }) : null;
       // In the Replay view: the game as everyone sees it, or through one player's eyes, with the fog of war.
       const eyes = w.select([
         { value: -1, label: t("Vision: everyone") },
@@ -2197,7 +3036,7 @@ export function activate(api: PluginApi) {
       this.eyesSelect = eyes;
       this.root.append(el("div", { className: "afm-row" }, this.playButton, this.timeLabel, speed,
         el("span", { className: "afm-toggles" }, this.spectateButton, this.ordersButton, this.statsButton, this.legendButton), eyes,
-        this.status, retry, chartSelect));
+        this.status, retry, castCardsButton, cinemaButton, castButton, castMore, analysis, chartSelect));
 
       // The lane of marks and the graph, one canvas: press or drag anywhere on it to go there.
       const canvas = el("canvas") as HTMLCanvasElement;
@@ -2250,6 +3089,11 @@ export function activate(api: PluginApi) {
         line = t("Waiting to be analysed.");
         why = t("Replays are analysed one at a time: the one in front first, then the others with a tab, then the ones only in Map stats.");
       }
+      if (casting.entry === entry && casting.reel) { const p = casting.reel.progress(); line = t("Cast: part {n} of {of}", { n: p.moment + 1, of: p.of }); }
+      else if (making?.entry === entry) {
+        line = making.error ? t("The cast could not be made: {reason}", { reason: making.error })
+          : t("Making the cast: {what} · {time}", { what: makingLine(making), time: formatTime(((Date.now() - making.started) / FRAME_MS)) });
+      } else if (ready.has(entry.id)) line = t("The cast is ready.");
       const onMap = lensOf() === "map";
       if (onMap) {
         // Map stats is no one game's: the line says what it holds, and the timeline is faded.
@@ -2476,11 +3320,23 @@ export function activate(api: PluginApi) {
   });
   api.menu.add("File", { label: msg("Open Replay…"), icon: "plugin", after: "Open Recent", command: "open-replay" });
   api.menu.add("View", { label: "Aftermath", icon: "plugin", command: "panel" });
+  if (insightPossible) {
+    api.commands.register({ id: "analysis", title: msg("Replay Analysis"), run: () => openInsight() });
+    api.menu.add("View", { label: msg("Replay Analysis"), icon: "plugin", command: "analysis" });
+  }
   // A replay dropped anywhere on the editor, or picked in File ▸ Open, comes here rather than being read as a map.
   if (bottomDock) api.ui.fileType({ name: msg("StarCraft replay"), extensions: [".rep"], open: (files) => void load(files) });
 
   // Last: a service already there is announced at once, and the answer reaches the panels.
   const simWatch = api.services.watch<ScmSimService>("scm-sim.engine", (service) => { sim = service; game.setService(service); if (current) gameFor(current); pump(); strip?.render(); });
+
+  let accountChange: (() => void) | null = null;
+  const accountWatch = api.services.watch<ScmjsAccountService>("scmjs-dev.account", (service) => {
+    accountChange?.();
+    account = service;
+    accountChange = service ? service.onChange(() => void askOffer()) : null;
+    void askOffer();
+  });
 
   api.events.on("document", () => sync());
   // The view moved by the user, even with the clock still: Spectate's camera lets go.
@@ -2503,6 +3359,11 @@ export function activate(api: PluginApi) {
     running?.controller.abort();
     game.dispose();
     simWatch.dispose();
+    endCast();
+    making?.abort.abort();
+    document.removeEventListener("fullscreenchange", onFullscreen);
+    accountChange?.();
+    accountWatch.dispose();
     imageListener.dispose();
     style.remove();
   };

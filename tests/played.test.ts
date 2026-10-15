@@ -63,6 +63,15 @@ describe("the buildings as they stood", () => {
     ]);
     expect(buildings(t).map((s) => [s.type, s.from, s.done, s.to])).toEqual([[HATCHERY, 0, 0, 3000], [LAIR, 3000, 4000, 5000]]);
   });
+
+  it("starts a refinery when the geyser becomes one, and finishes it when it is done", () => {
+    const t = timeline([
+      ev(0, "born", 0, GEYSER, 11),
+      ev(400, "morph", 0, REFINERY, 0, { from: GEYSER }), ev(400, "given", 0, REFINERY, 0, { from: 11 }), ev(1000, "done", 0, REFINERY, 0),
+      ev(2000, "given", 0, REFINERY, 11, { from: 0 }),
+    ]);
+    expect(buildings(t).map((s) => [s.type, s.owner, s.from, s.done, s.to])).toEqual([[REFINERY, 0, 400, 1000, 2000]]);
+  });
 });
 
 describe("losses", () => {

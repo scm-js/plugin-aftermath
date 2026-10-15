@@ -24,6 +24,8 @@ import { FRAME_MS } from "./replay";
 
 /** The editor's minimap follows the game's camera at most this often (each move redraws it). */
 const MINIMAP_MS = 66;
+/** A game that has not said it looks where it was sent is shown anyway after this long (a look the game cannot take). */
+const SETTLE_MS = 600;
 
 /** What the Game view needs of a replay. */
 export interface Held {
@@ -71,8 +73,16 @@ export class GameView {
    * it is leaving (it reports the frame on screen while it runs ahead), which is not the clock any more.
    */
   private aiming: { frame: number; sawSeeking: boolean; from: number | null; at: number | null } | null = null;
-  /** Where the game is to look once it holds the replay (the map's place when the switch came), in pixels. */
+  /**
+   * Where the game is to look once it holds the replay (the map's place when the switch came), in pixels. A height of
+   * 0 is the map's own scale: as much of the map top to bottom as the frame is tall.
+   */
   private look: MapViewCamera | null = null;
+  /**
+   * The game is hidden while a replay loads and until it says it looks at the height it was sent (or a moment has
+   * passed): it opens at its own scale, and the look sent after would show as a jump.
+   */
+  private settling: { height: number | null; timer: ReturnType<typeof setTimeout> | null } | null = null;
   /** The squares of the game's minimap, for the editor's, while it holds a replay. */
   private units: ViewUnits | null = null;
   /** Its fog as a picture of the map a pixel a tile (black never seen, half black seen before), made once per squares. */
@@ -163,10 +173,31 @@ export class GameView {
     this.busyTimer = setTimeout(() => { this.busyTimer = null; box.hidden = false; }, 200);
   }
 
-  /** Look where `look` says, at its scale (the viewer keeps to what the game allows): now, or once the replay is in. */
-  private lookAt(look: MapViewCamera): void {
-    if (this.view && this.loaded) { this.view.camera(look.x, look.y, look.height); this.sent = null; this.look = null; }
-    else this.look = look;
+  /**
+   * Look where `look` says, at its scale (the viewer keeps to what the game allows): now, or once the replay is in.
+   * The height sent, when it was sent now.
+   */
+  private lookAt(look: MapViewCamera): number | null {
+    if (!this.view || !this.loaded) { this.look = look; return null; }
+    const height = look.height > 0 ? look.height : this.element?.clientHeight ?? 0;
+    this.view.camera(look.x, look.y, height > 0 ? height : undefined);
+    this.sent = null;
+    this.look = null;
+    return height > 0 ? height : null;
+  }
+
+  /** Hide the game until it settles (`settling`), or show it. */
+  private settle(on: boolean): void {
+    if (this.settling?.timer) clearTimeout(this.settling.timer);
+    this.settling = on ? { height: null, timer: null } : null;
+    this.element?.classList.toggle("afm-settling", on);
+  }
+  /** The game is in: show it once it says it looks at `height` (the game keeps to 240–960), or after a moment. */
+  private settleAt(height: number | null): void {
+    if (!this.settling) return;
+    if (height === null) { this.settle(false); return; }
+    this.settling.height = Math.max(240, Math.min(960, Math.round(height)));
+    this.settling.timer = setTimeout(() => this.settle(false), SETTLE_MS);
   }
 
   /** The game's minimap on the editor's: its fog over the ground, as the game darkens it, then its squares. */
@@ -220,11 +251,16 @@ export class GameView {
     return this.asking;
   }
 
-  /** Offer the Game view on a replay's tab, and show it there when `show`. */
-  async offer(entry: Held, show: boolean): Promise<boolean> {
+  /**
+   * Offer the Game view on a replay's tab, and show it there when `show`: looking at `start` (map pixels) at the map's
+   * own scale, rather than where the editor's view stood when the tab came in.
+   */
+  async offer(entry: Held, show: boolean, start?: { x: number; y: number }): Promise<boolean> {
     if (entry.docId === null || !(await this.available())) return false;
     this.handle.offer(true, entry.docId);
     if (show) this.handle.show(true, entry.docId);
+    // (After the show: the editor's `onShow` comes in during it.)
+    if (show && start && !this.holds(entry.id)) this.look = { x: start.x, y: start.y, width: 0, height: 0 };
     return true;
   }
 
@@ -261,6 +297,8 @@ export class GameView {
       }),
       view.onCamera((c) => {
         if (!this.loaded) return;
+        const s = this.settling;
+        if (s && s.height !== null && Math.abs(c.height - s.height) <= 2) this.settle(false);
         if (c.width > 0 && c.height > 0) {
           this.shows = { width: c.width, height: c.height };
           this.looking = { x: c.x, y: c.y, width: c.width, height: c.height };
@@ -296,6 +334,7 @@ export class GameView {
       this.hooks.state(this.words.loading(entry.fileName));
       this.sent = null;
       this.said = null;
+      this.settle(true);
       try {
         const viewed = await view.load(entry.bytes, entry.fileName);
         this.tracks = viewed.follows === true && typeof view.follow === "function";
@@ -304,6 +343,7 @@ export class GameView {
         if (this.wanted !== entry.id) return false;
         this.wanted = null;
         this.holding = null;
+        this.settle(false);
         this.hooks.state(this.words.failed(err instanceof Error ? err.message : String(err)));
         return false;
       }
@@ -317,7 +357,7 @@ export class GameView {
     this.graphics();
     this.eyes(entry.eyes);
     // Where the map was looking when the switch came, rather than where the viewer opens a replay.
-    if (this.look) this.lookAt(this.look);
+    this.settleAt(this.look ? this.lookAt(this.look) : null);
     view.speed(speed);
     if (Math.round(frame) > 0) this.seek(frame);
     view.play(playing);
@@ -395,6 +435,8 @@ export class GameView {
   }
 
   play(on: boolean): void { this.view?.play(on); }
+  /** The element the game and what is drawn over it live in: what the cinematic view takes full screen. */
+  get root(): HTMLElement | null { return this.element ?? null; }
   speed(multiplier: number): void { this.view?.speed(multiplier); }
   seek(frame: number): void {
     if (!this.view) return;
@@ -448,6 +490,7 @@ export class GameView {
   dispose(): void {
     if (this.busyTimer) clearTimeout(this.busyTimer);
     if (this.telling) clearTimeout(this.telling);
+    this.settle(false);
     for (const s of this.subs) s.dispose();
     this.subs = [];
     this.changed.dispose();

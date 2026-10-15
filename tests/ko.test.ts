@@ -4,7 +4,7 @@ import { KO } from "../ko";
 
 // Every literal the plugin shows through `t("…")` / `api.i18n.t("…")`, or keeps in a table as `msg("…")`,
 // read from the source the way the editor's own extractor reads it. Replay reading errors are `msg`s, shown translated.
-const files = ["plugin.ts", "replay.ts", "analysis.ts", "chk.ts"];
+const files = ["plugin.ts", "replay.ts", "analysis.ts", "chk.ts", "insight.ts", "techview.ts"];
 const sources = files.map((f) => readFileSync(new URL(`../${f}`, import.meta.url), "utf8"));
 const keys = new Set(sources.flatMap((source) => [...source.matchAll(/\b(?:t|msg)\("((?:[^"\\]|\\.)*)"/g)].map((m) => JSON.parse(`"${m[1]}"`) as string)));
 

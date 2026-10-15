@@ -1,8 +1,8 @@
 {
   "name": "Aftermath",
   "id": "aftermath",
-  "version": "0.10.0",
-  "description": "Opens StarCraft replays over the map they were played on: where buildings went down and when, where units were sent, heat maps of the orders across one game or many, build orders, actions per minute and chat, on a timeline that plays back. At scmjs.dev it also shows the game itself in the map's place, played by the game's own code with its own graphics, and plays it through to show what happened: the units where they stood, what was really built and lost, and each player's army and economy through the game.",
+  "version": "0.12.0",
+  "description": "Opens StarCraft replays over the map they were played on: where buildings went down and when, where units were sent, heat maps of the orders across one game or many, build orders, actions per minute and chat, on a timeline that plays back. At scmjs.dev it also shows the game itself in the map's place, played by the game's own code with its own graphics, and plays it through to show what happened: the units where they stood, what was really built and lost, and each player's army, economy and tech through the game.",
   "requires": ["github:scm-js/plugin-scm-sim"],
   "author": "Jeany",
   "homepage": "https://github.com/scm-js/plugin-aftermath",

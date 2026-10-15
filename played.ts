@@ -154,7 +154,15 @@ export function buildings(t: ReplayTimeline): Standing[] {
     if (e.kind === "born") start(e.unit, e);
     else if (e.kind === "morph") { end(e.unit, e.frame); start(e.unit, e); }
     else if (e.kind === "done") { const s = open.get(e.unit); if (s && s.done === null) s.done = e.frame; }
-    else if (e.kind === "given") { end(e.unit, e.frame); start(e.unit, e); const s = open.get(e.unit); if (s) s.done = e.frame; }
+    else if (e.kind === "given") {
+      const before = open.get(e.unit);
+      // A geyser becomes a refinery and the builder's in the same frame: the building just begun, not a new one.
+      if (before && before.from === e.frame) { before.owner = e.owner; continue; }
+      end(e.unit, e.frame); start(e.unit, e);
+      // Given as it stood, finished or not; one not seen before (a neutral's) is taken as finished.
+      const s = open.get(e.unit);
+      if (s) s.done = before ? before.done : e.frame;
+    }
     else if (e.kind === "died") end(e.unit, e.frame);
   }
   return out;
