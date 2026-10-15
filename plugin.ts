@@ -290,7 +290,8 @@ const STYLE = `
 .afm-ti { display: inline-flex; flex: none; width: 24px; height: 23px; padding: 1px; box-sizing: content-box; background: #12151c; border: 1px solid rgba(255,255,255,0.08); border-radius: 3px; vertical-align: middle; }
 .afm-ti canvas { width: 100%; height: 100%; }
 .afm-ti-sm { width: 18px; height: 17px; }
-.afm-ti.afm-gi-none { background: rgba(255,255,255,0.04); }
+.afm-ti-text { width: auto; height: auto; padding: 2px 5px; font-size: 10px; line-height: 1.3; color: var(--text-dim, #99a2b3); background: rgba(255,255,255,0.04); white-space: nowrap; }
+.afm-ti-empty { display: none; }
 .afm-ti-path { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 8px; }
 .afm-ti-key { display: inline-flex; align-items: center; gap: 6px; }
 .afm-ti-key-bar { display: inline-block; width: 22px; height: 10px; border-radius: 3px; background: rgba(228,232,239,0.7); }

@@ -131,6 +131,9 @@ The second tab is **Tech**:
 The game engine sees research finish at its samples, two seconds apart, so a research
 bar can end up to two seconds late; its start is that end less the research time from the
 game's data. Without the game's data, research shows only when it was done.
+The icons need a copy of the game data installed since October 15 2026; with an older one,
+the cards name the buildings instead and the army shows each unit's picture, until the
+game data is installed again (Help ▸ Game Data).
 
 The window needs a version of scmJS newer than 0.7.3.
 
