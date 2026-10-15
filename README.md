@@ -108,8 +108,31 @@ moment. Its first tab is **Economy**:
   workers, as a table.
 
 Income needs the game engine to count what was mined, which an engine from before
-October 2026 does not; then the rest is shown without it. The window needs a version of
-scmJS newer than 0.7.3.
+October 2026 does not; then the rest is shown without it.
+
+The second tab is **Tech**:
+
+- A card for each player: the furthest tier they reached and when (a Lair or Hive; a
+  Factory or Science Facility; for Protoss a Citadel, Robotics Facility or Stargate, then a
+  Templar Archives, Fleet Beacon or Arbiter Tribunal), how many upgrade levels and
+  technologies they finished, and their tech buildings in the order they were finished, as
+  the game's icons. Under the cards, a sentence comparing the two players in a game of two;
+  tier timings are compared only between players of the same race.
+- One chart: a lane for each player with a bar for the first of each tech building, from
+  its site to when it was finished, and a bar for each upgrade level and technology, from
+  when the research began to when it was done. Point at a bar for its times, or between
+  bars for what each player had under way then.
+- **Army over the game**, folded: for each player, how many of each unit they had at the
+  end of every minute, by colour against the most they had of it. Workers and Overlords
+  are left out, and a sieged tank counts as a tank.
+- **All the timings**, folded: every tech building and research, with when each player had
+  it done; the earlier of two is marked.
+
+The game engine sees research finish at its samples, two seconds apart, so a research
+bar can end up to two seconds late; its start is that end less the research time from the
+game's data. Without the game's data, research shows only when it was done.
+
+The window needs a version of scmJS newer than 0.7.3.
 
 ### Map stats: many replays of one map
 

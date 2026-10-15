@@ -1215,7 +1215,7 @@ var KO = {
   "The charts need the game to be played through, which scmjs.dev does.": "\uCC28\uD2B8\uB97C \uBCF4\uB824\uBA74 \uAC8C\uC784\uC744 \uB05D\uAE4C\uC9C0 \uC7AC\uC0DD\uD574\uC57C \uD558\uBA70, scmjs.dev\uC5D0\uC11C \uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
   "Replay Analysis": "\uB9AC\uD50C\uB808\uC774 \uBD84\uC11D",
   "Analysis": "\uBD84\uC11D",
-  "Open the Analysis window: the game's economy in charts and numbers": "\uBD84\uC11D \uCC3D \uC5F4\uAE30: \uAC8C\uC784\uC758 \uACBD\uC81C\uB97C \uCC28\uD2B8\uC640 \uC22B\uC790\uB85C \uBD05\uB2C8\uB2E4",
+  "Open the Analysis window: the game's economy and tech in charts and numbers": "\uBD84\uC11D \uCC3D \uC5F4\uAE30: \uAC8C\uC784\uC758 \uACBD\uC81C\uC640 \uD14C\uD06C\uB97C \uCC28\uD2B8\uC640 \uC22B\uC790\uB85C \uBD05\uB2C8\uB2E4",
   "Economy": "\uACBD\uC81C",
   "Both": "\uB458 \uB2E4",
   "Minerals": "\uBBF8\uB124\uB784",
@@ -1260,7 +1260,33 @@ var KO = {
   "Main": "\uBCF8\uC9C4",
   "Base {n}": "{n}\uBC88\uC9F8 \uAE30\uC9C0",
   "Workers a field": "\uAD11\uBB3C\uB2F9 \uC77C\uAFBC",
-  "\xB7 two a field mine at the full rate": "\xB7 \uAD11\uBB3C\uB2F9 \uB450 \uAE30\uBA74 \uCD5C\uB300 \uC18D\uB3C4\uB85C \uCEA1\uB2C8\uB2E4"
+  "\xB7 two a field mine at the full rate": "\xB7 \uAD11\uBB3C\uB2F9 \uB450 \uAE30\uBA74 \uCD5C\uB300 \uC18D\uB3C4\uB85C \uCEA1\uB2C8\uB2E4",
+  "Tech": "\uD14C\uD06C",
+  "third tier": "3\uD2F0\uC5B4",
+  "second tier": "2\uD2F0\uC5B4",
+  "no second tier": "2\uD2F0\uC5B4 \uC5C6\uC74C",
+  "{levels, plural, one {# upgrade level} other {# upgrade levels}}, {n, plural, one {# technology} other {# technologies}}": "\uC5C5\uADF8\uB808\uC774\uB4DC {levels}\uB2E8\uACC4, \uAE30\uC220 {n}\uAC1C",
+  "{from} to {to}, {span}": "{from}\uBD80\uD130 {to}\uAE4C\uC9C0, {span}",
+  "nothing under way": "\uC9C4\uD589 \uC911\uC778 \uAC83 \uC5C6\uC74C",
+  "Under way": "\uC9C4\uD589 \uC911",
+  "Tech over the game": "\uAC8C\uC784 \uB3D9\uC548\uC758 \uD14C\uD06C",
+  "Tech buildings, the first of each": "\uD14C\uD06C \uAC74\uBB3C, \uC885\uB958\uBCC4 \uCCAB \uBC88\uC9F8",
+  "Upgrades and technologies": "\uC5C5\uADF8\uB808\uC774\uB4DC\uC640 \uAE30\uC220",
+  "Without the game's data, research is shown when it was done, not when it began.": "\uAC8C\uC784 \uB370\uC774\uD130\uAC00 \uC5C6\uC73C\uBA74 \uC5F0\uAD6C\uB294 \uC2DC\uC791\uC774 \uC544\uB2C8\uB77C \uC644\uB8CC \uC2DC\uC810\uC5D0 \uD45C\uC2DC\uB429\uB2C8\uB2E4.",
+  "Army over the game": "\uAC8C\uC784 \uB3D9\uC548\uC758 \uBCD1\uB825",
+  "All the timings": "\uBAA8\uB4E0 \uD0C0\uC774\uBC0D",
+  "{name} reached the third tier {time} before {other}.": "{name|\uC774} {other}\uBCF4\uB2E4 {time} \uBA3C\uC800 3\uD2F0\uC5B4\uC5D0 \uB3C4\uB2EC\uD588\uC2B5\uB2C8\uB2E4.",
+  "{name} reached the second tier {time} before {other}.": "{name|\uC774} {other}\uBCF4\uB2E4 {time} \uBA3C\uC800 2\uD2F0\uC5B4\uC5D0 \uB3C4\uB2EC\uD588\uC2B5\uB2C8\uB2E4.",
+  "{name} reached the third tier ({building}, {time}); {other} did not.": "{name|\uC740} 3\uD2F0\uC5B4\uC5D0 \uB3C4\uB2EC\uD588\uACE0({building}, {time}) {other|\uC740} \uB3C4\uB2EC\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.",
+  "{name} reached the second tier ({building}, {time}); {other} did not.": "{name|\uC740} 2\uD2F0\uC5B4\uC5D0 \uB3C4\uB2EC\uD588\uACE0({building}, {time}) {other|\uC740} \uB3C4\uB2EC\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.",
+  "Both reached the third tier at about the same time.": "\uB450 \uD50C\uB808\uC774\uC5B4\uAC00 \uAC70\uC758 \uAC19\uC740 \uB54C\uC5D0 3\uD2F0\uC5B4\uC5D0 \uB3C4\uB2EC\uD588\uC2B5\uB2C8\uB2E4.",
+  "Both reached the second tier at about the same time.": "\uB450 \uD50C\uB808\uC774\uC5B4\uAC00 \uAC70\uC758 \uAC19\uC740 \uB54C\uC5D0 2\uD2F0\uC5B4\uC5D0 \uB3C4\uB2EC\uD588\uC2B5\uB2C8\uB2E4.",
+  "{name} finished {n} upgrade levels and technologies, {other} {m}.": "{name|\uC740} \uC5C5\uADF8\uB808\uC774\uB4DC\uC640 \uAE30\uC220\uC744 {n}\uAC1C, {other|\uC740} {m}\uAC1C \uC644\uB8CC\uD588\uC2B5\uB2C8\uB2E4.",
+  "Nobody had an army.": "\uBCD1\uB825\uC744 \uAC00\uC9C4 \uD50C\uB808\uC774\uC5B4\uAC00 \uC5C6\uC5C8\uC2B5\uB2C8\uB2E4.",
+  "{n} at the most": "\uCD5C\uB300 {n}\uAE30",
+  "Press to go there": "\uB204\uB974\uBA74 \uADF8 \uC2DC\uC810\uC73C\uB85C \uAC11\uB2C8\uB2E4",
+  "How many of each unit a player had at the end of each minute; the darker, the nearer the most they had of it.": "\uB9E4 \uBD84\uC774 \uB05D\uB0A0 \uB54C \uD50C\uB808\uC774\uC5B4\uAC00 \uAC00\uC9C4 \uC720\uB2DB \uC218\uC785\uB2C8\uB2E4. \uC9C4\uD560\uC218\uB85D \uADF8 \uC720\uB2DB\uC744 \uAC00\uC7A5 \uB9CE\uC774 \uAC00\uC84C\uC744 \uB54C\uC5D0 \uAC00\uAE5D\uC2B5\uB2C8\uB2E4.",
+  "Tech buildings": "\uD14C\uD06C \uAC74\uBB3C"
 };
 
 // played.ts
@@ -1386,10 +1412,15 @@ function buildings(t) {
       const s = open.get(e.unit);
       if (s && s.done === null) s.done = e.frame;
     } else if (e.kind === "given") {
+      const before = open.get(e.unit);
+      if (before && before.from === e.frame) {
+        before.owner = e.owner;
+        continue;
+      }
       end(e.unit, e.frame);
       start(e.unit, e);
       const s = open.get(e.unit);
-      if (s) s.done = e.frame;
+      if (s) s.done = before ? before.done : e.frame;
     } else if (e.kind === "died") end(e.unit, e.frame);
   }
   return out;
@@ -1888,7 +1919,7 @@ function direct(t, index, fights2, bases2, cost, only) {
   const p = t.positions;
   if (!p || !p.frame.length) return [];
   const costed = t.events.some((e) => e.kind === "died" && cost(e.type) > 0);
-  const isArmy = (g) => costed ? g.value >= MIN_ARMY_VALUE : g.units >= MIN_ARMY_UNITS;
+  const isArmy2 = (g) => costed ? g.value >= MIN_ARMY_VALUE : g.units >= MIN_ARMY_UNITS;
   const weight = (g) => costed ? g.value / 300 : g.units / 6;
   const homes = /* @__PURE__ */ new Map();
   for (const e of t.events) {
@@ -1911,7 +1942,7 @@ function direct(t, index, fights2, bases2, cost, only) {
       const base = f.tier === "minor" ? (f.kind === "workers" ? 30 : 15) + Math.min(30, f.value / 100) : 100 + 200 * f.importance;
       out.push({ kind: "fight", key: `f${n}`, score: base, x: k ? sx / k : f.x, y: k ? sy / k : f.y, players: f.sides.map((s) => s.player), fight: f });
     });
-    const groups = groupsAt(t, index, i, cost).filter(isArmy);
+    const groups = groupsAt(t, index, i, cost).filter(isArmy2);
     const mains = /* @__PURE__ */ new Map();
     for (const g of groups) {
       const m = mains.get(g.player);
@@ -2778,7 +2809,7 @@ var Chart = class {
       this.host.hover(frameAt(e.clientX - this.canvas.getBoundingClientRect().left));
     });
     this.canvas.addEventListener("pointerleave", () => this.host.hover(null));
-    this.tip = host.tooltip(this.canvas, (at) => at.offsetX < this.left - 4 ? null : this.tipAt(frameAt(at.offsetX)));
+    this.tip = host.tooltip(this.canvas, (at) => at.offsetX < this.left - 4 ? null : this.tipAt(frameAt(at.offsetX), at));
     this.resize = new ResizeObserver(() => this.draw());
     this.resize.observe(this.canvas);
   }
@@ -2980,6 +3011,98 @@ var LaneChart = class extends Chart {
     });
   }
 };
+var ROW = 20;
+var ICON_W = 18;
+var ICON_H = 17;
+var GROUP_GAP = 8;
+var GanttChart = class extends Chart {
+  groups = [];
+  /** Where each bar was drawn, for the tooltip: [group, bar, x0, x1, y0]. */
+  placed = [];
+  constructor(host, tipAt, label) {
+    super(host, 40, tipAt, label);
+  }
+  set(groups, end) {
+    this.groups = groups;
+    this.end = Math.max(1, end);
+    this.draw();
+  }
+  /** The bar under a point of the chart (CSS pixels), or null. */
+  barAt(offsetX, offsetY) {
+    for (const p of this.placed) {
+      if (offsetX >= p.x0 - 1 && offsetX <= p.x1 + 1 && offsetY >= p.y0 && offsetY < p.y0 + ROW) {
+        const group = this.groups[p.group];
+        return { group, bar: group.bars[p.bar] };
+      }
+    }
+    return null;
+  }
+  plot(g, box) {
+    const { x } = box;
+    const width = this.canvas.clientWidth, text = css(this.canvas, "--text", "#e4e8ef");
+    this.placed = [];
+    let y = 4;
+    g.font = "11px system-ui, sans-serif";
+    g.textBaseline = "middle";
+    this.groups.forEach((group, gi) => {
+      const spans = group.bars.map((b) => ({ from: x(b.from), to: Math.max(x(b.to), x(b.from) + ICON_W) }));
+      const rows = packRows(spans, 3);
+      const count = Math.max(1, ...rows.map((r) => r + 1));
+      g.fillStyle = "rgba(255,255,255,0.03)";
+      g.fillRect(this.left, y, width - this.left - this.right, count * ROW);
+      const lx = width - this.right + 8;
+      g.fillStyle = group.color;
+      g.fillRect(lx, y + ROW / 2 - 1, 6, 2);
+      g.fillStyle = text;
+      g.textAlign = "left";
+      g.fillText(group.label.length > 12 ? `${group.label.slice(0, 11)}\u2026` : group.label, lx + 10, y + ROW / 2);
+      group.bars.forEach((bar, bi) => {
+        const y0 = y + rows[bi] * ROW, x0 = spans[bi].from, x1 = Math.max(x0 + 2, x(bar.to));
+        this.placed.push({ group: gi, bar: bi, x0, x1: spans[bi].to, y0 });
+        g.globalAlpha = bar.quiet ? 0.35 : 0.7;
+        g.fillStyle = group.color;
+        g.beginPath();
+        g.roundRect(x0, y0 + 3, x1 - x0, ROW - 6, 3);
+        g.fill();
+        g.globalAlpha = 1;
+        const icon = bar.icon();
+        if (icon) {
+          g.fillStyle = "#12151c";
+          g.fillRect(x0, y0 + 1, ICON_W, ICON_H + 1);
+          g.drawImage(icon, x0, y0 + 1.5, ICON_W, ICON_H);
+        }
+        const room = x1 - x0 - (icon ? ICON_W : 0) - 8;
+        if (room > 24) {
+          g.fillStyle = text;
+          g.textAlign = "left";
+          let label = bar.label;
+          while (label.length > 3 && g.measureText(label).width > room) label = `${label.slice(0, -2)}\u2026`;
+          if (g.measureText(label).width <= room) g.fillText(label, x0 + (icon ? ICON_W : 0) + 4, y0 + ROW / 2);
+        }
+      });
+      y += count * ROW + GROUP_GAP;
+    });
+    const want = `${Math.max(ROW, y - GROUP_GAP + 4) + (this.axis ? BOTTOM : 2)}px`;
+    if (this.canvas.style.height !== want) requestAnimationFrame(() => {
+      this.canvas.style.height = want;
+    });
+  }
+};
+function packRows(spans, gap = 0) {
+  const ends = [];
+  const order = spans.map((_, i) => i).sort((a, b) => spans[a].from - spans[b].from || spans[a].to - spans[b].to);
+  const out = new Array(spans.length);
+  for (const i of order) {
+    let r = ends.findIndex((end) => end + gap <= spans[i].from);
+    if (r < 0) {
+      r = ends.length;
+      ends.push(-Infinity);
+    }
+    ends[r] = spans[i].to;
+    out[i] = r;
+  }
+  return out;
+}
 function nearest2(xs, x) {
   let lo = 0, hi = xs.length - 1;
   if (hi < 0) return -1;
@@ -3099,6 +3222,399 @@ function economy(t, lines, index, leftAt = /* @__PURE__ */ new Map()) {
   return { exact, players, lines: lineSaturation(t, lines, index, players.map((p) => p.slot)), minutes: Math.ceil(t.frames / FRAMES_PER_MINUTE) };
 }
 
+// tech.ts
+var TECH_BUILDINGS = {
+  // Barracks, Refinery, Academy, Factory, Machine Shop, Engineering Bay, Comsat Station, Starport, Control Tower,
+  // Armory, Science Facility, Covert Ops, Physics Lab, Nuclear Silo.
+  terran: [111, 110, 112, 113, 120, 122, 107, 114, 115, 123, 116, 117, 118, 108],
+  // Spawning Pool, Extractor, Evolution Chamber, Lair, Hydralisk Den, Spire, Queen's Nest, Hive, Defiler Mound,
+  // Ultralisk Cavern, Greater Spire, Nydus Canal.
+  zerg: [142, 149, 139, 132, 135, 141, 138, 133, 136, 140, 137, 134],
+  // Gateway, Assimilator, Forge, Cybernetics Core, Citadel of Adun, Robotics Facility, Observatory, Robotics Support
+  // Bay, Stargate, Templar Archives, Fleet Beacon, Arbiter Tribunal.
+  protoss: [160, 157, 166, 164, 163, 155, 159, 171, 167, 165, 169, 170]
+};
+var TECH = new Set(Object.values(TECH_BUILDINGS).flat());
+var isTechBuilding = (type) => TECH.has(type);
+var NOT_ARMY = /* @__PURE__ */ new Set([42]);
+var SAME_AS = /* @__PURE__ */ new Map([[30, 5]]);
+function techBuildings(t, players, time) {
+  const out = new Map(players.map((p) => [p, []]));
+  const seen = /* @__PURE__ */ new Set();
+  const finished = buildings(t).filter((b) => b.done !== null && b.from > 0 && isTechBuilding(b.type)).sort((a, b) => a.done - b.done);
+  for (const b of finished) {
+    const list = out.get(b.owner), key = `${b.owner}:${b.type}`;
+    if (!list || seen.has(key)) continue;
+    seen.add(key);
+    const span = time("unit", b.type, 1);
+    const start = span && b.done - b.from < span / 2 ? Math.max(0, b.done - span) : b.from;
+    list.push({ kind: "building", id: b.type, level: 1, player: b.owner, start, done: b.done });
+  }
+  return out;
+}
+function researchItems(t, players, time) {
+  const out = new Map(players.map((p) => [p, []]));
+  for (const r of t.research) {
+    const list = out.get(r.player);
+    if (!list) continue;
+    const span = time(r.kind, r.id, r.level);
+    list.push({ kind: r.kind, id: r.id, level: r.level, player: r.player, start: span ? Math.max(0, r.frame - span) : r.frame, done: r.frame });
+  }
+  for (const list of out.values()) list.sort((a, b) => a.done - b.done);
+  return out;
+}
+var isArmy = (type) => counted(type) && !isBuilding(type) && !WORKERS2.has(type) && !NOT_ARMY.has(type);
+function armyRows(t, players) {
+  const minutes = Math.max(1, Math.ceil(t.frames / FRAMES_PER_MINUTE));
+  const want = new Set(players);
+  const alive = /* @__PURE__ */ new Map();
+  const ignored = /* @__PURE__ */ new Set();
+  const rows = /* @__PURE__ */ new Map();
+  const count = (m2) => {
+    const here = /* @__PURE__ */ new Map();
+    for (const u of alive.values()) {
+      const type = SAME_AS.get(u.type) ?? u.type;
+      if (!want.has(u.owner) || !isArmy(type)) continue;
+      const key = `${u.owner}:${type}`;
+      here.set(key, (here.get(key) ?? 0) + 1);
+    }
+    for (const [key, n] of here) {
+      let row = rows.get(key);
+      if (!row) {
+        const [player, type] = key.split(":").map(Number);
+        row = { player, type, perMinute: new Array(minutes).fill(0), peak: 0, first: m2 };
+        rows.set(key, row);
+      }
+      row.perMinute[m2] = n;
+      row.peak = Math.max(row.peak, n);
+    }
+  };
+  let m = 0;
+  for (const e of t.events) {
+    while (m < minutes - 1 && e.frame >= (m + 1) * FRAMES_PER_MINUTE) count(m++);
+    if (e.kind === "born") {
+      if (e.hallucination) {
+        ignored.add(e.unit);
+        continue;
+      }
+      alive.set(e.unit, { type: e.type, owner: e.owner });
+    } else if (ignored.has(e.unit)) continue;
+    else if (e.kind === "morph" || e.kind === "given") {
+      const u = alive.get(e.unit);
+      if (u) {
+        u.type = e.type;
+        u.owner = e.owner;
+      }
+    } else if (e.kind === "died") alive.delete(e.unit);
+  }
+  while (m < minutes) count(m++);
+  return [...rows.values()].sort((a, b) => a.player - b.player || a.first - b.first || b.peak - a.peak);
+}
+function tech(t, players, time) {
+  const built = techBuildings(t, players, time), researched = researchItems(t, players, time);
+  return {
+    players: players.map((slot) => {
+      const research = researched.get(slot) ?? [];
+      const levels = /* @__PURE__ */ new Map();
+      for (const r of research) if (r.kind === "upgrade") levels.set(r.id, Math.max(levels.get(r.id) ?? 0, r.level));
+      return { slot, buildings: built.get(slot) ?? [], research, levels };
+    }),
+    army: armyRows(t, players),
+    minutes: Math.max(1, Math.ceil(t.frames / FRAMES_PER_MINUTE))
+  };
+}
+
+// techview.ts
+var TIERS = {
+  // Zerg: Lair, Hive.
+  0: [[132], [133]],
+  // Terran: Factory, Science Facility.
+  1: [[113], [116]],
+  // Protoss: Citadel of Adun, Robotics Facility or Stargate; Templar Archives, Fleet Beacon or Arbiter Tribunal.
+  2: [[163, 155, 167], [165, 169, 170]]
+};
+function tierOf(race, buildings2) {
+  const tiers = TIERS[race];
+  if (!tiers) return null;
+  for (const tier of [3, 2]) {
+    const item = buildings2.find((b) => tiers[tier - 2].includes(b.id));
+    if (item) return { tier, item };
+  }
+  return null;
+}
+var short = (name) => name.replace(/^(Terran|Zerg|Protoss) (?=\S)/, "");
+var techs = /* @__PURE__ */ new WeakMap();
+function mountTech(body, cx) {
+  const { api, t, timeline: tl } = cx;
+  const el = api.ui.el, w = api.ui.widgets;
+  const data = { units: api.data.units(), upgrades: api.data.upgrades(), techs: api.data.techs() };
+  const time = (kind, id, level) => kind === "unit" ? data.units?.buildTime[id] ?? null : kind === "upgrade" ? data.upgrades ? data.upgrades.timeCost[id] + data.upgrades.timeFactor[id] * (level - 1) : null : data.techs?.researchTime[id] ?? null;
+  let all = techs.get(tl);
+  if (!all) {
+    all = tech(tl, tl.samples.players.filter((s) => s.supplyMax.some((n) => n > 0)).map((s) => s.slot), time);
+    if (data.units && data.upgrades && data.techs) techs.set(tl, all);
+  }
+  const shown = cx.players.filter((p) => all.players.some((x) => x.slot === p.slot));
+  const of = (slot) => all.players.find((p) => p.slot === slot);
+  const raceOf = (slot) => tl.players.find((p) => p.slot === slot)?.race ?? -1;
+  const nameOf = (item) => item.kind === "building" ? api.names.unit(item.id) : item.kind === "tech" ? api.names.tech(item.id) : (data.upgrades?.maxRepeats[item.id] ?? item.level) > 1 ? `${api.names.upgrade(item.id)} ${item.level}` : api.names.upgrade(item.id);
+  const swatch = (color) => el("span", { className: "afm-tip-swatch", style: `background:${color}` });
+  const waiting = [];
+  const picture = (kind, id) => typeof api.graphics.icon === "function" ? api.graphics.icon(kind, id)?.image ?? null : null;
+  const fill = (slot, kind, id) => {
+    const pic = picture(kind, id);
+    if (!pic) return false;
+    const c = el("canvas", { width: pic.width, height: pic.height });
+    c.getContext("2d")?.drawImage(pic, 0, 0);
+    slot.replaceChildren(c);
+    slot.classList.remove("afm-gi-none");
+    return true;
+  };
+  const icon = (kind, id, title, small = false, wait = true) => {
+    const slot = el("span", { className: `afm-ti${small ? " afm-ti-sm" : ""} afm-gi-none` });
+    slot.dataset.name = title;
+    if (!fill(slot, kind, id) && wait) {
+      waiting.push({ slot, kind, id });
+      if (typeof api.graphics.requestIcons === "function") api.graphics.requestIcons();
+    }
+    return slot;
+  };
+  const kindOf = (item) => item.kind === "building" ? "unit" : item.kind;
+  const cards = el("div", { className: "afm-it-cards" }, ...shown.map((p) => {
+    const pt = of(p.slot), reached = tierOf(raceOf(p.slot), pt.buildings);
+    const levels = pt.research.filter((r) => r.kind === "upgrade").length, abilities = pt.research.length - levels;
+    return el(
+      "div",
+      { className: "afm-it-card", style: `border-top-color:${p.color}` },
+      el("div", { className: "afm-it-card-name" }, swatch(p.color), el("span", { className: "afm-gt-name" }, p.name)),
+      el(
+        "div",
+        { className: "afm-it-hero" },
+        reached ? formatTime(reached.item.done) : "\u2013",
+        el("span", { className: "afm-it-unit" }, reached ? reached.tier === 3 ? t("third tier") : t("second tier") : t("no second tier"))
+      ),
+      el("div", { className: "afm-dim afm-it-card-line" }, reached ? nameOf(reached.item) : "\xA0"),
+      el("div", { className: "afm-it-card-line" }, t("{levels, plural, one {# upgrade level} other {# upgrade levels}}, {n, plural, one {# technology} other {# technologies}}", { levels, n: abilities })),
+      el("div", { className: "afm-ti-path" }, ...pt.buildings.map((b) => icon("unit", b.id, `${nameOf(b)} \xB7 ${formatTime(b.done)}`, true)))
+    );
+  }));
+  cx.keep(cx.host.tooltip(cards, (at) => {
+    const r = cards.getBoundingClientRect();
+    const hit = document.elementFromPoint(r.left + at.offsetX, r.top + at.offsetY);
+    const slot = hit instanceof Element ? hit.closest(".afm-ti") : null;
+    return slot?.dataset.name ?? null;
+  }));
+  const items = /* @__PURE__ */ new Map();
+  const groups = shown.map((p) => {
+    const pt = of(p.slot);
+    const bars = [...pt.buildings, ...pt.research].sort((a, b) => a.start - b.start).map((item) => {
+      const bar = { from: item.start, to: item.done, label: short(nameOf(item)), quiet: item.kind === "building", icon: () => picture(kindOf(item), item.id) };
+      items.set(bar, item);
+      return bar;
+    });
+    return { slot: p.slot, label: p.name, color: p.color, bars };
+  });
+  const describe = (item) => item.start === item.done ? t("done {time}", { time: formatTime(item.done) }) : t("{from} to {to}, {span}", { from: formatTime(item.start), to: formatTime(item.done), span: formatTime(item.done - item.start) });
+  const chart = new GanttChart(cx.host, (f, at) => {
+    const hit = chart.barAt(at.offsetX, at.offsetY);
+    if (hit) {
+      const item = items.get(hit.bar);
+      return el(
+        "div",
+        { className: "afm-gt" },
+        el("div", { className: "afm-gt-head" }, icon(kindOf(item), item.id, nameOf(item), false, false), el("b", {}, nameOf(item))),
+        el("div", { className: "afm-it-row" }, swatch(hit.group.color), el("span", { className: "afm-gt-name" }, hit.group.label)),
+        el("div", {}, describe(item)),
+        el("div", { className: "afm-gt-foot afm-dim" }, t("Press or drag to go there"))
+      );
+    }
+    const rows = shown.map((p) => {
+      const busy = [...of(p.slot).buildings, ...of(p.slot).research].filter((i) => i.start <= f && f < i.done);
+      return el(
+        "div",
+        { className: "afm-it-row" },
+        swatch(p.color),
+        el("span", { className: "afm-gt-name" }, p.name),
+        el("span", { className: "afm-dim" }, busy.length ? busy.map(nameOf).join(", ") : t("nothing under way"))
+      );
+    });
+    return el(
+      "div",
+      { className: "afm-gt" },
+      el("div", { className: "afm-gt-head" }, el("b", {}, formatTime(f)), el("span", { className: "afm-dim" }, t("Under way"))),
+      ...rows,
+      el("div", { className: "afm-gt-foot afm-dim" }, t("Press or drag to go there"))
+    );
+  }, t("Tech over the game"));
+  chart.set(groups, tl.frames);
+  cx.chart(chart);
+  const legend = el(
+    "div",
+    { className: "afm-it-controls afm-dim afm-it-about" },
+    el("span", { className: "afm-ti-key" }, el("span", { className: "afm-ti-key-bar afm-ti-quiet" }), t("Tech buildings, the first of each")),
+    el("span", { className: "afm-ti-key" }, el("span", { className: "afm-ti-key-bar" }), t("Upgrades and technologies"))
+  );
+  const notes = [];
+  if (!data.upgrades || !data.techs) notes.push(el("p", { className: "afm-dim afm-it-note" }, t("Without the game's data, research is shown when it was done, not when it began.")));
+  const army = w.fold({ text: t("Army over the game"), open: false });
+  army.body.append(armyGrid(cx, all, shown, icon));
+  const timings = w.fold({ text: t("All the timings"), open: false });
+  timings.body.append(timingsTable(cx, all, shown, nameOf, icon, kindOf));
+  const verdict = sayTech(cx, all, shown, raceOf, nameOf);
+  body.append(
+    cards,
+    ...verdict ? [el("p", { className: "afm-it-verdict" }, verdict)] : [],
+    el("section", { className: "afm-it-section" }, legend, el("div", { className: "afm-it-chart" }, chart.element), ...notes),
+    army,
+    timings
+  );
+  chart.draw();
+  if (typeof api.graphics.onImageLoaded === "function") {
+    cx.keep(api.graphics.onImageLoaded(() => {
+      for (let i = waiting.length - 1; i >= 0; i--) if (fill(waiting[i].slot, waiting[i].kind, waiting[i].id)) waiting.splice(i, 1);
+      chart.draw();
+    }));
+  }
+}
+function sayTech(cx, all, shown, raceOf, nameOf) {
+  const { t } = cx;
+  if (shown.length !== 2) return null;
+  const [a, b] = shown;
+  const pa = all.players.find((p) => p.slot === a.slot), pb = all.players.find((p) => p.slot === b.slot);
+  const said = [];
+  const mirror = raceOf(a.slot) === raceOf(b.slot);
+  const ta = mirror ? tierOf(raceOf(a.slot), pa.buildings) : null, tb = mirror ? tierOf(raceOf(b.slot), pb.buildings) : null;
+  const reachedFirst = (tier, name, other, time) => tier === 3 ? t("{name} reached the third tier {time} before {other}.", { name, other, time }) : t("{name} reached the second tier {time} before {other}.", { name, other, time });
+  const reachedOnly = (tier, name, other, building, time) => tier === 3 ? t("{name} reached the third tier ({building}, {time}); {other} did not.", { name, other, building, time }) : t("{name} reached the second tier ({building}, {time}); {other} did not.", { name, other, building, time });
+  if (ta && tb && ta.tier === tb.tier) {
+    const [first, second, gap] = ta.item.done <= tb.item.done ? [a, b, tb.item.done - ta.item.done] : [b, a, ta.item.done - tb.item.done];
+    if (gap >= 24 * 10) said.push(reachedFirst(ta.tier, first.name, second.name, formatTime(gap)));
+    else said.push(ta.tier === 3 ? t("Both reached the third tier at about the same time.") : t("Both reached the second tier at about the same time."));
+  } else if (ta && (!tb || ta.tier > tb.tier)) said.push(reachedOnly(ta.tier, a.name, b.name, nameOf(ta.item), formatTime(ta.item.done)));
+  else if (tb) said.push(reachedOnly(tb.tier, b.name, a.name, nameOf(tb.item), formatTime(tb.item.done)));
+  const na = pa.research.length, nb = pb.research.length;
+  if (Math.abs(na - nb) >= 2) {
+    const [more, fewer, n, m] = na > nb ? [a, b, na, nb] : [b, a, nb, na];
+    said.push(t("{name} finished {n} upgrade levels and technologies, {other} {m}.", { name: more.name, other: fewer.name, n, m }));
+  }
+  return said.length ? said.join(" ") : null;
+}
+function armyGrid(cx, all, shown, icon) {
+  const { api, t } = cx;
+  const el = api.ui.el;
+  const want = new Set(shown.map((p) => p.slot));
+  const rows = all.army.filter((r) => want.has(r.player));
+  if (!rows.length) return el("p", { className: "afm-dim afm-it-note" }, t("Nobody had an army."));
+  const minutes = all.minutes;
+  const grid = el("div", { className: "afm-it-sat", style: `grid-template-columns: 150px repeat(${minutes}, minmax(6px, 1fr))` });
+  grid.append(el("span", {}));
+  for (let m = 0; m < minutes; m++) grid.append(el("span", { className: "afm-it-sat-min afm-dim" }, (m + 1) % 5 === 0 ? String(m + 1) : ""));
+  const kept = [];
+  for (const p of shown) {
+    for (const row of rows.filter((r) => r.player === p.slot)) {
+      kept.push(row);
+      grid.append(el(
+        "span",
+        { className: "afm-it-sat-line" },
+        el("span", { className: "afm-tip-swatch", style: `background:${p.color}` }),
+        icon("unit", row.type, api.names.unit(row.type), true),
+        el("span", { className: "afm-gt-name" }, short(api.names.unit(row.type)))
+      ));
+      row.perMinute.forEach((n, m) => {
+        const a = n === 0 ? 0 : 0.15 + 0.7 * (n / Math.max(1, row.peak));
+        const cell = el("span", { className: "afm-it-sat-cell", style: a ? `background: rgba(79,209,197,${a.toFixed(2)})` : "" });
+        cell.dataset.row = String(kept.length - 1);
+        cell.dataset.minute = String(m);
+        grid.append(cell);
+      });
+    }
+  }
+  const at = (m) => Math.min(cx.timeline.frames, (m + 1) * FRAMES_PER_MINUTE);
+  cx.keep(cx.host.tooltip(grid, (pt) => {
+    const r = grid.getBoundingClientRect();
+    const hit = document.elementFromPoint(r.left + pt.offsetX, r.top + pt.offsetY);
+    if (!(hit instanceof HTMLElement) || !hit.classList.contains("afm-it-sat-cell")) return null;
+    const row = kept[Number(hit.dataset.row)], m = Number(hit.dataset.minute);
+    if (!row) return null;
+    const p = shown.find((x) => x.slot === row.player);
+    return el(
+      "div",
+      { className: "afm-gt" },
+      el("div", { className: "afm-gt-head" }, el("b", {}, formatTime(at(m))), el("span", { className: "afm-dim" }, api.names.unit(row.type))),
+      el(
+        "div",
+        { className: "afm-it-row" },
+        p ? el("span", { className: "afm-tip-swatch", style: `background:${p.color}` }) : null,
+        el("span", { className: "afm-gt-name" }, p?.name ?? ""),
+        el("b", { className: "afm-gt-num" }, String(row.perMinute[m]))
+      ),
+      el("div", { className: "afm-dim" }, t("{n} at the most", { n: row.peak })),
+      el("div", { className: "afm-gt-foot afm-dim" }, t("Press to go there"))
+    );
+  }));
+  grid.addEventListener("click", (e) => {
+    const target = e.target;
+    if (target instanceof HTMLElement && target.dataset.minute) cx.seek(at(Number(target.dataset.minute)));
+  });
+  return el(
+    "div",
+    {},
+    el("p", { className: "afm-dim afm-it-note" }, t("How many of each unit a player had at the end of each minute; the darker, the nearer the most they had of it.")),
+    el("div", { className: "afm-it-sat-wrap" }, grid)
+  );
+}
+function timingsTable(cx, all, shown, nameOf, icon, kindOf) {
+  const { api, t } = cx;
+  const el = api.ui.el;
+  const players = shown.map((p) => all.players.find((x) => x.slot === p.slot));
+  const section2 = (title, pick) => {
+    const rows = /* @__PURE__ */ new Map();
+    for (const p of players) for (const item of pick(p)) {
+      const key = `${item.kind}:${item.id}:${item.level}`;
+      const row = rows.get(key) ?? { item, done: /* @__PURE__ */ new Map() };
+      row.done.set(p.slot, item);
+      if (item.done < row.item.done) row.item = item;
+      rows.set(key, row);
+    }
+    const sorted = [...rows.values()].sort((a, b) => a.item.done - b.item.done);
+    if (!sorted.length) return null;
+    return el(
+      "tbody",
+      {},
+      el("tr", {}, el("th", { scope: "rowgroup", className: "afm-ti-group", colSpan: shown.length + 1 }, title)),
+      ...sorted.map((row) => {
+        const times = shown.map((p) => row.done.get(p.slot)?.done ?? null);
+        const best = Math.min(...times.filter((x) => x !== null));
+        return el(
+          "tr",
+          {},
+          el("th", { scope: "row" }, el("span", { className: "afm-ti-name" }, icon(kindOf(row.item), row.item.id, nameOf(row.item), true), nameOf(row.item))),
+          ...times.map((x) => {
+            const td = el("td", { className: x !== null && x === best && times.filter((y) => y !== null).length > 1 ? "afm-ti-first" : "" }, x === null ? "\u2013" : formatTime(x));
+            if (x !== null) {
+              td.title = t("Go to the time");
+              td.addEventListener("click", () => cx.seek(x));
+            }
+            return td;
+          })
+        );
+      })
+    );
+  };
+  return el(
+    "table",
+    { className: "afm-it-table afm-ti-table" },
+    el("thead", {}, el("tr", {}, el("th", {}), ...shown.map((p) => el("th", { scope: "col" }, el(
+      "span",
+      { className: "afm-it-player" },
+      el("span", { className: "afm-tip-swatch", style: `background:${p.color}` }),
+      p.name
+    ))))),
+    section2(t("Tech buildings"), (p) => p.buildings),
+    section2(t("Upgrades and technologies"), (p) => p.research)
+  );
+}
+
 // insight.ts
 var economies = /* @__PURE__ */ new WeakMap();
 var InsightView = class {
@@ -3155,7 +3671,8 @@ var InsightView = class {
       return;
     }
     const tabs = w.tabs([
-      { value: "economy", label: t("Economy"), mount: (body) => this.economy(body) }
+      { value: "economy", label: t("Economy"), mount: (body) => this.economy(body) },
+      { value: "tech", label: t("Tech"), mount: (body) => this.tech(body) }
     ], { value: settings.tab, onChange: (tab) => {
       settings.tab = tab;
       this.deps.save();
@@ -3163,6 +3680,25 @@ var InsightView = class {
     tabs.classList.add("afm-insight-tabs");
     this.root.append(tabs);
     this.update();
+  }
+  /* ── Tech ── */
+  tech(body) {
+    const game = this.game;
+    mountTech(body, {
+      api: this.deps.api,
+      t: this.deps.t,
+      host: this,
+      timeline: game.timeline,
+      players: game.players.filter((p) => !p.hidden),
+      seek: (f) => this.deps.seek(f),
+      chart: (c) => {
+        this.charts.push(c);
+        c.setNow(this.deps.frame());
+      },
+      keep: (d) => {
+        this.tips.push(d);
+      }
+    });
   }
   /* ── Economy ── */
   /**
@@ -3554,6 +4090,19 @@ var STYLE = `
 .afm-it-sat-line .afm-gt-name { flex: none; }
 .afm-it-sat-line .afm-dim { font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
 .afm-it-sat-cell { height: 14px; background: rgba(255,255,255,0.04); border-radius: 2px; cursor: pointer; }
+.afm-ti { display: inline-flex; flex: none; width: 24px; height: 23px; padding: 1px; box-sizing: content-box; background: #12151c; border: 1px solid rgba(255,255,255,0.08); border-radius: 3px; vertical-align: middle; }
+.afm-ti canvas { width: 100%; height: 100%; }
+.afm-ti-sm { width: 18px; height: 17px; }
+.afm-ti.afm-gi-none { background: rgba(255,255,255,0.04); }
+.afm-ti-path { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 8px; }
+.afm-ti-key { display: inline-flex; align-items: center; gap: 6px; }
+.afm-ti-key-bar { display: inline-block; width: 22px; height: 10px; border-radius: 3px; background: rgba(228,232,239,0.7); }
+.afm-ti-key-bar.afm-ti-quiet { background: rgba(228,232,239,0.35); }
+.afm-ti-table tbody th.afm-ti-group { padding-top: 10px; color: var(--text, #e4e8ef); font-weight: 600; cursor: default; }
+.afm-ti-name { display: inline-flex; align-items: center; gap: 6px; }
+.afm-ti-table td { cursor: pointer; }
+.afm-ti-table td.afm-ti-first { color: var(--accent, #4fd1c5); }
+.afm-it-sat-line .afm-ti-sm { width: 14px; height: 13px; }
 .afm-busy .afm-spin { width: 16px; height: 16px; flex: none; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.22); border-top-color: var(--accent, #4fd1c5); animation: afm-spin 0.8s linear infinite; }
 @keyframes afm-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .afm-busy .afm-spin { animation-duration: 2.4s; } }
@@ -5566,7 +6115,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
         this.update();
       });
       this.statsButton = toggle(t("Map stats"), () => showStats(lensOf() !== "map"));
-      const analysis = insightPossible ? w.button(t("Analysis"), { className: "sm", title: t("Open the Analysis window: the game's economy in charts and numbers"), onClick: () => openInsight() }) : null;
+      const analysis = insightPossible ? w.button(t("Analysis"), { className: "sm", title: t("Open the Analysis window: the game's economy and tech in charts and numbers"), onClick: () => openInsight() }) : null;
       const eyes = w.select([
         { value: -1, label: t("Vision: everyone") },
         ...entry.report.players.map((p) => ({ value: p.player.slot, label: t("Vision: {name}", { name: p.player.name }) }))

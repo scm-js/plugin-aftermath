@@ -75,9 +75,9 @@ abstract class Chart {
   protected axis = true;
 
   protected readonly host: ChartHost;
-  protected readonly tipAt: (frame: number) => HTMLElement | null;
+  protected readonly tipAt: (frame: number, at: { offsetX: number; offsetY: number }) => HTMLElement | null;
 
-  constructor(host: ChartHost, height: number, tipAt: (frame: number) => HTMLElement | null, label: string) {
+  constructor(host: ChartHost, height: number, tipAt: (frame: number, at: { offsetX: number; offsetY: number }) => HTMLElement | null, label: string) {
     this.host = host;
     this.tipAt = tipAt;
     this.canvas = document.createElement("canvas");
@@ -99,7 +99,7 @@ abstract class Chart {
       this.host.hover(frameAt(e.clientX - this.canvas.getBoundingClientRect().left));
     });
     this.canvas.addEventListener("pointerleave", () => this.host.hover(null));
-    this.tip = host.tooltip(this.canvas, (at) => (at.offsetX < this.left - 4 ? null : this.tipAt(frameAt(at.offsetX))));
+    this.tip = host.tooltip(this.canvas, (at) => (at.offsetX < this.left - 4 ? null : this.tipAt(frameAt(at.offsetX), at)));
     this.resize = new ResizeObserver(() => this.draw());
     this.resize.observe(this.canvas);
   }
@@ -293,6 +293,125 @@ export class LaneChart extends Chart {
       }
     });
   }
+}
+
+export interface GanttBar {
+  from: number;
+  to: number;
+  /** What the bar is, written on it where there is room. */
+  label: string;
+  /** The game's icon, drawn at the bar's start; null while it loads or when there is none. */
+  icon: () => HTMLCanvasElement | null;
+  /** A building is drawn quieter than research, so the research stands out and the path of buildings still reads. */
+  quiet: boolean;
+}
+
+export interface GanttGroup {
+  /** Whose the bars are. */
+  slot: number;
+  label: string;
+  color: string;
+  bars: GanttBar[];
+}
+
+/** Height of a Gantt row: the icon (36 × 34 at half size) and a pixel round it. */
+const ROW = 20, ICON_W = 18, ICON_H = 17, GROUP_GAP = 8;
+
+/**
+ * Bars along the game's time, a group of rows a player: each bar from when something began to when it was done,
+ * its icon at the start and its name on it where it fits. The rows are packed so that no two bars (with their
+ * icons) overlap; how many a player needs depends on the width, so the chart grows taller as it narrows.
+ */
+export class GanttChart extends Chart {
+  private groups: GanttGroup[] = [];
+  /** Where each bar was drawn, for the tooltip: [group, bar, x0, x1, y0]. */
+  private placed: { group: number; bar: number; x0: number; x1: number; y0: number }[] = [];
+
+  constructor(host: ChartHost, tipAt: (frame: number, at: { offsetX: number; offsetY: number }) => HTMLElement | null, label: string) {
+    super(host, 40, tipAt, label);
+  }
+
+  set(groups: GanttGroup[], end: number): void {
+    this.groups = groups;
+    this.end = Math.max(1, end);
+    this.draw();
+  }
+
+  /** The bar under a point of the chart (CSS pixels), or null. */
+  barAt(offsetX: number, offsetY: number): { group: GanttGroup; bar: GanttBar } | null {
+    for (const p of this.placed) {
+      if (offsetX >= p.x0 - 1 && offsetX <= p.x1 + 1 && offsetY >= p.y0 && offsetY < p.y0 + ROW) {
+        const group = this.groups[p.group];
+        return { group, bar: group.bars[p.bar] };
+      }
+    }
+    return null;
+  }
+
+  protected plot(g: CanvasRenderingContext2D, box: { x: (f: number) => number; top: number }): void {
+    const { x } = box;
+    const width = this.canvas.clientWidth, text = css(this.canvas, "--text", "#e4e8ef");
+    this.placed = [];
+    let y = 4;
+    g.font = "11px system-ui, sans-serif";
+    g.textBaseline = "middle";
+    this.groups.forEach((group, gi) => {
+      const spans = group.bars.map((b) => ({ from: x(b.from), to: Math.max(x(b.to), x(b.from) + ICON_W) }));
+      const rows = packRows(spans, 3);
+      const count = Math.max(1, ...rows.map((r) => r + 1));
+      // The group's ground, and the player's name at the right as the line charts name theirs.
+      g.fillStyle = "rgba(255,255,255,0.03)";
+      g.fillRect(this.left, y, width - this.left - this.right, count * ROW);
+      const lx = width - this.right + 8;
+      g.fillStyle = group.color;
+      g.fillRect(lx, y + ROW / 2 - 1, 6, 2);
+      g.fillStyle = text;
+      g.textAlign = "left";
+      g.fillText(group.label.length > 12 ? `${group.label.slice(0, 11)}…` : group.label, lx + 10, y + ROW / 2);
+      group.bars.forEach((bar, bi) => {
+        const y0 = y + rows[bi] * ROW, x0 = spans[bi].from, x1 = Math.max(x0 + 2, x(bar.to));
+        this.placed.push({ group: gi, bar: bi, x0, x1: spans[bi].to, y0 });
+        g.globalAlpha = bar.quiet ? 0.35 : 0.7;
+        g.fillStyle = group.color;
+        g.beginPath(); g.roundRect(x0, y0 + 3, x1 - x0, ROW - 6, 3); g.fill();
+        g.globalAlpha = 1;
+        const icon = bar.icon();
+        if (icon) {
+          g.fillStyle = "#12151c";
+          g.fillRect(x0, y0 + 1, ICON_W, ICON_H + 1);
+          g.drawImage(icon, x0, y0 + 1.5, ICON_W, ICON_H);
+        }
+        // The name, inside the bar after the icon, where it fits.
+        const room = x1 - x0 - (icon ? ICON_W : 0) - 8;
+        if (room > 24) {
+          g.fillStyle = text;
+          g.textAlign = "left";
+          let label = bar.label;
+          while (label.length > 3 && g.measureText(label).width > room) label = `${label.slice(0, -2)}…`;
+          if (g.measureText(label).width <= room) g.fillText(label, x0 + (icon ? ICON_W : 0) + 4, y0 + ROW / 2);
+        }
+      });
+      y += count * ROW + GROUP_GAP;
+    });
+    // As tall as the rows need, which the width decides. Set on the next frame, not while a resize is being
+    // answered (which the browser calls a loop), and only when it changes, as setting it draws again.
+    const want = `${Math.max(ROW, y - GROUP_GAP + 4) + (this.axis ? BOTTOM : 2)}px`;
+    if (this.canvas.style.height !== want) requestAnimationFrame(() => { this.canvas.style.height = want; });
+  }
+}
+
+/** Lay `spans` out in rows so that no two in a row overlap (`gap` apart at least), the earliest placed first. */
+export function packRows(spans: readonly { from: number; to: number }[], gap = 0): number[] {
+  const ends: number[] = [];
+  const order = spans.map((_, i) => i).sort((a, b) => spans[a].from - spans[b].from || spans[a].to - spans[b].to);
+  const out = new Array<number>(spans.length);
+  for (const i of order) {
+    let r = ends.findIndex((end) => end + gap <= spans[i].from);
+    if (r < 0) { r = ends.length; ends.push(-Infinity); }
+    ends[r] = spans[i].to;
+    out[i] = r;
+  }
+  return out;
 }
 
 /** The index of the entry of `xs` nearest `x`, -1 for none. */

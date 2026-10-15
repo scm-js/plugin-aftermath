@@ -287,6 +287,19 @@ const STYLE = `
 .afm-it-sat-line .afm-gt-name { flex: none; }
 .afm-it-sat-line .afm-dim { font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
 .afm-it-sat-cell { height: 14px; background: rgba(255,255,255,0.04); border-radius: 2px; cursor: pointer; }
+.afm-ti { display: inline-flex; flex: none; width: 24px; height: 23px; padding: 1px; box-sizing: content-box; background: #12151c; border: 1px solid rgba(255,255,255,0.08); border-radius: 3px; vertical-align: middle; }
+.afm-ti canvas { width: 100%; height: 100%; }
+.afm-ti-sm { width: 18px; height: 17px; }
+.afm-ti.afm-gi-none { background: rgba(255,255,255,0.04); }
+.afm-ti-path { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 8px; }
+.afm-ti-key { display: inline-flex; align-items: center; gap: 6px; }
+.afm-ti-key-bar { display: inline-block; width: 22px; height: 10px; border-radius: 3px; background: rgba(228,232,239,0.7); }
+.afm-ti-key-bar.afm-ti-quiet { background: rgba(228,232,239,0.35); }
+.afm-ti-table tbody th.afm-ti-group { padding-top: 10px; color: var(--text, #e4e8ef); font-weight: 600; cursor: default; }
+.afm-ti-name { display: inline-flex; align-items: center; gap: 6px; }
+.afm-ti-table td { cursor: pointer; }
+.afm-ti-table td.afm-ti-first { color: var(--accent, #4fd1c5); }
+.afm-it-sat-line .afm-ti-sm { width: 14px; height: 13px; }
 .afm-busy .afm-spin { width: 16px; height: 16px; flex: none; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.22); border-top-color: var(--accent, #4fd1c5); animation: afm-spin 0.8s linear infinite; }
 @keyframes afm-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .afm-busy .afm-spin { animation-duration: 2.4s; } }
@@ -2307,7 +2320,7 @@ export function activate(api: PluginApi) {
       this.legendButton = toggle(t("Legend"), () => { settings.legend = !settings.legend; save(); redraw(); this.update(); });
       this.statsButton = toggle(t("Map stats"), () => showStats(lensOf() !== "map"));
       // The Analysis window, on an editor with the tabs it is built of.
-      const analysis = insightPossible ? w.button(t("Analysis"), { className: "sm", title: t("Open the Analysis window: the game's economy in charts and numbers"), onClick: () => openInsight() }) : null;
+      const analysis = insightPossible ? w.button(t("Analysis"), { className: "sm", title: t("Open the Analysis window: the game's economy and tech in charts and numbers"), onClick: () => openInsight() }) : null;
       // In the Replay view: the game as everyone sees it, or through one player's eyes, with the fog of war.
       const eyes = w.select([
         { value: -1, label: t("Vision: everyone") },

@@ -1,14 +1,16 @@
 /**
- * The Analysis window: a large panel beside the replay for reading a game at length, a tab a subject. Economy is the
- * first: what each player mined and how fast, what they left unspent, their workers, when they were supply blocked,
- * and how many workers stood at each mineral line, minute by minute. Every chart follows the replay's clock, and a
+ * The Analysis window: a large panel beside the replay for reading a game at length, a tab a subject. Economy: what
+ * each player mined and how fast, what they left unspent, their workers, when they were supply blocked, and how many
+ * workers stood at each mineral line, minute by minute. Tech (`techview.ts`): the tier each reached, every tech
+ * building and research from start to done, and the army they fielded. Every chart follows the replay's clock, and a
  * press on one goes there.
  */
 import type { PluginApi } from "@scm-js/plugin-api";
 import { formatTime, FRAMES_PER_MINUTE } from "./analysis";
-import { LaneChart, LineChart, type ChartHost, type LineSeries } from "./charts";
+import { GanttChart, LaneChart, LineChart, type ChartHost, type LineSeries } from "./charts";
 import { economy, type Economy, type LineSaturation } from "./economy";
 import type { MineralLines, UnitIndex } from "./played";
+import { mountTech } from "./techview";
 import type { ReplayTimeline } from "./vendor/scm-sim";
 
 /** One played game, as the window reads it. */
@@ -43,7 +45,7 @@ const economies = new WeakMap<ReplayTimeline, Economy>();
 
 export class InsightView implements ChartHost {
   private game: InsightGame | null = null;
-  private charts: (LineChart | LaneChart)[] = [];
+  private charts: (LineChart | LaneChart | GanttChart)[] = [];
   private tips: { dispose(): void }[] = [];
   private readonly root: HTMLElement;
 
@@ -96,10 +98,24 @@ export class InsightView implements ChartHost {
     if (!this.game) { this.root.append(el("div", { className: "afm-insight-empty" }, why)); return; }
     const tabs = w.tabs([
       { value: "economy", label: t("Economy"), mount: (body) => this.economy(body) },
+      { value: "tech", label: t("Tech"), mount: (body) => this.tech(body) },
     ], { value: settings.tab, onChange: (tab) => { settings.tab = tab; this.deps.save(); } });
     tabs.classList.add("afm-insight-tabs");
     this.root.append(tabs);
     this.update();
+  }
+
+  /* ── Tech ── */
+
+  private tech(body: HTMLElement): void {
+    const game = this.game!;
+    mountTech(body, {
+      api: this.deps.api, t: this.deps.t, host: this, timeline: game.timeline,
+      players: game.players.filter((p) => !p.hidden),
+      seek: (f) => this.deps.seek(f),
+      chart: (c) => { this.charts.push(c); c.setNow(this.deps.frame()); },
+      keep: (d) => { this.tips.push(d); },
+    });
   }
 
   /* ── Economy ── */
