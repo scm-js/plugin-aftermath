@@ -3,6 +3,8 @@
  * where its server is and the caller's session, for the cast's calls. Types only.
  */
 export interface ScmjsAccountService {
+  /** \`guest\`: no session in this browser; \`trial\` or \`account\`: one the server knows. */
+  state(): { kind: "guest" | "trial" | "account" };
   /** The server every call goes to, without a trailing slash. */
   serverUrl(): string;
   /** `{ Authorization: "Bearer …" }`, or `{}` for a guest. */

@@ -1031,7 +1031,8 @@ export function activate(api: PluginApi) {
   /** Ask the server what it offers this caller: the cast recipe allowed, and whether it voices. */
   async function askOffer(): Promise<void> {
     const a = account;
-    if (!a) { castOffer = null; strip?.render(); return; }
+    // (A guest has no session: the server would refuse the cast whatever its info says.)
+    if (!a || a.state().kind === "guest") { castOffer = null; strip?.render(); return; }
     try {
       const res = await fetch(`${a.serverUrl()}/v1/info`, { headers: a.headers() });
       const info = (await res.json()) as { recipes?: { name: string; enabled: boolean }[]; speech?: boolean };

@@ -5446,7 +5446,7 @@ function activate(api) {
   const casting = { entry: null, busy: null, error: null, reel: null, made: null, abort: null, speed: 0 };
   async function askOffer() {
     const a = account;
-    if (!a) {
+    if (!a || a.state().kind === "guest") {
       castOffer = null;
       strip?.render();
       return;
