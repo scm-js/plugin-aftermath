@@ -41,6 +41,7 @@ import { clockOf, mapReport, winnerOf, type MapReport } from "./report";
 import { direct, lookAt, shotAt, type Shot } from "./director";
 import { advantage, bases as takenBases, hardestHit, leads, story, totals, type Advantage, type Base, type PlayerTotals } from "./story";
 import type { ReplayTimeline, ScmSimService } from "./vendor/scm-sim";
+import { GameView } from "./gameview";
 
 /* ── State ──────────────────────────────────────────────── */
 
@@ -290,6 +291,62 @@ export function activate(api: PluginApi) {
   let raf = 0;
   let lastTick = 0;
 
+  /* ── The Game view (gameview.ts): the replay played out in the map's place, and then the clock ── */
+
+  /** What the Game view is doing with the replay in front, for the timeline's line; null when nothing. */
+  let gameState: string | null = null;
+  /** Map stats put the map in front of the game: it goes back to the game when Map stats closes. */
+  let statsHidGame = false;
+  /** Replays whose tab has been offered the Game view. */
+  const offered = new Set<number>();
+  const game = new GameView(api, {
+    frame: (id, f) => {
+      if (!current || current.id !== id || !gameClock()) return;
+      current.frame = f.frame;
+      // (The game stops by itself at the replay's end.)
+      if (playing && !f.playing && f.seeking === null && f.frame >= current.report.frames - 1) stop();
+      tick();
+    },
+    movedByUser: () => {
+      if (!cam.following || lensOf() === "map") return;
+      cam.following = false;
+      cam.asked = [];
+      strip?.update();
+    },
+    shown: (on) => handOver(on),
+    state: (text) => { gameState = text; strip?.update(); },
+  }, "Game", {
+    loading: (name) => t("Starting the game of {name}…", { name }),
+    failed: (message) => t("The game could not be shown: {message}", { message }),
+  });
+  /** The Game view is the clock: it shows the replay in front, loaded. */
+  const gameClock = () => current !== null && game.shown && game.holds(current.id);
+
+  /** The tab in front went from the map to the game or back: the clock goes with it, from where it stood. */
+  function handOver(on: boolean): void {
+    const entry = current;
+    if (!entry) return;
+    if (on) {
+      cancelAnimationFrame(raf);
+      void game.hold(entry, entry.frame, playing, settings.speed).then((ok) => { if (!ok && playing && current === entry) runClock(); strip?.update(); });
+    } else {
+      game.play(false);
+      if (playing) runClock();
+    }
+    tick();
+  }
+
+  /** Offer a replay's tab the Game view the first time it comes to the front, showing it there; and load it when shown. */
+  function gameFor(entry: Loaded): void {
+    if (entry.docId === null) return;
+    if (!offered.has(entry.id)) {
+      offered.add(entry.id);
+      void game.offer(entry, true).then((ok) => { if (!ok) offered.delete(entry.id); });
+      return;
+    }
+    if (game.shown && !game.holds(entry.id)) handOver(true);
+  }
+
   const style = document.createElement("style");
   style.textContent = STYLE;
   document.head.append(style);
@@ -442,6 +499,7 @@ export function activate(api: PluginApi) {
       showSide();
       showStrip();
       overlay.show();
+      gameFor(current);
     } else {
       closeStrip();
       if (!sideAsked) closeSide();
@@ -458,6 +516,7 @@ export function activate(api: PluginApi) {
     // The clock is one game's: moving it brings that game back from Map stats.
     if (lensOf() === "map") showStats(false);
     current.frame = Math.max(0, Math.min(current.report.frames, Math.round(f)));
+    if (gameClock()) game.seek(current.frame);
     tick();
   }
 
@@ -505,7 +564,12 @@ export function activate(api: PluginApi) {
       settings.tab = "map";
       sideHidden = false;
       showSide(true);
-    } else if (settings.tab === "map") settings.tab = gameTab;
+      // Map stats is drawn on the map: the game steps aside while it is open.
+      if (game.shown) { statsHidGame = true; game.show(false); }
+    } else {
+      if (settings.tab === "map") settings.tab = gameTab;
+      if (statsHidGame) { statsHidGame = false; game.show(true); }
+    }
     save();
     heatCache = null;
     side?.render();
@@ -532,6 +596,8 @@ export function activate(api: PluginApi) {
 
   /** Centre the view on a tile, and remember it as the camera's own doing. */
   function lookTo(tx: number, ty: number): void {
+    // In the Game view the camera is the game's, in pixels; the person moving it is said by the view itself.
+    if (game.shown) { game.camera(tx * 32, ty * 32); return; }
     api.view.center(tx, ty);
     cam.asked.push({ x: tx, y: ty });
     if (cam.asked.length > 8) cam.asked.shift();
@@ -539,7 +605,7 @@ export function activate(api: PluginApi) {
 
   /** The view's middle is not where the camera put it lately, allowing for the map's edge and whole tiles. */
   function movedByUser(): boolean {
-    if (!current || !cam.asked.length) return false;
+    if (game.shown || !current || !cam.asked.length) return false;
     const v = api.view.visible(), hw = (v.x1 - v.x0) / 2, hh = (v.y1 - v.y0) / 2;
     const cx = (v.x0 + v.x1) / 2, cy = (v.y0 + v.y1) / 2;
     const clamp = (n: number, lo: number, hi: number) => (hi < lo ? (lo + hi) / 2 : Math.max(lo, Math.min(hi, n)));
@@ -577,7 +643,8 @@ export function activate(api: PluginApi) {
     follow();
     side?.update();
     strip?.update();
-    overlay.redraw();
+    // (The map is under the game: nothing of it to draw.)
+    if (!game.shown) overlay.redraw();
   }
 
   function play(): void {
@@ -585,9 +652,17 @@ export function activate(api: PluginApi) {
     if (lensOf() === "map") showStats(false);
     if (current.frame >= current.report.frames) current.frame = 0;
     playing = true;
+    if (gameClock()) { game.play(true); strip?.update(); return; }
+    runClock();
+    strip?.update();
+  }
+
+  /** Aftermath's own clock, moving the replay in front at the chosen speed; it gives way to the game's when that one takes over. */
+  function runClock(): void {
+    cancelAnimationFrame(raf);
     lastTick = performance.now();
     const step = (now: number) => {
-      if (!playing || !current) return;
+      if (!playing || !current || gameClock()) return;
       const dt = now - lastTick;
       lastTick = now;
       current.frame = Math.min(current.report.frames, current.frame + (dt / FRAME_MS) * settings.speed);
@@ -596,12 +671,12 @@ export function activate(api: PluginApi) {
       if (playing) raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
-    strip?.update();
   }
 
   function stop(): void {
     playing = false;
     cancelAnimationFrame(raf);
+    game.play(false);
     strip?.update();
   }
 
@@ -1122,7 +1197,7 @@ export function activate(api: PluginApi) {
     if (current?.played?.shots.length) {
       seek(Math.max(0, f.from - FIGHT_LEAD));
       setFollowing(true);
-      api.view.flash({ rect: { x0: Math.max(0, Math.floor(f.rect.x0 / 32) - 2), y0: Math.max(0, Math.floor(f.rect.y0 / 32) - 2), x1: Math.ceil(f.rect.x1 / 32) + 2, y1: Math.ceil(f.rect.y1 / 32) + 2 }, kind: "attention" });
+      if (!game.shown) api.view.flash({ rect: { x0: Math.max(0, Math.floor(f.rect.x0 / 32) - 2), y0: Math.max(0, Math.floor(f.rect.y0 / 32) - 2), x1: Math.ceil(f.rect.x1 / 32) + 2, y1: Math.ceil(f.rect.y1 / 32) + 2 }, kind: "attention" });
       return;
     }
     const rect = { x0: Math.max(0, Math.floor(f.rect.x0 / 32) - 2), y0: Math.max(0, Math.floor(f.rect.y0 / 32) - 2), x1: Math.ceil(f.rect.x1 / 32) + 2, y1: Math.ceil(f.rect.y1 / 32) + 2 };
@@ -1134,6 +1209,7 @@ export function activate(api: PluginApi) {
     // A place asked for: the camera lets go of the view (F follows again).
     cam.following = false;
     seek(frame);
+    if (game.shown) { game.camera(x, y); return; }
     api.view.center(Math.floor(x / 32), Math.floor(y / 32));
     if (rect) api.view.flash({ rect, kind: "attention" });
   }
@@ -1733,7 +1809,7 @@ export function activate(api: PluginApi) {
       this.playButton = w.button("", { primary: true, className: "sm", title: t("Space plays and pauses. ← and → go 10 seconds back or on, a minute with Shift; N and Shift+N go to the next and the previous key moment; F follows the action or lets the camera go; O shows the orders; Home and End go to the start and the end."), onClick: () => (playing ? stop() : play()) });
       this.timeLabel = el("span", { className: "afm-time" });
       // A menu keeps the focus, and Space and the arrows with it: each gives it back once chosen.
-      const speed = w.select([1, 2, 4, 8, 16, 32].map((n) => ({ value: n, label: `${n}×` })), { value: settings.speed, title: t("Playback speed"), onChange: (v) => { settings.speed = Number(v); save(); speed.blur(); } });
+      const speed = w.select([1, 2, 4, 8, 16, 32].map((n) => ({ value: n, label: `${n}×` })), { value: settings.speed, title: t("Playback speed"), onChange: (v) => { settings.speed = Number(v); save(); if (gameClock()) game.speed(settings.speed); speed.blur(); } });
       const chart = chartOf(entry);
       const chartSelect = w.select([
         ...(entry.played?.adv ? [{ value: "lead", label: t("Army lead") }] : []),
@@ -1791,7 +1867,12 @@ export function activate(api: PluginApi) {
       this.timeLabel!.textContent = `${formatTime(entry.frame)} / ${formatTime(entry.report.frames)}`;
       let line = "";
       let why = "";
-      if (running?.entry === entry) {
+      if (gameState && game.shown) {
+        line = gameState;
+      } else if (game.shown && game.seeking) {
+        // (The first long jump in a game runs the engine ahead; later ones start from moments it kept on the way.)
+        line = t("Going to {time}…", { time: formatTime(entry.frame) });
+      } else if (running?.entry === entry) {
         line = running.fraction < 0 ? t("Analysing the game…") : t("Analysing the game: {percent}%", { percent: Math.floor(running.fraction * 100) });
         why = t("The game engine plays the replay through in the background to see what really happened: the armies, the fights, what was lost. You can watch the replay meanwhile.");
       } else if (entry.played) {
@@ -2024,7 +2105,7 @@ export function activate(api: PluginApi) {
   if (bottomDock) api.ui.fileType({ name: msg("StarCraft replay"), extensions: [".rep"], open: (files) => void load(files) });
 
   // Last: a service already there is announced at once, and the answer reaches the panels.
-  const simWatch = api.services.watch<ScmSimService>("scm-sim.engine", (service) => { sim = service; pump(); strip?.render(); });
+  const simWatch = api.services.watch<ScmSimService>("scm-sim.engine", (service) => { sim = service; game.setService(service); if (current) gameFor(current); pump(); strip?.render(); });
 
   api.events.on("document", () => sync());
   // The view moved by the user, even with the clock still: Spectate's camera lets go.
@@ -2041,6 +2122,7 @@ export function activate(api: PluginApi) {
     stop();
     bindKeys(false);
     running?.controller.abort();
+    game.dispose();
     simWatch.dispose();
     imageListener.dispose();
     style.remove();

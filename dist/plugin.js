@@ -954,6 +954,9 @@ var KO = {
   "Open Replay\u2026": "\uB9AC\uD50C\uB808\uC774 \uC5F4\uAE30\u2026",
   "Ordered {n} times": "{n}\uBC88 \uBA85\uB839\uD568",
   "Pause": "\uC77C\uC2DC \uC815\uC9C0",
+  "Starting the game of {name}\u2026": "{name} \uAC8C\uC784\uC744 \uC2DC\uC791\uD558\uB294 \uC911\u2026",
+  "Going to {time}\u2026": "{time}(\uC73C)\uB85C \uAC00\uB294 \uC911\u2026",
+  "The game could not be shown: {message}": "\uAC8C\uC784\uC744 \uBCF4\uC5EC \uC904 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4: {message}",
   "Play": "\uC7AC\uC0DD",
   "Playback speed": "\uC7AC\uC0DD \uC18D\uB3C4",
   "Protoss": "\uD504\uB85C\uD1A0\uC2A4",
@@ -2029,6 +2032,153 @@ function hardestHit(f) {
   return worst;
 }
 
+// gameview.ts
+var GameView = class {
+  hooks;
+  handle;
+  words;
+  element = null;
+  view = null;
+  subs = [];
+  /** The replay loaded in the viewer, and the one being loaded. */
+  holding = null;
+  wanted = null;
+  /** Whether the engine can play here: unknown until asked, then kept. */
+  canPlay = null;
+  asking = null;
+  sim = null;
+  changed;
+  /**
+   * A seek asked for and not yet arrived: until the viewer shows a frame there, what it says it shows is the moment
+   * it is leaving (it reports the frame on screen while it runs ahead), which is not the clock any more.
+   */
+  aiming = null;
+  constructor(api, hooks, title, words) {
+    this.hooks = hooks;
+    this.words = words;
+    this.handle = api.ui.mapView({ title, mount: (el) => {
+      this.element = el;
+    } });
+    this.changed = this.handle.onChange((on) => hooks.shown(on));
+  }
+  setService(sim) {
+    if (sim === this.sim) return;
+    this.sim = sim;
+    this.canPlay = null;
+    this.asking = null;
+  }
+  /** Whether the Game view can be offered: the scm-sim plugin has one, and the browser has the game's files. */
+  async available() {
+    const sim = this.sim;
+    if (!sim?.present || typeof sim.view !== "function") return false;
+    if (this.canPlay !== null) return this.canPlay;
+    this.asking ??= sim.status().then((s) => this.canPlay = s.available, () => this.canPlay = false);
+    return this.asking;
+  }
+  /** Offer the Game view on a replay's tab, and show it there when `show`. */
+  async offer(entry, show) {
+    if (entry.docId === null || !await this.available()) return false;
+    this.handle.offer(true, entry.docId);
+    if (show) this.handle.show(true, entry.docId);
+    return true;
+  }
+  /** The tab in front shows the game. */
+  get shown() {
+    return this.handle.isShown();
+  }
+  /** Show the map (or the game again) on a replay's tab. */
+  show(on, docId) {
+    this.handle.show(on, docId);
+  }
+  /** The viewer holds this replay, loaded and ready to be driven. */
+  holds(id) {
+    return id !== null && this.holding === id && this.wanted === null;
+  }
+  make() {
+    if (this.view) return this.view;
+    const sim = this.sim;
+    if (!sim?.view || !this.element) return null;
+    const view = sim.view(this.element);
+    this.view = view;
+    this.subs = [
+      view.onFrame((f) => {
+        if (this.holding === null || this.wanted !== null) return;
+        const a = this.aiming;
+        if (a) {
+          if (f.seeking !== null) {
+            a.sawSeeking = true;
+            return;
+          }
+          if (Math.abs(f.frame - a.frame) > 48 && !a.sawSeeking) return;
+          this.aiming = null;
+        }
+        this.hooks.frame(this.holding, f);
+      }),
+      view.onCamera((c) => {
+        if (c.byUser) this.hooks.movedByUser();
+      })
+    ];
+    return view;
+  }
+  /**
+   * Load `entry` into the viewer when it holds another, then put it at `frame`, playing or paused at `speed`. Resolves
+   * false when it could not be (the viewer is gone, or the replay did not play), with the reason on `state`.
+   */
+  async hold(entry, frame, playing2, speed) {
+    const view = this.make();
+    if (!view) return false;
+    if (this.holding !== entry.id || this.wanted !== null) {
+      if (this.wanted === entry.id) return false;
+      this.wanted = entry.id;
+      this.hooks.state(this.words.loading(entry.fileName));
+      try {
+        await view.load(entry.bytes, entry.fileName);
+      } catch (err) {
+        if (this.wanted !== entry.id) return false;
+        this.wanted = null;
+        this.holding = null;
+        this.hooks.state(this.words.failed(err instanceof Error ? err.message : String(err)));
+        return false;
+      }
+      if (this.wanted !== entry.id) return false;
+      this.wanted = null;
+      this.holding = entry.id;
+      this.hooks.state(null);
+    }
+    view.speed(speed);
+    if (Math.round(frame) > 0) this.seek(frame);
+    view.play(playing2);
+    return true;
+  }
+  play(on) {
+    this.view?.play(on);
+  }
+  speed(multiplier) {
+    this.view?.speed(multiplier);
+  }
+  seek(frame) {
+    if (!this.view) return;
+    this.aiming = { frame: Math.round(frame), sawSeeking: false };
+    this.view.seek(Math.round(frame));
+  }
+  /** A seek is on its way: the clock is where it was sent, not where the game still shows. */
+  get seeking() {
+    return this.aiming !== null;
+  }
+  /** Look at a point of the map, in pixels. */
+  camera(x, y) {
+    this.view?.camera(x, y);
+  }
+  dispose() {
+    for (const s of this.subs) s.dispose();
+    this.subs = [];
+    this.changed.dispose();
+    this.view?.dispose();
+    this.view = null;
+    this.handle.dispose();
+  }
+};
+
 // plugin.ts
 var DEFAULTS = { orders: false, legend: true, heat: "losses", speed: 8, workers: false, chart: "lead", tab: "summary", version: 5 };
 var FRONT_FRAMES = 120;
@@ -2186,6 +2336,58 @@ function activate(api) {
   let playing2 = false;
   let raf = 0;
   let lastTick = 0;
+  let gameState = null;
+  let statsHidGame = false;
+  const offered = /* @__PURE__ */ new Set();
+  const game = new GameView(api, {
+    frame: (id, f) => {
+      if (!current || current.id !== id || !gameClock()) return;
+      current.frame = f.frame;
+      if (playing2 && !f.playing && f.seeking === null && f.frame >= current.report.frames - 1) stop();
+      tick();
+    },
+    movedByUser: () => {
+      if (!cam.following || lensOf() === "map") return;
+      cam.following = false;
+      cam.asked = [];
+      strip?.update();
+    },
+    shown: (on) => handOver(on),
+    state: (text) => {
+      gameState = text;
+      strip?.update();
+    }
+  }, "Game", {
+    loading: (name) => t("Starting the game of {name}\u2026", { name }),
+    failed: (message) => t("The game could not be shown: {message}", { message })
+  });
+  const gameClock = () => current !== null && game.shown && game.holds(current.id);
+  function handOver(on) {
+    const entry = current;
+    if (!entry) return;
+    if (on) {
+      cancelAnimationFrame(raf);
+      void game.hold(entry, entry.frame, playing2, settings.speed).then((ok) => {
+        if (!ok && playing2 && current === entry) runClock();
+        strip?.update();
+      });
+    } else {
+      game.play(false);
+      if (playing2) runClock();
+    }
+    tick();
+  }
+  function gameFor(entry) {
+    if (entry.docId === null) return;
+    if (!offered.has(entry.id)) {
+      offered.add(entry.id);
+      void game.offer(entry, true).then((ok) => {
+        if (!ok) offered.delete(entry.id);
+      });
+      return;
+    }
+    if (game.shown && !game.holds(entry.id)) handOver(true);
+  }
   const style = document.createElement("style");
   style.textContent = STYLE;
   document.head.append(style);
@@ -2319,6 +2521,7 @@ function activate(api) {
       showSide();
       showStrip();
       overlay.show();
+      gameFor(current);
     } else {
       closeStrip();
       if (!sideAsked) closeSide();
@@ -2331,6 +2534,7 @@ function activate(api) {
     if (!current) return;
     if (lensOf() === "map") showStats(false);
     current.frame = Math.max(0, Math.min(current.report.frames, Math.round(f)));
+    if (gameClock()) game.seek(current.frame);
     tick();
   }
   const cam = { following: true, x: -1, y: -1, shot: -1, last: 0, asked: [] };
@@ -2372,7 +2576,17 @@ function activate(api) {
       settings.tab = "map";
       sideHidden = false;
       showSide(true);
-    } else if (settings.tab === "map") settings.tab = gameTab;
+      if (game.shown) {
+        statsHidGame = true;
+        game.show(false);
+      }
+    } else {
+      if (settings.tab === "map") settings.tab = gameTab;
+      if (statsHidGame) {
+        statsHidGame = false;
+        game.show(true);
+      }
+    }
     save();
     heatCache = null;
     side?.render();
@@ -2386,12 +2600,16 @@ function activate(api) {
   }
   const waitingOf = (of) => sim?.present ? mapGames(of).filter((l) => !l.excluded && !l.played && !l.failed).length : 0;
   function lookTo(tx, ty) {
+    if (game.shown) {
+      game.camera(tx * 32, ty * 32);
+      return;
+    }
     api.view.center(tx, ty);
     cam.asked.push({ x: tx, y: ty });
     if (cam.asked.length > 8) cam.asked.shift();
   }
   function movedByUser() {
-    if (!current || !cam.asked.length) return false;
+    if (game.shown || !current || !cam.asked.length) return false;
     const v = api.view.visible(), hw = (v.x1 - v.x0) / 2, hh = (v.y1 - v.y0) / 2;
     const cx = (v.x0 + v.x1) / 2, cy = (v.y0 + v.y1) / 2;
     const clamp = (n, lo, hi) => hi < lo ? (lo + hi) / 2 : Math.max(lo, Math.min(hi, n));
@@ -2423,16 +2641,26 @@ function activate(api) {
     follow();
     side?.update();
     strip?.update();
-    overlay.redraw();
+    if (!game.shown) overlay.redraw();
   }
   function play() {
     if (!current || playing2) return;
     if (lensOf() === "map") showStats(false);
     if (current.frame >= current.report.frames) current.frame = 0;
     playing2 = true;
+    if (gameClock()) {
+      game.play(true);
+      strip?.update();
+      return;
+    }
+    runClock();
+    strip?.update();
+  }
+  function runClock() {
+    cancelAnimationFrame(raf);
     lastTick = performance.now();
     const step2 = (now) => {
-      if (!playing2 || !current) return;
+      if (!playing2 || !current || gameClock()) return;
       const dt = now - lastTick;
       lastTick = now;
       current.frame = Math.min(current.report.frames, current.frame + dt / FRAME_MS * settings.speed);
@@ -2441,11 +2669,11 @@ function activate(api) {
       if (playing2) raf = requestAnimationFrame(step2);
     };
     raf = requestAnimationFrame(step2);
-    strip?.update();
   }
   function stop() {
     playing2 = false;
     cancelAnimationFrame(raf);
+    game.play(false);
     strip?.update();
   }
   let keys = [];
@@ -2955,7 +3183,7 @@ function activate(api) {
     if (current?.played?.shots.length) {
       seek(Math.max(0, f.from - FIGHT_LEAD));
       setFollowing(true);
-      api.view.flash({ rect: { x0: Math.max(0, Math.floor(f.rect.x0 / 32) - 2), y0: Math.max(0, Math.floor(f.rect.y0 / 32) - 2), x1: Math.ceil(f.rect.x1 / 32) + 2, y1: Math.ceil(f.rect.y1 / 32) + 2 }, kind: "attention" });
+      if (!game.shown) api.view.flash({ rect: { x0: Math.max(0, Math.floor(f.rect.x0 / 32) - 2), y0: Math.max(0, Math.floor(f.rect.y0 / 32) - 2), x1: Math.ceil(f.rect.x1 / 32) + 2, y1: Math.ceil(f.rect.y1 / 32) + 2 }, kind: "attention" });
       return;
     }
     const rect = { x0: Math.max(0, Math.floor(f.rect.x0 / 32) - 2), y0: Math.max(0, Math.floor(f.rect.y0 / 32) - 2), x1: Math.ceil(f.rect.x1 / 32) + 2, y1: Math.ceil(f.rect.y1 / 32) + 2 };
@@ -2964,6 +3192,10 @@ function activate(api) {
   function goTo(frame, x, y, rect) {
     cam.following = false;
     seek(frame);
+    if (game.shown) {
+      game.camera(x, y);
+      return;
+    }
     api.view.center(Math.floor(x / 32), Math.floor(y / 32));
     if (rect) api.view.flash({ rect, kind: "attention" });
   }
@@ -3599,6 +3831,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
       const speed = w.select([1, 2, 4, 8, 16, 32].map((n) => ({ value: n, label: `${n}\xD7` })), { value: settings.speed, title: t("Playback speed"), onChange: (v) => {
         settings.speed = Number(v);
         save();
+        if (gameClock()) game.speed(settings.speed);
         speed.blur();
       } });
       const chart = chartOf(entry);
@@ -3680,7 +3913,11 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
       this.timeLabel.textContent = `${formatTime(entry.frame)} / ${formatTime(entry.report.frames)}`;
       let line = "";
       let why = "";
-      if (running?.entry === entry) {
+      if (gameState && game.shown) {
+        line = gameState;
+      } else if (game.shown && game.seeking) {
+        line = t("Going to {time}\u2026", { time: formatTime(entry.frame) });
+      } else if (running?.entry === entry) {
         line = running.fraction < 0 ? t("Analysing the game\u2026") : t("Analysing the game: {percent}%", { percent: Math.floor(running.fraction * 100) });
         why = t("The game engine plays the replay through in the background to see what really happened: the armies, the fights, what was lost. You can watch the replay meanwhile.");
       } else if (entry.played) {
@@ -3923,6 +4160,8 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
   if (bottomDock) api.ui.fileType({ name: msg2("StarCraft replay"), extensions: [".rep"], open: (files) => void load(files) });
   const simWatch = api.services.watch("scm-sim.engine", (service) => {
     sim = service;
+    game.setService(service);
+    if (current) gameFor(current);
     pump();
     strip?.render();
   });
@@ -3942,6 +4181,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
     stop();
     bindKeys(false);
     running?.controller.abort();
+    game.dispose();
     simWatch.dispose();
     imageListener.dispose();
     style.remove();

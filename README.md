@@ -172,6 +172,19 @@ change). Switching tabs switches replays, each keeping its own place on the time
 closing the tab closes the replay. With an ordinary map in front, Aftermath's panels go
 away; **View ▸ Aftermath** opens the panel anyway, to drop replays on.
 
+**The game, or the map.** In the editor at scmjs.dev, with your copy of StarCraft given to
+the site, a replay's tab opens on the **Game**: the replay played out by the game's own code
+in the map's place, with its own graphics (Remastered's when your copy is Remastered) and
+its console. The switch in the top-left corner goes between it and the **Map**, the
+overhead view with Aftermath's marks, heat maps and Map stats. The timeline drives
+whichever is shown: Play, the speed, a press on the timeline, the keys and Spectate's
+camera all move the game while it is in front, and the timeline follows the game. The
+first jump far into a game takes a few seconds while the engine plays ahead; jumps after
+that are quick. The arrow keys scroll the game while it has the keyboard, as in the game;
+the other keys stay Aftermath's. Map stats shows on the map, so opening it switches to the
+map, and closing it goes back to the game. One game is shown at a time: switching to
+another replay's tab starts that one.
+
 While a replay's tab is in front:
 
 **Under the map**, the timeline:
