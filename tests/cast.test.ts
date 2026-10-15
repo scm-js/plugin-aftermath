@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PlayerSeries, ReplayTimeline, UnitEvent } from "../vendor/scm-sim";
 import type { Fight } from "../fights";
-import { castInput, estimate, highlightClips, schedule, unitsByType, type CastGame, type CastLine } from "../cast";
+import { castInput, estimate, highlightClips, schedule, spoken, unitsByType, type CastGame, type CastLine } from "../cast";
 
 const MARINE = 0, SCV = 7, ZERGLING = 37, MUTALISK = 43, CC = 106, HATCHERY = 131, LAIR = 132;
 const NAMES: Record<number, string> = { [MARINE]: "Marine", [SCV]: "SCV", [ZERGLING]: "Zergling", [MUTALISK]: "Mutalisk", [CC]: "Command Center", [HATCHERY]: "Hatchery", [LAIR]: "Lair" };
@@ -121,5 +121,8 @@ describe("the schedule", () => {
   it("guesses a line's length from its words when it has no voice", () => {
     expect(estimate("one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty twenty-one twenty-two twenty-three twenty-four twenty-five twenty-six twenty-seven")).toBe(10);
     expect(estimate("Yes")).toBe(0.8);
+    // A cue is acted, not said: it is not counted, and the captions leave it out.
+    expect(estimate("[surprised] one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty twenty-one twenty-two twenty-three twenty-four twenty-five twenty-six twenty-seven")).toBe(10);
+    expect(spoken("[getting excited] Here they come!  [chuckles] Oh no.")).toBe("Here they come! Oh no.");
   });
 });

@@ -4,7 +4,7 @@
  * The clock is the plugin's (or the Game view's); the reel only reads it, seeks and pauses, so the person's own pause
  * pauses the voices too, and a jump of their own elsewhere ends the cast.
  */
-import { FRAME_SECONDS, type CastSpeaker, type Schedule } from "./cast";
+import { FRAME_SECONDS, spoken, type CastSpeaker, type Schedule } from "./cast";
 
 export interface ReelHooks {
   /** The frame the replay shows now; null while a jump is on its way. */
@@ -86,7 +86,7 @@ export class Reel {
     if (!s) return null;
     const line = this.plan.lines[s.index];
     if (!line || performance.now() - s.at > line.duration * 1000 + 300) return null;
-    return { speaker: line.speaker, text: line.text };
+    return { speaker: line.speaker, text: spoken(line.text) };
   }
 
   /** Which moment of how many, for the strip. */

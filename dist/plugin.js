@@ -2959,8 +2959,11 @@ function schedule(lines, durations, moments) {
   });
   return { lines: out, holds };
 }
+function spoken(text) {
+  return text.replace(/\[[^\]]*\]\s*/g, "").replace(/\s+/g, " ").trim();
+}
 function estimate(text) {
-  return Math.max(0.8, text.trim().split(/\s+/).length / 2.7);
+  return Math.max(0.8, spoken(text).split(/\s+/).length / 2.7);
 }
 
 // castplay.ts
@@ -3025,7 +3028,7 @@ var Reel = class {
     if (!s) return null;
     const line = this.plan.lines[s.index];
     if (!line || performance.now() - s.at > line.duration * 1e3 + 300) return null;
-    return { speaker: line.speaker, text: line.text };
+    return { speaker: line.speaker, text: spoken(line.text) };
   }
   /** Which moment of how many, for the strip. */
   progress() {
@@ -5228,10 +5231,10 @@ function activate(api) {
     if (castOffer?.speech) {
       casting.busy = t("Voicing the cast\u2026");
       strip?.update();
-      const spoken = await call("/v1/speech", { lines: lines.map((l) => ({ speaker: l.speaker, text: l.text })) }, signal);
+      const spoken2 = await call("/v1/speech", { lines: lines.map((l) => ({ speaker: l.speaker, text: l.text })) }, signal);
       const ctx = new AudioContext();
       try {
-        voices = await Promise.all(spoken.clips.map(async (c) => {
+        voices = await Promise.all(spoken2.clips.map(async (c) => {
           const bytes = Uint8Array.from(atob(c.audio), (ch) => ch.charCodeAt(0));
           try {
             return await ctx.decodeAudioData(bytes.buffer);

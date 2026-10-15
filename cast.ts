@@ -319,7 +319,12 @@ export function schedule(lines: readonly CastLine[], durations: readonly number[
   return { lines: out, holds };
 }
 
+/** A line without its delivery cues (`[surprised]`, acted by the voice, not said): what the captions show. */
+export function spoken(text: string): string {
+  return text.replace(/\[[^\]]*\]\s*/g, "").replace(/\s+/g, " ").trim();
+}
+
 /** How long a line takes to say, from its words, when it has not been voiced (2.7 words a second). */
 export function estimate(text: string): number {
-  return Math.max(0.8, text.trim().split(/\s+/).length / 2.7);
+  return Math.max(0.8, spoken(text).split(/\s+/).length / 2.7);
 }
