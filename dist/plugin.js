@@ -1305,7 +1305,15 @@ var KO = {
   "No banter": "\uC7A1\uB2F4 \uC5C6\uC74C",
   "Some banter": "\uC7A1\uB2F4 \uC870\uAE08",
   "Lots of banter": "\uC7A1\uB2F4 \uB9CE\uC774",
-  "How much the two commentators chat about other things when little is happening": "\uBCC4\uC77C \uC5C6\uC744 \uB54C \uB450 \uD574\uC124\uC790\uAC00 \uB2E4\uB978 \uC774\uC57C\uAE30\uB97C \uC5BC\uB9C8\uB098 \uB098\uB20C\uC9C0"
+  "How much the two commentators chat about other things when little is happening": "\uBCC4\uC77C \uC5C6\uC744 \uB54C \uB450 \uD574\uC124\uC790\uAC00 \uB2E4\uB978 \uC774\uC57C\uAE30\uB97C \uC5BC\uB9C8\uB098 \uB098\uB20C\uC9C0",
+  "{what} \xB7 {time} left": "{what} \xB7 {time} \uB0A8\uC74C",
+  "Building": "\uAC74\uC124 \uC911",
+  "In production": "\uC0DD\uC0B0 \uC911",
+  "Researching": "\uC5F0\uAD6C \uC911",
+  "Ordered": "\uBA85\uB839\uB428",
+  "Done at {time}": "{time}\uC5D0 \uC644\uB8CC",
+  "Cards": "\uCE74\uB4DC",
+  "Show a card on the game for the upgrade, unit or building the commentators are talking about": "\uD574\uC124\uC790\uAC00 \uC774\uC57C\uAE30\uD558\uB294 \uC5C5\uADF8\uB808\uC774\uB4DC, \uC720\uB2DB, \uAC74\uBB3C\uC744 \uAC8C\uC784 \uD654\uBA74\uC5D0 \uCE74\uB4DC\uB85C \uBCF4\uC5EC \uC90D\uB2C8\uB2E4"
 };
 
 // played.ts
@@ -2934,6 +2942,31 @@ function highlightClips(fights2, frames) {
   }
   return out;
 }
+function castCards(game) {
+  const t = game.timeline, shown = new Set(game.players.map((p) => p.index));
+  const time = game.durations;
+  const out = [];
+  for (const r of t.research) {
+    if (!shown.has(r.player)) continue;
+    const span = time?.(r.kind, r.id, r.level) ?? null;
+    out.push({ kind: r.kind, type: r.id, level: r.level, player: r.player, start: span ? Math.max(0, r.frame - span) : r.frame, done: r.frame });
+  }
+  const firsts = /* @__PURE__ */ new Map();
+  for (const e of t.events) {
+    if (e.kind !== "born" && e.kind !== "morph" || e.frame === 0 || !shown.has(e.owner) || !counted(e.type) || WORKERS2.has(e.type) || NOT_MADE.has(e.type) || ROUTINE.has(e.type)) continue;
+    const k = `${e.owner}:${game.names.unit(e.type).replace(/\s*\([^)]*\)\s*$/, "")}`;
+    if (!firsts.has(k)) firsts.set(k, { type: e.type, player: e.owner, start: e.frame, unit: e.unit });
+  }
+  const ends = /* @__PURE__ */ new Map();
+  const waiting = new Map([...firsts.values()].map((f) => [f.unit, f.start]));
+  for (const e of t.events) {
+    const from = waiting.get(e.unit);
+    if (from === void 0 || e.frame < from || ends.has(e.unit)) continue;
+    if (e.kind === "done" || e.kind === "morph" && e.frame > from) ends.set(e.unit, e.frame);
+  }
+  for (const f of firsts.values()) out.push({ kind: "unit", type: f.type, level: 1, player: f.player, start: f.start, done: ends.get(f.unit) ?? f.start });
+  return out.sort((a, b) => a.start - b.start || a.done - b.done).map((c, i) => ({ ...c, id: `c${i + 1}` }));
+}
 var RACES = ["Zerg", "Terran", "Protoss"];
 var clock = (frame) => {
   const s = Math.round(frame * FRAME_SECONDS);
@@ -2977,6 +3010,10 @@ function castInput(game, clips, wishes, options) {
     firsts.push({ frame: e.frame, player: e.owner, type: e.type });
   }
   const built = buildings(t);
+  const cards = castCards(game);
+  const researchCard = new Map(cards.filter((c) => c.kind !== "unit").map((c) => [`${c.player}:${c.kind}:${c.type}:${c.level}`, c.id]));
+  const firstCard = new Map(cards.filter((c) => c.kind === "unit").map((c) => [`${c.player}:${n.unit(c.type)}`, c.id]));
+  const tag2 = (id) => id ? ` [card ${id}]` : "";
   const series2 = (index) => t.samples.players.find((s) => s.slot === index);
   const perMinute = (v) => v >= 1e3 ? `${(Math.round(v / 100) * 100).toLocaleString("en-US")}` : String(Math.round(v / 10) * 10);
   const standing = (frame) => {
@@ -3037,9 +3074,9 @@ function castInput(game, clips, wishes, options) {
     for (const b of game.bases) if (b.frame >= from && b.frame < to && shown.has(b.player)) out.push({ frame: b.frame, text: `${nameOf(b.player)} takes a base at ${n.place(b.x, b.y)} (their ${ordinal(b.nth)})` });
     for (const r of t.research) {
       if (r.frame < from || r.frame >= to || !shown.has(r.player)) continue;
-      out.push({ frame: r.frame, text: r.kind === "tech" ? `${nameOf(r.player)} has ${n.tech(r.id)} researched` : `${nameOf(r.player)} finishes ${n.upgrade(r.id)}${r.level > 1 ? ` level ${r.level}` : ""}` });
+      out.push({ frame: r.frame, text: (r.kind === "tech" ? `${nameOf(r.player)} has ${n.tech(r.id)} researched` : `${nameOf(r.player)} finishes ${n.upgrade(r.id)}${r.level > 1 ? ` level ${r.level}` : ""}`) + tag2(researchCard.get(`${r.player}:${r.kind}:${r.id}:${r.level}`)) });
     }
-    for (const f of firsts) if (f.frame >= from && f.frame < to) out.push({ frame: f.frame, text: `${nameOf(f.player)} ${isBuilding(f.type) ? "starts their first" : "makes their first"} ${n.unit(f.type)}` });
+    for (const f of firsts) if (f.frame >= from && f.frame < to) out.push({ frame: f.frame, text: `${nameOf(f.player)} ${isBuilding(f.type) ? "starts their first" : "makes their first"} ${n.unit(f.type)}${tag2(firstCard.get(`${f.player}:${n.unit(f.type)}`))}` });
     for (const p of game.players) if (p.leftAt !== null && p.leftAt >= from && p.leftAt < to) out.push({ frame: p.leftAt, text: `${p.name} leaves the game` });
     return out.sort((a, b) => a.frame - b.frame);
   };
@@ -3150,7 +3187,8 @@ function castInput(game, clips, wishes, options) {
         if (s.frame < from || s.frame >= to || s.frame > OPENING_UNTIL) return;
         if (all.slice(0, k).some((b) => b.kind === s.kind && b.id === s.id && s.frame - b.frame < frameOf(30))) return;
         const what = s.kind === "upgrade" ? n.upgrade(s.id) : s.kind === "tech" ? n.tech(s.id) : n.unit(s.id);
-        out.push({ frame: s.frame, text: `${p.name} orders ${s.kind === "upgrade" || s.kind === "tech" ? "research of " : ""}${what}${q ? ` at ${q.supplyUsed[sample(s.frame)] ?? 0} supply` : ""}` });
+        const card = s.kind === "upgrade" || s.kind === "tech" ? cards.filter((c) => c.kind === s.kind && c.type === s.id && c.player === p.index && c.done >= s.frame).sort((a, b) => a.done - b.done)[0]?.id : firstCard.get(`${p.index}:${n.unit(s.id)}`);
+        out.push({ frame: s.frame, text: `${p.name} orders ${s.kind === "upgrade" || s.kind === "tech" ? "research of " : ""}${what}${q ? ` at ${q.supplyUsed[sample(s.frame)] ?? 0} supply` : ""}${tag2(card)}` });
       });
     }
     return out;
@@ -3236,7 +3274,7 @@ function schedule(lines, durations, moments) {
     const duration = durations[i] ?? estimate(l.text);
     const start = Math.max(when, cursor + GAP);
     if (start - when > LATE[l.priority]) continue;
-    out.push({ moment: l.moment, speaker: l.speaker, text: l.text, clip: i, start, duration, frame: frameAt(start) });
+    out.push({ moment: l.moment, speaker: l.speaker, text: l.text, clip: i, start, duration, frame: frameAt(start), ...l.card ? { card: l.card } : {} });
     cursor = start + duration;
   }
   return { lines: out, starts, length, hold: Math.max(0, cursor - length) };
@@ -3349,6 +3387,14 @@ var Reel = class {
     const line = this.plan.lines[s.index];
     if (!line || performance.now() - s.at > line.duration * 1e3 + 300) return null;
     return { speaker: line.speaker, text: spoken(line.text) };
+  }
+  /** The card of the line being said, while it is said and a moment after; null when none. */
+  card() {
+    const s = this.saying;
+    if (!s) return null;
+    const line = this.plan.lines[s.index];
+    if (!line?.card || performance.now() - s.at > line.duration * 1e3 + 1500) return null;
+    return line.card;
   }
   /** Which stretch of how many, for the strip. */
   progress() {
@@ -4562,7 +4608,7 @@ function nearestSample(frames, frame) {
 }
 
 // plugin.ts
-var DEFAULTS = { orders: false, legend: true, heat: "losses", speed: 8, workers: false, chart: "lead", tab: "summary", insightTab: "economy", resource: "both", insightMetric: "income", castFormat: "game", castBanter: "light", version: 5 };
+var DEFAULTS = { orders: false, legend: true, heat: "losses", speed: 8, workers: false, chart: "lead", tab: "summary", insightTab: "economy", resource: "both", insightMetric: "income", castFormat: "game", castBanter: "light", castCards: true, version: 5 };
 var FRONT_FRAMES = 120;
 var FIGHT_LEAD = 48;
 var TWINS = /* @__PURE__ */ new Set([37, 47]);
@@ -5397,7 +5443,7 @@ function activate(api) {
   let account = null;
   let castOffer = null;
   const casts = /* @__PURE__ */ new Map();
-  const casting = { entry: null, busy: null, error: null, reel: null, abort: null, speed: 0 };
+  const casting = { entry: null, busy: null, error: null, reel: null, made: null, abort: null, speed: 0 };
   async function askOffer() {
     const a = account;
     if (!a) {
@@ -5431,7 +5477,10 @@ function activate(api) {
     if (!clips.length) throw new Error(t("This game has no key moments to cast."));
     const map = done.timeline.map;
     const players = entry.report.players.filter((p) => done.timeline.samples.players.some((q) => q.slot === p.player.index));
-    const input = castInput({
+    await api.data.load();
+    const tables = { units: api.data.units(), upgrades: api.data.upgrades(), techs: api.data.techs() };
+    const durations = tables.units && tables.upgrades && tables.techs ? (kind, id, level) => kind === "unit" ? tables.units.buildTime[id] ?? null : kind === "upgrade" ? tables.upgrades.timeCost[id] + tables.upgrades.timeFactor[id] * (level - 1) : tables.techs.researchTime[id] ?? null : void 0;
+    const castGame = {
       map: plainText(entry.report.replay.header.mapName),
       timeline: done.timeline,
       players: players.map((p) => ({ index: p.player.index, name: p.player.name, race: p.player.race, leftAt: p.leftAt, build: p.build })),
@@ -5446,8 +5495,10 @@ function activate(api) {
           const c = clockOf(x, y, map.width * 32, map.height * 32);
           return c ? `${c} o'clock` : "the middle";
         }
-      }
-    }, clips, void 0, options);
+      },
+      durations
+    };
+    const input = castInput(castGame, clips, void 0, options);
     input.seed = Math.floor(Math.random() * 2e9);
     casting.busy = t("Writing the cast\u2026");
     strip?.update();
@@ -5473,7 +5524,7 @@ function activate(api) {
       }
     }
     const plan = schedule(lines, voices.map((v, i) => v?.duration ?? estimate(lines[i].text)), input.moments);
-    return { input, lines, voices, plan };
+    return { input, lines, voices, plan, cards: new Map(castCards(castGame).map((c) => [c.id, c])) };
   }
   async function startCast() {
     const entry = current;
@@ -5497,6 +5548,7 @@ function activate(api) {
       }
       casting.busy = null;
       casting.speed = settings.speed;
+      casting.made = made;
       setFollowing(true);
       casting.reel = new Reel({
         frame: () => gameClock() ? game.seeking ? null : game.frameNow(settings.speed) : current?.frame ?? null,
@@ -5526,6 +5578,7 @@ function activate(api) {
     casting.abort?.abort();
     const reel = casting.reel;
     casting.reel = null;
+    casting.made = null;
     casting.entry = null;
     casting.busy = null;
     if (reel) {
@@ -5536,6 +5589,56 @@ function activate(api) {
     }
     redraw();
     strip?.render();
+  }
+  function castCard(ctx) {
+    const id = settings.castCards ? casting.reel?.card() : null;
+    const entry = casting.entry;
+    if (!id || !entry) return;
+    const card = casting.made?.cards.get(id);
+    if (!card) return;
+    const frame = (gameClock() ? game.frameNow(settings.speed) : null) ?? entry.frame;
+    const who = entry.report.players.find((p) => p.player.index === card.player)?.player;
+    const name = card.kind === "unit" ? plainName(api.names.unit(card.type)).replace(/\s*\([^)]*\)\s*$/, "") : card.kind === "tech" ? api.names.tech(card.type) : card.level > 1 ? `${api.names.upgrade(card.type)} ${card.level}` : api.names.upgrade(card.type);
+    const making = frame < card.done && card.done > card.start;
+    const share = making ? Math.max(0, Math.min(1, (frame - card.start) / (card.done - card.start))) : 1;
+    const status = making ? t("{what} \xB7 {time} left", { what: card.kind === "unit" ? isBuilding(card.type) ? t("Building") : t("In production") : t("Researching"), time: formatTime(card.done - frame) }) : frame < card.start ? t("Ordered") : t("Done at {time}", { time: formatTime(card.done) });
+    let pic = null;
+    if (typeof api.graphics.icon === "function") {
+      pic = api.graphics.icon(card.kind, card.type);
+      if (!pic) api.graphics.requestIcons();
+    }
+    if (!pic && card.kind === "unit") {
+      pic = api.graphics.unitImage(card.type, { owner: card.player });
+      if (!pic) api.graphics.requestUnit(card.type);
+    }
+    const x0 = 14, y0 = 14, w2 = 280, h = 70, colour = who?.color ?? "#888";
+    ctx.fillStyle = "rgba(10,12,16,0.84)";
+    ctx.fillRect(x0, y0, w2, h);
+    ctx.fillStyle = colour;
+    ctx.fillRect(x0, y0, 4, h);
+    const box = 44;
+    if (pic) {
+      const k = Math.min(box / pic.width, box / pic.height);
+      ctx.drawImage(pic.image, x0 + 14 + (box - pic.width * k) / 2, y0 + 13 + (box - pic.height * k) / 2, pic.width * k, pic.height * k);
+    }
+    const tx = x0 + 14 + box + 12, tw = w2 - (tx - x0) - 12;
+    ctx.textBaseline = "top";
+    ctx.textAlign = "left";
+    ctx.font = "600 11px system-ui, sans-serif";
+    ctx.fillStyle = colour;
+    ctx.fillText(who?.name ?? "", tx, y0 + 10, tw);
+    ctx.font = "700 14px system-ui, sans-serif";
+    ctx.fillStyle = "#f0f3f8";
+    ctx.fillText(name, tx, y0 + 25, tw);
+    ctx.fillStyle = "rgba(255,255,255,0.14)";
+    ctx.fillRect(tx, y0 + 46, tw, 5);
+    ctx.fillStyle = making ? colour : "#7fd18b";
+    ctx.fillRect(tx, y0 + 46, tw * share, 5);
+    ctx.font = "500 11px system-ui, sans-serif";
+    ctx.fillStyle = "#b9c0cc";
+    ctx.fillText(status, tx, y0 + 54, tw);
+    ctx.textAlign = "start";
+    ctx.textBaseline = "alphabetic";
   }
   function subtitle(ctx) {
     const said = casting.reel?.caption();
@@ -5854,6 +5957,7 @@ function activate(api) {
     if (settings.legend) legend(ctx, lens, done !== null);
     caption(ctx, cur);
     subtitle(ctx);
+    castCard(ctx);
   }
   function drawOrders(ctx, v, players, frame) {
     const r = Math.max(2.5, 5 * Math.min(1, v.tilePx / 32 * 2));
@@ -5878,6 +5982,7 @@ function activate(api) {
     }
     caption(ctx, cur);
     subtitle(ctx);
+    castCard(ctx);
   }
   function caption(ctx, entry) {
     const shots = shotsOf(entry);
@@ -6932,6 +7037,17 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
         save();
         castBanter?.blur();
       } }) : null;
+      const castCardsButton = castButton ? toggle(t("Cards"), () => {
+        settings.castCards = !settings.castCards;
+        save();
+        redraw();
+        this.render();
+      }) : null;
+      if (castCardsButton) {
+        castCardsButton.title = t("Show a card on the game for the upgrade, unit or building the commentators are talking about");
+        castCardsButton.classList.toggle("afm-on", settings.castCards);
+        castCardsButton.setAttribute("aria-pressed", String(settings.castCards));
+      }
       const analysis = insightPossible ? w.button(t("Analysis"), { className: "sm", title: t("Open the Analysis window: the game's economy and tech in charts and numbers"), onClick: () => openInsight() }) : null;
       const eyes = w.select([
         { value: -1, label: t("Vision: everyone") },
@@ -6957,6 +7073,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
         retry,
         castFormat,
         castBanter,
+        castCardsButton,
         castButton,
         analysis,
         chartSelect

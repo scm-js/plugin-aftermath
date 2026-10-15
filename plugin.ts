@@ -43,7 +43,8 @@ import { cameraTrack, trackAt, type CameraTrack } from "./camera";
 import { advantage, bases as takenBases, hardestHit, leads, story, totals, type Advantage, type Base, type PlayerTotals } from "./story";
 import type { ReplayTimeline, ScmSimService, ViewHover, ViewHoverUnit } from "./vendor/scm-sim";
 import { GameView } from "./gameview";
-import { castInput, castSegments, estimate, highlightClips, schedule, type CastInput, type CastLine, type CastOptions, type Schedule } from "./cast";
+import { castCards, castInput, castSegments, estimate, highlightClips, schedule, type CastCard, type CastGame, type CastInput, type CastLine, type CastOptions, type Schedule } from "./cast";
+import type { Durations } from "./tech";
 import { Reel } from "./castplay";
 import type { ScmjsAccountService } from "./vendor/scmjs-dev";
 import { InsightView, type InsightGame, type Metric as InsightMetric, type Resource } from "./insight";
@@ -79,6 +80,8 @@ interface Settings {
   /** How a cast is made: the whole game or its key moments, and how much banter. */
   castFormat: CastOptions["format"];
   castBanter: CastOptions["banter"];
+  /** Cards on screen for what the commentators talk about: an upgrade, a unit, with how far along it is. */
+  castCards: boolean;
   /**
    * 2 from 0.8, when the army lead and the summary came; 3 when the map's marks went into views; 4 when the views became
    * switches; 5 when Map stats came, its heat counting the same games as its marks, always whole.
@@ -86,7 +89,7 @@ interface Settings {
   version: number;
 }
 
-const DEFAULTS: Settings = { orders: false, legend: true, heat: "losses", speed: 8, workers: false, chart: "lead", tab: "summary", insightTab: "economy", resource: "both", insightMetric: "income", castFormat: "game", castBanter: "light", version: 5 };
+const DEFAULTS: Settings = { orders: false, legend: true, heat: "losses", speed: 8, workers: false, chart: "lead", tab: "summary", insightTab: "economy", resource: "both", insightMetric: "income", castFormat: "game", castBanter: "light", castCards: true, version: 5 };
 
 interface Loaded {
   id: number;
@@ -1020,10 +1023,10 @@ export function activate(api: PluginApi) {
   /** What the server offers this caller: a cast at all, and voices for it; null until asked, or when it offers none. */
   let castOffer: { speech: boolean } | null = null;
   /** A cast written (and voiced) for a replay, kept so a second showing costs nothing. */
-  interface Made { input: CastInput; lines: CastLine[]; voices: (AudioBuffer | null)[]; plan: Schedule }
+  interface Made { input: CastInput; lines: CastLine[]; voices: (AudioBuffer | null)[]; plan: Schedule; cards: Map<string, CastCard> }
   const casts = new Map<string, Made>();
   /** The cast being made or shown: what the strip says meanwhile, and the reel once it plays. */
-  const casting = { entry: null as Loaded | null, busy: null as string | null, error: null as string | null, reel: null as Reel | null, abort: null as AbortController | null, speed: 0 };
+  const casting = { entry: null as Loaded | null, busy: null as string | null, error: null as string | null, reel: null as Reel | null, made: null as Made | null, abort: null as AbortController | null, speed: 0 };
 
   /** Ask the server what it offers this caller: the cast recipe allowed, and whether it voices. */
   async function askOffer(): Promise<void> {
@@ -1060,7 +1063,15 @@ export function activate(api: PluginApi) {
     if (!clips.length) throw new Error(t("This game has no key moments to cast."));
     const map = done.timeline.map;
     const players = entry.report.players.filter((p) => done.timeline.samples.players.some((q) => q.slot === p.player.index));
-    const input = castInput({
+    // (The game's tables say how long research takes, so a card's progress starts when the research did.)
+    await api.data.load();
+    const tables = { units: api.data.units(), upgrades: api.data.upgrades(), techs: api.data.techs() };
+    const durations: Durations | undefined = tables.units && tables.upgrades && tables.techs
+      ? (kind, id, level) => kind === "unit" ? (tables.units!.buildTime[id] ?? null)
+        : kind === "upgrade" ? tables.upgrades!.timeCost[id] + tables.upgrades!.timeFactor[id] * (level - 1)
+        : (tables.techs!.researchTime[id] ?? null)
+      : undefined;
+    const castGame: CastGame = {
       map: plainText(entry.report.replay.header.mapName),
       timeline: done.timeline,
       players: players.map((p) => ({ index: p.player.index, name: p.player.name, race: p.player.race, leftAt: p.leftAt, build: p.build })),
@@ -1071,7 +1082,9 @@ export function activate(api: PluginApi) {
         unit: (id) => plainName(api.names.unit(id)), upgrade: (id) => api.names.upgrade(id), tech: (id) => api.names.tech(id),
         place: (x, y) => { const c = clockOf(x, y, map.width * 32, map.height * 32); return c ? `${c} o'clock` : "the middle"; },
       },
-    }, clips, undefined, options);
+      durations,
+    };
+    const input = castInput(castGame, clips, undefined, options);
     input.seed = Math.floor(Math.random() * 2_000_000_000);
     casting.busy = t("Writing the cast…");
     strip?.update();
@@ -1093,7 +1106,7 @@ export function activate(api: PluginApi) {
       }
     }
     const plan = schedule(lines, voices.map((v, i) => v?.duration ?? estimate(lines[i].text)), input.moments);
-    return { input, lines, voices, plan };
+    return { input, lines, voices, plan, cards: new Map(castCards(castGame).map((c) => [c.id, c])) };
   }
 
   /** Make the cast of the replay in front (or take the one made before) and play it. */
@@ -1115,6 +1128,7 @@ export function activate(api: PluginApi) {
       if (current !== entry || casting.entry !== entry) { void ctx?.close(); return; }
       casting.busy = null;
       casting.speed = settings.speed;
+      casting.made = made;
       setFollowing(true);
       casting.reel = new Reel({
         frame: () => (gameClock() ? (game.seeking ? null : game.frameNow(settings.speed)) : current?.frame ?? null),
@@ -1142,6 +1156,7 @@ export function activate(api: PluginApi) {
     casting.abort?.abort();
     const reel = casting.reel;
     casting.reel = null;
+    casting.made = null;
     casting.entry = null;
     casting.busy = null;
     if (reel) {
@@ -1152,6 +1167,50 @@ export function activate(api: PluginApi) {
     }
     redraw();
     strip?.render();
+  }
+
+  /**
+   * The card of what is being talked about, at the top left of the view: its icon, whose it is, its name, and how far
+   * along it is at the frame the game shows — a bar while it is being made or researched, when it was done after.
+   */
+  function castCard(ctx: CanvasRenderingContext2D): void {
+    const id = settings.castCards ? casting.reel?.card() : null;
+    const entry = casting.entry;
+    if (!id || !entry) return;
+    const card = casting.made?.cards.get(id);
+    if (!card) return;
+    const frame = (gameClock() ? game.frameNow(settings.speed) : null) ?? entry.frame;
+    const who = entry.report.players.find((p) => p.player.index === card.player)?.player;
+    const name = card.kind === "unit" ? plainName(api.names.unit(card.type)).replace(/\s*\([^)]*\)\s*$/, "")
+      : card.kind === "tech" ? api.names.tech(card.type)
+      : card.level > 1 ? `${api.names.upgrade(card.type)} ${card.level}` : api.names.upgrade(card.type);
+    const making = frame < card.done && card.done > card.start;
+    const share = making ? Math.max(0, Math.min(1, (frame - card.start) / (card.done - card.start))) : 1;
+    const status = making
+      ? t("{what} · {time} left", { what: card.kind === "unit" ? (isBuilding(card.type) ? t("Building") : t("In production")) : t("Researching"), time: formatTime(card.done - frame) })
+      : frame < card.start ? t("Ordered") : t("Done at {time}", { time: formatTime(card.done) });
+    // The icon: the game's button for it, or for a unit with none, its picture.
+    let pic: PluginImage | null = null;
+    if (typeof api.graphics.icon === "function") { pic = api.graphics.icon(card.kind, card.type); if (!pic) api.graphics.requestIcons(); }
+    if (!pic && card.kind === "unit") { pic = api.graphics.unitImage(card.type, { owner: card.player }); if (!pic) api.graphics.requestUnit(card.type); }
+    const x0 = 14, y0 = 14, w = 280, h = 70, colour = who?.color ?? "#888";
+    ctx.fillStyle = "rgba(10,12,16,0.84)";
+    ctx.fillRect(x0, y0, w, h);
+    ctx.fillStyle = colour;
+    ctx.fillRect(x0, y0, 4, h);
+    const box = 44;
+    if (pic) { const k = Math.min(box / pic.width, box / pic.height); ctx.drawImage(pic.image, x0 + 14 + (box - pic.width * k) / 2, y0 + 13 + (box - pic.height * k) / 2, pic.width * k, pic.height * k); }
+    const tx = x0 + 14 + box + 12, tw = w - (tx - x0) - 12;
+    ctx.textBaseline = "top"; ctx.textAlign = "left";
+    ctx.font = "600 11px system-ui, sans-serif"; ctx.fillStyle = colour;
+    ctx.fillText(who?.name ?? "", tx, y0 + 10, tw);
+    ctx.font = "700 14px system-ui, sans-serif"; ctx.fillStyle = "#f0f3f8";
+    ctx.fillText(name, tx, y0 + 25, tw);
+    ctx.fillStyle = "rgba(255,255,255,0.14)"; ctx.fillRect(tx, y0 + 46, tw, 5);
+    ctx.fillStyle = making ? colour : "#7fd18b"; ctx.fillRect(tx, y0 + 46, tw * share, 5);
+    ctx.font = "500 11px system-ui, sans-serif"; ctx.fillStyle = "#b9c0cc";
+    ctx.fillText(status, tx, y0 + 54, tw);
+    ctx.textAlign = "start"; ctx.textBaseline = "alphabetic";
   }
 
   /** What is being said, at the bottom of the view: the speaker and the line. */
@@ -1487,6 +1546,7 @@ export function activate(api: PluginApi) {
     if (settings.legend) legend(ctx, lens, done !== null);
     caption(ctx, cur);
     subtitle(ctx);
+    castCard(ctx);
   }
 
   /** The orders of the last few seconds, each fading as it gets older. */
@@ -1518,6 +1578,7 @@ export function activate(api: PluginApi) {
     }
     caption(ctx, cur);
     subtitle(ctx);
+    castCard(ctx);
   }
 
   /** Spectate's line at the top of the map: what the camera shows, while it follows. */
@@ -2515,6 +2576,8 @@ export function activate(api: PluginApi) {
         { value: "light", label: t("Some banter") },
         { value: "lots", label: t("Lots of banter") },
       ], { value: settings.castBanter, title: t("How much the two commentators chat about other things when little is happening"), onChange: (v) => { settings.castBanter = v as CastOptions["banter"]; save(); castBanter?.blur(); } }) : null;
+      const castCardsButton = castButton ? toggle(t("Cards"), () => { settings.castCards = !settings.castCards; save(); redraw(); this.render(); }) : null;
+      if (castCardsButton) { castCardsButton.title = t("Show a card on the game for the upgrade, unit or building the commentators are talking about"); castCardsButton.classList.toggle("afm-on", settings.castCards); castCardsButton.setAttribute("aria-pressed", String(settings.castCards)); }
       const analysis = insightPossible ? w.button(t("Analysis"), { className: "sm", title: t("Open the Analysis window: the game's economy and tech in charts and numbers"), onClick: () => openInsight() }) : null;
       // In the Replay view: the game as everyone sees it, or through one player's eyes, with the fog of war.
       const eyes = w.select([
@@ -2532,7 +2595,7 @@ export function activate(api: PluginApi) {
       this.eyesSelect = eyes;
       this.root.append(el("div", { className: "afm-row" }, this.playButton, this.timeLabel, speed,
         el("span", { className: "afm-toggles" }, this.spectateButton, this.ordersButton, this.statsButton, this.legendButton), eyes,
-        this.status, retry, castFormat, castBanter, castButton, analysis, chartSelect));
+        this.status, retry, castFormat, castBanter, castCardsButton, castButton, analysis, chartSelect));
 
       // The lane of marks and the graph, one canvas: press or drag anywhere on it to go there.
       const canvas = el("canvas") as HTMLCanvasElement;

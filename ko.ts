@@ -378,4 +378,12 @@ export const KO: Record<string, string> = {
   "Some banter": "잡담 조금",
   "Lots of banter": "잡담 많이",
   "How much the two commentators chat about other things when little is happening": "별일 없을 때 두 해설자가 다른 이야기를 얼마나 나눌지",
+  "{what} · {time} left": "{what} · {time} 남음",
+  "Building": "건설 중",
+  "In production": "생산 중",
+  "Researching": "연구 중",
+  "Ordered": "명령됨",
+  "Done at {time}": "{time}에 완료",
+  "Cards": "카드",
+  "Show a card on the game for the upgrade, unit or building the commentators are talking about": "해설자가 이야기하는 업그레이드, 유닛, 건물을 게임 화면에 카드로 보여 줍니다",
 };

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { PlayerSeries, ReplayTimeline, UnitEvent } from "../vendor/scm-sim";
 import type { Fight } from "../fights";
 import { gainFor, loudness, TARGET_LOUDNESS } from "../castplay";
-import { castInput, castSegments, estimate, highlightClips, schedule, spoken, unitsByType, type CastGame, type CastLine } from "../cast";
+import { castCards, castInput, castSegments, estimate, highlightClips, schedule, spoken, unitsByType, type CastGame, type CastLine } from "../cast";
 
 const MARINE = 0, SCV = 7, ZERGLING = 37, MUTALISK = 43, CC = 106, HATCHERY = 131, LAIR = 132;
 const NAMES: Record<number, string> = { [MARINE]: "Marine", [SCV]: "SCV", [ZERGLING]: "Zergling", [MUTALISK]: "Mutalisk", [CC]: "Command Center", [HATCHERY]: "Hatchery", [LAIR]: "Lair" };
@@ -83,7 +83,8 @@ describe("the facts sent", () => {
     expect(input.wishes).toBe("louder");
     const [m] = input.moments;
     expect([m.from, m.to, m.title]).toEqual([260, 326, "A decisive fight at the middle"]);
-    expect(m.before).toEqual(["1:40 Tara makes their first Marine", "2:00 Zed takes a base at 4 o'clock (their second)", "2:30 Zed starts their first Lair", "3:20 Zed makes their first Mutalisk", "4:10 Tara finishes Upgrade 9"]);
+    // What can be shown on screen is tagged with its card.
+    expect(m.before).toEqual(["1:40 Tara makes their first Marine [card c1]", "2:00 Zed takes a base at 4 o'clock (their second)", "2:30 Zed starts their first Lair [card c2]", "3:20 Zed makes their first Mutalisk [card c3]", "4:10 Tara finishes Upgrade 9 [card c4]"]);
     expect(m.state).toEqual([
       "Tara at 4:20: supply 40/50, 20 workers, 200 minerals and 50 gas in the bank",
       "Tara's upgrades and research: Upgrade 9",
@@ -106,6 +107,20 @@ describe("the facts sent", () => {
     expect(m.after).toContain("Tara came out ahead");
     expect(m.after).toContain("Tara leads in army at 5:26: 1.5k against 400 for Zed");
     expect(m.after.at(-1)).toBe("Tara wins; the game ends at 6:40");
+  });
+});
+
+describe("the cards on screen", () => {
+  it("are each research and the first of each unit and building, numbered in the order they begin, from start to finish", () => {
+    const g = game();
+    expect(castCards(g).map((c) => [c.id, c.kind, c.type, c.player, c.start, c.done])).toEqual([
+      ["c1", "unit", MARINE, 0, S(100), S(115)],
+      ["c2", "unit", LAIR, 1, S(150), S(150)],
+      ["c3", "unit", MUTALISK, 1, S(200), S(240)],
+      ["c4", "upgrade", 9, 0, S(250), S(250)],
+    ]);
+    // With the game's research times, a research card starts when the research did.
+    expect(castCards({ ...g, durations: () => 100 }).find((c) => c.kind === "upgrade")?.start).toBe(S(250) - 100);
   });
 });
 

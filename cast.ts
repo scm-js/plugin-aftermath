@@ -10,6 +10,7 @@ import type { ReplayTimeline } from "./vendor/scm-sim";
 import type { Fight } from "./fights";
 import { NOT_MADE, WORKERS, buildings, counted, isBuilding } from "./played";
 import { incomeRate, supplyBlocks } from "./economy";
+import type { Durations } from "./tech";
 import type { Base } from "./story";
 
 export const FRAME_SECONDS = 0.042;
@@ -91,7 +92,31 @@ export interface CastMoment {
   after: string[];
 }
 
-export interface CastLine { moment: number; at: number; speaker: CastSpeaker; text: string; priority: 1 | 2 | 3 }
+export interface CastLine {
+  moment: number;
+  at: number;
+  speaker: CastSpeaker;
+  text: string;
+  priority: 1 | 2 | 3;
+  /** The card shown on screen while the line is said (\`c12\`), when it is about one thing that has one. */
+  card?: string;
+}
+
+/**
+ * What a card on screen can show: an upgrade or a technology being researched, or the first of a unit or building a
+ * player makes — its icon, whose it is, and how far along it is at the moment the line is said. Frames.
+ */
+export interface CastCard {
+  id: string;
+  kind: "unit" | "upgrade" | "tech";
+  /** units.dat, upgrades.dat or techdata.dat id. */
+  type: number;
+  level: number;
+  player: number;
+  /** When it began (the research's start where its time is known, else its end) and when it was done. */
+  start: number;
+  done: number;
+}
 
 /* ── The moments ── */
 
@@ -176,6 +201,37 @@ export interface CastGame {
   /** The winner's player number, or null when it cannot be told. */
   winner: number | null;
   names: CastNames;
+  /** How long research and building take, from the game's tables, for when a card's progress began; absent without them. */
+  durations?: Durations;
+}
+
+/** The cards a cast can show, in the order they begin, numbered `c1`, `c2`… The same game gives the same cards. */
+export function castCards(game: CastGame): CastCard[] {
+  const t = game.timeline, shown = new Set(game.players.map((p) => p.index));
+  const time = game.durations;
+  const out: Omit<CastCard, "id">[] = [];
+  for (const r of t.research) {
+    if (!shown.has(r.player)) continue;
+    const span = time?.(r.kind, r.id, r.level) ?? null;
+    out.push({ kind: r.kind, type: r.id, level: r.level, player: r.player, start: span ? Math.max(0, r.frame - span) : r.frame, done: r.frame });
+  }
+  // The first of each kind of unit and building: from its start to the frame it was finished.
+  const firsts = new Map<string, { type: number; player: number; start: number; unit: number }>();
+  for (const e of t.events) {
+    if ((e.kind !== "born" && e.kind !== "morph") || e.frame === 0 || !shown.has(e.owner) || !counted(e.type) || WORKERS.has(e.type) || NOT_MADE.has(e.type) || ROUTINE.has(e.type)) continue;
+    const k = `${e.owner}:${game.names.unit(e.type).replace(/\s*\([^)]*\)\s*$/, "")}`;
+    if (!firsts.has(k)) firsts.set(k, { type: e.type, player: e.owner, start: e.frame, unit: e.unit });
+  }
+  // (Finished: the unit's first "done" after it began — a morph's, not the Hatchery's it came from — or its next morph.)
+  const ends = new Map<number, number>();
+  const waiting = new Map([...firsts.values()].map((f) => [f.unit, f.start]));
+  for (const e of t.events) {
+    const from = waiting.get(e.unit);
+    if (from === undefined || e.frame < from || ends.has(e.unit)) continue;
+    if (e.kind === "done" || (e.kind === "morph" && e.frame > from)) ends.set(e.unit, e.frame);
+  }
+  for (const f of firsts.values()) out.push({ kind: "unit", type: f.type, level: 1, player: f.player, start: f.start, done: ends.get(f.unit) ?? f.start });
+  return out.sort((a, b) => a.start - b.start || a.done - b.done).map((c, i) => ({ ...c, id: `c${i + 1}` }));
 }
 
 const RACES = ["Zerg", "Terran", "Protoss"] as const;
@@ -222,6 +278,11 @@ export function castInput(game: CastGame, clips: readonly Clip[], wishes?: strin
   }
 
   const built = buildings(t);
+  // The cards, and how a fact finds its own: a research by player, kind, id and level; a first by player and type.
+  const cards = castCards(game);
+  const researchCard = new Map(cards.filter((c) => c.kind !== "unit").map((c) => [`${c.player}:${c.kind}:${c.type}:${c.level}`, c.id]));
+  const firstCard = new Map(cards.filter((c) => c.kind === "unit").map((c) => [`${c.player}:${n.unit(c.type)}`, c.id]));
+  const tag = (id: string | undefined) => (id ? ` [card ${id}]` : "");
   const series = (index: number) => t.samples.players.find((s) => s.slot === index);
   const perMinute = (v: number) => (v >= 1000 ? `${(Math.round(v / 100) * 100).toLocaleString("en-US")}` : String(Math.round(v / 10) * 10));
 
@@ -287,9 +348,9 @@ export function castInput(game: CastGame, clips: readonly Clip[], wishes?: strin
     for (const b of game.bases) if (b.frame >= from && b.frame < to && shown.has(b.player)) out.push({ frame: b.frame, text: `${nameOf(b.player)} takes a base at ${n.place(b.x, b.y)} (their ${ordinal(b.nth)})` });
     for (const r of t.research) {
       if (r.frame < from || r.frame >= to || !shown.has(r.player)) continue;
-      out.push({ frame: r.frame, text: r.kind === "tech" ? `${nameOf(r.player)} has ${n.tech(r.id)} researched` : `${nameOf(r.player)} finishes ${n.upgrade(r.id)}${r.level > 1 ? ` level ${r.level}` : ""}` });
+      out.push({ frame: r.frame, text: (r.kind === "tech" ? `${nameOf(r.player)} has ${n.tech(r.id)} researched` : `${nameOf(r.player)} finishes ${n.upgrade(r.id)}${r.level > 1 ? ` level ${r.level}` : ""}`) + tag(researchCard.get(`${r.player}:${r.kind}:${r.id}:${r.level}`)) });
     }
-    for (const f of firsts) if (f.frame >= from && f.frame < to) out.push({ frame: f.frame, text: `${nameOf(f.player)} ${isBuilding(f.type) ? "starts their first" : "makes their first"} ${n.unit(f.type)}` });
+    for (const f of firsts) if (f.frame >= from && f.frame < to) out.push({ frame: f.frame, text: `${nameOf(f.player)} ${isBuilding(f.type) ? "starts their first" : "makes their first"} ${n.unit(f.type)}${tag(firstCard.get(`${f.player}:${n.unit(f.type)}`))}` });
     for (const p of game.players) if (p.leftAt !== null && p.leftAt >= from && p.leftAt < to) out.push({ frame: p.leftAt, text: `${p.name} leaves the game` });
     return out.sort((a, b) => a.frame - b.frame);
   };
@@ -403,7 +464,11 @@ export function castInput(game: CastGame, clips: readonly Clip[], wishes?: strin
         if (s.frame < from || s.frame >= to || s.frame > OPENING_UNTIL) return;
         if (all.slice(0, k).some((b) => b.kind === s.kind && b.id === s.id && s.frame - b.frame < frameOf(30))) return;
         const what = s.kind === "upgrade" ? n.upgrade(s.id) : s.kind === "tech" ? n.tech(s.id) : n.unit(s.id);
-        out.push({ frame: s.frame, text: `${p.name} orders ${s.kind === "upgrade" || s.kind === "tech" ? "research of " : ""}${what}${q ? ` at ${q.supplyUsed[sample(s.frame)] ?? 0} supply` : ""}` });
+        // (A research ordered is the card of that research finished next; a unit or building, the card of its first.)
+        const card = s.kind === "upgrade" || s.kind === "tech"
+          ? cards.filter((c) => c.kind === s.kind && c.type === s.id && c.player === p.index && c.done >= s.frame).sort((a, b) => a.done - b.done)[0]?.id
+          : firstCard.get(`${p.index}:${n.unit(s.id)}`);
+        out.push({ frame: s.frame, text: `${p.name} orders ${s.kind === "upgrade" || s.kind === "tech" ? "research of " : ""}${what}${q ? ` at ${q.supplyUsed[sample(s.frame)] ?? 0} supply` : ""}${tag(card)}` });
       });
     }
     return out;
@@ -481,6 +546,7 @@ export interface Placed {
   start: number;
   duration: number;
   frame: number;
+  card?: string;
 }
 
 export interface Schedule {
@@ -522,7 +588,7 @@ export function schedule(lines: readonly CastLine[], durations: readonly number[
     const duration = durations[i] ?? estimate(l.text);
     const start = Math.max(when, cursor + GAP);
     if (start - when > LATE[l.priority]) continue;
-    out.push({ moment: l.moment, speaker: l.speaker, text: l.text, clip: i, start, duration, frame: frameAt(start) });
+    out.push({ moment: l.moment, speaker: l.speaker, text: l.text, clip: i, start, duration, frame: frameAt(start), ...(l.card ? { card: l.card } : {}) });
     cursor = start + duration;
   }
   return { lines: out, starts, length, hold: Math.max(0, cursor - length) };

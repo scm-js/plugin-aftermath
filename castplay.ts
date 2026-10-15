@@ -141,6 +141,15 @@ export class Reel {
     return { speaker: line.speaker, text: spoken(line.text) };
   }
 
+  /** The card of the line being said, while it is said and a moment after; null when none. */
+  card(): string | null {
+    const s = this.saying;
+    if (!s) return null;
+    const line = this.plan.lines[s.index];
+    if (!line?.card || performance.now() - s.at > line.duration * 1000 + 1500) return null;
+    return line.card;
+  }
+
   /** Which stretch of how many, for the strip. */
   progress(): { moment: number; of: number } { return { moment: this.moment, of: this.moments.length }; }
 
