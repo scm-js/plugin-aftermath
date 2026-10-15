@@ -20,6 +20,8 @@ export interface ReelHooks {
   changed(): void;
   /** The reel is over: run out, stopped, or left by a jump elsewhere. */
   ended(why: "done" | "stopped" | "left"): void;
+  /** A voice is talking (true), or has stopped for long enough that the game may be heard again (false). */
+  talking?(on: boolean): void;
 }
 
 /** A stretch of the cast, in game seconds, and how fast it plays. */
@@ -68,6 +70,8 @@ const ARRIVED = 3;
 const AWAY = 4;
 /** A seek may take this long, in the Game view, before the reel gives up (milliseconds). */
 const SEEK_WAIT = 30_000;
+/** The game stays turned down this long after a voice stops, so it does not swell up between two lines (milliseconds). */
+const TALK_HOLD = 700;
 
 export class Reel {
   private readonly ctx: AudioContext | null;
@@ -92,6 +96,9 @@ export class Reel {
   private sources: AudioBufferSourceNode[] = [];
   /** The line being said, and when (performance.now) it started: what the captions show. */
   private saying: { index: number; at: number } | null = null;
+  /** Whether `talking` last said a voice talks, and when one last did (performance.now). */
+  private talked = false;
+  private talkedAt = -Infinity;
 
   constructor(hooks: ReelHooks, moments: readonly ReelMoment[], plan: Schedule, voices: readonly (AudioBuffer | null)[], ctx: AudioContext | null) {
     this.hooks = hooks;
@@ -125,6 +132,7 @@ export class Reel {
     this.hush();
     this.saying = null;
     if (why !== "left") this.hooks.pause();
+    this.talk(false);
     void this.ctx?.close();
     this.hooks.changed();
     this.hooks.ended(why);
@@ -157,6 +165,8 @@ export class Reel {
 
   private step(): void {
     const now = performance.now();
+    if (this.phase !== "paused" && this.voiced(now)) this.talkedAt = now;
+    this.talk(now - this.talkedAt < TALK_HOLD);
     if (this.phase === "holding") {
       const held = (now - this.holdFrom) / 1000;
       this.sayDue(null, this.plan.length + held);
@@ -248,6 +258,20 @@ export class Reel {
     const s = this.saying;
     if (!s) return false;
     return now - s.at < this.plan.lines[s.index].duration * 1000;
+  }
+
+  /** A line with a voice is being said (one in captions only is not heard over the game). */
+  private voiced(now: number): boolean {
+    const s = this.saying;
+    if (!s || !this.speaking(now)) return false;
+    const clip = this.plan.lines[s.index].clip;
+    return clip >= 0 && !!this.voices[clip];
+  }
+
+  private talk(on: boolean): void {
+    if (on === this.talked) return;
+    this.talked = on;
+    this.hooks.talking?.(on);
   }
 
   private hush(): void {
