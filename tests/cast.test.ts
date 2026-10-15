@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PlayerSeries, ReplayTimeline, UnitEvent } from "../vendor/scm-sim";
 import type { Fight } from "../fights";
+import { gainFor, loudness, TARGET_LOUDNESS } from "../castplay";
 import { castInput, castSegments, estimate, highlightClips, schedule, spoken, unitsByType, type CastGame, type CastLine } from "../cast";
 
 const MARINE = 0, SCV = 7, ZERGLING = 37, MUTALISK = 43, CC = 106, HATCHERY = 131, LAIR = 132;
@@ -144,5 +145,30 @@ describe("the schedule", () => {
     // A cue is acted, not said: it is not counted, and the captions leave it out.
     expect(estimate("[surprised] one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty twenty-one twenty-two twenty-three twenty-four twenty-five twenty-six twenty-seven")).toBe(10);
     expect(spoken("[getting excited] Here they come!  [chuckles] Oh no.")).toBe("Here they come! Oh no.");
+  });
+});
+
+describe("the voices' loudness", () => {
+  const tone = (amplitude: number, seconds = 2, rate = 8000) => Float32Array.from({ length: seconds * rate }, (_, i) => amplitude * Math.sin((2 * Math.PI * 220 * i) / rate));
+  const buffer = (data: Float32Array) => ({ numberOfChannels: 1, sampleRate: 8000, getChannelData: () => data });
+
+  it("measures a steady tone the way the standard does (a full-scale sine is about -3.7)", () => {
+    expect(loudness([tone(1)], 8000)).toBeCloseTo(-3.7, 1);
+    expect(loudness([tone(0.1)], 8000)).toBeCloseTo(-23.7, 1);
+    expect(loudness([new Float32Array(16000)], 8000)).toBe(-Infinity);
+  });
+
+  it("leaves the pauses out, so a line with a gap is as loud as one without", () => {
+    const gapped = new Float32Array(48000); gapped.set(tone(0.1), 0); gapped.set(tone(0.1), 32000);
+    // (Blocks across the edge of a pause count a little, as the standard has it: within half a decibel.)
+    expect(Math.abs(loudness([gapped], 8000) - loudness([tone(0.1)], 8000))).toBeLessThan(0.5);
+  });
+
+  it("brings a quiet voice and a loud one to the same level, within fifteen decibels", () => {
+    const quiet = gainFor(buffer(tone(0.05))), loud = gainFor(buffer(tone(0.4)));
+    expect(loudness([tone(0.05 * quiet)], 8000)).toBeCloseTo(TARGET_LOUDNESS, 1);
+    expect(loudness([tone(0.4 * loud)], 8000)).toBeCloseTo(TARGET_LOUDNESS, 1);
+    expect(gainFor(buffer(tone(0.0005)))).toBeCloseTo(10 ** (15 / 20), 6);
+    expect(gainFor(buffer(new Float32Array(16000)))).toBe(1);
   });
 });

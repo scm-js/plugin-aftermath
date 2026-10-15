@@ -3249,6 +3249,32 @@ function estimate(text) {
 }
 
 // castplay.ts
+var TARGET_LOUDNESS = -18;
+var MAX_GAIN_DB = 15;
+function loudness(channels, sampleRate) {
+  const block = Math.max(1, Math.round(sampleRate * 0.4)), step2 = Math.max(1, Math.round(block / 4));
+  const length = channels[0]?.length ?? 0;
+  const powers = [];
+  for (let start = 0; start + block <= Math.max(length, block); start += step2) {
+    let sum = 0;
+    for (const ch of channels) for (let i = start; i < Math.min(length, start + block); i++) sum += ch[i] * ch[i];
+    powers.push(sum / block);
+    if (start + block >= length) break;
+  }
+  const lufs = (p) => -0.691 + 10 * Math.log10(p);
+  const loud = powers.filter((p) => p > 0 && lufs(p) > -70);
+  if (!loud.length) return -Infinity;
+  const mean = (ps) => ps.reduce((a, b) => a + b, 0) / ps.length;
+  const gate = lufs(mean(loud)) - 10;
+  const kept = loud.filter((p) => lufs(p) > gate);
+  return lufs(mean(kept.length ? kept : loud));
+}
+function gainFor(buffer) {
+  const channels = Array.from({ length: buffer.numberOfChannels }, (_, c) => buffer.getChannelData(c));
+  const l = loudness(channels, buffer.sampleRate);
+  if (!Number.isFinite(l)) return 1;
+  return 10 ** (Math.max(-MAX_GAIN_DB, Math.min(MAX_GAIN_DB, TARGET_LOUDNESS - l)) / 20);
+}
 var ARRIVED = 3;
 var AWAY = 4;
 var SEEK_WAIT = 3e4;
@@ -3260,6 +3286,8 @@ var Reel = class {
   plan;
   /** Each schedule line's voice, by its `clip`; null for a line said in captions only. */
   voices;
+  /** Each voice's gain to the common loudness. */
+  gains;
   /** The stretch playing. */
   moment = 0;
   phase = "seeking";
@@ -3278,6 +3306,7 @@ var Reel = class {
     this.moments = moments;
     this.plan = plan;
     this.voices = voices;
+    this.gains = voices.map((v) => v ? gainFor(v) : 1);
     this.ctx = ctx;
     this.gain = ctx ? ctx.createGain() : null;
     this.gain?.connect(ctx.destination);
@@ -3415,7 +3444,9 @@ var Reel = class {
     if (voice && this.ctx && this.gain) {
       const src = this.ctx.createBufferSource();
       src.buffer = voice;
-      src.connect(this.gain);
+      const level = this.ctx.createGain();
+      level.gain.value = this.gains[line.clip] ?? 1;
+      src.connect(level).connect(this.gain);
       src.start();
       src.onended = () => {
         this.sources = this.sources.filter((s) => s !== src);

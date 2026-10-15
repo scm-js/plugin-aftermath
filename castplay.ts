@@ -25,6 +25,43 @@ export interface ReelHooks {
 /** A stretch of the cast, in game seconds, and how fast it plays. */
 export interface ReelMoment { from: number; to: number; speed?: number }
 
+/** Every line is brought to this loudness (LUFS, roughly), so the two voices match and a quiet line is not lost. */
+export const TARGET_LOUDNESS = -18;
+/** The most a line is turned up or down (decibels). */
+const MAX_GAIN_DB = 15;
+
+/**
+ * How loud a clip is, in LUFS without the K-weighting (speech barely needs it): the mean power of 400 ms blocks a
+ * quarter apart, the silent ones left out (below -70, then more than 10 below the rest), as ITU BS.1770 gates it.
+ * -Infinity for a clip with nothing in it.
+ */
+export function loudness(channels: readonly Float32Array[], sampleRate: number): number {
+  const block = Math.max(1, Math.round(sampleRate * 0.4)), step = Math.max(1, Math.round(block / 4));
+  const length = channels[0]?.length ?? 0;
+  const powers: number[] = [];
+  for (let start = 0; start + block <= Math.max(length, block); start += step) {
+    let sum = 0;
+    for (const ch of channels) for (let i = start; i < Math.min(length, start + block); i++) sum += ch[i] * ch[i];
+    powers.push(sum / block);
+    if (start + block >= length) break;
+  }
+  const lufs = (p: number) => -0.691 + 10 * Math.log10(p);
+  const loud = powers.filter((p) => p > 0 && lufs(p) > -70);
+  if (!loud.length) return -Infinity;
+  const mean = (ps: number[]) => ps.reduce((a, b) => a + b, 0) / ps.length;
+  const gate = lufs(mean(loud)) - 10;
+  const kept = loud.filter((p) => lufs(p) > gate);
+  return lufs(mean(kept.length ? kept : loud));
+}
+
+/** The gain that brings a clip to the target loudness, within ±15 dB; 1 for a silent one. */
+export function gainFor(buffer: { numberOfChannels: number; sampleRate: number; getChannelData(c: number): Float32Array }): number {
+  const channels = Array.from({ length: buffer.numberOfChannels }, (_, c) => buffer.getChannelData(c));
+  const l = loudness(channels, buffer.sampleRate);
+  if (!Number.isFinite(l)) return 1;
+  return 10 ** (Math.max(-MAX_GAIN_DB, Math.min(MAX_GAIN_DB, TARGET_LOUDNESS - l)) / 20);
+}
+
 /** A seek is taken to have arrived once the clock is this near where it was sent (seconds). */
 const ARRIVED = 3;
 /** The clock this far before the stretch playing means the person went elsewhere (seconds of game, times the speed). */
@@ -40,6 +77,8 @@ export class Reel {
   private readonly plan: Schedule;
   /** Each schedule line's voice, by its `clip`; null for a line said in captions only. */
   private readonly voices: readonly (AudioBuffer | null)[];
+  /** Each voice's gain to the common loudness. */
+  private readonly gains: number[];
   /** The stretch playing. */
   private moment = 0;
   private phase: "seeking" | "playing" | "holding" | "paused" | "over" = "seeking";
@@ -59,6 +98,7 @@ export class Reel {
     this.moments = moments;
     this.plan = plan;
     this.voices = voices;
+    this.gains = voices.map((v) => (v ? gainFor(v) : 1));
     this.ctx = ctx;
     this.gain = ctx ? ctx.createGain() : null;
     this.gain?.connect(ctx!.destination);
@@ -184,7 +224,9 @@ export class Reel {
     if (voice && this.ctx && this.gain) {
       const src = this.ctx.createBufferSource();
       src.buffer = voice;
-      src.connect(this.gain);
+      const level = this.ctx.createGain();
+      level.gain.value = this.gains[line.clip] ?? 1;
+      src.connect(level).connect(this.gain);
       src.start();
       src.onended = () => { this.sources = this.sources.filter((s) => s !== src); };
       this.sources.push(src);
