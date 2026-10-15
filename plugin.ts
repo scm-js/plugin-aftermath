@@ -43,7 +43,7 @@ import { cameraTrack, trackAt, type CameraTrack } from "./camera";
 import { advantage, bases as takenBases, hardestHit, leads, story, totals, type Advantage, type Base, type PlayerTotals } from "./story";
 import type { ReplayTimeline, ScmSimService, ViewHover, ViewHoverUnit } from "./vendor/scm-sim";
 import { GameView } from "./gameview";
-import { castInput, estimate, highlightClips, schedule, type CastInput, type CastLine, type Schedule } from "./cast";
+import { castInput, castSegments, estimate, highlightClips, schedule, type CastInput, type CastLine, type CastOptions, type Schedule } from "./cast";
 import { Reel } from "./castplay";
 import type { ScmjsAccountService } from "./vendor/scmjs-dev";
 import { InsightView, type InsightGame, type Metric as InsightMetric, type Resource } from "./insight";
@@ -76,6 +76,9 @@ interface Settings {
   resource: Resource;
   /** What the economy's chart shows. */
   insightMetric: InsightMetric;
+  /** How a cast is made: the whole game or its key moments, and how much banter. */
+  castFormat: CastOptions["format"];
+  castBanter: CastOptions["banter"];
   /**
    * 2 from 0.8, when the army lead and the summary came; 3 when the map's marks went into views; 4 when the views became
    * switches; 5 when Map stats came, its heat counting the same games as its marks, always whole.
@@ -83,7 +86,7 @@ interface Settings {
   version: number;
 }
 
-const DEFAULTS: Settings = { orders: false, legend: true, heat: "losses", speed: 8, workers: false, chart: "lead", tab: "summary", insightTab: "economy", resource: "both", insightMetric: "income", version: 5 };
+const DEFAULTS: Settings = { orders: false, legend: true, heat: "losses", speed: 8, workers: false, chart: "lead", tab: "summary", insightTab: "economy", resource: "both", insightMetric: "income", castFormat: "game", castBanter: "light", version: 5 };
 
 interface Loaded {
   id: number;
@@ -1018,7 +1021,7 @@ export function activate(api: PluginApi) {
   let castOffer: { speech: boolean } | null = null;
   /** A cast written (and voiced) for a replay, kept so a second showing costs nothing. */
   interface Made { input: CastInput; lines: CastLine[]; voices: (AudioBuffer | null)[]; plan: Schedule }
-  const casts = new Map<number, Made>();
+  const casts = new Map<string, Made>();
   /** The cast being made or shown: what the strip says meanwhile, and the reel once it plays. */
   const casting = { entry: null as Loaded | null, busy: null as string | null, error: null as string | null, reel: null as Reel | null, abort: null as AbortController | null, speed: 0 };
 
@@ -1051,9 +1054,9 @@ export function activate(api: PluginApi) {
   const plainName = (name: string) => name.replace(/^(Terran|Zerg|Protoss) /, "");
 
   /** Write the cast of a replay, voice it when the server can, and work out when each line is said. */
-  async function makeCast(entry: Loaded, signal: AbortSignal): Promise<Made> {
+  async function makeCast(entry: Loaded, options: CastOptions, signal: AbortSignal): Promise<Made> {
     const done = entry.played!;
-    const clips = highlightClips(done.fights, done.timeline.frames);
+    const clips = options.format === "game" ? castSegments(done.fights, done.timeline.frames) : highlightClips(done.fights, done.timeline.frames);
     if (!clips.length) throw new Error(t("This game has no key moments to cast."));
     const map = done.timeline.map;
     const players = entry.report.players.filter((p) => done.timeline.samples.players.some((q) => q.slot === p.player.index));
@@ -1068,7 +1071,7 @@ export function activate(api: PluginApi) {
         unit: (id) => plainName(api.names.unit(id)), upgrade: (id) => api.names.upgrade(id), tech: (id) => api.names.tech(id),
         place: (x, y) => { const c = clockOf(x, y, map.width * 32, map.height * 32); return c ? `${c} o'clock` : "the middle"; },
       },
-    }, clips);
+    }, clips, undefined, options);
     casting.busy = t("Writing the cast…");
     strip?.update();
     const written = await call<{ output: { lines: CastLine[] } }>("/v1/recipes/cast", { input }, signal);
@@ -1103,17 +1106,19 @@ export function activate(api: PluginApi) {
     const ctx = castOffer?.speech ? new AudioContext() : null;
     strip?.render();
     try {
-      let made = casts.get(entry.id);
-      if (!made) { made = await makeCast(entry, casting.abort.signal); casts.set(entry.id, made); }
+      // (One cast a replay for each way of making it.)
+      const options: CastOptions = { format: settings.castFormat, banter: settings.castBanter };
+      const key = `${entry.id}:${options.format}:${options.banter}`;
+      let made = casts.get(key);
+      if (!made) { made = await makeCast(entry, options, casting.abort.signal); casts.set(key, made); }
       if (current !== entry || casting.entry !== entry) { void ctx?.close(); return; }
       casting.busy = null;
       casting.speed = settings.speed;
-      settings.speed = 1;
-      if (gameClock()) game.speed(1);
       setFollowing(true);
       casting.reel = new Reel({
-        frame: () => (gameClock() ? (game.seeking ? null : game.frameNow(1)) : current?.frame ?? null),
+        frame: () => (gameClock() ? (game.seeking ? null : game.frameNow(settings.speed)) : current?.frame ?? null),
         seek: (f) => seek(f),
+        speed: (n) => { settings.speed = n; if (gameClock()) game.speed(n); strip?.update(); },
         play: () => play(),
         pause: () => stop(),
         playing: () => playing,
@@ -2499,6 +2504,16 @@ export function activate(api: PluginApi) {
           ? t("Watch the key moments with two commentators: the camera follows the action, and the scmjs.dev AI writes what they say and voices it. Made once a replay, from your account's balance.")
           : t("Watch the key moments with two commentators: the camera follows the action, and the scmjs.dev AI writes what they say, shown as captions. Made once a replay, from your account's balance."), onClick: () => (casting.entry === entry ? endCast() : void startCast()) })
         : null;
+      // How the next cast is made: the whole game or its key moments, and how much the two talk about other things.
+      const castFormat = castButton && casting.entry !== entry ? w.select([
+        { value: "game", label: t("Whole game") },
+        { value: "highlights", label: t("Key moments") },
+      ], { value: settings.castFormat, title: t("Cast the whole game, played fast through the quiet parts, or only its key moments"), onChange: (v) => { settings.castFormat = v as CastOptions["format"]; save(); castFormat?.blur(); } }) : null;
+      const castBanter = castButton && casting.entry !== entry ? w.select([
+        { value: "off", label: t("No banter") },
+        { value: "light", label: t("Some banter") },
+        { value: "lots", label: t("Lots of banter") },
+      ], { value: settings.castBanter, title: t("How much the two commentators chat about other things when little is happening"), onChange: (v) => { settings.castBanter = v as CastOptions["banter"]; save(); castBanter?.blur(); } }) : null;
       const analysis = insightPossible ? w.button(t("Analysis"), { className: "sm", title: t("Open the Analysis window: the game's economy and tech in charts and numbers"), onClick: () => openInsight() }) : null;
       // In the Replay view: the game as everyone sees it, or through one player's eyes, with the fog of war.
       const eyes = w.select([
@@ -2516,7 +2531,7 @@ export function activate(api: PluginApi) {
       this.eyesSelect = eyes;
       this.root.append(el("div", { className: "afm-row" }, this.playButton, this.timeLabel, speed,
         el("span", { className: "afm-toggles" }, this.spectateButton, this.ordersButton, this.statsButton, this.legendButton), eyes,
-        this.status, retry, castButton, analysis, chartSelect));
+        this.status, retry, castFormat, castBanter, castButton, analysis, chartSelect));
 
       // The lane of marks and the graph, one canvas: press or drag anywhere on it to go there.
       const canvas = el("canvas") as HTMLCanvasElement;
@@ -2570,7 +2585,7 @@ export function activate(api: PluginApi) {
         why = t("Replays are analysed one at a time: the one in front first, then the others with a tab, then the ones only in Map stats.");
       }
       if (casting.entry === entry && casting.busy) line = casting.busy;
-      else if (casting.entry === entry && casting.reel) { const p = casting.reel.progress(); line = t("Cast: key moment {n} of {of}", { n: p.moment + 1, of: p.of }); }
+      else if (casting.entry === entry && casting.reel) { const p = casting.reel.progress(); line = t("Cast: part {n} of {of}", { n: p.moment + 1, of: p.of }); }
       else if (casting.error && !casting.entry) { line = t("The cast could not be made: {reason}", { reason: casting.error }); }
       const onMap = lensOf() === "map";
       if (onMap) {

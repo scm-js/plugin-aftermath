@@ -1,8 +1,9 @@
 /**
- * A cast playing: the reel of moments run on the replay's own clock — each clip played from its start at 1×, its last
- * frame held while a line finishes, then a cut to the next — and each voiced line started when the clock reaches it.
- * The clock is the plugin's (or the Game view's); the reel only reads it, seeks and pauses, so the person's own pause
- * pauses the voices too, and a jump of their own elsewhere ends the cast.
+ * A cast playing: the game run from the cast's first stretch to its last on the replay's own clock, each stretch at its
+ * speed (the key fights at 1×, the quiet parts faster) with no cut between them, then the last frame held while the
+ * sign-off finishes; each voiced line started when the clock reaches its frame. The reel only reads the clock, seeks
+ * once, sets the speed and pauses, so the person's own pause pauses the voices too, and a jump of their own elsewhere
+ * ends the cast.
  */
 import { FRAME_SECONDS, spoken, type CastSpeaker, type Schedule } from "./cast";
 
@@ -10,6 +11,8 @@ export interface ReelHooks {
   /** The frame the replay shows now; null while a jump is on its way. */
   frame(): number | null;
   seek(frame: number): void;
+  /** Play at this many times normal speed. */
+  speed(multiplier: number): void;
   play(): void;
   pause(): void;
   playing(): boolean;
@@ -19,11 +22,12 @@ export interface ReelHooks {
   ended(why: "done" | "stopped" | "left"): void;
 }
 
-export interface ReelMoment { from: number; to: number }
+/** A stretch of the cast, in game seconds, and how fast it plays. */
+export interface ReelMoment { from: number; to: number; speed?: number }
 
 /** A seek is taken to have arrived once the clock is this near where it was sent (seconds). */
 const ARRIVED = 3;
-/** The clock this far outside the clip means the person went elsewhere (seconds). */
+/** The clock this far before the stretch playing means the person went elsewhere (seconds of game, times the speed). */
 const AWAY = 4;
 /** A seek may take this long, in the Game view, before the reel gives up (milliseconds). */
 const SEEK_WAIT = 30_000;
@@ -31,22 +35,24 @@ const SEEK_WAIT = 30_000;
 export class Reel {
   private readonly ctx: AudioContext | null;
   private readonly gain: GainNode | null;
+  private readonly hooks: ReelHooks;
+  private readonly moments: readonly ReelMoment[];
+  private readonly plan: Schedule;
+  /** Each schedule line's voice, by its `clip`; null for a line said in captions only. */
+  private readonly voices: readonly (AudioBuffer | null)[];
+  /** The stretch playing. */
   private moment = 0;
   private phase: "seeking" | "playing" | "holding" | "paused" | "over" = "seeking";
   private since = 0;
   private holdFrom = 0;
+  /** Where a seek was sent, game seconds. */
+  private target = 0;
   private raf = 0;
   /** Lines started, by their index in the schedule. */
   private readonly started = new Set<number>();
   private sources: AudioBufferSourceNode[] = [];
   /** The line being said, and when (performance.now) it started: what the captions show. */
   private saying: { index: number; at: number } | null = null;
-
-  private readonly hooks: ReelHooks;
-  private readonly moments: readonly ReelMoment[];
-  private readonly plan: Schedule;
-  /** Each schedule line's voice, by its `clip`; null for a line said in captions only. */
-  private readonly voices: readonly (AudioBuffer | null)[];
 
   constructor(hooks: ReelHooks, moments: readonly ReelMoment[], plan: Schedule, voices: readonly (AudioBuffer | null)[], ctx: AudioContext | null) {
     this.hooks = hooks;
@@ -60,7 +66,13 @@ export class Reel {
 
   start(): void {
     void this.ctx?.resume();
-    this.go(0);
+    this.moment = 0;
+    this.phase = "seeking";
+    this.since = performance.now();
+    this.target = this.moments[0].from;
+    this.hooks.speed(this.speedOf(0));
+    this.hooks.seek(Math.round(this.moments[0].from / FRAME_SECONDS));
+    this.hooks.play();
     const step = () => { if (this.phase === "over") return; this.step(); this.raf = requestAnimationFrame(step); };
     this.raf = requestAnimationFrame(step);
   }
@@ -89,66 +101,79 @@ export class Reel {
     return { speaker: line.speaker, text: spoken(line.text) };
   }
 
-  /** Which moment of how many, for the strip. */
+  /** Which stretch of how many, for the strip. */
   progress(): { moment: number; of: number } { return { moment: this.moment, of: this.moments.length }; }
 
-  private go(m: number): void {
-    this.moment = m;
-    this.phase = "seeking";
-    this.since = performance.now();
-    this.hooks.seek(Math.round(this.moments[m].from / FRAME_SECONDS));
-    this.hooks.play();
-  }
+  private speedOf(m: number): number { return this.moments[m]?.speed ?? 1; }
 
   private step(): void {
-    const m = this.moments[this.moment];
     const now = performance.now();
+    if (this.phase === "holding") {
+      const held = (now - this.holdFrom) / 1000;
+      this.sayDue(null, this.plan.length + held);
+      if (held >= this.plan.hold && !this.speaking(now)) this.stop("done");
+      return;
+    }
     const frame = this.hooks.frame();
     if (frame === null) { if (now - this.since > SEEK_WAIT) this.stop("stopped"); return; }
     const at = frame * FRAME_SECONDS;
-    switch (this.phase) {
-      case "seeking":
-        if (Math.abs(at - m.from) <= ARRIVED) { this.phase = "playing"; break; }
-        if (now - this.since > SEEK_WAIT) this.stop("stopped");
-        return;
-      case "paused":
-        if (!this.hooks.playing()) return;
-        this.phase = "playing";
-        void this.ctx?.resume();
-        break;
-      case "holding": {
-        const held = (now - this.holdFrom) / 1000;
-        this.sayDue(m.to + held, true);
-        if (held >= this.plan.holds[this.moment] && !this.speaking(now)) {
-          if (this.moment + 1 >= this.moments.length) { this.stop("done"); return; }
-          this.go(this.moment + 1);
-        }
+    if (this.phase === "seeking") {
+      if (Math.abs(at - this.target) > ARRIVED) { if (now - this.since > SEEK_WAIT) this.stop("stopped"); return; }
+      this.phase = "playing";
+    }
+    if (this.phase === "paused") {
+      if (!this.hooks.playing()) return;
+      this.phase = "playing";
+      void this.ctx?.resume();
+    }
+    if (!this.hooks.playing()) { this.phase = "paused"; void this.ctx?.suspend(); return; }
+    // Into the next stretch: its speed, and a cut to it when it does not follow on (a highlights cast); past the last,
+    // hold its frame for the sign-off.
+    while (this.moment < this.moments.length && at >= this.moments[this.moment].to) {
+      this.moment++;
+      if (this.moment >= this.moments.length) break;
+      const next = this.moments[this.moment];
+      this.hooks.speed(this.speedOf(this.moment));
+      this.hooks.changed();
+      if (next.from - at > ARRIVED) {
+        this.phase = "seeking";
+        this.since = now;
+        this.target = next.from;
+        this.hooks.seek(Math.round(next.from / FRAME_SECONDS));
+        this.hooks.play();
         return;
       }
-      default:
-        break;
     }
-    if (this.phase !== "playing") return;
-    if (!this.hooks.playing()) { this.phase = "paused"; void this.ctx?.suspend(); return; }
-    if (at < m.from - AWAY || at > m.to + AWAY) { this.stop("left"); return; }
-    if (at >= m.to) {
+    if (this.moment >= this.moments.length) {
+      this.moment = this.moments.length - 1;
+      this.sayDue(frame, null);
       this.hooks.pause();
       this.phase = "holding";
       this.holdFrom = now;
       return;
     }
-    this.sayDue(at, false);
+    const m = this.moments[this.moment];
+    if (at < m.from - AWAY * this.speedOf(this.moment)) { this.stop("left"); return; }
+    this.sayDue(frame, null);
   }
 
-  /** Start the lines of this moment due by `at` (game seconds); while holding, the ones past the clip's end too. */
-  private sayDue(at: number, holding: boolean): void {
-    const m = this.moments[this.moment];
+  /**
+   * Start the lines that are due: by the game's frame while it plays, by seconds on screen while the last frame is held.
+   * A line long gone by (the clock ran on past it) is not started late.
+   */
+  private sayDue(frame: number | null, held: number | null): void {
     this.plan.lines.forEach((line, i) => {
-      if (line.moment !== this.moment || this.started.has(i) || line.start > at) return;
-      if (!holding && line.start >= m.to) return;
+      if (this.started.has(i)) return;
+      let late: number;
+      if (line.frame >= 0) {
+        if (frame === null || frame < line.frame) return;
+        late = ((frame - line.frame) * FRAME_SECONDS) / this.speedOf(this.moment);
+      } else {
+        if (held === null || held < line.start) return;
+        late = held - line.start;
+      }
       this.started.add(i);
-      // A line long gone by (the clock ran on past it) is not started late.
-      if (at - line.start > Math.max(1, line.duration * 0.5)) return;
+      if (late > Math.max(1, line.duration * 0.5)) return;
       this.say(i);
     });
   }

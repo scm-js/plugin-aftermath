@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PlayerSeries, ReplayTimeline, UnitEvent } from "../vendor/scm-sim";
 import type { Fight } from "../fights";
-import { castInput, estimate, highlightClips, schedule, spoken, unitsByType, type CastGame, type CastLine } from "../cast";
+import { castInput, castSegments, estimate, highlightClips, schedule, spoken, unitsByType, type CastGame, type CastLine } from "../cast";
 
 const MARINE = 0, SCV = 7, ZERGLING = 37, MUTALISK = 43, CC = 106, HATCHERY = 131, LAIR = 132;
 const NAMES: Record<number, string> = { [MARINE]: "Marine", [SCV]: "SCV", [ZERGLING]: "Zergling", [MUTALISK]: "Mutalisk", [CC]: "Command Center", [HATCHERY]: "Hatchery", [LAIR]: "Lair" };
@@ -92,10 +92,11 @@ describe("the facts sent", () => {
       "Zed's whole army, wherever it stands: 2 Mutalisk (2 units, worth 400)",
       "Zed leads in army at 4:20: 400 against 100 for Tara",
     ]);
+    // Seconds on screen from the clip's start, each with the game's clock.
     expect(m.events).toEqual([
-      { at: 296, text: "Armies close at the middle; at the fight: 10 of Tara's fighting units, 12 of Zed's fighting units" },
-      { at: 305, text: "Zed loses 2 Mutalisk" },
-      { at: 318, text: "Tara loses 1 Marine" },
+      { at: 36, text: "4:56 Armies close at the middle; at the fight: 10 of Tara's fighting units, 12 of Zed's fighting units" },
+      { at: 45, text: "5:05 Zed loses 2 Mutalisk" },
+      { at: 58, text: "5:18 Tara loses 1 Marine" },
     ]);
     // What fell is weighed against everything the side had; the units at the fight are said apart from the whole army.
     expect(m.after).toContain("Zed lost 6 Zergling, 2 Mutalisk (600 worth, 40% of their whole army and workers); 12 of their fighting units were at the fight when it began");
@@ -105,25 +106,34 @@ describe("the facts sent", () => {
   });
 });
 
+describe("the whole game as one cast", () => {
+  it("plays the quiet stretches fast between the key fights, with no gap and no cut", () => {
+    const segs = castSegments([fight(S(300), S(320)), fight(S(600), S(630))], S(900));
+    expect(segs.map((c) => [Math.round(c.from * 0.042), Math.round(c.to * 0.042), c.speed, c.fights.length])).toEqual([
+      [0, 280, 2, 0], [280, 326, 1, 1], [326, 580, 6, 0], [580, 636, 1, 1], [636, 900, 16, 0],
+    ]);
+  });
+
+  it("is played fast from end to end when nothing was key", () => {
+    expect(castSegments([], S(600)).map((c) => c.speed)).toEqual([5]);
+  });
+});
+
 describe("the schedule", () => {
-  const moments = [{ from: 100, to: 130 }, { from: 200, to: 220 }];
+  // Fifteen seconds on screen of a minute of game at 4×, then thirty seconds of fight at 1×.
+  const moments = [{ from: 0, to: 60, speed: 4, seconds: 15 }, { from: 60, to: 90, speed: 1, seconds: 30 }];
   const line = (moment: number, at: number, priority: 1 | 2 | 3 = 2, speaker: "caster" | "analyst" = "caster"): CastLine => ({ moment, at, speaker, text: "x", priority });
 
-  it("says lines in turn, never over each other, and drops what would come too late for its priority", () => {
-    const lines = [line(0, 100, 1), line(0, 101, 3), line(0, 102, 2, "analyst"), line(0, 120, 3)];
-    const s = schedule(lines, [4, 2, 3, 2], moments);
-    expect(s.lines.map((l) => [l.clip, l.start])).toEqual([[0, 100], [2, 104.3], [3, 120]]);
-    expect(s.holds).toEqual([0, 0]);
+  it("says lines in turn on one timeline, across a stretch's end, and drops what would come too late for its priority", () => {
+    const s = schedule([line(0, 0, 1), line(0, 1, 3), line(0, 12, 2, "analyst"), line(1, 0, 2)], [4, 2, 5, 2], moments);
+    expect(s.lines.map((l) => [l.clip, l.start, l.frame])).toEqual([[0, 0, 0], [2, 12, Math.round(48 / 0.042)], [3, 17.3, Math.round(62.3 / 0.042)]]);
+    expect([s.starts, s.length, s.hold]).toEqual([[0, 15], 45, 0]);
   });
 
-  it("holds a clip's last frame for a line that runs past it, and the last moment for its sign-off", () => {
-    const s = schedule([line(0, 128, 1), line(1, 222, 1)], [5, 6], moments);
-    expect(s.holds).toEqual([3, 8]);
-  });
-
-  it("leaves out a line of little weight that would hold a clip too long", () => {
-    const s = schedule([line(0, 129, 2)], [10], moments);
-    expect(s.lines).toEqual([]);
+  it("holds the last frame for a line that runs past the end, and starts one after the end by the clock", () => {
+    const s = schedule([line(1, 28, 1), line(1, 30, 1, "analyst")], [5, 3], moments);
+    expect(s.lines.map((l) => [l.start, l.frame])).toEqual([[43, Math.round(88 / 0.042)], [48.3, -1]]);
+    expect(s.hold).toBeCloseTo(6.3, 6);
   });
 
   it("guesses a line's length from its words when it has no voice", () => {

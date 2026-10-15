@@ -1298,8 +1298,14 @@ var KO = {
   "Cast": "\uC911\uACC4",
   "Watch the key moments with two commentators: the camera follows the action, and the scmjs.dev AI writes what they say and voices it. Made once a replay, from your account's balance.": "\uB450 \uD574\uC124\uC790\uC640 \uD568\uAED8 \uC8FC\uC694 \uC7A5\uBA74\uC744 \uBD05\uB2C8\uB2E4. \uCE74\uBA54\uB77C\uAC00 \uC804\uD22C\uB97C \uB530\uB77C\uAC00\uACE0, scmjs.dev AI\uAC00 \uD574\uC124\uC744 \uC4F0\uACE0 \uBAA9\uC18C\uB9AC\uB85C \uC77D\uC2B5\uB2C8\uB2E4. \uB9AC\uD50C\uB808\uC774\uB9C8\uB2E4 \uD55C \uBC88 \uB9CC\uB4E4\uBA70, \uACC4\uC815 \uC794\uC561\uC5D0\uC11C \uBE44\uC6A9\uC774 \uB098\uAC11\uB2C8\uB2E4.",
   "Watch the key moments with two commentators: the camera follows the action, and the scmjs.dev AI writes what they say, shown as captions. Made once a replay, from your account's balance.": "\uB450 \uD574\uC124\uC790\uC640 \uD568\uAED8 \uC8FC\uC694 \uC7A5\uBA74\uC744 \uBD05\uB2C8\uB2E4. \uCE74\uBA54\uB77C\uAC00 \uC804\uD22C\uB97C \uB530\uB77C\uAC00\uACE0, scmjs.dev AI\uAC00 \uC4F4 \uD574\uC124\uC774 \uC790\uB9C9\uC73C\uB85C \uB098\uC635\uB2C8\uB2E4. \uB9AC\uD50C\uB808\uC774\uB9C8\uB2E4 \uD55C \uBC88 \uB9CC\uB4E4\uBA70, \uACC4\uC815 \uC794\uC561\uC5D0\uC11C \uBE44\uC6A9\uC774 \uB098\uAC11\uB2C8\uB2E4.",
-  "Cast: key moment {n} of {of}": "\uC911\uACC4: \uC8FC\uC694 \uC7A5\uBA74 {n}/{of}",
-  "The cast could not be made: {reason}": "\uC911\uACC4\uB97C \uB9CC\uB4E4\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4: {reason}"
+  "Cast: part {n} of {of}": "\uC911\uACC4: {n}/{of}\uBD80",
+  "The cast could not be made: {reason}": "\uC911\uACC4\uB97C \uB9CC\uB4E4\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4: {reason}",
+  "Whole game": "\uAC8C\uC784 \uC804\uCCB4",
+  "Cast the whole game, played fast through the quiet parts, or only its key moments": "\uC870\uC6A9\uD55C \uAD6C\uAC04\uC740 \uBE60\uB974\uAC8C \uB118\uAE30\uBA70 \uAC8C\uC784 \uC804\uCCB4\uB97C \uC911\uACC4\uD558\uAC70\uB098, \uC8FC\uC694 \uC7A5\uBA74\uB9CC \uC911\uACC4\uD569\uB2C8\uB2E4",
+  "No banter": "\uC7A1\uB2F4 \uC5C6\uC74C",
+  "Some banter": "\uC7A1\uB2F4 \uC870\uAE08",
+  "Lots of banter": "\uC7A1\uB2F4 \uB9CE\uC774",
+  "How much the two commentators chat about other things when little is happening": "\uBCC4\uC77C \uC5C6\uC744 \uB54C \uB450 \uD574\uC124\uC790\uAC00 \uB2E4\uB978 \uC774\uC57C\uAE30\uB97C \uC5BC\uB9C8\uB098 \uB098\uB20C\uC9C0"
 };
 
 // played.ts
@@ -2871,6 +2877,9 @@ var frameOf = (s) => Math.round(s / FRAME_SECONDS);
 var LEAD_IN = frameOf(20);
 var FIRST_LEAD_IN = frameOf(40);
 var AFTER = frameOf(6);
+var OPENING_SECONDS = 120;
+var BRIDGE_SECONDS = 40;
+var TAIL_SECONDS = 15;
 var LOSS_BUCKET = frameOf(3);
 var MAX_EVENTS = 60;
 var OPENING_STEPS = 18;
@@ -2879,6 +2888,33 @@ var BLOCK_SAID = frameOf(6);
 var HALL_TYPES = /* @__PURE__ */ new Set([106, 131, 132, 133, 154]);
 var PRODUCTION = /* @__PURE__ */ new Set([111, 113, 114, 160, 167, 155]);
 var ROUTINE = /* @__PURE__ */ new Set([109, 110, 149, 156, 157, 42]);
+function castSegments(fights2, frames) {
+  const live = [];
+  for (const f of fights2.filter((x) => x.key).sort((a, b) => a.from - b.from)) {
+    const from = Math.max(0, f.from - LEAD_IN), to = Math.min(frames, f.to + AFTER);
+    const last = live[live.length - 1];
+    if (last && from <= last.to) {
+      last.to = Math.max(last.to, to);
+      last.fights.push(f);
+      continue;
+    }
+    live.push({ from, to, fights: [f], speed: 1 });
+  }
+  const fast = (from, to, target, lo, hi) => ({ from, to, fights: [], speed: Math.max(lo, Math.min(hi, Math.round((to - from) * FRAME_SECONDS / target))) });
+  if (!live.length) return [fast(0, frames, OPENING_SECONDS, 2, 16)];
+  const out = [];
+  let at = 0;
+  live.forEach((c, i) => {
+    if (c.from - at > frameOf(5)) out.push(fast(at, c.from, i ? BRIDGE_SECONDS : OPENING_SECONDS, i ? 4 : 2, i ? 16 : 8));
+    else if (out.length) out[out.length - 1].to = c.from;
+    else c.from = 0;
+    out.push(c);
+    at = c.to;
+  });
+  if (frames - at > frameOf(5)) out.push(fast(at, frames, TAIL_SECONDS, 2, 16));
+  else if (out.length) out[out.length - 1].to = frames;
+  return out;
+}
 function highlightClips(fights2, frames) {
   const keys = fights2.filter((f) => f.key).sort((a, b) => a.from - b.from);
   const out = [];
@@ -2917,7 +2953,7 @@ function unitsByType(t, frame) {
   }
   return out;
 }
-function castInput(game, clips, wishes) {
+function castInput(game, clips, wishes, options) {
   const t = game.timeline;
   const n = { ...game.names, unit: (id) => game.names.unit(id).replace(/\s*\([^)]*\)\s*$/, "") };
   const nameOf = (index) => game.players.find((p) => p.index === index)?.name ?? `Player ${index + 1}`;
@@ -3013,8 +3049,8 @@ function castInput(game, clips, wishes) {
     const [ahead, behind] = a > b ? [two[0], two[1]] : [two[1], two[0]];
     return `${ahead.name} leads in army at ${clock(frame)}: ${worth(Math.max(a, b))} against ${worth(Math.min(a, b))} for ${behind.name}`;
   };
-  const losses2 = (from, to) => {
-    let bucket = LOSS_BUCKET;
+  const losses2 = (from, to, first = LOSS_BUCKET) => {
+    let bucket = first;
     for (; ; ) {
       const groups = /* @__PURE__ */ new Map();
       for (const e of t.events) {
@@ -3045,32 +3081,64 @@ function castInput(game, clips, wishes) {
     out.push(f.winner === null ? "Neither side came out clearly ahead" : `${nameOf(f.winner)} came out ahead`);
     return out;
   };
+  const orders = (from, to) => {
+    const out = [];
+    for (const p of game.players) {
+      const q = series2(p.index), trained = /* @__PURE__ */ new Set();
+      p.build.forEach((s, k, all) => {
+        if ((s.kind === "train" || s.kind === "morph") && WORKERS2.has(s.id)) return;
+        if (s.kind === "train" || s.kind === "morph" && !isBuilding(s.id)) {
+          if (trained.has(s.id)) return;
+          trained.add(s.id);
+        }
+        if (s.frame < from || s.frame >= to || s.frame > OPENING_UNTIL) return;
+        if (all.slice(0, k).some((b) => b.kind === s.kind && b.id === s.id && s.frame - b.frame < frameOf(30))) return;
+        const what = s.kind === "upgrade" ? n.upgrade(s.id) : s.kind === "tech" ? n.tech(s.id) : n.unit(s.id);
+        out.push({ frame: s.frame, text: `${p.name} orders ${s.kind === "upgrade" || s.kind === "tech" ? "research of " : ""}${what}${q ? ` at ${q.supplyUsed[sample(s.frame)] ?? 0} supply` : ""}` });
+      });
+    }
+    return out;
+  };
   const moments = clips.map((c, i) => {
+    const speed = c.speed ?? 1, fast = speed > 1, last = i === clips.length - 1;
+    const at = (frame) => Math.round((Math.max(c.from, frame) - c.from) * FRAME_SECONDS * 10 / speed) / 10;
     const since = i ? clips[i - 1].to : 0;
     const before = [];
     for (const h of [...happened(since, c.from), ...blocks(since, c.from)].sort((a, b) => a.frame - b.frame)) before.push(`${clock(h.frame)} ${h.text}`);
-    const state = standing(c.from);
+    const state = fast && i > 0 ? [] : standing(c.from);
     const l = lead(c.from);
-    if (l) state.push(l);
+    if (l && state.length) state.push(l);
     const events = [];
+    const news = (frame, text) => events.push({ at: at(frame), text: `${clock(frame)} ${text}` });
     for (const f of c.fights) {
-      const sides = f.sides.filter((s) => shown.has(s.player) && s.army).map((s) => `${s.army} of ${nameOf(s.player)}'s fighting units`);
-      events.push({ at: seconds(Math.max(c.from, f.from - frameOf(4))), text: `Armies close at ${n.place(f.x, f.y)}${sides.length ? `; at the fight: ${sides.join(", ")}` : ""}` });
+      const sides = f.sides.filter((x) => shown.has(x.player) && x.army).map((x) => `${x.army} of ${nameOf(x.player)}'s fighting units`);
+      news(Math.max(c.from, f.from - frameOf(4)), `Armies close at ${n.place(f.x, f.y)}${sides.length ? `; at the fight: ${sides.join(", ")}` : ""}`);
     }
-    for (const h of happened(c.from, c.to)) events.push({ at: seconds(h.frame), text: h.text });
-    for (const x of losses2(c.from, c.to)) events.push({ at: seconds(x.frame), text: x.text });
+    if (fast) for (const o of orders(c.from, c.to)) news(o.frame, o.text);
+    for (const h of [...happened(c.from, c.to), ...blocks(c.from, c.to)]) news(h.frame, h.text);
+    for (const x of losses2(c.from, c.to, fast ? LOSS_BUCKET * speed : LOSS_BUCKET)) news(x.frame, x.text);
     events.sort((a, b) => a.at - b.at);
     const after = c.fights.flatMap(fightFacts);
+    if (fast && !last) after.push(...standing(c.to));
     const la = lead(c.to);
     if (la) after.push(la);
-    if (i === clips.length - 1) {
-      after.push(game.winner === null ? `The game ends at ${clock(t.frames)}` : `${nameOf(game.winner)} wins; the game ends at ${clock(t.frames)}`);
-    }
+    if (last) after.push(game.winner === null ? `The game ends at ${clock(t.frames)}` : `${nameOf(game.winner)} wins; the game ends at ${clock(t.frames)}`);
     const key = c.fights.find((f) => f.turning) ?? c.fights[0];
-    const title = key ? `${key.turning ? "The turning point" : key.tier === "decisive" ? "A decisive fight" : key.tier === "major" ? "A major fight" : "A fight"} at ${n.place(key.x, key.y)}` : "The game";
-    return { from: seconds(c.from), to: seconds(c.to), title, state: state.slice(0, 20), before: before.slice(0, 40), events: events.slice(0, 120), after: after.slice(0, 20) };
+    const title = key ? `${key.turning ? "The turning point" : key.tier === "decisive" ? "A decisive fight" : key.tier === "major" ? "A major fight" : "A fight"} at ${n.place(key.x, key.y)}` : i === 0 ? "The opening" : last ? "The end of the game" : "Between the fights";
+    return {
+      from: seconds(c.from),
+      to: seconds(c.to),
+      speed,
+      seconds: Math.round((c.to - c.from) * FRAME_SECONDS * 10 / speed) / 10,
+      title,
+      state: state.slice(0, 20),
+      before: before.slice(0, 40),
+      events: events.slice(0, 120),
+      after: after.slice(0, 24)
+    };
   });
   return {
+    ...options ? { options } : {},
     game: {
       map: game.map.trim(),
       length: seconds(t.frames),
@@ -3089,26 +3157,32 @@ function castInput(game, clips, wishes) {
 var ordinal = (k) => k === 2 ? "second" : k === 3 ? "third" : k === 4 ? "fourth" : k === 5 ? "fifth" : `${k}th`;
 var LATE = { 1: 6, 2: 3, 3: 1.5 };
 var GAP = 0.3;
-var MAX_HOLD = 5;
 function schedule(lines, durations, moments) {
+  const span = (m) => m.seconds ?? (m.to - m.from) / (m.speed ?? 1);
+  const starts = [];
+  let length = 0;
+  for (const m of moments) {
+    starts.push(length);
+    length += span(m);
+  }
+  const frameAt = (t) => {
+    let k = moments.length - 1;
+    while (k > 0 && starts[k] > t) k--;
+    if (t >= length) return -1;
+    const m = moments[k];
+    return Math.round((m.from + (t - starts[k]) * (m.speed ?? 1)) / FRAME_SECONDS);
+  };
+  const order = lines.map((l, i) => ({ l, i, when: (starts[l.moment] ?? 0) + l.at })).sort((a, b) => a.when - b.when);
   const out = [];
-  const holds = moments.map(() => 0);
-  moments.forEach((m, mi) => {
-    const last = mi === moments.length - 1;
-    let cursor = m.from;
-    const mine = lines.map((l, i) => ({ l, i })).filter((x) => x.l.moment === mi).sort((a, b) => a.l.at - b.l.at);
-    for (const { l, i } of mine) {
-      const duration = durations[i] ?? estimate(l.text);
-      const start = Math.max(l.at, cursor === m.from ? m.from : cursor + GAP);
-      if (start - l.at > LATE[l.priority]) continue;
-      const end = start + duration;
-      if (!last && end - m.to > MAX_HOLD && l.priority > 1) continue;
-      out.push({ moment: mi, speaker: l.speaker, text: l.text, clip: i, start, duration });
-      cursor = end;
-    }
-    holds[mi] = Math.max(0, cursor - m.to);
-  });
-  return { lines: out, holds };
+  let cursor = -Infinity;
+  for (const { l, i, when } of order) {
+    const duration = durations[i] ?? estimate(l.text);
+    const start = Math.max(when, cursor + GAP);
+    if (start - when > LATE[l.priority]) continue;
+    out.push({ moment: l.moment, speaker: l.speaker, text: l.text, clip: i, start, duration, frame: frameAt(start) });
+    cursor = start + duration;
+  }
+  return { lines: out, starts, length, hold: Math.max(0, cursor - length) };
 }
 function spoken(text) {
   return text.replace(/\[[^\]]*\]\s*/g, "").replace(/\s+/g, " ").trim();
@@ -3124,21 +3198,24 @@ var SEEK_WAIT = 3e4;
 var Reel = class {
   ctx;
   gain;
+  hooks;
+  moments;
+  plan;
+  /** Each schedule line's voice, by its `clip`; null for a line said in captions only. */
+  voices;
+  /** The stretch playing. */
   moment = 0;
   phase = "seeking";
   since = 0;
   holdFrom = 0;
+  /** Where a seek was sent, game seconds. */
+  target = 0;
   raf = 0;
   /** Lines started, by their index in the schedule. */
   started = /* @__PURE__ */ new Set();
   sources = [];
   /** The line being said, and when (performance.now) it started: what the captions show. */
   saying = null;
-  hooks;
-  moments;
-  plan;
-  /** Each schedule line's voice, by its `clip`; null for a line said in captions only. */
-  voices;
   constructor(hooks, moments, plan, voices, ctx) {
     this.hooks = hooks;
     this.moments = moments;
@@ -3150,7 +3227,13 @@ var Reel = class {
   }
   start() {
     void this.ctx?.resume();
-    this.go(0);
+    this.moment = 0;
+    this.phase = "seeking";
+    this.since = performance.now();
+    this.target = this.moments[0].from;
+    this.hooks.speed(this.speedOf(0));
+    this.hooks.seek(Math.round(this.moments[0].from / FRAME_SECONDS));
+    this.hooks.play();
     const step2 = () => {
       if (this.phase === "over") return;
       this.step();
@@ -3181,80 +3264,91 @@ var Reel = class {
     if (!line || performance.now() - s.at > line.duration * 1e3 + 300) return null;
     return { speaker: line.speaker, text: spoken(line.text) };
   }
-  /** Which moment of how many, for the strip. */
+  /** Which stretch of how many, for the strip. */
   progress() {
     return { moment: this.moment, of: this.moments.length };
   }
-  go(m) {
-    this.moment = m;
-    this.phase = "seeking";
-    this.since = performance.now();
-    this.hooks.seek(Math.round(this.moments[m].from / FRAME_SECONDS));
-    this.hooks.play();
+  speedOf(m) {
+    return this.moments[m]?.speed ?? 1;
   }
   step() {
-    const m = this.moments[this.moment];
     const now = performance.now();
+    if (this.phase === "holding") {
+      const held = (now - this.holdFrom) / 1e3;
+      this.sayDue(null, this.plan.length + held);
+      if (held >= this.plan.hold && !this.speaking(now)) this.stop("done");
+      return;
+    }
     const frame = this.hooks.frame();
     if (frame === null) {
       if (now - this.since > SEEK_WAIT) this.stop("stopped");
       return;
     }
     const at = frame * FRAME_SECONDS;
-    switch (this.phase) {
-      case "seeking":
-        if (Math.abs(at - m.from) <= ARRIVED) {
-          this.phase = "playing";
-          break;
-        }
+    if (this.phase === "seeking") {
+      if (Math.abs(at - this.target) > ARRIVED) {
         if (now - this.since > SEEK_WAIT) this.stop("stopped");
         return;
-      case "paused":
-        if (!this.hooks.playing()) return;
-        this.phase = "playing";
-        void this.ctx?.resume();
-        break;
-      case "holding": {
-        const held = (now - this.holdFrom) / 1e3;
-        this.sayDue(m.to + held, true);
-        if (held >= this.plan.holds[this.moment] && !this.speaking(now)) {
-          if (this.moment + 1 >= this.moments.length) {
-            this.stop("done");
-            return;
-          }
-          this.go(this.moment + 1);
-        }
-        return;
       }
-      default:
-        break;
+      this.phase = "playing";
     }
-    if (this.phase !== "playing") return;
+    if (this.phase === "paused") {
+      if (!this.hooks.playing()) return;
+      this.phase = "playing";
+      void this.ctx?.resume();
+    }
     if (!this.hooks.playing()) {
       this.phase = "paused";
       void this.ctx?.suspend();
       return;
     }
-    if (at < m.from - AWAY || at > m.to + AWAY) {
-      this.stop("left");
-      return;
+    while (this.moment < this.moments.length && at >= this.moments[this.moment].to) {
+      this.moment++;
+      if (this.moment >= this.moments.length) break;
+      const next = this.moments[this.moment];
+      this.hooks.speed(this.speedOf(this.moment));
+      this.hooks.changed();
+      if (next.from - at > ARRIVED) {
+        this.phase = "seeking";
+        this.since = now;
+        this.target = next.from;
+        this.hooks.seek(Math.round(next.from / FRAME_SECONDS));
+        this.hooks.play();
+        return;
+      }
     }
-    if (at >= m.to) {
+    if (this.moment >= this.moments.length) {
+      this.moment = this.moments.length - 1;
+      this.sayDue(frame, null);
       this.hooks.pause();
       this.phase = "holding";
       this.holdFrom = now;
       return;
     }
-    this.sayDue(at, false);
-  }
-  /** Start the lines of this moment due by `at` (game seconds); while holding, the ones past the clip's end too. */
-  sayDue(at, holding) {
     const m = this.moments[this.moment];
+    if (at < m.from - AWAY * this.speedOf(this.moment)) {
+      this.stop("left");
+      return;
+    }
+    this.sayDue(frame, null);
+  }
+  /**
+   * Start the lines that are due: by the game's frame while it plays, by seconds on screen while the last frame is held.
+   * A line long gone by (the clock ran on past it) is not started late.
+   */
+  sayDue(frame, held) {
     this.plan.lines.forEach((line, i) => {
-      if (line.moment !== this.moment || this.started.has(i) || line.start > at) return;
-      if (!holding && line.start >= m.to) return;
+      if (this.started.has(i)) return;
+      let late;
+      if (line.frame >= 0) {
+        if (frame === null || frame < line.frame) return;
+        late = (frame - line.frame) * FRAME_SECONDS / this.speedOf(this.moment);
+      } else {
+        if (held === null || held < line.start) return;
+        late = held - line.start;
+      }
       this.started.add(i);
-      if (at - line.start > Math.max(1, line.duration * 0.5)) return;
+      if (late > Math.max(1, line.duration * 0.5)) return;
       this.say(i);
     });
   }
@@ -4380,7 +4474,7 @@ function nearestSample(frames, frame) {
 }
 
 // plugin.ts
-var DEFAULTS = { orders: false, legend: true, heat: "losses", speed: 8, workers: false, chart: "lead", tab: "summary", insightTab: "economy", resource: "both", insightMetric: "income", version: 5 };
+var DEFAULTS = { orders: false, legend: true, heat: "losses", speed: 8, workers: false, chart: "lead", tab: "summary", insightTab: "economy", resource: "both", insightMetric: "income", castFormat: "game", castBanter: "light", version: 5 };
 var FRONT_FRAMES = 120;
 var FIGHT_LEAD = 48;
 var TWINS = /* @__PURE__ */ new Set([37, 47]);
@@ -5243,9 +5337,9 @@ function activate(api) {
     return json;
   }
   const plainName = (name) => name.replace(/^(Terran|Zerg|Protoss) /, "");
-  async function makeCast(entry, signal) {
+  async function makeCast(entry, options, signal) {
     const done = entry.played;
-    const clips = highlightClips(done.fights, done.timeline.frames);
+    const clips = options.format === "game" ? castSegments(done.fights, done.timeline.frames) : highlightClips(done.fights, done.timeline.frames);
     if (!clips.length) throw new Error(t("This game has no key moments to cast."));
     const map = done.timeline.map;
     const players = entry.report.players.filter((p) => done.timeline.samples.players.some((q) => q.slot === p.player.index));
@@ -5265,7 +5359,7 @@ function activate(api) {
           return c ? `${c} o'clock` : "the middle";
         }
       }
-    }, clips);
+    }, clips, void 0, options);
     casting.busy = t("Writing the cast\u2026");
     strip?.update();
     const written = await call("/v1/recipes/cast", { input }, signal);
@@ -5301,10 +5395,12 @@ function activate(api) {
     const ctx = castOffer?.speech ? new AudioContext() : null;
     strip?.render();
     try {
-      let made = casts.get(entry.id);
+      const options = { format: settings.castFormat, banter: settings.castBanter };
+      const key = `${entry.id}:${options.format}:${options.banter}`;
+      let made = casts.get(key);
       if (!made) {
-        made = await makeCast(entry, casting.abort.signal);
-        casts.set(entry.id, made);
+        made = await makeCast(entry, options, casting.abort.signal);
+        casts.set(key, made);
       }
       if (current !== entry || casting.entry !== entry) {
         void ctx?.close();
@@ -5312,12 +5408,15 @@ function activate(api) {
       }
       casting.busy = null;
       casting.speed = settings.speed;
-      settings.speed = 1;
-      if (gameClock()) game.speed(1);
       setFollowing(true);
       casting.reel = new Reel({
-        frame: () => gameClock() ? game.seeking ? null : game.frameNow(1) : current?.frame ?? null,
+        frame: () => gameClock() ? game.seeking ? null : game.frameNow(settings.speed) : current?.frame ?? null,
         seek: (f) => seek(f),
+        speed: (n) => {
+          settings.speed = n;
+          if (gameClock()) game.speed(n);
+          strip?.update();
+        },
         play: () => play(),
         pause: () => stop(),
         playing: () => playing3,
@@ -6727,6 +6826,23 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
       });
       this.statsButton = toggle(t("Map stats"), () => showStats(lensOf() !== "map"));
       const castButton = castOffer && entry.played ? w.button(casting.entry === entry ? t("Stop cast") : t("Cast"), { className: "sm", title: castOffer.speech ? t("Watch the key moments with two commentators: the camera follows the action, and the scmjs.dev AI writes what they say and voices it. Made once a replay, from your account's balance.") : t("Watch the key moments with two commentators: the camera follows the action, and the scmjs.dev AI writes what they say, shown as captions. Made once a replay, from your account's balance."), onClick: () => casting.entry === entry ? endCast() : void startCast() }) : null;
+      const castFormat = castButton && casting.entry !== entry ? w.select([
+        { value: "game", label: t("Whole game") },
+        { value: "highlights", label: t("Key moments") }
+      ], { value: settings.castFormat, title: t("Cast the whole game, played fast through the quiet parts, or only its key moments"), onChange: (v) => {
+        settings.castFormat = v;
+        save();
+        castFormat?.blur();
+      } }) : null;
+      const castBanter = castButton && casting.entry !== entry ? w.select([
+        { value: "off", label: t("No banter") },
+        { value: "light", label: t("Some banter") },
+        { value: "lots", label: t("Lots of banter") }
+      ], { value: settings.castBanter, title: t("How much the two commentators chat about other things when little is happening"), onChange: (v) => {
+        settings.castBanter = v;
+        save();
+        castBanter?.blur();
+      } }) : null;
       const analysis = insightPossible ? w.button(t("Analysis"), { className: "sm", title: t("Open the Analysis window: the game's economy and tech in charts and numbers"), onClick: () => openInsight() }) : null;
       const eyes = w.select([
         { value: -1, label: t("Vision: everyone") },
@@ -6750,6 +6866,8 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
         eyes,
         this.status,
         retry,
+        castFormat,
+        castBanter,
         castButton,
         analysis,
         chartSelect
@@ -6811,7 +6929,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
       if (casting.entry === entry && casting.busy) line = casting.busy;
       else if (casting.entry === entry && casting.reel) {
         const p = casting.reel.progress();
-        line = t("Cast: key moment {n} of {of}", { n: p.moment + 1, of: p.of });
+        line = t("Cast: part {n} of {of}", { n: p.moment + 1, of: p.of });
       } else if (casting.error && !casting.entry) {
         line = t("The cast could not be made: {reason}", { reason: casting.error });
       }

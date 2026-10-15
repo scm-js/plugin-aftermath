@@ -20,6 +20,14 @@ const frameOf = (s: number) => Math.round(s / FRAME_SECONDS);
 const LEAD_IN = frameOf(20);
 const FIRST_LEAD_IN = frameOf(40);
 const AFTER = frameOf(6);
+/**
+ * A whole-game cast plays the quiet stretches fast: the opening to take about this long on screen (two minutes), at 2×
+ * to 8×; a stretch between two fights about this long (forty seconds), at 4× to 16×; what is left after the last fight
+ * about this long (fifteen seconds).
+ */
+const OPENING_SECONDS = 120;
+const BRIDGE_SECONDS = 40;
+const TAIL_SECONDS = 15;
 /** Deaths this close together are one line of what fell (three seconds). */
 const LOSS_BUCKET = frameOf(3);
 /** The most timed facts in one moment; past this, losses are bucketed wider. */
@@ -39,7 +47,14 @@ const ROUTINE = new Set([109, 110, 149, 156, 157, 42]);
 
 export type CastSpeaker = "caster" | "analyst";
 
+/** How a cast is made: the whole game or its key moments, and how much the two talk about other things. */
+export interface CastOptions {
+  format: "game" | "highlights";
+  banter: "off" | "light" | "lots";
+}
+
 export interface CastInput {
+  options?: CastOptions;
   game: {
     map: string;
     length: number;
@@ -52,8 +67,12 @@ export interface CastInput {
 }
 
 export interface CastMoment {
+  /** Game seconds the stretch starts and ends at. */
   from: number;
   to: number;
+  /** How fast it plays (1: a key fight at normal speed), and so how long it is on screen, in seconds. */
+  speed?: number;
+  seconds?: number;
   title: string;
   /** Where each player stands when the clip starts: economy, buildings, upgrades, the whole army. */
   state?: string[];
@@ -66,8 +85,40 @@ export interface CastLine { moment: number; at: number; speaker: CastSpeaker; te
 
 /* ── The moments ── */
 
-/** A clip of the game a cast shows, in frames, and the fights in it. */
-export interface Clip { from: number; to: number; fights: Fight[] }
+/**
+ * A stretch of the game a cast shows, in frames, and the fights in it. `speed` is how fast it plays (1 for a key fight,
+ * more through the quiet parts); a whole-game cast's stretches follow on from one another with no cut.
+ */
+export interface Clip { from: number; to: number; fights: Fight[]; speed?: number }
+
+/**
+ * The whole game as one cast: the key fights at normal speed, and everything between them played fast — the opening,
+ * the stretches between fights, what is left after the last — so the story runs on without a cut.
+ */
+export function castSegments(fights: readonly Fight[], frames: number): Clip[] {
+  const live: Clip[] = [];
+  for (const f of fights.filter((x) => x.key).sort((a, b) => a.from - b.from)) {
+    const from = Math.max(0, f.from - LEAD_IN), to = Math.min(frames, f.to + AFTER);
+    const last = live[live.length - 1];
+    if (last && from <= last.to) { last.to = Math.max(last.to, to); last.fights.push(f); continue; }
+    live.push({ from, to, fights: [f], speed: 1 });
+  }
+  const fast = (from: number, to: number, target: number, lo: number, hi: number): Clip =>
+    ({ from, to, fights: [], speed: Math.max(lo, Math.min(hi, Math.round(((to - from) * FRAME_SECONDS) / target))) });
+  if (!live.length) return [fast(0, frames, OPENING_SECONDS, 2, 16)];
+  const out: Clip[] = [];
+  let at = 0;
+  live.forEach((c, i) => {
+    if (c.from - at > frameOf(5)) out.push(fast(at, c.from, i ? BRIDGE_SECONDS : OPENING_SECONDS, i ? 4 : 2, i ? 16 : 8));
+    else if (out.length) out[out.length - 1].to = c.from;
+    else c.from = 0;
+    out.push(c);
+    at = c.to;
+  });
+  if (frames - at > frameOf(5)) out.push(fast(at, frames, TAIL_SECONDS, 2, 16));
+  else if (out.length) out[out.length - 1].to = frames;
+  return out;
+}
 
 /**
  * The highlights: a clip around each of the game's key fights, from a little before it (longer before the first, for
@@ -141,7 +192,7 @@ export function unitsByType(t: ReplayTimeline, frame: number): Map<number, Map<n
 }
 
 /** The facts of a moment and the ones before it, written for the commentators. */
-export function castInput(game: CastGame, clips: readonly Clip[], wishes?: string): CastInput {
+export function castInput(game: CastGame, clips: readonly Clip[], wishes?: string, options?: CastOptions): CastInput {
   const t = game.timeline;
   // One name for a unit whatever mode it is in: a Siege Tank is a Siege Tank, sieged or not.
   const n: CastNames = { ...game.names, unit: (id) => game.names.unit(id).replace(/\s*\([^)]*\)\s*$/, "") };
@@ -244,8 +295,8 @@ export function castInput(game: CastGame, clips: readonly Clip[], wishes?: strin
     return `${ahead.name} leads in army at ${clock(frame)}: ${worth(Math.max(a, b))} against ${worth(Math.min(a, b))} for ${behind.name}`;
   };
 
-  const losses = (from: number, to: number) => {
-    let bucket = LOSS_BUCKET;
+  const losses = (from: number, to: number, first = LOSS_BUCKET) => {
+    let bucket = first;
     for (;;) {
       const groups = new Map<string, { frame: number; player: number; types: Map<number, number> }>();
       for (const e of t.events) {
@@ -278,35 +329,62 @@ export function castInput(game: CastGame, clips: readonly Clip[], wishes?: strin
     return out;
   };
 
+  /** The orders of a player's opening that fall between two frames, as news: workers taken as read, a unit the first time. */
+  const orders = (from: number, to: number) => {
+    const out: { frame: number; text: string }[] = [];
+    for (const p of game.players) {
+      const q = series(p.index), trained = new Set<number>();
+      p.build.forEach((s, k, all) => {
+        if ((s.kind === "train" || s.kind === "morph") && WORKERS.has(s.id)) return;
+        if (s.kind === "train" || (s.kind === "morph" && !isBuilding(s.id))) { if (trained.has(s.id)) return; trained.add(s.id); }
+        if (s.frame < from || s.frame >= to || s.frame > OPENING_UNTIL) return;
+        if (all.slice(0, k).some((b) => b.kind === s.kind && b.id === s.id && s.frame - b.frame < frameOf(30))) return;
+        const what = s.kind === "upgrade" ? n.upgrade(s.id) : s.kind === "tech" ? n.tech(s.id) : n.unit(s.id);
+        out.push({ frame: s.frame, text: `${p.name} orders ${s.kind === "upgrade" || s.kind === "tech" ? "research of " : ""}${what}${q ? ` at ${q.supplyUsed[sample(s.frame)] ?? 0} supply` : ""}` });
+      });
+    }
+    return out;
+  };
+
   const moments: CastMoment[] = clips.map((c, i) => {
+    const speed = c.speed ?? 1, fast = speed > 1, last = i === clips.length - 1;
+    // Times in a stretch are seconds on screen from its start; each fact also says the game's clock.
+    const at = (frame: number) => Math.round(((Math.max(c.from, frame) - c.from) * FRAME_SECONDS * 10) / speed) / 10;
     const since = i ? clips[i - 1].to : 0;
     const before: string[] = [];
     for (const h of [...happened(since, c.from), ...blocks(since, c.from)].sort((a, b) => a.frame - b.frame)) before.push(`${clock(h.frame)} ${h.text}`);
-    const state = standing(c.from);
+    const state = fast && i > 0 ? [] : standing(c.from);
     const l = lead(c.from);
-    if (l) state.push(l);
+    if (l && state.length) state.push(l);
 
     const events: CastMoment["events"] = [];
+    const news = (frame: number, text: string) => events.push({ at: at(frame), text: `${clock(frame)} ${text}` });
     for (const f of c.fights) {
-      const sides = f.sides.filter((s) => shown.has(s.player) && s.army).map((s) => `${s.army} of ${nameOf(s.player)}'s fighting units`);
-      events.push({ at: seconds(Math.max(c.from, f.from - frameOf(4))), text: `Armies close at ${n.place(f.x, f.y)}${sides.length ? `; at the fight: ${sides.join(", ")}` : ""}` });
+      const sides = f.sides.filter((x) => shown.has(x.player) && x.army).map((x) => `${x.army} of ${nameOf(x.player)}'s fighting units`);
+      news(Math.max(c.from, f.from - frameOf(4)), `Armies close at ${n.place(f.x, f.y)}${sides.length ? `; at the fight: ${sides.join(", ")}` : ""}`);
     }
-    for (const h of happened(c.from, c.to)) events.push({ at: seconds(h.frame), text: h.text });
-    for (const x of losses(c.from, c.to)) events.push({ at: seconds(x.frame), text: x.text });
+    if (fast) for (const o of orders(c.from, c.to)) news(o.frame, o.text);
+    for (const h of [...happened(c.from, c.to), ...blocks(c.from, c.to)]) news(h.frame, h.text);
+    for (const x of losses(c.from, c.to, fast ? LOSS_BUCKET * speed : LOSS_BUCKET)) news(x.frame, x.text);
     events.sort((a, b) => a.at - b.at);
 
     const after = c.fights.flatMap(fightFacts);
+    if (fast && !last) after.push(...standing(c.to));
     const la = lead(c.to);
     if (la) after.push(la);
-    if (i === clips.length - 1) {
-      after.push(game.winner === null ? `The game ends at ${clock(t.frames)}` : `${nameOf(game.winner)} wins; the game ends at ${clock(t.frames)}`);
-    }
+    if (last) after.push(game.winner === null ? `The game ends at ${clock(t.frames)}` : `${nameOf(game.winner)} wins; the game ends at ${clock(t.frames)}`);
     const key = c.fights.find((f) => f.turning) ?? c.fights[0];
-    const title = key ? `${key.turning ? "The turning point" : key.tier === "decisive" ? "A decisive fight" : key.tier === "major" ? "A major fight" : "A fight"} at ${n.place(key.x, key.y)}` : "The game";
-    return { from: seconds(c.from), to: seconds(c.to), title, state: state.slice(0, 20), before: before.slice(0, 40), events: events.slice(0, 120), after: after.slice(0, 20) };
+    const title = key
+      ? `${key.turning ? "The turning point" : key.tier === "decisive" ? "A decisive fight" : key.tier === "major" ? "A major fight" : "A fight"} at ${n.place(key.x, key.y)}`
+      : i === 0 ? "The opening" : last ? "The end of the game" : "Between the fights";
+    return {
+      from: seconds(c.from), to: seconds(c.to), speed, seconds: Math.round(((c.to - c.from) * FRAME_SECONDS * 10) / speed) / 10,
+      title, state: state.slice(0, 20), before: before.slice(0, 40), events: events.slice(0, 120), after: after.slice(0, 24),
+    };
   });
 
   return {
+    ...(options ? { options } : {}),
     game: {
       map: game.map.trim(),
       length: seconds(t.frames),
@@ -325,7 +403,10 @@ const ordinal = (k: number) => (k === 2 ? "second" : k === 3 ? "third" : k === 4
 
 /* ── When each line is said ── */
 
-/** A line placed: when it starts in game seconds, how long it runs, and whether it is said over the clip's last frame. */
+/**
+ * A line placed on the cast's one timeline: when it starts in seconds on screen from the cast's start, how long it runs,
+ * and the game frame that starts it (-1: after the game's last frame, while the cast holds it for the sign-off).
+ */
 export interface Placed {
   moment: number;
   speaker: CastSpeaker;
@@ -334,45 +415,52 @@ export interface Placed {
   clip: number;
   start: number;
   duration: number;
+  frame: number;
 }
 
 export interface Schedule {
   lines: Placed[];
-  /** Seconds to hold on each moment's last frame, so a line said past its end finishes before the cut. */
-  holds: number[];
+  /** Where each stretch starts on screen, in seconds from the cast's start, and the whole length before the hold. */
+  starts: number[];
+  length: number;
+  /** Seconds the last frame is held so the sign-off finishes. */
+  hold: number;
 }
 
 /** How late a line may start for its priority before it is left out (seconds). */
 const LATE: Record<1 | 2 | 3, number> = { 1: 6, 2: 3, 3: 1.5 };
 /** A breath between two lines. */
 const GAP = 0.3;
-/** The longest a moment waits on its last frame for a line to end (the last moment waits for its sign-off). */
-const MAX_HOLD = 5;
 
 /**
- * Each line where it can be said: no earlier than written, after the line before has finished, and left out when that
- * would make it later than its priority allows. A line still running at its clip's end holds the clip's last frame.
- * `durations[i]` is line `i`'s measured length in seconds (estimated from its words when it has no voice).
+ * Each line where it can be said, on one timeline for the whole cast: no earlier than written, after the line before
+ * has finished — even across the start of the next stretch — and left out when that would make it later than its
+ * priority allows. A line's `at` is seconds on screen from the start of its stretch. `durations[i]` is line `i`'s
+ * measured length in seconds (estimated from its words when it has no voice).
  */
-export function schedule(lines: readonly CastLine[], durations: readonly number[], moments: readonly { from: number; to: number }[]): Schedule {
+export function schedule(lines: readonly CastLine[], durations: readonly number[], moments: readonly { from: number; to: number; speed?: number; seconds?: number }[]): Schedule {
+  const span = (m: (typeof moments)[number]) => m.seconds ?? (m.to - m.from) / (m.speed ?? 1);
+  const starts: number[] = [];
+  let length = 0;
+  for (const m of moments) { starts.push(length); length += span(m); }
+  const frameAt = (t: number) => {
+    let k = moments.length - 1;
+    while (k > 0 && starts[k] > t) k--;
+    if (t >= length) return -1;
+    const m = moments[k];
+    return Math.round((m.from + (t - starts[k]) * (m.speed ?? 1)) / FRAME_SECONDS);
+  };
+  const order = lines.map((l, i) => ({ l, i, when: (starts[l.moment] ?? 0) + l.at })).sort((a, b) => a.when - b.when);
   const out: Placed[] = [];
-  const holds = moments.map(() => 0);
-  moments.forEach((m, mi) => {
-    const last = mi === moments.length - 1;
-    let cursor = m.from;
-    const mine = lines.map((l, i) => ({ l, i })).filter((x) => x.l.moment === mi).sort((a, b) => a.l.at - b.l.at);
-    for (const { l, i } of mine) {
-      const duration = durations[i] ?? estimate(l.text);
-      const start = Math.max(l.at, cursor === m.from ? m.from : cursor + GAP);
-      if (start - l.at > LATE[l.priority]) continue;
-      const end = start + duration;
-      if (!last && end - m.to > MAX_HOLD && l.priority > 1) continue;
-      out.push({ moment: mi, speaker: l.speaker, text: l.text, clip: i, start, duration });
-      cursor = end;
-    }
-    holds[mi] = Math.max(0, cursor - m.to);
-  });
-  return { lines: out, holds };
+  let cursor = -Infinity;
+  for (const { l, i, when } of order) {
+    const duration = durations[i] ?? estimate(l.text);
+    const start = Math.max(when, cursor + GAP);
+    if (start - when > LATE[l.priority]) continue;
+    out.push({ moment: l.moment, speaker: l.speaker, text: l.text, clip: i, start, duration, frame: frameAt(start) });
+    cursor = start + duration;
+  }
+  return { lines: out, starts, length, hold: Math.max(0, cursor - length) };
 }
 
 /** A line without its delivery cues (`[surprised]`, acted by the voice, not said): what the captions show. */

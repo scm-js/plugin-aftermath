@@ -370,6 +370,12 @@ export const KO: Record<string, string> = {
   "Cast": "중계",
   "Watch the key moments with two commentators: the camera follows the action, and the scmjs.dev AI writes what they say and voices it. Made once a replay, from your account's balance.": "두 해설자와 함께 주요 장면을 봅니다. 카메라가 전투를 따라가고, scmjs.dev AI가 해설을 쓰고 목소리로 읽습니다. 리플레이마다 한 번 만들며, 계정 잔액에서 비용이 나갑니다.",
   "Watch the key moments with two commentators: the camera follows the action, and the scmjs.dev AI writes what they say, shown as captions. Made once a replay, from your account's balance.": "두 해설자와 함께 주요 장면을 봅니다. 카메라가 전투를 따라가고, scmjs.dev AI가 쓴 해설이 자막으로 나옵니다. 리플레이마다 한 번 만들며, 계정 잔액에서 비용이 나갑니다.",
-  "Cast: key moment {n} of {of}": "중계: 주요 장면 {n}/{of}",
+  "Cast: part {n} of {of}": "중계: {n}/{of}부",
   "The cast could not be made: {reason}": "중계를 만들지 못했습니다: {reason}",
+  "Whole game": "게임 전체",
+  "Cast the whole game, played fast through the quiet parts, or only its key moments": "조용한 구간은 빠르게 넘기며 게임 전체를 중계하거나, 주요 장면만 중계합니다",
+  "No banter": "잡담 없음",
+  "Some banter": "잡담 조금",
+  "Lots of banter": "잡담 많이",
+  "How much the two commentators chat about other things when little is happening": "별일 없을 때 두 해설자가 다른 이야기를 얼마나 나눌지",
 };
