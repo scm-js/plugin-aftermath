@@ -2385,6 +2385,12 @@ var GameView = class {
   remastered = null;
   /** Whose eyes the game was last told, for the replay loaded (undefined: not yet; the page opens a replay on its own). */
   eyesTold = void 0;
+  /** The race whose music is wanted (null none), and what the game was last told (undefined: not yet, for the replay loaded). */
+  musicWanted = null;
+  musicTold = void 0;
+  /** How far the game's sounds and music are wanted turned down, and what the game was last told. */
+  duckWanted = 1;
+  duckTold = void 0;
   /**
    * Over the game, under the spinner: what the plugin draws there (`setOverlay`), in the game's place — the map's
    * pixels where the game shows them, from where the game last said it looks.
@@ -2655,9 +2661,13 @@ var GameView = class {
       this.hooks.state(null);
       this.remastered = null;
       this.eyesTold = void 0;
+      this.musicTold = void 0;
+      this.duckTold = void 0;
     }
     this.graphics();
     this.eyes(entry.eyes);
+    this.music(this.musicWanted);
+    this.duck(this.duckWanted);
     this.settleAt(this.look ? this.lookAt(this.look) : null);
     view.speed(speed);
     if (Math.round(frame) > 0) this.seek(frame);
@@ -2683,6 +2693,27 @@ var GameView = class {
     view.options({ fog: slot !== null }).catch(() => {
     });
     if (slot !== null) view.player(slot);
+  }
+  /**
+   * The music of a race in the game (0 zerg, 1 terran, 2 protoss), or none (null): the game's own tracks, as the play
+   * page plays them. Kept for the next replay loaded. A page from before music plays none.
+   */
+  music(race) {
+    this.musicWanted = race;
+    const view = this.view;
+    if (!view || !this.loaded || race === this.musicTold) return;
+    this.musicTold = race;
+    view.options({ music: race }).catch(() => {
+    });
+  }
+  /** The game's sounds and music turned down to `fraction` (1: all of it), under a voice of Aftermath's own. */
+  duck(fraction) {
+    this.duckWanted = fraction;
+    const view = this.view;
+    if (!view || !this.loaded || fraction === this.duckTold) return;
+    this.duckTold = fraction;
+    view.options({ duck: fraction }).catch(() => {
+    });
   }
   /**
    * Show `content` in the tooltip by the pointer, at `x`, `y` in the game's CSS pixels (below and right of it, or the
@@ -3369,6 +3400,7 @@ function gainFor(buffer) {
 var ARRIVED = 3;
 var AWAY = 4;
 var SEEK_WAIT = 3e4;
+var TALK_HOLD = 700;
 var Reel = class {
   ctx;
   gain;
@@ -3392,6 +3424,9 @@ var Reel = class {
   sources = [];
   /** The line being said, and when (performance.now) it started: what the captions show. */
   saying = null;
+  /** Whether `talking` last said a voice talks, and when one last did (performance.now). */
+  talked = false;
+  talkedAt = -Infinity;
   constructor(hooks, moments, plan, voices, ctx) {
     this.hooks = hooks;
     this.moments = moments;
@@ -3426,6 +3461,7 @@ var Reel = class {
     this.hush();
     this.saying = null;
     if (why !== "left") this.hooks.pause();
+    this.talk(false);
     void this.ctx?.close();
     this.hooks.changed();
     this.hooks.ended(why);
@@ -3458,6 +3494,8 @@ var Reel = class {
   }
   step() {
     const now = performance.now();
+    if (this.phase !== "paused" && this.voiced(now)) this.talkedAt = now;
+    this.talk(now - this.talkedAt < TALK_HOLD);
     if (this.phase === "holding") {
       const held = (now - this.holdFrom) / 1e3;
       this.sayDue(null, this.plan.length + held);
@@ -3559,6 +3597,18 @@ var Reel = class {
     const s = this.saying;
     if (!s) return false;
     return now - s.at < this.plan.lines[s.index].duration * 1e3;
+  }
+  /** A line with a voice is being said (one in captions only is not heard over the game). */
+  voiced(now) {
+    const s = this.saying;
+    if (!s || !this.speaking(now)) return false;
+    const clip = this.plan.lines[s.index].clip;
+    return clip >= 0 && !!this.voices[clip];
+  }
+  talk(on) {
+    if (on === this.talked) return;
+    this.talked = on;
+    this.hooks.talking?.(on);
   }
   hush() {
     for (const s of this.sources) {
@@ -5927,7 +5977,9 @@ function activate(api) {
       pause: () => stop(),
       playing: () => playing3,
       changed: () => redraw(),
-      ended: () => endCast()
+      ended: () => endCast(),
+      // The game's sounds and music under the commentary, as a broadcast has them.
+      talking: (on) => game.duck(on ? UNDER_VOICE : 1)
     }, made.input.moments, made.plan, made.voices, made.voices.some(Boolean) ? ctx : (void ctx?.close(), null));
     casting.reel.start();
     strip?.render();
@@ -6129,6 +6181,7 @@ function activate(api) {
       }
     });
   }
+  const UNDER_VOICE = 0.35;
   const cinema = { on: false, controls: null, idle: 0, castStarted: 0, lastMoment: -1, banner: null };
   const cinemaPossible = () => !!current && game.shown && game.holds(current.id) && typeof game.root?.requestFullscreen === "function";
   async function setCinema(on) {
@@ -6151,6 +6204,7 @@ function activate(api) {
     if (on === cinema.on) return;
     cinema.on = on;
     root?.classList.toggle("afm-cinema", on);
+    game.music(on && current ? musicRace(current) : null);
     cinema.controls?.remove();
     cinema.controls = null;
     if (on && root) {
@@ -6181,6 +6235,10 @@ function activate(api) {
     strip?.render();
   }
   document.addEventListener("fullscreenchange", onFullscreen);
+  function musicRace(entry) {
+    const races = [...new Set(entry.report.players.map((p) => p.player.race).filter((r) => r >= 0 && r <= 2))];
+    return races.length ? races[Math.floor(Math.random() * races.length)] : null;
+  }
   const mapTitle = (entry) => plainText(entry.report.replay.header.mapName).split("|").map((x) => x.trim()).filter(Boolean).pop() ?? "";
   function broadcastBar(ctx, entry, frame) {
     const dpr = window.devicePixelRatio || 1, W = ctx.canvas.width / dpr;
