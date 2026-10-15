@@ -226,9 +226,11 @@ While a replay's tab is in front:
   buildings.
 - A lane of marks along the game: fights in red, taller the more they mattered, with the
   turning point marked in gold; chat in grey; and a player leaving in their colour. Under
-  it, the graph. Point at either to read the moment, what the graph says there and the
-  fight there; press or drag to go to that moment. Drag the strip's top edge to make it
-  taller.
+  it, the graph. Point at either and a tooltip reads the moment: each player's number on
+  the graph and how it moved in the last ten seconds, with their supply, workers, army and
+  bank; the fight there, with what each side lost shown as the game's own unit icons; and
+  what happened close by (research finished, a base taken, chat, a player leaving). Press
+  or drag to go to that moment. Drag the strip's top edge to make it taller.
 
 **In the right-hand column**, the replay:
 
