@@ -73,6 +73,13 @@ export interface PlayerSeries {
   armyValue: number[];
   /** Finished buildings. */
   buildings: number[];
+  /**
+   * From timeline version 4: everything gathered since the start, the game's own counts (its
+   * score screen's "mined"). A melee game counts the 50 minerals it starts with; what a map's
+   * triggers give is not counted. Income is the difference between two samples.
+   */
+  mineralsGathered?: number[];
+  gasGathered?: number[];
 }
 
 /** Where the units stood at regular frames: sample `i` is rows `start[i]` to `start[i + 1]` of `unit`, `x`, `y`. Buildings and units inside something are left out. */
@@ -102,7 +109,7 @@ export interface ReplayCheck {
 }
 
 export interface ReplayTimeline {
-  /** 1: as first written. 2: a `died` event says who killed the unit. 3: `check`. */
+  /** 1: as first written. 2: a `died` event says who killed the unit. 3: `check`. 4: what each player gathered. */
   version: number;
   /** Frames played, and the replay's length. */
   frames: number;

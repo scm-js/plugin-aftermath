@@ -86,6 +86,31 @@ Interceptors'. What a Spider Mine kills is credited to nobody. When several unit
 the same instant, which killer goes with which victim is the likeliest pairing, not a
 certain one.
 
+### The Analysis window
+
+**Analysis** in the timeline strip (or **View ▸ Replay Analysis**) opens a large window
+beside the replay, for reading a game at length. It can be resized, and the button in its
+title, or a double-click on the title, makes it fill the map's area. Every chart follows
+the replay's clock; point at one for the numbers there, and press or drag to go to that
+moment. Its first tab is **Economy**:
+
+- **In numbers**: minerals and gas mined, income a minute on average, what was left
+  unspent on average, the time spent supply blocked and how many times, and the most
+  workers each player had.
+- **Income a minute** over the game, from the game's own count of what was mined, and
+  **Unspent**, what was in the bank. **Both**, **Minerals** and **Gas** above the charts
+  choose what they show.
+- **Workers** over the game.
+- **Supply blocked**: a lane a player, marked where they stood at their supply limit
+  (below 200).
+- **Mineral lines**: for each line a player worked, the workers there minute by minute.
+  Two a field mine at the full rate, and more add little. Workers inside a refinery are not
+  on the map, so these are mineral workers. Press a minute to go there.
+
+Income needs the game engine to count what was mined, which an engine from before
+October 2026 does not; then the rest is shown without it. The window needs a version of
+scmJS newer than 0.7.3.
+
 ### Map stats: many replays of one map
 
 One game says little about a map; twenty show which starts do well, which bases get taken

@@ -1,0 +1,286 @@
+/**
+ * The Analysis window's charts: lines over the game's time, or a lane a player of spans along it. Plain canvas, drawn
+ * at the screen's resolution, one y-axis each. Every chart in a window shares the pointer's moment (a line through
+ * all of them) and the replay's own moment (a brighter one), and a press or a drag goes to the moment pressed.
+ */
+import { FRAMES_PER_MINUTE } from "./analysis";
+
+export interface LineSeries {
+  label: string;
+  color: string;
+  /** Frames, rising. */
+  x: ArrayLike<number>;
+  y: ArrayLike<number>;
+}
+
+export interface LaneRow {
+  label: string;
+  color: string;
+  spans: { from: number; to: number }[];
+}
+
+/** What a chart needs of the window it is in. */
+export interface ChartHost {
+  /** The pointer is over the chart at `frame`, or has left it (null): every chart draws its line there. */
+  hover(frame: number | null): void;
+  /** Go to `frame` in the replay. */
+  pick(frame: number): void;
+  /** The tooltip over an element, asked again as the pointer moves. */
+  tooltip(target: HTMLElement, content: (at: { offsetX: number; offsetY: number }) => HTMLElement | string | null): { refresh(): void; dispose(): void };
+}
+
+/** Space round the plot: the y-axis' labels at the left, the minutes under it, the series' names at the right. */
+const LEFT = 46, RIGHT = 96, BOTTOM = 18, TOP = 8;
+
+/** A round number at or above `v` to end an axis on: 1, 2, 2.5 or 5 times a power of ten. */
+export function niceMax(v: number): number {
+  if (!(v > 0)) return 1;
+  const p = 10 ** Math.floor(Math.log10(v)), n = v / p;
+  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p;
+}
+
+/** Minutes between the time axis' labels, so they stand at least `gap` pixels apart. */
+export function minuteStep(widthPx: number, minutes: number, gap = 56): number {
+  for (const step of [1, 2, 5, 10, 15, 20, 30, 60]) if ((widthPx / Math.max(1, minutes)) * step >= gap) return step;
+  return 60;
+}
+
+/** The y of each name at a line's end, moved apart so no two are closer than `gap`, in the order they stand. */
+export function spreadLabels(ys: number[], gap: number, top: number, bottom: number): number[] {
+  const order = ys.map((y, i) => ({ y, i })).sort((a, b) => a.y - b.y);
+  for (let k = 1; k < order.length; k++) order[k].y = Math.max(order[k].y, order[k - 1].y + gap);
+  // Pushed off the bottom: move the lot up.
+  const over = order.length ? order[order.length - 1].y - bottom : 0;
+  if (over > 0) for (const o of order) o.y -= over;
+  for (const o of order) o.y = Math.max(top, o.y);
+  const out = new Array<number>(ys.length);
+  for (const o of order) out[o.i] = o.y;
+  return out;
+}
+
+const css = (el: Element, name: string, fallback: string) => getComputedStyle(el).getPropertyValue(name).trim() || fallback;
+
+abstract class Chart {
+  readonly element: HTMLElement;
+  protected readonly canvas: HTMLCanvasElement;
+  protected end = 1;
+  protected now: number | null = null;
+  protected hovered: number | null = null;
+  private readonly resize: ResizeObserver;
+  private readonly tip: { refresh(): void; dispose(): void };
+  /** The same on every chart of a window, so their times line up: the axis' numbers at the left, names at the right. */
+  protected readonly right = RIGHT;
+  protected readonly left = LEFT;
+
+  protected readonly host: ChartHost;
+  protected readonly tipAt: (frame: number) => HTMLElement | null;
+
+  constructor(host: ChartHost, height: number, tipAt: (frame: number) => HTMLElement | null, label: string) {
+    this.host = host;
+    this.tipAt = tipAt;
+    this.canvas = document.createElement("canvas");
+    this.canvas.className = "afm-chart-canvas";
+    this.canvas.style.height = `${height}px`;
+    this.canvas.setAttribute("role", "img");
+    this.canvas.setAttribute("aria-label", label);
+    this.element = document.createElement("div");
+    this.element.className = "afm-chart";
+    this.element.append(this.canvas);
+    const frameAt = (offsetX: number) => {
+      const w = this.canvas.clientWidth - this.left - this.right;
+      return Math.max(0, Math.min(this.end, ((offsetX - this.left) / Math.max(1, w)) * this.end));
+    };
+    const pickAt = (e: PointerEvent) => this.host.pick(frameAt(e.clientX - this.canvas.getBoundingClientRect().left));
+    this.canvas.addEventListener("pointerdown", (e) => { if (e.button !== 0) return; this.canvas.setPointerCapture(e.pointerId); pickAt(e); });
+    this.canvas.addEventListener("pointermove", (e) => {
+      if (this.canvas.hasPointerCapture(e.pointerId)) pickAt(e);
+      this.host.hover(frameAt(e.clientX - this.canvas.getBoundingClientRect().left));
+    });
+    this.canvas.addEventListener("pointerleave", () => this.host.hover(null));
+    this.tip = host.tooltip(this.canvas, (at) => (at.offsetX < this.left - 4 ? null : this.tipAt(frameAt(at.offsetX))));
+    this.resize = new ResizeObserver(() => this.draw());
+    this.resize.observe(this.canvas);
+  }
+
+  /** The replay's moment, drawn as the brighter line. */
+  setNow(frame: number | null): void { if (frame !== this.now) { this.now = frame; this.draw(); } }
+  /** The pointer's moment, over this chart or another of the window's. */
+  setHover(frame: number | null): void { if (frame !== this.hovered) { this.hovered = frame; this.draw(); this.tip.refresh(); } }
+  dispose(): void { this.resize.disconnect(); this.tip.dispose(); }
+
+  protected abstract plot(g: CanvasRenderingContext2D, box: { x: (f: number) => number; top: number; bottom: number; w: number; dpr: number }): void;
+
+  draw(): void {
+    const c = this.canvas;
+    if (!c.isConnected) return;
+    const dpr = window.devicePixelRatio || 1;
+    const cw = Math.max(1, Math.round(c.clientWidth * dpr)), ch = Math.max(1, Math.round(c.clientHeight * dpr));
+    if (c.width !== cw || c.height !== ch) { c.width = cw; c.height = ch; }
+    const g = c.getContext("2d");
+    if (!g) return;
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, cw, ch);
+    g.scale(dpr, dpr);
+    const width = c.clientWidth, height = c.clientHeight;
+    const w = Math.max(1, width - this.left - this.right);
+    const top = TOP, bottom = height - BOTTOM;
+    const x = (f: number) => this.left + (Math.max(0, Math.min(this.end, f)) / this.end) * w;
+    const dim = css(c, "--text-dim", "#99a2b3"), grid = "rgba(255,255,255,0.07)";
+
+    // The minutes along the bottom, with a hairline up from each.
+    g.font = "10px system-ui, sans-serif";
+    g.textBaseline = "top";
+    g.textAlign = "center";
+    const minutes = this.end / FRAMES_PER_MINUTE, step = minuteStep(w, minutes);
+    for (let m = 0; m <= minutes; m += step) {
+      const px = Math.round(x(m * FRAMES_PER_MINUTE)) + 0.5;
+      g.strokeStyle = grid;
+      g.lineWidth = 1;
+      g.beginPath(); g.moveTo(px, top); g.lineTo(px, bottom); g.stroke();
+      g.fillStyle = dim;
+      g.fillText(`${m}:00`, Math.min(px, width - this.right - 14), bottom + 4);
+    }
+    this.plot(g, { x, top, bottom, w, dpr });
+
+    // The replay's moment, and the pointer's.
+    for (const [f, colour] of [[this.now, "rgba(255,255,255,0.85)"], [this.hovered, "rgba(255,255,255,0.35)"]] as const) {
+      if (f === null) continue;
+      const px = Math.round(x(f)) + 0.5;
+      g.strokeStyle = colour;
+      g.lineWidth = 1;
+      g.beginPath(); g.moveTo(px, top); g.lineTo(px, bottom); g.stroke();
+    }
+  }
+}
+
+/** Lines over the game's time on one axis from 0, a series a player, each named at its end. */
+export class LineChart extends Chart {
+  private series: LineSeries[] = [];
+  private format: (v: number) => string = (v) => Math.round(v).toLocaleString();
+
+  constructor(host: ChartHost, height: number, tipAt: (frame: number) => HTMLElement | null, label: string) {
+    super(host, height, tipAt, label);
+  }
+
+  set(series: LineSeries[], end: number, format?: (v: number) => string): void {
+    this.series = series;
+    this.end = Math.max(1, end);
+    if (format) this.format = format;
+    this.draw();
+  }
+
+  protected plot(g: CanvasRenderingContext2D, box: { x: (f: number) => number; top: number; bottom: number; w: number }): void {
+    const { x, top, bottom } = box;
+    const width = this.canvas.clientWidth;
+    let peak = 0;
+    for (const s of this.series) for (let i = 0; i < s.y.length; i++) peak = Math.max(peak, s.y[i]);
+    const max = niceMax(peak);
+    const y = (v: number) => bottom - (v / max) * (bottom - top);
+    const dim = css(this.canvas, "--text-dim", "#99a2b3"), text = css(this.canvas, "--text", "#e4e8ef");
+
+    // The axis: 0, half and the top, hairlines across.
+    g.font = "10px system-ui, sans-serif";
+    g.textAlign = "right";
+    g.textBaseline = "middle";
+    for (const v of [0, max / 2, max]) {
+      const py = Math.round(y(v)) + 0.5;
+      g.strokeStyle = v === 0 ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.07)";
+      g.lineWidth = 1;
+      g.beginPath(); g.moveTo(this.left, py); g.lineTo(width - this.right, py); g.stroke();
+      g.fillStyle = dim;
+      g.fillText(this.format(v), this.left - 6, py);
+    }
+
+    // The lines, 2 px, joined round.
+    g.lineWidth = 2;
+    g.lineJoin = "round";
+    g.lineCap = "round";
+    const ends: { y: number; s: LineSeries; v: number }[] = [];
+    for (const s of this.series) {
+      if (!s.x.length) continue;
+      g.strokeStyle = s.color;
+      g.beginPath();
+      for (let i = 0; i < s.x.length; i++) { const px = x(s.x[i]), py = y(s.y[i]); if (i === 0) g.moveTo(px, py); else g.lineTo(px, py); }
+      g.stroke();
+      const last = s.y.length - 1;
+      ends.push({ y: y(s.y[last]), s, v: s.y[last] });
+    }
+    // Each name at its line's end, kept apart; the mark beside it carries the colour, the words stay in the text's.
+    const placed = spreadLabels(ends.map((e) => e.y), 13, top + 5, bottom - 5);
+    g.textAlign = "left";
+    g.font = "11px system-ui, sans-serif";
+    ends.forEach((e, i) => {
+      const lx = width - this.right + 8;
+      g.fillStyle = e.s.color;
+      g.fillRect(lx, placed[i] - 1, 6, 2);
+      g.fillStyle = text;
+      const name = e.s.label.length > 12 ? `${e.s.label.slice(0, 11)}…` : e.s.label;
+      g.fillText(name, lx + 10, placed[i]);
+    });
+
+    // Where the pointer is, a dot on each line.
+    if (this.hovered !== null) {
+      for (const s of this.series) {
+        const i = nearest(s.x, this.hovered);
+        if (i < 0) continue;
+        const px = x(s.x[i]), py = y(s.y[i]);
+        g.fillStyle = css(this.canvas, "--bg-1", "#1b1e25");
+        g.beginPath(); g.arc(px, py, 5, 0, Math.PI * 2); g.fill();
+        g.fillStyle = s.color;
+        g.beginPath(); g.arc(px, py, 3.5, 0, Math.PI * 2); g.fill();
+      }
+    }
+  }
+}
+
+/** A lane a player, with spans along the game's time: when each was supply blocked. */
+export class LaneChart extends Chart {
+  private rows: LaneRow[] = [];
+  private spanColour = "#e5484d";
+
+  constructor(host: ChartHost, tipAt: (frame: number) => HTMLElement | null, label: string) {
+    super(host, 0, tipAt, label);
+  }
+
+  set(rows: LaneRow[], end: number, colour?: string): void {
+    this.rows = rows;
+    this.end = Math.max(1, end);
+    if (colour) this.spanColour = colour;
+    this.canvas.style.height = `${TOP + rows.length * 22 + BOTTOM}px`;
+    this.draw();
+  }
+
+  protected plot(g: CanvasRenderingContext2D, box: { x: (f: number) => number; top: number }): void {
+    const { x, top } = box;
+    const width = this.canvas.clientWidth, text = css(this.canvas, "--text", "#e4e8ef");
+    g.font = "11px system-ui, sans-serif";
+    g.textBaseline = "middle";
+    this.rows.forEach((row, r) => {
+      const y0 = top + r * 22 + 3, h = 16;
+      g.fillStyle = "rgba(255,255,255,0.04)";
+      g.fillRect(this.left, y0, width - this.left - this.right, h);
+      // The player's name at the right, as the line charts name theirs.
+      const lx = width - this.right + 8;
+      g.fillStyle = row.color;
+      g.fillRect(lx, y0 + h / 2 - 1, 6, 2);
+      g.fillStyle = text;
+      g.textAlign = "left";
+      g.fillText(row.label.length > 12 ? `${row.label.slice(0, 11)}…` : row.label, lx + 10, y0 + h / 2);
+      g.fillStyle = this.spanColour;
+      for (const s of row.spans) {
+        const a = x(s.from), b = Math.max(a + 2, x(s.to));
+        g.beginPath();
+        g.roundRect(a, y0 + 2, b - a, h - 4, 2);
+        g.fill();
+      }
+    });
+  }
+}
+
+/** The index of the entry of `xs` nearest `x`, -1 for none. */
+export function nearest(xs: ArrayLike<number>, x: number): number {
+  let lo = 0, hi = xs.length - 1;
+  if (hi < 0) return -1;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (xs[mid] < x) lo = mid + 1; else hi = mid; }
+  return lo > 0 && Math.abs(xs[lo - 1] - x) <= Math.abs(xs[lo] - x) ? lo - 1 : lo;
+}

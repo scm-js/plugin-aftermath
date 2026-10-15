@@ -43,6 +43,7 @@ import { cameraTrack, trackAt, type CameraTrack } from "./camera";
 import { advantage, bases as takenBases, hardestHit, leads, story, totals, type Advantage, type Base, type PlayerTotals } from "./story";
 import type { ReplayTimeline, ScmSimService, ViewHover, ViewHoverUnit } from "./vendor/scm-sim";
 import { GameView } from "./gameview";
+import { InsightView, type InsightGame, type Resource } from "./insight";
 
 /* ── State ──────────────────────────────────────────────── */
 
@@ -67,6 +68,9 @@ interface Settings {
   chart: Chart;
   /** The side panel's tab. */
   tab: Tab;
+  /** The Analysis window's tab, and the resource its economy charts show. */
+  insightTab: string;
+  resource: Resource;
   /**
    * 2 from 0.8, when the army lead and the summary came; 3 when the map's marks went into views; 4 when the views became
    * switches; 5 when Map stats came, its heat counting the same games as its marks, always whole.
@@ -74,7 +78,7 @@ interface Settings {
   version: number;
 }
 
-const DEFAULTS: Settings = { orders: false, legend: true, heat: "losses", speed: 8, workers: false, chart: "lead", tab: "summary", version: 5 };
+const DEFAULTS: Settings = { orders: false, legend: true, heat: "losses", speed: 8, workers: false, chart: "lead", tab: "summary", insightTab: "economy", resource: "both", version: 5 };
 
 interface Loaded {
   id: number;
@@ -241,6 +245,31 @@ const STYLE = `
 .afm-gt-moment { display: flex; align-items: center; gap: 6px; }
 .afm-gt-mtext { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .afm-gt-foot { font-size: 11px; }
+.afm-insight { flex: 1; min-height: 0; display: flex; flex-direction: column; font-size: 12px; }
+.afm-insight-empty { padding: 24px 8px; color: var(--text-dim, #99a2b3); }
+.afm-insight-tabs { flex: 1; min-height: 0; }
+.afm-insight-tabs > .tab-panel { overflow: auto; padding: 0 4px 16px 0; }
+.afm-it-filters { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 8px; padding: 8px 0; background: var(--bg-1, #1b1e25); border-bottom: 1px solid var(--border, rgba(255,255,255,0.08)); }
+.afm-it-section { margin-top: 16px; }
+.afm-it-section h3 { margin: 0 0 2px; font-size: 12px; font-weight: 600; color: var(--text, #e4e8ef); }
+.afm-it-note { margin: 0 0 6px; font-size: 11px; max-width: 70ch; }
+.afm-insight .afm-dim { color: var(--text-dim, #99a2b3); }
+.afm-chart-canvas { display: block; width: 100%; cursor: crosshair; touch-action: none; }
+.afm-it-table { border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.afm-it-table th, .afm-it-table td { padding: 3px 14px 3px 0; text-align: right; font-weight: normal; white-space: nowrap; }
+.afm-it-table tbody th { text-align: left; color: var(--text-dim, #99a2b3); cursor: help; }
+.afm-it-table thead th { padding-bottom: 6px; }
+.afm-it-table td { color: var(--text, #e4e8ef); }
+.afm-it-player { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.afm-it-row { display: flex; align-items: center; gap: 6px; }
+.afm-it-row .afm-gt-name { flex: 1; min-width: 0; }
+.afm-it-sat-wrap { overflow-x: auto; padding-bottom: 4px; }
+.afm-it-sat { display: grid; gap: 2px; align-items: center; width: max-content; font-variant-numeric: tabular-nums; }
+.afm-it-sat-corner, .afm-it-sat-min { font-size: 10px; }
+.afm-it-sat-min { text-align: left; }
+.afm-it-sat-line { display: flex; align-items: center; gap: 6px; min-width: 0; padding-right: 6px; }
+.afm-it-sat-line .afm-gt-name { flex: 1; }
+.afm-it-sat-cell { height: 20px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text, #e4e8ef); background: rgba(255,255,255,0.03); border-radius: 2px; cursor: pointer; }
 .afm-busy .afm-spin { width: 16px; height: 16px; flex: none; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.22); border-top-color: var(--accent, #4fd1c5); animation: afm-spin 0.8s linear infinite; }
 @keyframes afm-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .afm-busy .afm-spin { animation-duration: 2.4s; } }
@@ -870,6 +899,7 @@ export function activate(api: PluginApi) {
     follow();
     side?.update();
     strip?.update();
+    insight?.update();
     // (The map is under the game: only what is drawn over the game.)
     if (!game.shown) overlay.redraw();
     else game.redrawOver();
@@ -1617,6 +1647,76 @@ export function activate(api: PluginApi) {
   }
   function closeSide(): void { closing = true; sidePanel?.close(); closing = false; }
 
+  /* ── The Analysis window ── */
+
+  // Built of the editor's tabs and segmented buttons (plugin API 1.51); an older editor does without it.
+  const insightPossible = typeof w.tabs === "function" && typeof w.segmented === "function";
+  let insightPanel: PanelHandle | null = null;
+  let insight: InsightView | null = null;
+
+  /** The game in front, as the Analysis window reads it; null with why not. */
+  function insightGame(): { game: InsightGame | null; why: string } {
+    const entry = current;
+    if (!entry) return { game: null, why: t("Open a replay to analyse it.") };
+    if (!entry.played) {
+      return { game: null, why: entry.failed ? t("The game could not be analysed: {message}", { message: entry.failed })
+        : running?.entry === entry ? t("The game is being analysed. The charts appear when it is done.")
+        : sim?.present ? t("The game is waiting to be analysed.")
+        : t("The charts need the game to be played through, which scmjs.dev does.") };
+    }
+    const tl = entry.played.timeline;
+    return {
+      why: "",
+      game: {
+        timeline: tl,
+        lines: insightLines(tl),
+        index: entry.played.index,
+        map: tl.map,
+        players: entry.report.players.map((p) => ({ slot: p.player.index, name: p.player.name, color: p.player.color, leftAt: p.leftAt, hidden: entry.hidden.has(p.player.id) })),
+      },
+    };
+  }
+  const linesOf = new WeakMap<ReplayTimeline, ReturnType<typeof mineralLines>>();
+  function insightLines(tl: ReplayTimeline) {
+    let l = linesOf.get(tl);
+    if (!l) { l = mineralLines(tl); linesOf.set(tl, l); }
+    return l;
+  }
+
+  /** What the window shows changed: another replay in front, its analysis arrived, a player hidden. */
+  function refreshInsight(): void {
+    if (!insight) return;
+    const { game, why } = insightGame();
+    insight.show(game, why);
+  }
+
+  function openInsight(): void {
+    if (!insightPossible) return;
+    if (insightPanel?.isOpen()) return;
+    insightPanel = api.ui.panel({
+      title: t("Replay Analysis"),
+      width: 900,
+      height: 620,
+      resizable: true,
+      maximizable: true,
+      mount(body) {
+        const view = new InsightView(body, {
+          api, t,
+          frame: () => current?.frame ?? 0,
+          seek: (f) => seek(f),
+          placeOf: (x, y, map) => placeOf(x, y, map),
+          tooltip: (target, content) => tooltip(target, content),
+          settings: { get tab() { return settings.insightTab; }, set tab(v) { settings.insightTab = v; }, get resource() { return settings.resource; }, set resource(v) { settings.resource = v; } },
+          save,
+        });
+        insight = view;
+        refreshInsight();
+        return () => { view.dispose(); if (insight === view) insight = null; };
+      },
+      onClose: () => { insightPanel = null; },
+    });
+  }
+
   // An editor from before the strip under the map (which came with `ui.fileType`) floats the timeline instead.
   const bottomDock = typeof api.ui.fileType === "function";
 
@@ -2163,6 +2263,8 @@ export function activate(api: PluginApi) {
     render(): void {
       this.root.replaceChildren();
       this.resize?.disconnect();
+      // (Whatever makes the strip draw again — another replay, its analysis, a player hidden — the Analysis window hears too.)
+      refreshInsight();
       const entry = current;
       if (!entry) return;
       this.playButton = w.button("", { primary: true, className: "sm", title: t("Space plays and pauses. ← and → go 10 seconds back or on, a minute with Shift; N and Shift+N go to the next and the previous key moment; F follows the action or lets the camera go; O shows the orders; Home and End go to the start and the end."), onClick: () => (playing ? stop() : play()) });
@@ -2181,6 +2283,8 @@ export function activate(api: PluginApi) {
       this.ordersButton = toggle(t("Orders"), () => showOrders(!settings.orders));
       this.legendButton = toggle(t("Legend"), () => { settings.legend = !settings.legend; save(); redraw(); this.update(); });
       this.statsButton = toggle(t("Map stats"), () => showStats(lensOf() !== "map"));
+      // The Analysis window, on an editor with the tabs it is built of.
+      const analysis = insightPossible ? w.button(t("Analysis"), { className: "sm", title: t("Open the Analysis window: the game's economy in charts and numbers"), onClick: () => openInsight() }) : null;
       // In the Replay view: the game as everyone sees it, or through one player's eyes, with the fog of war.
       const eyes = w.select([
         { value: -1, label: t("Vision: everyone") },
@@ -2197,7 +2301,7 @@ export function activate(api: PluginApi) {
       this.eyesSelect = eyes;
       this.root.append(el("div", { className: "afm-row" }, this.playButton, this.timeLabel, speed,
         el("span", { className: "afm-toggles" }, this.spectateButton, this.ordersButton, this.statsButton, this.legendButton), eyes,
-        this.status, retry, chartSelect));
+        this.status, retry, analysis, chartSelect));
 
       // The lane of marks and the graph, one canvas: press or drag anywhere on it to go there.
       const canvas = el("canvas") as HTMLCanvasElement;
@@ -2476,6 +2580,10 @@ export function activate(api: PluginApi) {
   });
   api.menu.add("File", { label: msg("Open Replay…"), icon: "plugin", after: "Open Recent", command: "open-replay" });
   api.menu.add("View", { label: "Aftermath", icon: "plugin", command: "panel" });
+  if (insightPossible) {
+    api.commands.register({ id: "analysis", title: msg("Replay Analysis"), run: () => openInsight() });
+    api.menu.add("View", { label: msg("Replay Analysis"), icon: "plugin", command: "analysis" });
+  }
   // A replay dropped anywhere on the editor, or picked in File ▸ Open, comes here rather than being read as a map.
   if (bottomDock) api.ui.fileType({ name: msg("StarCraft replay"), extensions: [".rep"], open: (files) => void load(files) });
 

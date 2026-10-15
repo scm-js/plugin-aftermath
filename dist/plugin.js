@@ -1207,7 +1207,53 @@ var KO = {
   "Energy": "\uC5D0\uB108\uC9C0",
   "{n} left": "{n} \uB0A8\uC74C",
   "Vision: {name}": "\uC2DC\uC57C: {name}",
-  "Whose eyes the game is seen through: one player's shows only what they could see, with the fog of war": "\uB204\uAD6C\uC758 \uC2DC\uC57C\uB85C \uAC8C\uC784\uC744 \uBCFC\uC9C0. \uD55C \uD50C\uB808\uC774\uC5B4\uB97C \uACE0\uB974\uBA74 \uADF8 \uD50C\uB808\uC774\uC5B4\uAC00 \uBCFC \uC218 \uC788\uB358 \uAC83\uB9CC \uC804\uC7A5\uC758 \uC548\uAC1C\uC640 \uD568\uAED8 \uBCF4\uC785\uB2C8\uB2E4"
+  "Whose eyes the game is seen through: one player's shows only what they could see, with the fog of war": "\uB204\uAD6C\uC758 \uC2DC\uC57C\uB85C \uAC8C\uC784\uC744 \uBCFC\uC9C0. \uD55C \uD50C\uB808\uC774\uC5B4\uB97C \uACE0\uB974\uBA74 \uADF8 \uD50C\uB808\uC774\uC5B4\uAC00 \uBCFC \uC218 \uC788\uB358 \uAC83\uB9CC \uC804\uC7A5\uC758 \uC548\uAC1C\uC640 \uD568\uAED8 \uBCF4\uC785\uB2C8\uB2E4",
+  "Open a replay to analyse it.": "\uBD84\uC11D\uD560 \uB9AC\uD50C\uB808\uC774\uB97C \uC5EC\uC138\uC694.",
+  "The game could not be analysed: {message}": "\uAC8C\uC784\uC744 \uBD84\uC11D\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4: {message}",
+  "The game is being analysed. The charts appear when it is done.": "\uAC8C\uC784\uC744 \uBD84\uC11D\uD558\uB294 \uC911\uC785\uB2C8\uB2E4. \uB05D\uB098\uBA74 \uCC28\uD2B8\uAC00 \uB098\uD0C0\uB0A9\uB2C8\uB2E4.",
+  "The game is waiting to be analysed.": "\uAC8C\uC784\uC774 \uBD84\uC11D\uC744 \uAE30\uB2E4\uB9AC\uACE0 \uC788\uC2B5\uB2C8\uB2E4.",
+  "The charts need the game to be played through, which scmjs.dev does.": "\uCC28\uD2B8\uB97C \uBCF4\uB824\uBA74 \uAC8C\uC784\uC744 \uB05D\uAE4C\uC9C0 \uC7AC\uC0DD\uD574\uC57C \uD558\uBA70, scmjs.dev\uC5D0\uC11C \uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+  "Replay Analysis": "\uB9AC\uD50C\uB808\uC774 \uBD84\uC11D",
+  "Analysis": "\uBD84\uC11D",
+  "Open the Analysis window: the game's economy in charts and numbers": "\uBD84\uC11D \uCC3D \uC5F4\uAE30: \uAC8C\uC784\uC758 \uACBD\uC81C\uB97C \uCC28\uD2B8\uC640 \uC22B\uC790\uB85C \uBD05\uB2C8\uB2E4",
+  "Economy": "\uACBD\uC81C",
+  "minerals": "\uBBF8\uB124\uB784",
+  "gas": "\uAC00\uC2A4",
+  "minerals and gas": "\uBBF8\uB124\uB784\uACFC \uAC00\uC2A4",
+  "Both": "\uB458 \uB2E4",
+  "Minerals": "\uBBF8\uB124\uB784",
+  "Gas": "\uAC00\uC2A4",
+  "Which resource the income and unspent charts show": "\uC218\uC785\uACFC \uBBF8\uC0AC\uC6A9 \uC790\uC6D0 \uCC28\uD2B8\uC5D0 \uD45C\uC2DC\uD560 \uC790\uC6D0",
+  "Resources": "\uC790\uC6D0",
+  "Minerals mined": "\uCC44\uCDE8\uD55C \uBBF8\uB124\uB784",
+  "Everything the player's workers brought back": "\uD50C\uB808\uC774\uC5B4\uC758 \uC77C\uAFBC\uC774 \uAC00\uC838\uC628 \uC804\uCCB4 \uC790\uC6D0",
+  "Gas mined": "\uCC44\uCDE8\uD55C \uAC00\uC2A4",
+  "Income a minute": "\uBD84\uB2F9 \uC218\uC785",
+  "Minerals and gas a minute, on average over the time the player was in the game": "\uD50C\uB808\uC774\uC5B4\uAC00 \uAC8C\uC784\uC5D0 \uC788\uB358 \uB3D9\uC548\uC758 \uBD84\uB2F9 \uD3C9\uADE0 \uBBF8\uB124\uB784\uACFC \uAC00\uC2A4",
+  "Unspent, on average": "\uD3C9\uADE0 \uBBF8\uC0AC\uC6A9 \uC790\uC6D0",
+  "Minerals and gas in the bank, on average: lower means the money went to use sooner": "\uBCF4\uC720\uD55C \uBBF8\uB124\uB784\uACFC \uAC00\uC2A4\uC758 \uD3C9\uADE0. \uB0AE\uC744\uC218\uB85D \uC790\uC6D0\uC744 \uBE68\uB9AC \uC37C\uB2E4\uB294 \uB73B\uC785\uB2C8\uB2E4",
+  "Supply blocked": "\uC778\uAD6C\uC218 \uB9C9\uD798",
+  "Time spent at the supply limit (below 200), when nothing more could be made": "\uC778\uAD6C\uC218 \uD55C\uB3C4(200 \uBBF8\uB9CC)\uC5D0 \uAC78\uB824 \uB354 \uC0DD\uC0B0\uD560 \uC218 \uC5C6\uB358 \uC2DC\uAC04",
+  "{time} in {n, plural, one {# block} other {# blocks}}": "{n}\uBC88, \uD569\uACC4 {time}",
+  "never": "\uC5C6\uC74C",
+  "The most workers the player had at once, and when": "\uD50C\uB808\uC774\uC5B4\uAC00 \uD55C\uB54C \uAC00\uC7A5 \uB9CE\uC774 \uAC00\uC84C\uB358 \uC77C\uAFBC \uC218\uC640 \uADF8 \uC2DC\uC810",
+  "{n} at {time}": "{time}\uC5D0 {n}",
+  "Unspent": "\uBBF8\uC0AC\uC6A9 \uC790\uC6D0",
+  "Income a minute: {resource}": "\uBD84\uB2F9 \uC218\uC785: {resource}",
+  "Unspent: {resource}": "\uBBF8\uC0AC\uC6A9 \uC790\uC6D0: {resource}",
+  "blocked {time} from {at}": "{at}\uBD80\uD130 {time} \uB3D9\uC548 \uB9C9\uD798",
+  "Nobody blocked here": "\uC774 \uC2DC\uC810\uC5D0 \uB9C9\uD78C \uD50C\uB808\uC774\uC5B4 \uC5C6\uC74C",
+  "Over the minute before each moment, from the game's own count of what was mined.": "\uAC01 \uC2DC\uC810 \uC9C1\uC804 1\uBD84 \uB3D9\uC548\uC758 \uAC12\uC774\uBA70, \uAC8C\uC784\uC774 \uC9C1\uC811 \uC13C \uCC44\uCDE8\uB7C9\uC744 \uAE30\uC900\uC73C\uB85C \uD569\uB2C8\uB2E4.",
+  "The game engine on this site does not count what was mined yet, so income is not shown. The rest is.": "\uC774 \uC0AC\uC774\uD2B8\uC758 \uAC8C\uC784 \uC5D4\uC9C4\uC740 \uC544\uC9C1 \uCC44\uCDE8\uB7C9\uC744 \uC138\uC9C0 \uC54A\uC544 \uC218\uC785\uC740 \uD45C\uC2DC\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uB098\uBA38\uC9C0\uB294 \uD45C\uC2DC\uD569\uB2C8\uB2E4.",
+  "What was in the bank. Money left there is not yet workers, army or tech.": "\uBCF4\uC720\uD55C \uC790\uC6D0\uC785\uB2C8\uB2E4. \uC313\uC544 \uB454 \uC790\uC6D0\uC740 \uC544\uC9C1 \uC77C\uAFBC, \uBCD1\uB825, \uAE30\uC220\uC774 \uB418\uC9C0 \uC54A\uC740 \uC790\uC6D0\uC785\uB2C8\uB2E4.",
+  "At the supply limit, below 200: nothing more could be made until supply was built.": "\uC778\uAD6C\uC218 \uD55C\uB3C4(200 \uBBF8\uB9CC)\uC5D0 \uAC78\uB9B0 \uC2DC\uAC04\uC785\uB2C8\uB2E4. \uBCF4\uAE09\uC744 \uB298\uB9B4 \uB54C\uAE4C\uC9C0 \uB354 \uC0DD\uC0B0\uD560 \uC218 \uC5C6\uC5C8\uC2B5\uB2C8\uB2E4.",
+  "Mineral lines": "\uBBF8\uB124\uB784 \uC9C0\uB300",
+  "Where the workers stood is not in this analysis.": "\uC774 \uBD84\uC11D\uC5D0\uB294 \uC77C\uAFBC\uC758 \uC704\uCE58\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.",
+  "minute": "\uBD84",
+  "{n} fields": "\uAD11\uBB3C {n}\uAC1C",
+  "{n} workers at {fields} fields, {per} a field": "\uAD11\uBB3C {fields}\uAC1C\uC5D0 \uC77C\uAFBC {n}\uAE30, \uAD11\uBB3C\uB2F9 {per}\uAE30",
+  "Press to go to that minute": "\uB204\uB974\uBA74 \uADF8 \uBD84\uC73C\uB85C \uAC11\uB2C8\uB2E4",
+  "Workers on the map at each mineral line, minute by minute: two a field mine at the full rate, and more add little. Workers in a refinery are not on the map, so these are mineral workers.": "\uBD84\uB9C8\uB2E4 \uAC01 \uBBF8\uB124\uB784 \uC9C0\uB300\uC5D0 \uC788\uB358 \uC77C\uAFBC \uC218\uC785\uB2C8\uB2E4. \uAD11\uBB3C \uD558\uB098\uC5D0 \uB450 \uAE30\uBA74 \uCD5C\uB300 \uC18D\uB3C4\uB85C \uCE90\uACE0, \uADF8 \uC774\uC0C1\uC740 \uAC70\uC758 \uBCF4\uD0EC\uC774 \uB418\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uC815\uC81C\uC18C \uC548\uC758 \uC77C\uAFBC\uC740 \uC9C0\uB3C4\uC5D0 \uC5C6\uC73C\uBBC0\uB85C \uBBF8\uB124\uB784 \uC77C\uAFBC\uB9CC \uC149\uB2C8\uB2E4."
 };
 
 // played.ts
@@ -2425,7 +2471,7 @@ var GameView = class {
    * Load `entry` into the viewer when it holds another, then put it at `frame`, playing or paused at `speed`. Resolves
    * false when it could not be (the viewer is gone, or the replay did not play), with the reason on `state`.
    */
-  async hold(entry, frame, playing2, speed) {
+  async hold(entry, frame, playing3, speed) {
     const view = this.make();
     if (!view) return false;
     if (this.holding !== entry.id || this.wanted !== null) {
@@ -2461,7 +2507,7 @@ var GameView = class {
     if (this.look) this.lookAt(this.look);
     view.speed(speed);
     if (Math.round(frame) > 0) this.seek(frame);
-    view.play(playing2);
+    view.play(playing3);
     return true;
   }
   /**
@@ -2618,8 +2664,625 @@ var GameView = class {
   }
 };
 
+// charts.ts
+var LEFT = 46;
+var RIGHT = 96;
+var BOTTOM = 18;
+var TOP = 8;
+function niceMax(v) {
+  if (!(v > 0)) return 1;
+  const p = 10 ** Math.floor(Math.log10(v)), n = v / p;
+  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p;
+}
+function minuteStep(widthPx, minutes, gap = 56) {
+  for (const step2 of [1, 2, 5, 10, 15, 20, 30, 60]) if (widthPx / Math.max(1, minutes) * step2 >= gap) return step2;
+  return 60;
+}
+function spreadLabels(ys, gap, top, bottom) {
+  const order = ys.map((y, i) => ({ y, i })).sort((a, b) => a.y - b.y);
+  for (let k = 1; k < order.length; k++) order[k].y = Math.max(order[k].y, order[k - 1].y + gap);
+  const over = order.length ? order[order.length - 1].y - bottom : 0;
+  if (over > 0) for (const o of order) o.y -= over;
+  for (const o of order) o.y = Math.max(top, o.y);
+  const out = new Array(ys.length);
+  for (const o of order) out[o.i] = o.y;
+  return out;
+}
+var css = (el, name, fallback) => getComputedStyle(el).getPropertyValue(name).trim() || fallback;
+var Chart = class {
+  element;
+  canvas;
+  end = 1;
+  now = null;
+  hovered = null;
+  resize;
+  tip;
+  /** The same on every chart of a window, so their times line up: the axis' numbers at the left, names at the right. */
+  right = RIGHT;
+  left = LEFT;
+  host;
+  tipAt;
+  constructor(host, height, tipAt, label) {
+    this.host = host;
+    this.tipAt = tipAt;
+    this.canvas = document.createElement("canvas");
+    this.canvas.className = "afm-chart-canvas";
+    this.canvas.style.height = `${height}px`;
+    this.canvas.setAttribute("role", "img");
+    this.canvas.setAttribute("aria-label", label);
+    this.element = document.createElement("div");
+    this.element.className = "afm-chart";
+    this.element.append(this.canvas);
+    const frameAt = (offsetX) => {
+      const w = this.canvas.clientWidth - this.left - this.right;
+      return Math.max(0, Math.min(this.end, (offsetX - this.left) / Math.max(1, w) * this.end));
+    };
+    const pickAt = (e) => this.host.pick(frameAt(e.clientX - this.canvas.getBoundingClientRect().left));
+    this.canvas.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0) return;
+      this.canvas.setPointerCapture(e.pointerId);
+      pickAt(e);
+    });
+    this.canvas.addEventListener("pointermove", (e) => {
+      if (this.canvas.hasPointerCapture(e.pointerId)) pickAt(e);
+      this.host.hover(frameAt(e.clientX - this.canvas.getBoundingClientRect().left));
+    });
+    this.canvas.addEventListener("pointerleave", () => this.host.hover(null));
+    this.tip = host.tooltip(this.canvas, (at) => at.offsetX < this.left - 4 ? null : this.tipAt(frameAt(at.offsetX)));
+    this.resize = new ResizeObserver(() => this.draw());
+    this.resize.observe(this.canvas);
+  }
+  /** The replay's moment, drawn as the brighter line. */
+  setNow(frame) {
+    if (frame !== this.now) {
+      this.now = frame;
+      this.draw();
+    }
+  }
+  /** The pointer's moment, over this chart or another of the window's. */
+  setHover(frame) {
+    if (frame !== this.hovered) {
+      this.hovered = frame;
+      this.draw();
+      this.tip.refresh();
+    }
+  }
+  dispose() {
+    this.resize.disconnect();
+    this.tip.dispose();
+  }
+  draw() {
+    const c = this.canvas;
+    if (!c.isConnected) return;
+    const dpr = window.devicePixelRatio || 1;
+    const cw = Math.max(1, Math.round(c.clientWidth * dpr)), ch = Math.max(1, Math.round(c.clientHeight * dpr));
+    if (c.width !== cw || c.height !== ch) {
+      c.width = cw;
+      c.height = ch;
+    }
+    const g = c.getContext("2d");
+    if (!g) return;
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, cw, ch);
+    g.scale(dpr, dpr);
+    const width = c.clientWidth, height = c.clientHeight;
+    const w = Math.max(1, width - this.left - this.right);
+    const top = TOP, bottom = height - BOTTOM;
+    const x = (f) => this.left + Math.max(0, Math.min(this.end, f)) / this.end * w;
+    const dim = css(c, "--text-dim", "#99a2b3"), grid = "rgba(255,255,255,0.07)";
+    g.font = "10px system-ui, sans-serif";
+    g.textBaseline = "top";
+    g.textAlign = "center";
+    const minutes = this.end / FRAMES_PER_MINUTE, step2 = minuteStep(w, minutes);
+    for (let m = 0; m <= minutes; m += step2) {
+      const px = Math.round(x(m * FRAMES_PER_MINUTE)) + 0.5;
+      g.strokeStyle = grid;
+      g.lineWidth = 1;
+      g.beginPath();
+      g.moveTo(px, top);
+      g.lineTo(px, bottom);
+      g.stroke();
+      g.fillStyle = dim;
+      g.fillText(`${m}:00`, Math.min(px, width - this.right - 14), bottom + 4);
+    }
+    this.plot(g, { x, top, bottom, w, dpr });
+    for (const [f, colour] of [[this.now, "rgba(255,255,255,0.85)"], [this.hovered, "rgba(255,255,255,0.35)"]]) {
+      if (f === null) continue;
+      const px = Math.round(x(f)) + 0.5;
+      g.strokeStyle = colour;
+      g.lineWidth = 1;
+      g.beginPath();
+      g.moveTo(px, top);
+      g.lineTo(px, bottom);
+      g.stroke();
+    }
+  }
+};
+var LineChart = class extends Chart {
+  series = [];
+  format = (v) => Math.round(v).toLocaleString();
+  constructor(host, height, tipAt, label) {
+    super(host, height, tipAt, label);
+  }
+  set(series2, end, format) {
+    this.series = series2;
+    this.end = Math.max(1, end);
+    if (format) this.format = format;
+    this.draw();
+  }
+  plot(g, box) {
+    const { x, top, bottom } = box;
+    const width = this.canvas.clientWidth;
+    let peak = 0;
+    for (const s of this.series) for (let i = 0; i < s.y.length; i++) peak = Math.max(peak, s.y[i]);
+    const max = niceMax(peak);
+    const y = (v) => bottom - v / max * (bottom - top);
+    const dim = css(this.canvas, "--text-dim", "#99a2b3"), text = css(this.canvas, "--text", "#e4e8ef");
+    g.font = "10px system-ui, sans-serif";
+    g.textAlign = "right";
+    g.textBaseline = "middle";
+    for (const v of [0, max / 2, max]) {
+      const py = Math.round(y(v)) + 0.5;
+      g.strokeStyle = v === 0 ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.07)";
+      g.lineWidth = 1;
+      g.beginPath();
+      g.moveTo(this.left, py);
+      g.lineTo(width - this.right, py);
+      g.stroke();
+      g.fillStyle = dim;
+      g.fillText(this.format(v), this.left - 6, py);
+    }
+    g.lineWidth = 2;
+    g.lineJoin = "round";
+    g.lineCap = "round";
+    const ends = [];
+    for (const s of this.series) {
+      if (!s.x.length) continue;
+      g.strokeStyle = s.color;
+      g.beginPath();
+      for (let i = 0; i < s.x.length; i++) {
+        const px = x(s.x[i]), py = y(s.y[i]);
+        if (i === 0) g.moveTo(px, py);
+        else g.lineTo(px, py);
+      }
+      g.stroke();
+      const last = s.y.length - 1;
+      ends.push({ y: y(s.y[last]), s, v: s.y[last] });
+    }
+    const placed = spreadLabels(ends.map((e) => e.y), 13, top + 5, bottom - 5);
+    g.textAlign = "left";
+    g.font = "11px system-ui, sans-serif";
+    ends.forEach((e, i) => {
+      const lx = width - this.right + 8;
+      g.fillStyle = e.s.color;
+      g.fillRect(lx, placed[i] - 1, 6, 2);
+      g.fillStyle = text;
+      const name = e.s.label.length > 12 ? `${e.s.label.slice(0, 11)}\u2026` : e.s.label;
+      g.fillText(name, lx + 10, placed[i]);
+    });
+    if (this.hovered !== null) {
+      for (const s of this.series) {
+        const i = nearest2(s.x, this.hovered);
+        if (i < 0) continue;
+        const px = x(s.x[i]), py = y(s.y[i]);
+        g.fillStyle = css(this.canvas, "--bg-1", "#1b1e25");
+        g.beginPath();
+        g.arc(px, py, 5, 0, Math.PI * 2);
+        g.fill();
+        g.fillStyle = s.color;
+        g.beginPath();
+        g.arc(px, py, 3.5, 0, Math.PI * 2);
+        g.fill();
+      }
+    }
+  }
+};
+var LaneChart = class extends Chart {
+  rows = [];
+  spanColour = "#e5484d";
+  constructor(host, tipAt, label) {
+    super(host, 0, tipAt, label);
+  }
+  set(rows, end, colour) {
+    this.rows = rows;
+    this.end = Math.max(1, end);
+    if (colour) this.spanColour = colour;
+    this.canvas.style.height = `${TOP + rows.length * 22 + BOTTOM}px`;
+    this.draw();
+  }
+  plot(g, box) {
+    const { x, top } = box;
+    const width = this.canvas.clientWidth, text = css(this.canvas, "--text", "#e4e8ef");
+    g.font = "11px system-ui, sans-serif";
+    g.textBaseline = "middle";
+    this.rows.forEach((row, r) => {
+      const y0 = top + r * 22 + 3, h = 16;
+      g.fillStyle = "rgba(255,255,255,0.04)";
+      g.fillRect(this.left, y0, width - this.left - this.right, h);
+      const lx = width - this.right + 8;
+      g.fillStyle = row.color;
+      g.fillRect(lx, y0 + h / 2 - 1, 6, 2);
+      g.fillStyle = text;
+      g.textAlign = "left";
+      g.fillText(row.label.length > 12 ? `${row.label.slice(0, 11)}\u2026` : row.label, lx + 10, y0 + h / 2);
+      g.fillStyle = this.spanColour;
+      for (const s of row.spans) {
+        const a = x(s.from), b = Math.max(a + 2, x(s.to));
+        g.beginPath();
+        g.roundRect(a, y0 + 2, b - a, h - 4, 2);
+        g.fill();
+      }
+    });
+  }
+};
+function nearest2(xs, x) {
+  let lo = 0, hi = xs.length - 1;
+  if (hi < 0) return -1;
+  while (lo < hi) {
+    const mid = lo + hi >> 1;
+    if (xs[mid] < x) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo > 0 && Math.abs(xs[lo - 1] - x) <= Math.abs(xs[lo] - x) ? lo - 1 : lo;
+}
+
+// economy.ts
+var INCOME_WINDOW = FRAMES_PER_MINUTE;
+var LINE_REACH = 8 * 32;
+var MAX_SUPPLY = 200;
+var playing2 = (s) => s.supplyMax.some((n) => n > 0);
+function incomeRate(frames, gathered, window2 = INCOME_WINDOW) {
+  const out = new Array(frames.length).fill(0);
+  let j = 0;
+  for (let i = 0; i < frames.length; i++) {
+    while (j < i && frames[i] - frames[j] > window2) j++;
+    const span = frames[i] - frames[j];
+    out[i] = span > 0 ? (gathered[i] - gathered[j]) * FRAMES_PER_MINUTE / span : 0;
+  }
+  return out;
+}
+function supplyBlocks(frames, used, max, until = Infinity) {
+  const out = [];
+  let from = -1;
+  for (let i = 0; i < frames.length && frames[i] <= until; i++) {
+    const blocked = max[i] > 0 && max[i] < MAX_SUPPLY && used[i] >= max[i];
+    if (blocked && from < 0) from = frames[i];
+    else if (!blocked && from >= 0) {
+      out.push({ from, to: frames[i] });
+      from = -1;
+    }
+  }
+  if (from >= 0) out.push({ from, to: Math.min(until, frames[frames.length - 1]) });
+  return out.filter((b) => b.to > b.from);
+}
+function meanUntil(frames, values, until) {
+  let sum = 0, n = 0;
+  for (let i = 0; i < frames.length && frames[i] <= until; i++) {
+    sum += values(i);
+    n++;
+  }
+  return n ? sum / n : 0;
+}
+function lineSaturation(t, lines, index, players) {
+  const p = t.positions;
+  if (!p || !lines.lines.length) return [];
+  const minutes = Math.ceil(t.frames / FRAMES_PER_MINUTE);
+  const sums = /* @__PURE__ */ new Map();
+  const samplesIn = new Array(minutes).fill(0);
+  const want = new Set(players);
+  for (let i = 0; i < p.frame.length; i++) {
+    const m = Math.min(minutes - 1, Math.floor(p.frame[i] / FRAMES_PER_MINUTE));
+    samplesIn[m]++;
+    for (let r = p.start[i]; r < p.start[i + 1]; r++) {
+      const u = p.unit[r], owner = index.owner[u];
+      if (!want.has(owner) || !WORKERS2.has(index.type[u])) continue;
+      const x = p.x[r], y = p.y[r];
+      let best = -1, bestD = LINE_REACH;
+      for (let l = 0; l < lines.lines.length; l++) {
+        const d = Math.hypot(lines.lines[l].x - x, lines.lines[l].y - y);
+        if (d <= bestD) {
+          bestD = d;
+          best = l;
+        }
+      }
+      if (best < 0) continue;
+      const key = `${best}:${owner}`;
+      let row = sums.get(key);
+      if (!row) {
+        row = { line: best, player: owner, sum: new Array(minutes).fill(0) };
+        sums.set(key, row);
+      }
+      row.sum[m]++;
+    }
+  }
+  const out = [];
+  for (const row of sums.values()) {
+    const perMinute = row.sum.map((s, m) => samplesIn[m] ? s / samplesIn[m] : 0);
+    const first = perMinute.findIndex((n) => n >= 3);
+    if (first < 0) continue;
+    const l = lines.lines[row.line];
+    out.push({ line: row.line, player: row.player, x: l.x, y: l.y, fields: l.fields, perMinute, first });
+  }
+  return out.sort((a, b) => a.first - b.first || a.player - b.player);
+}
+function economy(t, lines, index, leftAt = /* @__PURE__ */ new Map()) {
+  const f = t.samples.frame;
+  const end = f[f.length - 1] ?? 0;
+  const inGame = t.samples.players.filter(playing2);
+  const exact = inGame.length > 0 && inGame.every((s) => Array.isArray(s.mineralsGathered) && s.mineralsGathered.length === f.length);
+  const players = inGame.map((s) => {
+    const until = leftAt.get(s.slot) ?? end;
+    let last = 0;
+    while (last + 1 < f.length && f[last + 1] <= until) last++;
+    const income = exact ? { minerals: incomeRate(f, s.mineralsGathered), gas: incomeRate(f, s.gasGathered) } : null;
+    const mined = exact ? { minerals: s.mineralsGathered[last] - s.mineralsGathered[0], gas: s.gasGathered[last] - s.gasGathered[0] } : null;
+    const minutes = (f[last] - f[0]) / FRAMES_PER_MINUTE;
+    let peak = { n: 0, frame: 0 };
+    for (let i = 0; i <= last; i++) if (s.workers[i] > peak.n) peak = { n: s.workers[i], frame: f[i] };
+    const blocks = supplyBlocks(f, s.supplyUsed, s.supplyMax, until);
+    return {
+      slot: s.slot,
+      income,
+      mined,
+      averageIncome: mined && minutes > 0 ? (mined.minerals + mined.gas) / minutes : null,
+      averageBank: meanUntil(f, (i) => s.minerals[i] + s.gas[i], until),
+      peakWorkers: peak,
+      blocks,
+      blockedFrames: blocks.reduce((a, b) => a + b.to - b.from, 0)
+    };
+  });
+  return { exact, players, lines: lineSaturation(t, lines, index, players.map((p) => p.slot)), minutes: Math.ceil(t.frames / FRAMES_PER_MINUTE) };
+}
+
+// insight.ts
+var economies = /* @__PURE__ */ new WeakMap();
+var InsightView = class {
+  game = null;
+  charts = [];
+  tips = [];
+  root;
+  deps;
+  constructor(body, deps) {
+    this.deps = deps;
+    this.root = deps.api.ui.el("div", { className: "afm-insight" });
+    body.append(this.root);
+  }
+  /** What is shown, so asking again for the same leaves the window as it is (its scroll, the tab's state). */
+  shownKey = "";
+  shownTimeline = null;
+  /** Show `game`, or say why there is nothing to show. */
+  show(game, why) {
+    const key = game ? game.players.filter((p) => p.hidden).map((p) => p.slot).join(",") : `none:${why}`;
+    if (game?.timeline === this.shownTimeline && key === this.shownKey) return;
+    this.shownKey = key;
+    this.shownTimeline = game?.timeline ?? null;
+    this.game = game;
+    this.render(why);
+  }
+  /** The replay's clock moved. */
+  update() {
+    const now = this.deps.frame();
+    for (const c of this.charts) c.setNow(now);
+  }
+  dispose() {
+    for (const c of this.charts) c.dispose();
+    for (const tip of this.tips) tip.dispose();
+    this.charts = [];
+    this.tips = [];
+  }
+  /* ── ChartHost ── */
+  hover(frame) {
+    for (const c of this.charts) c.setHover(frame);
+  }
+  pick(frame) {
+    this.deps.seek(frame);
+  }
+  tooltip(target, content) {
+    return this.deps.tooltip(target, content);
+  }
+  render(why) {
+    const { api, t, settings } = this.deps;
+    const el = api.ui.el, w = api.ui.widgets;
+    this.dispose();
+    this.root.replaceChildren();
+    if (!this.game) {
+      this.root.append(el("div", { className: "afm-insight-empty" }, why));
+      return;
+    }
+    const tabs = w.tabs([
+      { value: "economy", label: t("Economy"), mount: (body) => this.economy(body) }
+    ], { value: settings.tab, onChange: (tab) => {
+      settings.tab = tab;
+      this.deps.save();
+    } });
+    tabs.classList.add("afm-insight-tabs");
+    this.root.append(tabs);
+    this.update();
+  }
+  /* ── Economy ── */
+  economy(body) {
+    const game = this.game;
+    const { api, t, settings } = this.deps;
+    const el = api.ui.el, w = api.ui.widgets;
+    let e = economies.get(game.timeline);
+    if (!e) {
+      e = economy(game.timeline, game.lines, game.index, new Map(game.players.map((p) => [p.slot, p.leftAt])));
+      economies.set(game.timeline, e);
+    }
+    const eco = e;
+    const tl = game.timeline, frames = tl.samples.frame, end = tl.frames;
+    const bySlot = new Map(game.players.map((p) => [p.slot, p]));
+    const shown = eco.players.filter((p) => !bySlot.get(p.slot)?.hidden);
+    const series2 = (slot) => tl.samples.players.find((s) => s.slot === slot);
+    const name = (slot) => bySlot.get(slot)?.name ?? "";
+    const colour = (slot) => bySlot.get(slot)?.color ?? "#888";
+    const number = (n) => Math.round(n).toLocaleString();
+    const swatch = (slot) => el("span", { className: "afm-tip-swatch", style: `background:${colour(slot)}` });
+    const resourceOf = (m, g) => settings.resource === "minerals" ? m : settings.resource === "gas" ? g : m + g;
+    const resourceWord = () => settings.resource === "minerals" ? t("minerals") : settings.resource === "gas" ? t("gas") : t("minerals and gas");
+    const tipFor = (frame, title, value) => {
+      const i = Math.max(0, nearestSample(frames, frame));
+      const rows = shown.map((p) => {
+        const v = value(p.slot, i);
+        return v === null ? null : el("div", { className: "afm-it-row" }, swatch(p.slot), el("span", { className: "afm-gt-name" }, name(p.slot)), el("b", { className: "afm-gt-num" }, v));
+      });
+      return el(
+        "div",
+        { className: "afm-gt" },
+        el("div", { className: "afm-gt-head" }, el("b", {}, formatTime(frames[i])), el("span", { className: "afm-dim" }, title)),
+        ...rows.filter((r) => r !== null),
+        el("div", { className: "afm-gt-foot afm-dim" }, t("Press or drag to go there"))
+      );
+    };
+    const resource = w.segmented([
+      { value: "both", label: t("Both") },
+      { value: "minerals", label: t("Minerals") },
+      { value: "gas", label: t("Gas") }
+    ], { value: settings.resource, title: t("Which resource the income and unspent charts show"), onChange: (v) => {
+      settings.resource = v;
+      this.deps.save();
+      drawResourceCharts();
+    } });
+    const filters = el("div", { className: "afm-it-filters" }, el("span", { className: "afm-dim" }, t("Resources")), resource);
+    const table = el("table", { className: "afm-it-table" });
+    const head = el("tr", {}, el("th", {}), ...shown.map((p) => el("th", { scope: "col" }, el("span", { className: "afm-it-player" }, swatch(p.slot), name(p.slot)))));
+    const row = (label, hint, cell) => el("tr", {}, el("th", { scope: "row", title: hint }, label), ...shown.map((p) => el("td", {}, cell(p))));
+    const none = "\u2013";
+    table.append(el("thead", {}, head), el(
+      "tbody",
+      {},
+      row(t("Minerals mined"), t("Everything the player's workers brought back"), (p) => p.mined ? number(p.mined.minerals) : none),
+      row(t("Gas mined"), t("Everything the player's workers brought back"), (p) => p.mined ? number(p.mined.gas) : none),
+      row(t("Income a minute"), t("Minerals and gas a minute, on average over the time the player was in the game"), (p) => p.averageIncome === null ? none : number(p.averageIncome)),
+      row(t("Unspent, on average"), t("Minerals and gas in the bank, on average: lower means the money went to use sooner"), (p) => number(p.averageBank)),
+      row(t("Supply blocked"), t("Time spent at the supply limit (below 200), when nothing more could be made"), (p) => p.blockedFrames > 0 ? t("{time} in {n, plural, one {# block} other {# blocks}}", { time: formatTime(p.blockedFrames), n: p.blocks.length }) : t("never")),
+      row(t("Most workers"), t("The most workers the player had at once, and when"), (p) => t("{n} at {time}", { n: p.peakWorkers.n, time: formatTime(p.peakWorkers.frame) }))
+    ));
+    const section2 = (title, note, ...content) => el("section", { className: "afm-it-section" }, el("h3", {}, title), note ? el("p", { className: "afm-dim afm-it-note" }, note) : null, ...content);
+    const income = eco.exact ? new LineChart(this, 150, (f) => tipFor(f, t("Income a minute"), (slot, i) => {
+      const p = eco.players.find((x) => x.slot === slot);
+      return p.income ? number(resourceOf(p.income.minerals[i], p.income.gas[i])) : null;
+    }), t("Income a minute")) : null;
+    const bank = new LineChart(this, 130, (f) => tipFor(f, t("Unspent"), (slot, i) => number(resourceOf(series2(slot).minerals[i], series2(slot).gas[i]))), t("Unspent"));
+    const drawResourceCharts = () => {
+      if (income) income.set(shown.map((p) => ({ label: name(p.slot), color: colour(p.slot), x: frames, y: p.income.minerals.map((m, i) => resourceOf(m, p.income.gas[i])) })), end);
+      bank.set(shown.map((p) => {
+        const s = series2(p.slot);
+        return { label: name(p.slot), color: colour(p.slot), x: frames, y: s.minerals.map((m, i) => resourceOf(m, s.gas[i])) };
+      }), end);
+      incomeTitle.textContent = t("Income a minute: {resource}", { resource: resourceWord() });
+      bankTitle.textContent = t("Unspent: {resource}", { resource: resourceWord() });
+    };
+    const incomeTitle = el("h3", {}), bankTitle = el("h3", {});
+    const workers = new LineChart(this, 120, (f) => tipFor(f, t("Workers"), (slot, i) => String(series2(slot).workers[i])), t("Workers"));
+    workers.set(shown.map((p) => ({ label: name(p.slot), color: colour(p.slot), x: frames, y: series2(p.slot).workers })), end);
+    const blocks = new LaneChart(this, (f) => {
+      const rows = shown.map((p) => {
+        const b = p.blocks.find((x) => f >= x.from && f <= x.to);
+        return b ? el(
+          "div",
+          { className: "afm-it-row" },
+          swatch(p.slot),
+          el("span", { className: "afm-gt-name" }, name(p.slot)),
+          el("span", {}, t("blocked {time} from {at}", { time: formatTime(b.to - b.from), at: formatTime(b.from) }))
+        ) : null;
+      }).filter((r) => r !== null);
+      return el(
+        "div",
+        { className: "afm-gt" },
+        el("div", { className: "afm-gt-head" }, el("b", {}, formatTime(f)), el("span", { className: "afm-dim" }, t("Supply blocked"))),
+        ...rows.length ? rows : [el("div", { className: "afm-dim" }, t("Nobody blocked here"))]
+      );
+    }, t("Supply blocked"));
+    blocks.set(shown.map((p) => ({ label: name(p.slot), color: colour(p.slot), spans: p.blocks })), end, "rgba(229,72,77,0.85)");
+    this.charts.push(...income ? [income] : [], bank, workers, blocks);
+    drawResourceCharts();
+    body.append(
+      filters,
+      el("section", { className: "afm-it-section" }, el("h3", {}, t("In numbers")), table),
+      income ? el("section", { className: "afm-it-section" }, incomeTitle, el("p", { className: "afm-dim afm-it-note" }, t("Over the minute before each moment, from the game's own count of what was mined.")), income.element) : section2(t("Income a minute"), t("The game engine on this site does not count what was mined yet, so income is not shown. The rest is.")),
+      el("section", { className: "afm-it-section" }, bankTitle, el("p", { className: "afm-dim afm-it-note" }, t("What was in the bank. Money left there is not yet workers, army or tech.")), bank.element),
+      section2(t("Workers"), null, workers.element),
+      section2(t("Supply blocked"), t("At the supply limit, below 200: nothing more could be made until supply was built."), blocks.element),
+      this.saturation(eco, game)
+    );
+    for (const c of this.charts) c.draw();
+  }
+  /** Workers at each mineral line a player worked, minute by minute. */
+  saturation(eco, game) {
+    const { api, t } = this.deps;
+    const el = api.ui.el;
+    const bySlot = new Map(game.players.map((p) => [p.slot, p]));
+    const rows = eco.lines.filter((l) => !bySlot.get(l.player)?.hidden);
+    const title = el("h3", {}, t("Mineral lines"));
+    if (!rows.length) return el("section", { className: "afm-it-section" }, title, el("p", { className: "afm-dim afm-it-note" }, t("Where the workers stood is not in this analysis.")));
+    const minutes = eco.minutes;
+    const grid = el("div", { className: "afm-it-sat", style: `grid-template-columns: 150px repeat(${minutes}, 22px)` });
+    grid.append(el("span", { className: "afm-it-sat-corner afm-dim" }, t("minute")));
+    for (let m = 0; m < minutes; m++) grid.append(el("span", { className: "afm-it-sat-min afm-dim" }, m % 5 === 0 ? String(m) : ""));
+    for (const row of rows) {
+      const p = bySlot.get(row.player);
+      grid.append(el(
+        "span",
+        { className: "afm-it-sat-line" },
+        el("span", { className: "afm-tip-swatch", style: `background:${p?.color ?? "#888"}` }),
+        el("span", { className: "afm-gt-name" }, this.deps.placeOf(row.x, row.y, game.map)),
+        el("span", { className: "afm-dim" }, t("{n} fields", { n: row.fields }))
+      ));
+      row.perMinute.forEach((n, m) => {
+        const perField = n / Math.max(1, row.fields);
+        const a = n < 0.5 ? 0 : 0.1 + 0.7 * Math.min(1, perField / 3);
+        const cell = el("span", { className: "afm-it-sat-cell", style: a ? `background: rgba(79,209,197,${a.toFixed(2)})` : "" }, n >= 0.5 ? String(Math.round(n)) : "");
+        cell.dataset.line = String(row.line);
+        cell.dataset.player = String(row.player);
+        cell.dataset.minute = String(m);
+        grid.append(cell);
+      });
+    }
+    const cellAt = (x, y) => {
+      const r = grid.getBoundingClientRect();
+      const hit = document.elementFromPoint(r.left + x, r.top + y);
+      return hit instanceof HTMLElement && hit.classList.contains("afm-it-sat-cell") ? hit : null;
+    };
+    this.tips.push(this.deps.tooltip(grid, (at) => {
+      const cell = cellAt(at.offsetX, at.offsetY);
+      if (!cell) return null;
+      const row = rows.find((l) => String(l.line) === cell.dataset.line && String(l.player) === cell.dataset.player);
+      if (!row) return null;
+      const m = Number(cell.dataset.minute), n = row.perMinute[m];
+      return el(
+        "div",
+        { className: "afm-gt" },
+        el("div", { className: "afm-gt-head" }, el("b", {}, `${m}:00\u2013${m + 1}:00`), el("span", { className: "afm-dim" }, this.deps.placeOf(row.x, row.y, game.map))),
+        el("div", {}, t("{n} workers at {fields} fields, {per} a field", { n: Math.round(n), fields: row.fields, per: (n / row.fields).toFixed(1) })),
+        el("div", { className: "afm-gt-foot afm-dim" }, t("Press to go to that minute"))
+      );
+    }));
+    grid.addEventListener("click", (e) => {
+      const target = e.target;
+      if (target instanceof HTMLElement && target.dataset.minute) this.deps.seek(Number(target.dataset.minute) * FRAMES_PER_MINUTE);
+    });
+    return el(
+      "section",
+      { className: "afm-it-section" },
+      title,
+      el("p", { className: "afm-dim afm-it-note" }, t("Workers on the map at each mineral line, minute by minute: two a field mine at the full rate, and more add little. Workers in a refinery are not on the map, so these are mineral workers.")),
+      el("div", { className: "afm-it-sat-wrap" }, grid)
+    );
+  }
+};
+function nearestSample(frames, frame) {
+  let lo = 0, hi = frames.length - 1;
+  while (lo < hi) {
+    const mid = lo + hi >> 1;
+    if (frames[mid] < frame) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo > 0 && Math.abs(frames[lo - 1] - frame) <= Math.abs(frames[lo] - frame) ? lo - 1 : lo;
+}
+
 // plugin.ts
-var DEFAULTS = { orders: false, legend: true, heat: "losses", speed: 8, workers: false, chart: "lead", tab: "summary", version: 5 };
+var DEFAULTS = { orders: false, legend: true, heat: "losses", speed: 8, workers: false, chart: "lead", tab: "summary", insightTab: "economy", resource: "both", version: 5 };
 var FRONT_FRAMES = 120;
 var FIGHT_LEAD = 48;
 var TWINS = /* @__PURE__ */ new Set([37, 47]);
@@ -2728,6 +3391,31 @@ var STYLE = `
 .afm-gt-moment { display: flex; align-items: center; gap: 6px; }
 .afm-gt-mtext { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .afm-gt-foot { font-size: 11px; }
+.afm-insight { flex: 1; min-height: 0; display: flex; flex-direction: column; font-size: 12px; }
+.afm-insight-empty { padding: 24px 8px; color: var(--text-dim, #99a2b3); }
+.afm-insight-tabs { flex: 1; min-height: 0; }
+.afm-insight-tabs > .tab-panel { overflow: auto; padding: 0 4px 16px 0; }
+.afm-it-filters { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 8px; padding: 8px 0; background: var(--bg-1, #1b1e25); border-bottom: 1px solid var(--border, rgba(255,255,255,0.08)); }
+.afm-it-section { margin-top: 16px; }
+.afm-it-section h3 { margin: 0 0 2px; font-size: 12px; font-weight: 600; color: var(--text, #e4e8ef); }
+.afm-it-note { margin: 0 0 6px; font-size: 11px; max-width: 70ch; }
+.afm-insight .afm-dim { color: var(--text-dim, #99a2b3); }
+.afm-chart-canvas { display: block; width: 100%; cursor: crosshair; touch-action: none; }
+.afm-it-table { border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.afm-it-table th, .afm-it-table td { padding: 3px 14px 3px 0; text-align: right; font-weight: normal; white-space: nowrap; }
+.afm-it-table tbody th { text-align: left; color: var(--text-dim, #99a2b3); cursor: help; }
+.afm-it-table thead th { padding-bottom: 6px; }
+.afm-it-table td { color: var(--text, #e4e8ef); }
+.afm-it-player { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.afm-it-row { display: flex; align-items: center; gap: 6px; }
+.afm-it-row .afm-gt-name { flex: 1; min-width: 0; }
+.afm-it-sat-wrap { overflow-x: auto; padding-bottom: 4px; }
+.afm-it-sat { display: grid; gap: 2px; align-items: center; width: max-content; font-variant-numeric: tabular-nums; }
+.afm-it-sat-corner, .afm-it-sat-min { font-size: 10px; }
+.afm-it-sat-min { text-align: left; }
+.afm-it-sat-line { display: flex; align-items: center; gap: 6px; min-width: 0; padding-right: 6px; }
+.afm-it-sat-line .afm-gt-name { flex: 1; }
+.afm-it-sat-cell { height: 20px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text, #e4e8ef); background: rgba(255,255,255,0.03); border-radius: 2px; cursor: pointer; }
 .afm-busy .afm-spin { width: 16px; height: 16px; flex: none; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.22); border-top-color: var(--accent, #4fd1c5); animation: afm-spin 0.8s linear infinite; }
 @keyframes afm-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .afm-busy .afm-spin { animation-duration: 2.4s; } }
@@ -2870,7 +3558,7 @@ function activate(api) {
   const loaded = [];
   let nextId = 1;
   let current = null;
-  let playing2 = false;
+  let playing3 = false;
   let raf = 0;
   let lastTick = 0;
   let gameState = null;
@@ -2880,7 +3568,7 @@ function activate(api) {
     frame: (id, f) => {
       if (!current || current.id !== id || !gameClock()) return;
       current.frame = f.frame;
-      if (playing2 && !f.playing && f.seeking === null && f.frame >= current.report.frames - 1) stop();
+      if (playing3 && !f.playing && f.seeking === null && f.frame >= current.report.frames - 1) stop();
       tick();
       showBusy();
     },
@@ -3009,14 +3697,14 @@ function activate(api) {
     if (on) {
       cancelAnimationFrame(raf);
       const asked = entry.frame;
-      void game.hold(entry, asked, playing2, settings.speed).then((ok) => {
+      void game.hold(entry, asked, playing3, settings.speed).then((ok) => {
         if (ok && current === entry && Math.round(entry.frame) !== Math.round(asked)) game.seek(entry.frame);
-        if (!ok && playing2 && current === entry) runClock();
+        if (!ok && playing3 && current === entry) runClock();
         strip?.update();
       });
     } else {
       game.play(false);
-      if (playing2) runClock();
+      if (playing3) runClock();
     }
     tick();
     showBusy();
@@ -3229,7 +3917,7 @@ function activate(api) {
       if (f === null) return;
       const at2 = trackAt(track2, f);
       game.camera(at2.x, at2.y);
-      if (playing2 && !cam.raf) cam.raf = requestAnimationFrame(() => {
+      if (playing3 && !cam.raf) cam.raf = requestAnimationFrame(() => {
         cam.raf = 0;
         follow();
       });
@@ -3323,14 +4011,15 @@ function activate(api) {
     follow();
     side?.update();
     strip?.update();
+    insight?.update();
     if (!game.shown) overlay.redraw();
     else game.redrawOver();
   }
   function play() {
-    if (!current || playing2) return;
+    if (!current || playing3) return;
     if (lensOf() === "map") showStats(false);
     if (current.frame >= current.report.frames) current.frame = 0;
-    playing2 = true;
+    playing3 = true;
     if (gameClock()) {
       game.play(true);
       strip?.update();
@@ -3343,18 +4032,18 @@ function activate(api) {
     cancelAnimationFrame(raf);
     lastTick = performance.now();
     const step2 = (now) => {
-      if (!playing2 || !current || gameClock()) return;
+      if (!playing3 || !current || gameClock()) return;
       const dt = now - lastTick;
       lastTick = now;
       current.frame = Math.min(current.report.frames, current.frame + dt / FRAME_MS * settings.speed);
-      if (current.frame >= current.report.frames) playing2 = false;
+      if (current.frame >= current.report.frames) playing3 = false;
       tick();
-      if (playing2) raf = requestAnimationFrame(step2);
+      if (playing3) raf = requestAnimationFrame(step2);
     };
     raf = requestAnimationFrame(step2);
   }
   function stop() {
-    playing2 = false;
+    playing3 = false;
     cancelAnimationFrame(raf);
     game.play(false);
     strip?.update();
@@ -3369,7 +4058,7 @@ function activate(api) {
       if (current) seek(current.frame + seconds * FRAMES_PER_MINUTE / 60);
     };
     keys = [
-      api.hotkeys.add("Space", () => playing2 ? stop() : play()),
+      api.hotkeys.add("Space", () => playing3 ? stop() : play()),
       api.hotkeys.add("ArrowLeft", by(-10)),
       api.hotkeys.add("ArrowRight", by(10)),
       api.hotkeys.add("Shift+ArrowLeft", by(-60)),
@@ -4039,6 +4728,81 @@ function activate(api) {
     sidePanel?.close();
     closing = false;
   }
+  const insightPossible = typeof w.tabs === "function" && typeof w.segmented === "function";
+  let insightPanel = null;
+  let insight = null;
+  function insightGame() {
+    const entry = current;
+    if (!entry) return { game: null, why: t("Open a replay to analyse it.") };
+    if (!entry.played) {
+      return { game: null, why: entry.failed ? t("The game could not be analysed: {message}", { message: entry.failed }) : running?.entry === entry ? t("The game is being analysed. The charts appear when it is done.") : sim?.present ? t("The game is waiting to be analysed.") : t("The charts need the game to be played through, which scmjs.dev does.") };
+    }
+    const tl = entry.played.timeline;
+    return {
+      why: "",
+      game: {
+        timeline: tl,
+        lines: insightLines(tl),
+        index: entry.played.index,
+        map: tl.map,
+        players: entry.report.players.map((p) => ({ slot: p.player.index, name: p.player.name, color: p.player.color, leftAt: p.leftAt, hidden: entry.hidden.has(p.player.id) }))
+      }
+    };
+  }
+  const linesOf = /* @__PURE__ */ new WeakMap();
+  function insightLines(tl) {
+    let l = linesOf.get(tl);
+    if (!l) {
+      l = mineralLines(tl);
+      linesOf.set(tl, l);
+    }
+    return l;
+  }
+  function refreshInsight() {
+    if (!insight) return;
+    const { game: game2, why } = insightGame();
+    insight.show(game2, why);
+  }
+  function openInsight() {
+    if (!insightPossible) return;
+    if (insightPanel?.isOpen()) return;
+    insightPanel = api.ui.panel({
+      title: t("Replay Analysis"),
+      width: 900,
+      height: 620,
+      resizable: true,
+      maximizable: true,
+      mount(body) {
+        const view = new InsightView(body, {
+          api,
+          t,
+          frame: () => current?.frame ?? 0,
+          seek: (f) => seek(f),
+          placeOf: (x, y, map) => placeOf(x, y, map),
+          tooltip: (target, content) => tooltip(target, content),
+          settings: { get tab() {
+            return settings.insightTab;
+          }, set tab(v) {
+            settings.insightTab = v;
+          }, get resource() {
+            return settings.resource;
+          }, set resource(v) {
+            settings.resource = v;
+          } },
+          save
+        });
+        insight = view;
+        refreshInsight();
+        return () => {
+          view.dispose();
+          if (insight === view) insight = null;
+        };
+      },
+      onClose: () => {
+        insightPanel = null;
+      }
+    });
+  }
   const bottomDock = typeof api.ui.fileType === "function";
   function showStrip() {
     if (stripPanel?.isOpen() || stripHidden) return;
@@ -4622,9 +5386,10 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
     render() {
       this.root.replaceChildren();
       this.resize?.disconnect();
+      refreshInsight();
       const entry = current;
       if (!entry) return;
-      this.playButton = w.button("", { primary: true, className: "sm", title: t("Space plays and pauses. \u2190 and \u2192 go 10 seconds back or on, a minute with Shift; N and Shift+N go to the next and the previous key moment; F follows the action or lets the camera go; O shows the orders; Home and End go to the start and the end."), onClick: () => playing2 ? stop() : play() });
+      this.playButton = w.button("", { primary: true, className: "sm", title: t("Space plays and pauses. \u2190 and \u2192 go 10 seconds back or on, a minute with Shift; N and Shift+N go to the next and the previous key moment; F follows the action or lets the camera go; O shows the orders; Home and End go to the start and the end."), onClick: () => playing3 ? stop() : play() });
       this.timeLabel = el("span", { className: "afm-time" });
       const speed = w.select([1, 2, 4, 8, 16, 32].map((n) => ({ value: n, label: `${n}\xD7` })), { value: settings.speed, title: t("Playback speed"), onChange: (v) => {
         settings.speed = Number(v);
@@ -4654,6 +5419,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
         this.update();
       });
       this.statsButton = toggle(t("Map stats"), () => showStats(lensOf() !== "map"));
+      const analysis = insightPossible ? w.button(t("Analysis"), { className: "sm", title: t("Open the Analysis window: the game's economy in charts and numbers"), onClick: () => openInsight() }) : null;
       const eyes = w.select([
         { value: -1, label: t("Vision: everyone") },
         ...entry.report.players.map((p) => ({ value: p.player.slot, label: t("Vision: {name}", { name: p.player.name }) }))
@@ -4676,6 +5442,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
         eyes,
         this.status,
         retry,
+        analysis,
         chartSelect
       ));
       const canvas = el("canvas");
@@ -4709,7 +5476,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
     update() {
       const entry = current;
       if (!entry || !this.playButton) return;
-      this.playButton.textContent = playing2 ? t("Pause") : t("Play");
+      this.playButton.textContent = playing3 ? t("Pause") : t("Play");
       this.timeLabel.textContent = `${formatTime(entry.frame)} / ${formatTime(entry.report.frames)}`;
       let line = "";
       let why = "";
@@ -4967,6 +5734,10 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
   });
   api.menu.add("File", { label: msg2("Open Replay\u2026"), icon: "plugin", after: "Open Recent", command: "open-replay" });
   api.menu.add("View", { label: "Aftermath", icon: "plugin", command: "panel" });
+  if (insightPossible) {
+    api.commands.register({ id: "analysis", title: msg2("Replay Analysis"), run: () => openInsight() });
+    api.menu.add("View", { label: msg2("Replay Analysis"), icon: "plugin", command: "analysis" });
+  }
   if (bottomDock) api.ui.fileType({ name: msg2("StarCraft replay"), extensions: [".rep"], open: (files) => void load(files) });
   const simWatch = api.services.watch("scm-sim.engine", (service) => {
     sim = service;
