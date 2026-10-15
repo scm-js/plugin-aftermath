@@ -102,8 +102,12 @@ export function groupsAt(t: ReplayTimeline, index: UnitIndex, sample: number, co
   return out;
 }
 
-/** The shots of the whole game; empty when the timeline keeps no positions. */
-export function direct(t: ReplayTimeline, index: UnitIndex, fights: readonly Fight[], bases: readonly Base[], cost: (type: number) => number): Shot[] {
+/**
+ * The shots of the whole game; empty when the timeline keeps no positions. With `only`, the shots of one player's game,
+ * for watching through their eyes: their fights, their army, their bases, their home — and an army about to meet theirs
+ * is looked at from their side, not from the fog between.
+ */
+export function direct(t: ReplayTimeline, index: UnitIndex, fights: readonly Fight[], bases: readonly Base[], cost: (type: number) => number, only?: number): Shot[] {
   const p = t.positions;
   if (!p || !p.frame.length) return [];
   const costed = t.events.some((e) => e.kind === "died" && cost(e.type) > 0);
@@ -139,14 +143,15 @@ export function direct(t: ReplayTimeline, index: UnitIndex, fights: readonly Fig
       const ga = groups[a], gb = groups[b];
       if (ga.player === gb.player || Math.hypot(ga.x - gb.x, ga.y - gb.y) > MEETING) continue;
       const players = [ga.player, gb.player].sort((x, y) => x - y);
-      out.push({ kind: "meeting", key: `m${players.join("-")}`, score: 40 + weight(ga) + weight(gb), x: (ga.x + gb.x) / 2, y: (ga.y + gb.y) / 2, players });
+      const own = only === undefined ? null : ga.player === only ? ga : gb.player === only ? gb : null;
+      out.push({ kind: "meeting", key: `m${players.join("-")}`, score: 40 + weight(ga) + weight(gb), x: own ? own.x : (ga.x + gb.x) / 2, y: own ? own.y : (ga.y + gb.y) / 2, players });
     }
     bases.forEach((b, n) => {
       if (frame >= b.frame && frame <= b.frame + BASE_LOOK) out.push({ kind: "base", key: `b${n}`, score: 35, x: b.x, y: b.y, players: [b.player], base: b });
     });
     for (const [player, g] of mains) previous.set(player, g);
     for (const [player, at] of homes) out.push({ kind: "home", key: `h${player}`, score: 2, x: at.x, y: at.y, players: [player] });
-    return out;
+    return only === undefined ? out : out.filter((c) => c.players.includes(only));
   };
 
   const shots: Shot[] = [];

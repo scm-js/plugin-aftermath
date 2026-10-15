@@ -75,6 +75,22 @@ describe("the camera", () => {
     expect(onFight.to).toBeGreaterThanOrEqual(f.to);
   });
 
+  it("through one player's eyes, follows only that player, and looks at a meeting from their side", () => {
+    // Player 1's zerglings walk at player 0's marines, who stand still; nothing else happens.
+    const units = [{ type: CC, owner: 0 }, { type: HATCHERY, owner: 1 },
+      ...Array.from({ length: 10 }, () => ({ type: MARINE, owner: 0 })), ...Array.from({ length: 12 }, () => ({ type: ZERGLING, owner: 1 }))];
+    const t = game(units, 40, (i, s) => (i === 0 ? [200, 200] : i === 1 ? [3800, 3800] : i < 12 ? [1000 + i, 1000] : [3000 - s * 50 + i, 1000]));
+    const all = direct(t, unitIndex(t), [], [], cost);
+    expect(all.some((s) => s.players.every((pl) => pl === 1))).toBe(true);
+    for (const only of [0, 1]) {
+      const shots = direct(t, unitIndex(t), [], [], cost, only);
+      expect(shots.length).toBeGreaterThan(0);
+      expect(shots.every((s) => s.players.includes(only))).toBe(true);
+    }
+    const meeting = direct(t, unitIndex(t), [], [], cost, 0).find((s) => s.kind === "meeting")!;
+    expect(meeting.path.every((pt) => Math.abs(pt.x - 1006) < 10)).toBe(true);
+  });
+
   it("finds the shot at a frame, and where it looks between two points of its path", () => {
     const shots: Shot[] = [
       { kind: "home", from: 0, to: 96, players: [0], path: [{ frame: 0, x: 0, y: 0 }] },

@@ -1180,7 +1180,12 @@ var KO = {
   "Back to the game": "\uAC8C\uC784\uC73C\uB85C \uB3CC\uC544\uAC00\uAE30",
   "Every replay of this map you have open, taken together: where players start, the bases they take, where they fight ({n} replays)": "\uC5F4\uC5B4 \uB454 \uC774 \uB9F5\uC758 \uB9AC\uD50C\uB808\uC774\uB97C \uBAA8\uB450 \uD568\uAED8 \uBD05\uB2C8\uB2E4. \uC5B4\uB514\uC11C \uC2DC\uC791\uD558\uB294\uC9C0, \uC5B4\uB290 \uAE30\uC9C0\uB97C \uAC00\uC838\uAC00\uB294\uC9C0, \uC5B4\uB514\uC11C \uC2F8\uC6B0\uB294\uC9C0(\uB9AC\uD50C\uB808\uC774 {n}\uAC1C)",
   "Every replay of this map you have open, taken together: where players start, the bases they take, where they fight. Add more replays of the map there.": "\uC5F4\uC5B4 \uB454 \uC774 \uB9F5\uC758 \uB9AC\uD50C\uB808\uC774\uB97C \uBAA8\uB450 \uD568\uAED8 \uBD05\uB2C8\uB2E4. \uC5B4\uB514\uC11C \uC2DC\uC791\uD558\uB294\uC9C0, \uC5B4\uB290 \uAE30\uC9C0\uB97C \uAC00\uC838\uAC00\uB294\uC9C0, \uC5B4\uB514\uC11C \uC2F8\uC6B0\uB294\uC9C0. \uAC70\uAE30\uC11C \uC774 \uB9F5\uC758 \uB9AC\uD50C\uB808\uC774\uB97C \uB354 \uCD94\uAC00\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
-  "The timeline is one game's: press it to go back to that game": "\uD0C0\uC784\uB77C\uC778\uC740 \uAC8C\uC784 \uD558\uB098\uC758 \uAC83\uC785\uB2C8\uB2E4. \uB204\uB974\uBA74 \uADF8 \uAC8C\uC784\uC73C\uB85C \uB3CC\uC544\uAC11\uB2C8\uB2E4"
+  "The timeline is one game's: press it to go back to that game": "\uD0C0\uC784\uB77C\uC778\uC740 \uAC8C\uC784 \uD558\uB098\uC758 \uAC83\uC785\uB2C8\uB2E4. \uB204\uB974\uBA74 \uADF8 \uAC8C\uC784\uC73C\uB85C \uB3CC\uC544\uAC11\uB2C8\uB2E4",
+  "O: what the players told their units to do in the last eight seconds, over the game": "O: \uCD5C\uADFC 8\uCD08 \uB3D9\uC548 \uD50C\uB808\uC774\uC5B4\uAC00 \uC720\uB2DB\uC5D0\uAC8C \uB0B4\uB9B0 \uBA85\uB839\uC744 \uAC8C\uC784 \uC704\uC5D0 \uD45C\uC2DC",
+  "Over the game the legend keys the orders: turn Orders on to see it": "\uAC8C\uC784 \uC704\uC5D0\uC11C\uB294 \uBC94\uB840\uAC00 \uBA85\uB839 \uAE30\uD638\uB97C \uC124\uBA85\uD569\uB2C8\uB2E4. \uBCF4\uB824\uBA74 \uBA85\uB839\uC744 \uCF1C\uC138\uC694",
+  "Vision: everyone": "\uC2DC\uC57C: \uBAA8\uB450",
+  "Vision: {name}": "\uC2DC\uC57C: {name}",
+  "Whose eyes the game is seen through: one player's shows only what they could see, with the fog of war": "\uB204\uAD6C\uC758 \uC2DC\uC57C\uB85C \uAC8C\uC784\uC744 \uBCFC\uC9C0. \uD55C \uD50C\uB808\uC774\uC5B4\uB97C \uACE0\uB974\uBA74 \uADF8 \uD50C\uB808\uC774\uC5B4\uAC00 \uBCFC \uC218 \uC788\uB358 \uAC83\uB9CC \uC804\uC7A5\uC758 \uC548\uAC1C\uC640 \uD568\uAED8 \uBCF4\uC785\uB2C8\uB2E4"
 };
 
 // played.ts
@@ -1804,7 +1809,7 @@ function groupsAt(t, index, sample, cost) {
   }
   return out;
 }
-function direct(t, index, fights2, bases2, cost) {
+function direct(t, index, fights2, bases2, cost, only) {
   const p = t.positions;
   if (!p || !p.frame.length) return [];
   const costed = t.events.some((e) => e.kind === "died" && cost(e.type) > 0);
@@ -1845,14 +1850,15 @@ function direct(t, index, fights2, bases2, cost) {
       const ga = groups[a], gb = groups[b];
       if (ga.player === gb.player || Math.hypot(ga.x - gb.x, ga.y - gb.y) > MEETING) continue;
       const players = [ga.player, gb.player].sort((x, y) => x - y);
-      out.push({ kind: "meeting", key: `m${players.join("-")}`, score: 40 + weight(ga) + weight(gb), x: (ga.x + gb.x) / 2, y: (ga.y + gb.y) / 2, players });
+      const own = only === void 0 ? null : ga.player === only ? ga : gb.player === only ? gb : null;
+      out.push({ kind: "meeting", key: `m${players.join("-")}`, score: 40 + weight(ga) + weight(gb), x: own ? own.x : (ga.x + gb.x) / 2, y: own ? own.y : (ga.y + gb.y) / 2, players });
     }
     bases2.forEach((b, n) => {
       if (frame >= b.frame && frame <= b.frame + BASE_LOOK) out.push({ kind: "base", key: `b${n}`, score: 35, x: b.x, y: b.y, players: [b.player], base: b });
     });
     for (const [player, g] of mains) previous2.set(player, g);
     for (const [player, at] of homes) out.push({ kind: "home", key: `h${player}`, score: 2, x: at.x, y: at.y, players: [player] });
-    return out;
+    return only === void 0 ? out : out.filter((c) => c.players.includes(only));
   };
   const shots = [];
   let cur = null;
@@ -2168,6 +2174,8 @@ var GameView = class {
   look = null;
   /** The squares of the game's minimap, for the editor's, while it holds a replay. */
   units = null;
+  /** Its fog as a picture of the map a pixel a tile (black never seen, half black seen before), made once per squares. */
+  fogImage = null;
   /** The page plays camera tracks (the replay loaded said so), and the track it was last given, if it still follows it. */
   tracks = false;
   sent = null;
@@ -2184,6 +2192,15 @@ var GameView = class {
   busyTimer = null;
   /** View ▸ Remastered Graphics as the game was last told it (null: not yet, for the replay loaded). */
   remastered = null;
+  /** Whose eyes the game was last told, for the replay loaded (undefined: not yet; the page opens a replay on its own). */
+  eyesTold = void 0;
+  /**
+   * Over the game, under the spinner: what the plugin draws there (`setOverlay`), in the game's place — the map's
+   * pixels where the game shows them, from where the game last said it looks.
+   */
+  over = null;
+  drawOver = null;
+  looking = null;
   constructor(api, hooks, title, words) {
     this.api = api;
     this.hooks = hooks;
@@ -2192,6 +2209,10 @@ var GameView = class {
       title,
       mount: (el) => {
         this.element = el;
+        const over = document.createElement("canvas");
+        over.className = "afm-over";
+        el.append(over);
+        this.over = over;
         const box = document.createElement("div"), spin = document.createElement("span"), line = document.createElement("span");
         box.className = "afm-busy";
         box.hidden = true;
@@ -2213,7 +2234,10 @@ var GameView = class {
         }
       }
     });
-    this.changed = this.handle.onChange((on) => hooks.shown(on));
+    this.changed = this.handle.onChange((on) => {
+      hooks.shown(on);
+      this.redrawOver();
+    });
   }
   /** A replay is loaded in the viewer and no other is on its way. */
   get loaded() {
@@ -2251,16 +2275,41 @@ var GameView = class {
       this.look = null;
     } else this.look = look;
   }
-  /** The game's minimap squares on the editor's minimap. */
+  /** The game's minimap on the editor's: its fog over the ground, as the game darkens it, then its squares. */
   drawUnits(ctx, m) {
     const u = this.units;
     if (!u || !this.loaded) return;
+    const fog = this.fogOf(u);
+    if (fog) {
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(fog, m.x(0), m.y(0), fog.width * 32 * m.scale, fog.height * 32 * m.scale);
+      ctx.restore();
+    }
     const { boxes, colours } = u;
     for (let i = 0; i < colours.length; i++) {
       const w = Math.max(2, boxes[i * 4 + 2] * m.scale), h = Math.max(2, boxes[i * 4 + 3] * m.scale);
       ctx.fillStyle = `#${colours[i].toString(16).padStart(6, "0")}`;
       ctx.fillRect(m.x(boxes[i * 4]) - w / 2, m.y(boxes[i * 4 + 1]) - h / 2, w, h);
     }
+  }
+  /** The fog of these squares as a picture a pixel a tile; null when there is none (the fog off, or an older game page). */
+  fogOf(u) {
+    if (!u.fog || !u.wide) return null;
+    if (this.fogImage?.of === u) return this.fogImage.canvas;
+    const wide = u.wide, high = u.fog.length / wide;
+    const canvas = this.fogImage?.canvas ?? document.createElement("canvas");
+    if (canvas.width !== wide || canvas.height !== high) {
+      canvas.width = wide;
+      canvas.height = high;
+    }
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    const image = ctx.createImageData(wide, high), px = image.data;
+    for (let i = 0; i < u.fog.length; i++) px[i * 4 + 3] = u.fog[i] === 2 ? 0 : u.fog[i] === 1 ? 128 : 255;
+    ctx.putImageData(image, 0, 0);
+    this.fogImage = { of: u, canvas };
+    return canvas;
   }
   setService(sim) {
     if (sim === this.sim) return;
@@ -2325,6 +2374,8 @@ var GameView = class {
         if (!this.loaded) return;
         if (c.width > 0 && c.height > 0) {
           this.shows = { width: c.width, height: c.height };
+          this.looking = { x: c.x, y: c.y, width: c.width, height: c.height };
+          this.redrawOver();
           this.tellMinimap({ x: c.x, y: c.y, width: c.width, height: c.height }, c.byUser);
         }
         if (c.byUser) {
@@ -2351,6 +2402,8 @@ var GameView = class {
       if (this.wanted === entry.id) return false;
       this.wanted = entry.id;
       this.units = null;
+      this.looking = null;
+      this.redrawOver();
       this.handle.redrawMinimap?.();
       this.hooks.state(this.words.loading(entry.fileName));
       this.sent = null;
@@ -2370,8 +2423,10 @@ var GameView = class {
       this.holding = entry.id;
       this.hooks.state(null);
       this.remastered = null;
+      this.eyesTold = void 0;
     }
     this.graphics();
+    this.eyes(entry.eyes);
     if (this.look) this.lookAt(this.look);
     view.speed(speed);
     if (Math.round(frame) > 0) this.seek(frame);
@@ -2388,6 +2443,48 @@ var GameView = class {
     this.remastered = on;
     view.options({ remastered: on }).catch(() => {
     });
+  }
+  /** See the game through a player's eyes, with the fog of war (their slot), or everyone's with none (null). */
+  eyes(slot) {
+    const view = this.view;
+    if (!view || !this.loaded || slot === this.eyesTold) return;
+    this.eyesTold = slot;
+    view.options({ fog: slot !== null }).catch(() => {
+    });
+    if (slot !== null) view.player(slot);
+  }
+  /** What to draw over the game, given the map's pixels where the game shows them. */
+  setOverlay(draw) {
+    this.drawOver = draw;
+    this.redrawOver();
+  }
+  /** Draw over the game again: when what is drawn changed (the game's own moves redraw it as it says them). */
+  redrawOver() {
+    const c = this.over, el = this.element;
+    if (!c || !el) return;
+    const dpr = window.devicePixelRatio || 1;
+    const cw = Math.max(1, Math.round(el.clientWidth * dpr)), ch = Math.max(1, Math.round(el.clientHeight * dpr));
+    if (c.width !== cw || c.height !== ch) {
+      c.width = cw;
+      c.height = ch;
+    }
+    const ctx = c.getContext("2d");
+    if (!ctx) return;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, cw, ch);
+    const at = this.looking;
+    if (!this.drawOver || !at || !this.loaded || !this.shown) return;
+    const w = el.clientWidth, h = el.clientHeight, kx = w / at.width, ky = h / at.height;
+    const x0 = at.x - at.width / 2, y0 = at.y - at.height / 2;
+    const view = {
+      zoom: kx,
+      tilePx: 32 * kx,
+      x: (px) => (px - x0) * kx,
+      y: (py) => (py - y0) * ky,
+      visible: { x0: Math.floor(x0 / 32), y0: Math.floor(y0 / 32), x1: Math.ceil((x0 + at.width) / 32), y1: Math.ceil((y0 + at.height) / 32) }
+    };
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.drawOver(ctx, view);
   }
   play(on) {
     this.view?.play(on);
@@ -2523,6 +2620,7 @@ function fightMark(f) {
 var STYLE = `
 .afm-busy { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2; display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 8px; background: rgba(10, 12, 16, 0.8); color: #e8ecf2; font-size: 13px; pointer-events: none; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4); white-space: nowrap; }
 .afm-busy[hidden] { display: none; }
+.afm-over { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
 .afm-busy .afm-spin { width: 16px; height: 16px; flex: none; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.22); border-top-color: var(--accent, #4fd1c5); animation: afm-spin 0.8s linear infinite; }
 @keyframes afm-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .afm-busy .afm-spin { animation-duration: 2.4s; } }
@@ -2729,7 +2827,7 @@ function activate(api) {
         const replay = await parseReplay(bytes);
         const id = nextId++, map = readChk(replay.chk);
         const group = [...loaded, ...batch].find((l) => likeness(map, l.map) >= SAME_MAP)?.group ?? id;
-        batch.push({ id, fileName: file.name, report: analyse(replay), map, bytes, docId: null, group, excluded: false, frame: 0, hidden: /* @__PURE__ */ new Set(), played: null, failed: null });
+        batch.push({ id, fileName: file.name, report: analyse(replay), map, bytes, docId: null, group, excluded: false, frame: 0, hidden: /* @__PURE__ */ new Set(), played: null, failed: null, eyes: null });
       } catch (err) {
         const detail = err instanceof ReplayError ? translate(err.message) : String(err);
         api.ui.toast({ kind: "error", title: t("Could not read {name}", { name: file.name }), detail });
@@ -2776,7 +2874,7 @@ function activate(api) {
       heatCache = null;
       side?.render();
       strip?.update();
-      overlay.redraw();
+      redraw();
       if (!into) api.ui.toast({ kind: "ok", title: t("{n, plural, one {# replay} other {# replays}} added to Map stats", { n: added.length }), detail: t("Each is analysed in the background, after the replays open in tabs. Map stats is under the map.") });
     }
     pump();
@@ -2851,7 +2949,7 @@ function activate(api) {
     }
     side?.render();
     strip?.render();
-    overlay.redraw();
+    redraw();
   }
   function seek(f) {
     if (!current) return;
@@ -2863,7 +2961,7 @@ function activate(api) {
   }
   const cam = { following: true, asked: [], made: null, raf: 0 };
   function trackOf(entry) {
-    const shots = entry.played?.shots;
+    const shots = shotsOf(entry);
     if (!shots?.length) return null;
     let view = game.shown ? game.viewSize : null;
     if (!view) {
@@ -2881,6 +2979,19 @@ function activate(api) {
     if (!track) return null;
     cam.made = { shots, speed: settings.speed, width: view.width, height: view.height, track };
     return track;
+  }
+  function shotsOf(entry) {
+    const done = entry.played;
+    if (!done) return [];
+    const eyes = game.shown && game.holds(entry.id) ? entry.eyes : null;
+    const player = eyes === null ? void 0 : entry.report.players.find((p) => p.player.slot === eyes)?.player.index;
+    if (player === void 0) return done.shots;
+    let shots = done.shotsFor.get(player);
+    if (!shots) {
+      shots = done.direct(player);
+      done.shotsFor.set(player, shots);
+    }
+    return shots.length ? shots : done.shots;
   }
   function follow() {
     const entry = current;
@@ -2968,7 +3079,7 @@ function activate(api) {
     cam.following = on;
     cam.asked = [];
     if (on) follow();
-    overlay.redraw();
+    redraw();
     strip?.update();
   }
   function captionOf(entry, shot) {
@@ -2990,6 +3101,7 @@ function activate(api) {
     side?.update();
     strip?.update();
     if (!game.shown) overlay.redraw();
+    else game.redrawOver();
   }
   function play() {
     if (!current || playing2) return;
@@ -3107,7 +3219,9 @@ function activate(api) {
         adv: advantage(timeline),
         bases: taken,
         totals: totals(timeline, taken, cost),
-        shots: direct(timeline, index, fights2, taken, cost)
+        shots: direct(timeline, index, fights2, taken, cost),
+        shotsFor: /* @__PURE__ */ new Map(),
+        direct: (only) => direct(timeline, index, fights2, taken, cost, only)
       };
       for (const b of entry.played.standing) api.graphics.requestUnit(b.type);
     } catch (err) {
@@ -3122,7 +3236,7 @@ function activate(api) {
       if (current && current.group === entry.group) {
         side?.render();
         strip?.render();
-        overlay.redraw();
+        redraw();
       }
       announce(entry);
     }
@@ -3335,24 +3449,35 @@ function activate(api) {
         markLoss(ctx, v.x(lost[i].x), v.y(lost[i].y), 3 + k * 6, withAlpha(p.player.color, 1 - k));
       }
     }
-    if (lens === "orders" || !done) {
-      const r = Math.max(2.5, 5 * Math.min(1, s * 2));
-      for (const p of players) {
-        const clicks = p.clicks;
-        for (let i = firstAfter(clicks, frame - TRAIL_FRAMES); i < clicks.length && clicks[i].frame <= frame; i++) {
-          const c = clicks[i];
-          const k = 1 - (frame - c.frame) / TRAIL_FRAMES;
-          ctx.globalAlpha = Math.max(0.1, k);
-          markOrder(ctx, c.kind, v.x(c.x), v.y(c.y), r, p.player.color, k);
-        }
-      }
-      ctx.globalAlpha = 1;
-    }
+    if (lens === "orders" || !done) drawOrders(ctx, v, players, frame);
     if (settings.legend) legend(ctx, lens, done !== null);
     caption(ctx, cur);
   }
+  function drawOrders(ctx, v, players, frame) {
+    const r = Math.max(2.5, 5 * Math.min(1, v.tilePx / 32 * 2));
+    for (const p of players) {
+      const clicks = p.clicks;
+      for (let i = firstAfter(clicks, frame - TRAIL_FRAMES); i < clicks.length && clicks[i].frame <= frame; i++) {
+        const c = clicks[i];
+        const k = 1 - (frame - c.frame) / TRAIL_FRAMES;
+        ctx.globalAlpha = Math.max(0.1, k);
+        markOrder(ctx, c.kind, v.x(c.x), v.y(c.y), r, p.player.color, k);
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+  function drawOverGame(ctx, v) {
+    const cur = current;
+    if (!cur || !game.holds(cur.id) || lensOf() === "map") return;
+    const players = cur.report.players.filter((p) => !cur.hidden.has(p.player.id));
+    if (settings.orders) {
+      drawOrders(ctx, v, players, game.frameNow(settings.speed) ?? cur.frame);
+      if (settings.legend) legend(ctx, "orders", cur.played !== null, true);
+    }
+    caption(ctx, cur);
+  }
   function caption(ctx, entry) {
-    const shots = entry.played?.shots ?? [];
+    const shots = shotsOf(entry);
     const i = cam.following && shots.length ? shotAt(shots, entry.frame) : -1;
     if (i < 0) return;
     pill(ctx, captionOf(entry, shots[i]), shots[i].players.map((pl) => entry.report.players.find((p) => p.player.index === pl)?.player.color ?? "#888"));
@@ -3375,7 +3500,7 @@ function activate(api) {
     ctx.textAlign = "start";
     ctx.textBaseline = "alphabetic";
   }
-  function legend(ctx, lens, analysed) {
+  function legend(ctx, lens, analysed, inGame = false) {
     const grey = "#c8cdd7";
     const items = [];
     if (lens === "map") {
@@ -3394,12 +3519,12 @@ function activate(api) {
         ctx.fillRect(x - 7, y - 3, 14, 6);
       }, translate(HEAT_LABELS[mode])]);
     } else {
-      items.push([(x, y) => markBuilding(ctx, x - 6, y - 4, 12, 8, grey, "built", null, 1), analysed ? t("A building; dashed while it goes up") : t("A building ordered")]);
-      if (analysed) items.push([(x, y) => {
+      if (!inGame) items.push([(x, y) => markBuilding(ctx, x - 6, y - 4, 12, 8, grey, "built", null, 1), analysed ? t("A building; dashed while it goes up") : t("A building ordered")]);
+      if (analysed && !inGame) items.push([(x, y) => {
         markUnit(ctx, x - 3, y, 3.5, grey, false);
         markUnit(ctx, x + 4, y, 3.5, grey, true);
       }, t("A unit, and a worker")]);
-      if (lens === "watch" && analysed) {
+      if (lens === "watch" && analysed && !inGame) {
         items.push(
           [(x, y) => markKill(ctx, x - 7, y + 3, x + 7, y - 3, grey), t("A kill, from the killer")],
           [(x, y) => markLoss(ctx, x, y, 4, grey), t("A loss")],
@@ -3416,7 +3541,7 @@ function activate(api) {
         );
       }
     }
-    const title = translate(LEGEND_TITLES[lens]);
+    const title = inGame ? t("Orders") : translate(LEGEND_TITLES[lens]);
     const note = lens === "map" ? null : t("In the player's colour");
     ctx.font = "11px system-ui, sans-serif";
     const widest = Math.max(...items.map(([, text]) => ctx.measureText(text).width), note ? ctx.measureText(note).width : 0);
@@ -3466,6 +3591,11 @@ function activate(api) {
     above: "objects",
     draw
   });
+  game.setOverlay(drawOverGame);
+  function redraw() {
+    overlay.redraw();
+    game.redrawOver();
+  }
   const imageListener = api.graphics.onImageLoaded(() => {
     if (current && overlay.isVisible()) overlay.redraw();
   });
@@ -3488,7 +3618,7 @@ function activate(api) {
   function showOrders(on) {
     settings.orders = on;
     save();
-    overlay.redraw();
+    redraw();
     strip?.update();
   }
   function chartOf(entry) {
@@ -3576,12 +3706,12 @@ function activate(api) {
         sideAsked = false;
         if (!closing) sideHidden = true;
         heatCache = null;
-        overlay.redraw();
+        redraw();
         strip?.update();
       }
     });
     sidePanel = handle;
-    overlay.redraw();
+    redraw();
   }
   function closeSide() {
     closing = true;
@@ -3691,7 +3821,7 @@ function activate(api) {
           if (entry.hidden.has(p.player.id)) entry.hidden.delete(p.player.id);
           else entry.hidden.add(p.player.id);
           heatCache = null;
-          overlay.redraw();
+          redraw();
           this.render();
           strip?.update();
         });
@@ -4160,6 +4290,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
     ordersButton = null;
     legendButton = null;
     statsButton = null;
+    eyesSelect = null;
     /** Where the pointer is over the graph, in CSS pixels from its left; null when it is not. */
     hover = null;
     get canvasTitle() {
@@ -4208,15 +4339,25 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
       } }) : null;
       this.spectateButton = toggle(t("Spectate"), () => spectate());
       this.ordersButton = toggle(t("Orders"), () => showOrders(!settings.orders));
-      this.ordersButton.title = t("O: what the players told their units to do in the last eight seconds, over the units drawn faintly");
       this.legendButton = toggle(t("Legend"), () => {
         settings.legend = !settings.legend;
         save();
-        overlay.redraw();
+        redraw();
         this.update();
       });
-      this.legendButton.title = t("A key to the marks, in the map's corner");
       this.statsButton = toggle(t("Map stats"), () => showStats(lensOf() !== "map"));
+      const eyes = w.select([
+        { value: -1, label: t("Vision: everyone") },
+        ...entry.report.players.map((p) => ({ value: p.player.slot, label: t("Vision: {name}", { name: p.player.name }) }))
+      ], { value: entry.eyes ?? -1, title: t("Whose eyes the game is seen through: one player's shows only what they could see, with the fog of war"), onChange: (v) => {
+        const slot = Number(v);
+        entry.eyes = slot < 0 ? null : slot;
+        if (game.holds(entry.id)) game.eyes(entry.eyes);
+        follow();
+        redraw();
+        eyes.blur();
+      } });
+      this.eyesSelect = eyes;
       this.root.append(el(
         "div",
         { className: "afm-row" },
@@ -4224,6 +4365,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
         this.timeLabel,
         speed,
         el("span", { className: "afm-toggles" }, this.spectateButton, this.ordersButton, this.statsButton, this.legendButton),
+        eyes,
         this.status,
         retry,
         chartSelect
@@ -4296,8 +4438,13 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
       this.spectateButton.title = !shots ? t("The camera follows the game once it has been analysed") : onMap ? t("Back to the game, with the camera following the action") : following ? t("F: the camera follows the action as an observer would; scroll the map, or press here, to look around yourself") : t("F: follow the action as an observer would: the fights that matter, armies about to meet, new bases, the armies on the move");
       this.ordersButton.classList.toggle("afm-on", settings.orders);
       this.ordersButton.setAttribute("aria-pressed", String(settings.orders));
+      this.ordersButton.title = game.shown ? t("O: what the players told their units to do in the last eight seconds, over the game") : t("O: what the players told their units to do in the last eight seconds, over the units drawn faintly");
       this.legendButton.classList.toggle("afm-on", settings.legend);
       this.legendButton.setAttribute("aria-pressed", String(settings.legend));
+      const keyless = game.shown && !onMap && !settings.orders;
+      this.legendButton.disabled = keyless;
+      this.legendButton.title = keyless ? t("Over the game the legend keys the orders: turn Orders on to see it") : t("A key to the marks, in the map's corner");
+      this.eyesSelect.hidden = !game.shown || onMap;
       const games = mapGames(entry).length;
       this.statsButton.textContent = games > 1 ? t("Map stats \xB7 {n}", { n: games }) : t("Map stats");
       this.statsButton.classList.toggle("afm-on", onMap);
@@ -4521,7 +4668,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
     if (!cam.following || !current?.played?.shots.length || lensOf() === "map" || api.document.id() !== current.docId || !movedByUser()) return;
     cam.following = false;
     cam.asked = [];
-    overlay.redraw();
+    redraw();
     strip?.update();
   });
   api.events.on("language", () => {

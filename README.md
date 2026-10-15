@@ -192,6 +192,13 @@ Map stats shows on the map, so opening it switches to the
 map, and closing it goes back to the game. One game is shown at a time: switching to
 another replay's tab starts that one.
 
+Over the replay, **Orders** draws the recent orders on the game itself, **Legend** keys
+them, and Spectate's line at the top says what the camera shows. The **Vision** menu under
+the replay shows the game as everyone sees it, or through one player's eyes: only what that
+player could see, with the fog of war over the rest, on the editor's minimap too. With a
+player chosen, Spectate follows that player's game: their fights, their army, their new
+bases, and an enemy army about to meet theirs seen from their side.
+
 While a replay's tab is in front:
 
 **Under the map**, the timeline:
@@ -203,9 +210,10 @@ While a replay's tab is in front:
   **End** go to the start and the end. These keys belong to the replay only while its tab
   is in front.
 - Four switches, lit while they are on: **Spectate** (the camera follows the action, see
-  below), **Orders** (the recent orders over the units drawn faintly), **Map stats** (every
-  replay of the map together, see above) and **Legend** (a key to the marks in the map's
-  bottom-left corner).
+  below), **Orders** (the recent orders over the units drawn faintly, or over the game in
+  the Replay view), **Map stats** (every replay of the map together, see above) and
+  **Legend** (a key to the marks in the map's bottom-left corner).
+- In the Replay view, the **Vision** menu: everyone, or one player's eyes (see above).
 - How the analysis is going, or that it is done.
 - The graph's menu: actions per minute, or, once the game is analysed, the army lead (in a
   game of two), army value, army size, workers, supply, minerals or gas in the bank, or

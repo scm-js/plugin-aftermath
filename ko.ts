@@ -253,4 +253,9 @@ export const KO: Record<string, string> = {
   "Every replay of this map you have open, taken together: where players start, the bases they take, where they fight ({n} replays)": "열어 둔 이 맵의 리플레이를 모두 함께 봅니다. 어디서 시작하는지, 어느 기지를 가져가는지, 어디서 싸우는지(리플레이 {n}개)",
   "Every replay of this map you have open, taken together: where players start, the bases they take, where they fight. Add more replays of the map there.": "열어 둔 이 맵의 리플레이를 모두 함께 봅니다. 어디서 시작하는지, 어느 기지를 가져가는지, 어디서 싸우는지. 거기서 이 맵의 리플레이를 더 추가할 수 있습니다.",
   "The timeline is one game's: press it to go back to that game": "타임라인은 게임 하나의 것입니다. 누르면 그 게임으로 돌아갑니다",
+  "O: what the players told their units to do in the last eight seconds, over the game": "O: 최근 8초 동안 플레이어가 유닛에게 내린 명령을 게임 위에 표시",
+  "Over the game the legend keys the orders: turn Orders on to see it": "게임 위에서는 범례가 명령 기호를 설명합니다. 보려면 명령을 켜세요",
+  "Vision: everyone": "시야: 모두",
+  "Vision: {name}": "시야: {name}",
+  "Whose eyes the game is seen through: one player's shows only what they could see, with the fog of war": "누구의 시야로 게임을 볼지. 한 플레이어를 고르면 그 플레이어가 볼 수 있던 것만 전장의 안개와 함께 보입니다",
 };

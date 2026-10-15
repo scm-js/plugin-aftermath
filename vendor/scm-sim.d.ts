@@ -238,12 +238,19 @@ export interface ViewCamera {
  * What the game's minimap draws, for a minimap of your own: per square its middle and size in
  * map pixels (`boxes`, four numbers each) and its colour (`colours`, 0xRRGGBB) — the units seen
  * through the fog when it is on (all of them without it), and what is remembered under it,
- * dimmed. At most eight times a second, when the frame, the fog or the eyes changed.
+ * dimmed; and the fog itself, to darken a minimap's ground the way the game's is. At most
+ * eight times a second, when the frame, the fog or the eyes changed.
  */
 export interface ViewUnits {
   frame: number;
   boxes: Float32Array;
   colours: Uint32Array;
+  /**
+   * Per tile, row by row, `wide` tiles a row: 0 never seen, 1 seen before (the game dims it), 2 seen
+   * now. Null with the fog off, and from a game page before scm-sim 0.6.0.
+   */
+  fog: Uint8Array | null;
+  wide: number;
 }
 
 /** A key pressed while the view had the keyboard that it does not use itself (all but the arrows, which scroll). */

@@ -18,7 +18,7 @@
  * The view is offered only where it can play: the scm-sim plugin is there with a `view`, and the person's browser has
  * the game's files (the engine's page says so). Otherwise nothing changes: the tab has the map alone.
  */
-import type { Disposable, MapViewCamera, MapViewHandle, MinimapView, PluginApi } from "@scm-js/plugin-api";
+import type { Disposable, MapView, MapViewCamera, MapViewHandle, MinimapView, PluginApi } from "@scm-js/plugin-api";
 import type { ScmSimService, ScmSimView, ViewFrame, ViewTrack, ViewUnits } from "./vendor/scm-sim";
 import { FRAME_MS } from "./replay";
 
@@ -31,6 +31,8 @@ export interface Held {
   fileName: string;
   bytes: Uint8Array;
   docId: number | null;
+  /** Whose eyes the game is seen through, a replay player's slot (with the fog of war); null for everyone's, no fog. */
+  eyes: number | null;
 }
 
 export interface GameViewHooks {
@@ -71,6 +73,8 @@ export class GameView {
   private look: MapViewCamera | null = null;
   /** The squares of the game's minimap, for the editor's, while it holds a replay. */
   private units: ViewUnits | null = null;
+  /** Its fog as a picture of the map a pixel a tile (black never seen, half black seen before), made once per squares. */
+  private fogImage: { of: ViewUnits; canvas: HTMLCanvasElement } | null = null;
   /** The page plays camera tracks (the replay loaded said so), and the track it was last given, if it still follows it. */
   private tracks = false;
   private sent: ViewTrack | null = null;
@@ -87,6 +91,15 @@ export class GameView {
   private busyTimer: ReturnType<typeof setTimeout> | null = null;
   /** View ▸ Remastered Graphics as the game was last told it (null: not yet, for the replay loaded). */
   private remastered: boolean | null = null;
+  /** Whose eyes the game was last told, for the replay loaded (undefined: not yet; the page opens a replay on its own). */
+  private eyesTold: number | null | undefined = undefined;
+  /**
+   * Over the game, under the spinner: what the plugin draws there (`setOverlay`), in the game's place — the map's
+   * pixels where the game shows them, from where the game last said it looks.
+   */
+  private over: HTMLCanvasElement | null = null;
+  private drawOver: ((ctx: CanvasRenderingContext2D, v: MapView) => void) | null = null;
+  private looking: { x: number; y: number; width: number; height: number } | null = null;
 
   constructor(api: PluginApi, hooks: GameViewHooks, title: string, words: GameView["words"]) {
     this.api = api;
@@ -96,6 +109,10 @@ export class GameView {
       title,
       mount: (el) => {
         this.element = el;
+        const over = document.createElement("canvas");
+        over.className = "afm-over";
+        el.append(over);
+        this.over = over;
         const box = document.createElement("div"), spin = document.createElement("span"), line = document.createElement("span");
         box.className = "afm-busy";
         box.hidden = true;
@@ -112,7 +129,7 @@ export class GameView {
         press: (x, y) => { if (this.view && this.loaded) { this.view.camera(x, y); hooks.movedByUser(); } },
       },
     });
-    this.changed = this.handle.onChange((on) => hooks.shown(on));
+    this.changed = this.handle.onChange((on) => { hooks.shown(on); this.redrawOver(); });
   }
 
   /** A replay is loaded in the viewer and no other is on its way. */
@@ -144,16 +161,39 @@ export class GameView {
     else this.look = look;
   }
 
-  /** The game's minimap squares on the editor's minimap. */
+  /** The game's minimap on the editor's: its fog over the ground, as the game darkens it, then its squares. */
   private drawUnits(ctx: CanvasRenderingContext2D, m: MinimapView): void {
     const u = this.units;
     if (!u || !this.loaded) return;
+    const fog = this.fogOf(u);
+    if (fog) {
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(fog, m.x(0), m.y(0), fog.width * 32 * m.scale, fog.height * 32 * m.scale);
+      ctx.restore();
+    }
     const { boxes, colours } = u;
     for (let i = 0; i < colours.length; i++) {
       const w = Math.max(2, boxes[i * 4 + 2] * m.scale), h = Math.max(2, boxes[i * 4 + 3] * m.scale);
       ctx.fillStyle = `#${colours[i].toString(16).padStart(6, "0")}`;
       ctx.fillRect(m.x(boxes[i * 4]) - w / 2, m.y(boxes[i * 4 + 1]) - h / 2, w, h);
     }
+  }
+
+  /** The fog of these squares as a picture a pixel a tile; null when there is none (the fog off, or an older game page). */
+  private fogOf(u: ViewUnits): HTMLCanvasElement | null {
+    if (!u.fog || !u.wide) return null;
+    if (this.fogImage?.of === u) return this.fogImage.canvas;
+    const wide = u.wide, high = u.fog.length / wide;
+    const canvas = this.fogImage?.canvas ?? document.createElement("canvas");
+    if (canvas.width !== wide || canvas.height !== high) { canvas.width = wide; canvas.height = high; }
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    const image = ctx.createImageData(wide, high), px = image.data;
+    for (let i = 0; i < u.fog.length; i++) px[i * 4 + 3] = u.fog[i] === 2 ? 0 : u.fog[i] === 1 ? 128 : 255;
+    ctx.putImageData(image, 0, 0);
+    this.fogImage = { of: u, canvas };
+    return canvas;
   }
 
   setService(sim: ScmSimService | null): void {
@@ -215,6 +255,8 @@ export class GameView {
         if (!this.loaded) return;
         if (c.width > 0 && c.height > 0) {
           this.shows = { width: c.width, height: c.height };
+          this.looking = { x: c.x, y: c.y, width: c.width, height: c.height };
+          this.redrawOver();
           this.tellMinimap({ x: c.x, y: c.y, width: c.width, height: c.height }, c.byUser);
         }
         // (The game lets go of a track itself when the person moves its view.)
@@ -237,6 +279,8 @@ export class GameView {
       if (this.wanted === entry.id) return false;
       this.wanted = entry.id;
       this.units = null;
+      this.looking = null;
+      this.redrawOver();
       this.handle.redrawMinimap?.();
       this.hooks.state(this.words.loading(entry.fileName));
       this.sent = null;
@@ -257,8 +301,10 @@ export class GameView {
       this.holding = entry.id;
       this.hooks.state(null);
       this.remastered = null;
+      this.eyesTold = undefined;
     }
     this.graphics();
+    this.eyes(entry.eyes);
     // Where the map was looking when the switch came, rather than where the viewer opens a replay.
     if (this.look) this.lookAt(this.look);
     view.speed(speed);
@@ -276,6 +322,48 @@ export class GameView {
     if (!view || !this.loaded || on === this.remastered) return;
     this.remastered = on;
     view.options({ remastered: on }).catch(() => {});
+  }
+
+  /** See the game through a player's eyes, with the fog of war (their slot), or everyone's with none (null). */
+  eyes(slot: number | null): void {
+    const view = this.view;
+    if (!view || !this.loaded || slot === this.eyesTold) return;
+    this.eyesTold = slot;
+    view.options({ fog: slot !== null }).catch(() => {});
+    if (slot !== null) view.player(slot);
+  }
+
+  /** What to draw over the game, given the map's pixels where the game shows them. */
+  setOverlay(draw: ((ctx: CanvasRenderingContext2D, v: MapView) => void) | null): void {
+    this.drawOver = draw;
+    this.redrawOver();
+  }
+
+  /** Draw over the game again: when what is drawn changed (the game's own moves redraw it as it says them). */
+  redrawOver(): void {
+    const c = this.over, el = this.element;
+    if (!c || !el) return;
+    const dpr = window.devicePixelRatio || 1;
+    const cw = Math.max(1, Math.round(el.clientWidth * dpr)), ch = Math.max(1, Math.round(el.clientHeight * dpr));
+    if (c.width !== cw || c.height !== ch) { c.width = cw; c.height = ch; }
+    const ctx = c.getContext("2d");
+    if (!ctx) return;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, cw, ch);
+    const at = this.looking;
+    if (!this.drawOver || !at || !this.loaded || !this.shown) return;
+    // (The game fills its frame: what it shows of the map, left to right and top to bottom, is the frame's width and height.)
+    const w = el.clientWidth, h = el.clientHeight, kx = w / at.width, ky = h / at.height;
+    const x0 = at.x - at.width / 2, y0 = at.y - at.height / 2;
+    const view: MapView = {
+      zoom: kx,
+      tilePx: 32 * kx,
+      x: (px) => (px - x0) * kx,
+      y: (py) => (py - y0) * ky,
+      visible: { x0: Math.floor(x0 / 32), y0: Math.floor(y0 / 32), x1: Math.ceil((x0 + at.width) / 32), y1: Math.ceil((y0 + at.height) / 32) },
+    };
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.drawOver(ctx, view);
   }
 
   play(on: boolean): void { this.view?.play(on); }

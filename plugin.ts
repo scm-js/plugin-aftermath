@@ -97,6 +97,8 @@ interface Loaded {
   played: Played | null;
   /** Why playing it through failed, for the timeline to say and offer again. */
   failed: string | null;
+  /** In the Replay view, whose eyes the game is seen through (a player's slot, with the fog of war); null: everyone's. */
+  eyes: number | null;
 }
 
 interface Played {
@@ -114,6 +116,9 @@ interface Played {
   totals: PlayerTotals[];
   /** Where Spectate's camera looks, shot by shot. */
   shots: Shot[];
+  /** Spectate's shots of one player's game, for watching through their eyes (`shotsOf`), made when first asked. */
+  shotsFor: Map<number, Shot[]>;
+  direct: (only: number) => Shot[];
 }
 
 /** What fell this recently is where a fight is now: five seconds. */
@@ -180,6 +185,7 @@ function fightMark(f: Fight): { id: string; label: string; why: string } | null 
 const STYLE = `
 .afm-busy { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2; display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 8px; background: rgba(10, 12, 16, 0.8); color: #e8ecf2; font-size: 13px; pointer-events: none; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4); white-space: nowrap; }
 .afm-busy[hidden] { display: none; }
+.afm-over { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
 .afm-busy .afm-spin { width: 16px; height: 16px; flex: none; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.22); border-top-color: var(--accent, #4fd1c5); animation: afm-spin 0.8s linear infinite; }
 @keyframes afm-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .afm-busy .afm-spin { animation-duration: 2.4s; } }
@@ -404,7 +410,7 @@ export function activate(api: PluginApi) {
         const replay = await parseReplay(bytes);
         const id = nextId++, map = readChk(replay.chk);
         const group = [...loaded, ...batch].find((l) => likeness(map, l.map) >= SAME_MAP)?.group ?? id;
-        batch.push({ id, fileName: file.name, report: analyse(replay), map, bytes, docId: null, group, excluded: false, frame: 0, hidden: new Set(), played: null, failed: null });
+        batch.push({ id, fileName: file.name, report: analyse(replay), map, bytes, docId: null, group, excluded: false, frame: 0, hidden: new Set(), played: null, failed: null, eyes: null });
       } catch (err) {
         const detail = err instanceof ReplayError ? translate(err.message) : String(err);
         api.ui.toast({ kind: "error", title: t("Could not read {name}", { name: file.name }), detail });
@@ -448,7 +454,7 @@ export function activate(api: PluginApi) {
       heatCache = null;
       side?.render();
       strip?.update();
-      overlay.redraw();
+      redraw();
       if (!into) api.ui.toast({ kind: "ok", title: t("{n, plural, one {# replay} other {# replays}} added to Map stats", { n: added.length }), detail: t("Each is analysed in the background, after the replays open in tabs. Map stats is under the map.") });
     }
     pump();
@@ -537,7 +543,7 @@ export function activate(api: PluginApi) {
     }
     side?.render();
     strip?.render();
-    overlay.redraw();
+    redraw();
   }
 
   /* ── Playback ── */
@@ -569,7 +575,7 @@ export function activate(api: PluginApi) {
    * the view.
    */
   function trackOf(entry: Loaded): CameraTrack | null {
-    const shots = entry.played?.shots;
+    const shots = shotsOf(entry);
     if (!shots?.length) return null;
     let view = game.shown ? game.viewSize : null;
     if (!view) { const v = api.view.visible(); view = { width: (v.x1 - v.x0) * 32, height: (v.y1 - v.y0) * 32 }; }
@@ -582,6 +588,19 @@ export function activate(api: PluginApi) {
     if (!track) return null;
     cam.made = { shots, speed: settings.speed, width: view.width, height: view.height, track };
     return track;
+  }
+
+  /** Spectate's shots for a replay: the whole game's, or in the Replay view through a player's eyes, that player's. */
+  function shotsOf(entry: Loaded): Shot[] {
+    const done = entry.played;
+    if (!done) return [];
+    const eyes = game.shown && game.holds(entry.id) ? entry.eyes : null;
+    const player = eyes === null ? undefined : entry.report.players.find((p) => p.player.slot === eyes)?.player.index;
+    if (player === undefined) return done.shots;
+    let shots = done.shotsFor.get(player);
+    if (!shots) { shots = done.direct(player); done.shotsFor.set(player, shots); }
+    // (A player with nothing to follow, as one who left at once, is the whole game's.)
+    return shots.length ? shots : done.shots;
   }
 
   function follow(): void {
@@ -677,7 +696,7 @@ export function activate(api: PluginApi) {
     cam.following = on;
     cam.asked = [];
     if (on) follow();
-    overlay.redraw();
+    redraw();
     strip?.update();
   }
 
@@ -702,8 +721,9 @@ export function activate(api: PluginApi) {
     follow();
     side?.update();
     strip?.update();
-    // (The map is under the game: nothing of it to draw.)
+    // (The map is under the game: only what is drawn over the game.)
     if (!game.shown) overlay.redraw();
+    else game.redrawOver();
   }
 
   function play(): void {
@@ -826,6 +846,7 @@ export function activate(api: PluginApi) {
       entry.played = {
         timeline, standing, index, lost: lossPoints(timeline), lostBy: losses(timeline, cost), fights, kills: findKills(timeline), killers: topKillers(timeline, cost),
         adv: advantage(timeline), bases: taken, totals: totals(timeline, taken, cost), shots: direct(timeline, index, fights, taken, cost),
+        shotsFor: new Map(), direct: (only) => direct(timeline, index, fights, taken, cost, only),
       };
       for (const b of entry.played.standing) api.graphics.requestUnit(b.type);
     } catch (err) {
@@ -837,7 +858,7 @@ export function activate(api: PluginApi) {
       if (running === run) running = null;
       heatCache = null;
       reportCache = null;
-      if (current && current.group === entry.group) { side?.render(); strip?.render(); overlay.redraw(); }
+      if (current && current.group === entry.group) { side?.render(); strip?.render(); redraw(); }
       announce(entry);
     }
   }
@@ -1070,26 +1091,44 @@ export function activate(api: PluginApi) {
     }
 
     // The orders of the last few seconds: in Orders, and in Watch until the game is analysed (they are all there is then).
-    if (lens === "orders" || !done) {
-      const r = Math.max(2.5, 5 * Math.min(1, s * 2));
-      for (const p of players) {
-        const clicks = p.clicks;
-        for (let i = firstAfter(clicks, frame - TRAIL_FRAMES); i < clicks.length && clicks[i].frame <= frame; i++) {
-          const c = clicks[i];
-          const k = 1 - (frame - c.frame) / TRAIL_FRAMES;
-          ctx.globalAlpha = Math.max(0.1, k);
-          markOrder(ctx, c.kind, v.x(c.x), v.y(c.y), r, p.player.color, k);
-        }
-      }
-      ctx.globalAlpha = 1;
-    }
+    if (lens === "orders" || !done) drawOrders(ctx, v, players, frame);
     if (settings.legend) legend(ctx, lens, done !== null);
+    caption(ctx, cur);
+  }
+
+  /** The orders of the last few seconds, each fading as it gets older. */
+  function drawOrders(ctx: CanvasRenderingContext2D, v: MapView, players: PlayerReport[], frame: number): void {
+    const r = Math.max(2.5, 5 * Math.min(1, (v.tilePx / 32) * 2));
+    for (const p of players) {
+      const clicks = p.clicks;
+      for (let i = firstAfter(clicks, frame - TRAIL_FRAMES); i < clicks.length && clicks[i].frame <= frame; i++) {
+        const c = clicks[i];
+        const k = 1 - (frame - c.frame) / TRAIL_FRAMES;
+        ctx.globalAlpha = Math.max(0.1, k);
+        markOrder(ctx, c.kind, v.x(c.x), v.y(c.y), r, p.player.color, k);
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /**
+   * Over the Replay view, where the game draws the units and buildings itself: the orders when asked, their legend,
+   * and Spectate's line.
+   */
+  function drawOverGame(ctx: CanvasRenderingContext2D, v: MapView): void {
+    const cur = current;
+    if (!cur || !game.holds(cur.id) || lensOf() === "map") return;
+    const players = cur.report.players.filter((p) => !cur.hidden.has(p.player.id));
+    if (settings.orders) {
+      drawOrders(ctx, v, players, game.frameNow(settings.speed) ?? cur.frame);
+      if (settings.legend) legend(ctx, "orders", cur.played !== null, true);
+    }
     caption(ctx, cur);
   }
 
   /** Spectate's line at the top of the map: what the camera shows, while it follows. */
   function caption(ctx: CanvasRenderingContext2D, entry: Loaded): void {
-    const shots = entry.played?.shots ?? [];
+    const shots = shotsOf(entry);
     const i = cam.following && shots.length ? shotAt(shots, entry.frame) : -1;
     if (i < 0) return;
     pill(ctx, captionOf(entry, shots[i]), shots[i].players.map((pl) => entry.report.players.find((p) => p.player.index === pl)?.player.color ?? "#888"));
@@ -1114,7 +1153,7 @@ export function activate(api: PluginApi) {
   }
 
   /** A key to what the view draws, in the map's bottom-left corner, made with the same marks. */
-  function legend(ctx: CanvasRenderingContext2D, lens: Lens, analysed: boolean): void {
+  function legend(ctx: CanvasRenderingContext2D, lens: Lens, analysed: boolean, inGame = false): void {
     const grey = "#c8cdd7";
     type Item = [(x: number, y: number) => void, string];
     const items: Item[] = [];
@@ -1127,9 +1166,10 @@ export function activate(api: PluginApi) {
       const mode = heatMode();
       if (mode !== "off") items.push([(x, y) => { const g = ctx.createLinearGradient(x - 7, 0, x + 7, 0); g.addColorStop(0, "rgb(40,80,220)"); g.addColorStop(0.5, "rgb(250,220,60)"); g.addColorStop(1, "rgb(240,50,40)"); ctx.fillStyle = g; ctx.fillRect(x - 7, y - 3, 14, 6); }, translate(HEAT_LABELS[mode])]);
     } else {
-      items.push([(x, y) => markBuilding(ctx, x - 6, y - 4, 12, 8, grey, "built", null, 1), analysed ? t("A building; dashed while it goes up") : t("A building ordered")]);
-      if (analysed) items.push([(x, y) => { markUnit(ctx, x - 3, y, 3.5, grey, false); markUnit(ctx, x + 4, y, 3.5, grey, true); }, t("A unit, and a worker")]);
-      if (lens === "watch" && analysed) {
+      // (Over the Replay view the game draws the units and buildings itself: only the orders are keyed there.)
+      if (!inGame) items.push([(x, y) => markBuilding(ctx, x - 6, y - 4, 12, 8, grey, "built", null, 1), analysed ? t("A building; dashed while it goes up") : t("A building ordered")]);
+      if (analysed && !inGame) items.push([(x, y) => { markUnit(ctx, x - 3, y, 3.5, grey, false); markUnit(ctx, x + 4, y, 3.5, grey, true); }, t("A unit, and a worker")]);
+      if (lens === "watch" && analysed && !inGame) {
         items.push(
           [(x, y) => markKill(ctx, x - 7, y + 3, x + 7, y - 3, grey), t("A kill, from the killer")],
           [(x, y) => markLoss(ctx, x, y, 4, grey), t("A loss")],
@@ -1146,7 +1186,7 @@ export function activate(api: PluginApi) {
         );
       }
     }
-    const title = translate(LEGEND_TITLES[lens]);
+    const title = inGame ? t("Orders") : translate(LEGEND_TITLES[lens]);
     const note = lens === "map" ? null : t("In the player's colour");
     ctx.font = "11px system-ui, sans-serif";
     const widest = Math.max(...items.map(([, text]) => ctx.measureText(text).width), note ? ctx.measureText(note).width : 0);
@@ -1192,6 +1232,12 @@ export function activate(api: PluginApi) {
     above: "objects",
     draw,
   });
+  game.setOverlay(drawOverGame);
+  /** Draw again what Aftermath draws, over the map and over the game. */
+  function redraw(): void {
+    overlay.redraw();
+    game.redrawOver();
+  }
   const imageListener = api.graphics.onImageLoaded(() => { if (current && overlay.isVisible()) overlay.redraw(); });
 
   /** A switch for the strip: a button that stays pressed while it is on. */
@@ -1211,7 +1257,7 @@ export function activate(api: PluginApi) {
   function showOrders(on: boolean): void {
     settings.orders = on;
     save();
-    overlay.redraw();
+    redraw();
     strip?.update();
   }
 
@@ -1307,12 +1353,12 @@ export function activate(api: PluginApi) {
         if (!closing) sideHidden = true;
         // With Map stats gone, the map shows the game again.
         heatCache = null;
-        overlay.redraw();
+        redraw();
         strip?.update();
       },
     });
     sidePanel = handle;
-    overlay.redraw();
+    redraw();
   }
   function closeSide(): void { closing = true; sidePanel?.close(); closing = false; }
 
@@ -1419,7 +1465,7 @@ export function activate(api: PluginApi) {
         line.addEventListener("click", () => {
           if (entry.hidden.has(p.player.id)) entry.hidden.delete(p.player.id); else entry.hidden.add(p.player.id);
           heatCache = null;
-          overlay.redraw();
+          redraw();
           this.render();
           strip?.update();
         });
@@ -1849,6 +1895,7 @@ export function activate(api: PluginApi) {
     private ordersButton: HTMLButtonElement | null = null;
     private legendButton: HTMLButtonElement | null = null;
     private statsButton: HTMLButtonElement | null = null;
+    private eyesSelect: HTMLSelectElement | null = null;
     /** Where the pointer is over the graph, in CSS pixels from its left; null when it is not. */
     private hover: number | null = null;
     private get canvasTitle(): string {
@@ -1890,12 +1937,24 @@ export function activate(api: PluginApi) {
       // The switches: the camera, the orders, Map stats, the legend.
       this.spectateButton = toggle(t("Spectate"), () => spectate());
       this.ordersButton = toggle(t("Orders"), () => showOrders(!settings.orders));
-      this.ordersButton.title = t("O: what the players told their units to do in the last eight seconds, over the units drawn faintly");
-      this.legendButton = toggle(t("Legend"), () => { settings.legend = !settings.legend; save(); overlay.redraw(); this.update(); });
-      this.legendButton.title = t("A key to the marks, in the map's corner");
+      this.legendButton = toggle(t("Legend"), () => { settings.legend = !settings.legend; save(); redraw(); this.update(); });
       this.statsButton = toggle(t("Map stats"), () => showStats(lensOf() !== "map"));
+      // In the Replay view: the game as everyone sees it, or through one player's eyes, with the fog of war.
+      const eyes = w.select([
+        { value: -1, label: t("Vision: everyone") },
+        ...entry.report.players.map((p) => ({ value: p.player.slot, label: t("Vision: {name}", { name: p.player.name }) })),
+      ], { value: entry.eyes ?? -1, title: t("Whose eyes the game is seen through: one player's shows only what they could see, with the fog of war"), onChange: (v) => {
+        const slot = Number(v);
+        entry.eyes = slot < 0 ? null : slot;
+        if (game.holds(entry.id)) game.eyes(entry.eyes);
+        // (Spectate follows the player whose eyes these are.)
+        follow();
+        redraw();
+        eyes.blur();
+      } });
+      this.eyesSelect = eyes;
       this.root.append(el("div", { className: "afm-row" }, this.playButton, this.timeLabel, speed,
-        el("span", { className: "afm-toggles" }, this.spectateButton, this.ordersButton, this.statsButton, this.legendButton),
+        el("span", { className: "afm-toggles" }, this.spectateButton, this.ordersButton, this.statsButton, this.legendButton), eyes,
         this.status, retry, chartSelect));
 
       // The lane of marks and the graph, one canvas: press or drag anywhere on it to go there.
@@ -1968,8 +2027,15 @@ export function activate(api: PluginApi) {
         : t("F: follow the action as an observer would: the fights that matter, armies about to meet, new bases, the armies on the move");
       this.ordersButton!.classList.toggle("afm-on", settings.orders);
       this.ordersButton!.setAttribute("aria-pressed", String(settings.orders));
+      this.ordersButton!.title = game.shown ? t("O: what the players told their units to do in the last eight seconds, over the game")
+        : t("O: what the players told their units to do in the last eight seconds, over the units drawn faintly");
       this.legendButton!.classList.toggle("afm-on", settings.legend);
       this.legendButton!.setAttribute("aria-pressed", String(settings.legend));
+      // (Over the game only the orders have marks of Aftermath's own: there the legend keys them, and waits for them.)
+      const keyless = game.shown && !onMap && !settings.orders;
+      this.legendButton!.disabled = keyless;
+      this.legendButton!.title = keyless ? t("Over the game the legend keys the orders: turn Orders on to see it") : t("A key to the marks, in the map's corner");
+      this.eyesSelect!.hidden = !game.shown || onMap;
       const games = mapGames(entry).length;
       this.statsButton!.textContent = games > 1 ? t("Map stats · {n}", { n: games }) : t("Map stats");
       this.statsButton!.classList.toggle("afm-on", onMap);
@@ -2177,7 +2243,7 @@ export function activate(api: PluginApi) {
     if (!cam.following || !current?.played?.shots.length || lensOf() === "map" || api.document.id() !== current.docId || !movedByUser()) return;
     cam.following = false;
     cam.asked = [];
-    overlay.redraw();
+    redraw();
     strip?.update();
   });
   api.events.on("language", () => { side?.render(); strip?.render(); });
