@@ -1290,22 +1290,15 @@ var KO = {
   "Sign in to scmjs.dev to make a cast.": "\uC911\uACC4\uB97C \uB9CC\uB4E4\uB824\uBA74 scmjs.dev\uC5D0 \uB85C\uADF8\uC778\uD558\uC138\uC694.",
   "The server answered {status}.": "\uC11C\uBC84\uAC00 {status}(\uC73C)\uB85C \uC751\uB2F5\uD588\uC2B5\uB2C8\uB2E4.",
   "This game has no key moments to cast.": "\uC774 \uAC8C\uC784\uC5D0\uB294 \uC911\uACC4\uD560 \uC8FC\uC694 \uC7A5\uBA74\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.",
-  "Writing the cast\u2026": "\uC911\uACC4 \uB300\uBCF8\uC744 \uC4F0\uB294 \uC911\u2026",
-  "Voicing the cast\u2026": "\uC911\uACC4 \uC74C\uC131\uC744 \uB9CC\uB4DC\uB294 \uC911\u2026",
   "Caster": "\uCE90\uC2A4\uD130",
   "Analyst": "\uD574\uC124",
   "Stop cast": "\uC911\uACC4 \uC911\uC9C0",
-  "Cast": "\uC911\uACC4",
-  "Watch the key moments with two commentators: the camera follows the action, and the scmjs.dev AI writes what they say and voices it. Made once a replay, from your account's balance.": "\uB450 \uD574\uC124\uC790\uC640 \uD568\uAED8 \uC8FC\uC694 \uC7A5\uBA74\uC744 \uBD05\uB2C8\uB2E4. \uCE74\uBA54\uB77C\uAC00 \uC804\uD22C\uB97C \uB530\uB77C\uAC00\uACE0, scmjs.dev AI\uAC00 \uD574\uC124\uC744 \uC4F0\uACE0 \uBAA9\uC18C\uB9AC\uB85C \uC77D\uC2B5\uB2C8\uB2E4. \uB9AC\uD50C\uB808\uC774\uB9C8\uB2E4 \uD55C \uBC88 \uB9CC\uB4E4\uBA70, \uACC4\uC815 \uC794\uC561\uC5D0\uC11C \uBE44\uC6A9\uC774 \uB098\uAC11\uB2C8\uB2E4.",
-  "Watch the key moments with two commentators: the camera follows the action, and the scmjs.dev AI writes what they say, shown as captions. Made once a replay, from your account's balance.": "\uB450 \uD574\uC124\uC790\uC640 \uD568\uAED8 \uC8FC\uC694 \uC7A5\uBA74\uC744 \uBD05\uB2C8\uB2E4. \uCE74\uBA54\uB77C\uAC00 \uC804\uD22C\uB97C \uB530\uB77C\uAC00\uACE0, scmjs.dev AI\uAC00 \uC4F4 \uD574\uC124\uC774 \uC790\uB9C9\uC73C\uB85C \uB098\uC635\uB2C8\uB2E4. \uB9AC\uD50C\uB808\uC774\uB9C8\uB2E4 \uD55C \uBC88 \uB9CC\uB4E4\uBA70, \uACC4\uC815 \uC794\uC561\uC5D0\uC11C \uBE44\uC6A9\uC774 \uB098\uAC11\uB2C8\uB2E4.",
   "Cast: part {n} of {of}": "\uC911\uACC4: {n}/{of}\uBD80",
   "The cast could not be made: {reason}": "\uC911\uACC4\uB97C \uB9CC\uB4E4\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4: {reason}",
   "Whole game": "\uAC8C\uC784 \uC804\uCCB4",
-  "Cast the whole game, played fast through the quiet parts, or only its key moments": "\uC870\uC6A9\uD55C \uAD6C\uAC04\uC740 \uBE60\uB974\uAC8C \uB118\uAE30\uBA70 \uAC8C\uC784 \uC804\uCCB4\uB97C \uC911\uACC4\uD558\uAC70\uB098, \uC8FC\uC694 \uC7A5\uBA74\uB9CC \uC911\uACC4\uD569\uB2C8\uB2E4",
   "No banter": "\uC7A1\uB2F4 \uC5C6\uC74C",
   "Some banter": "\uC7A1\uB2F4 \uC870\uAE08",
   "Lots of banter": "\uC7A1\uB2F4 \uB9CE\uC774",
-  "How much the two commentators chat about other things when little is happening": "\uBCC4\uC77C \uC5C6\uC744 \uB54C \uB450 \uD574\uC124\uC790\uAC00 \uB2E4\uB978 \uC774\uC57C\uAE30\uB97C \uC5BC\uB9C8\uB098 \uB098\uB20C\uC9C0",
   "{what} \xB7 {time} left": "{what} \xB7 {time} \uB0A8\uC74C",
   "Building": "\uAC74\uC124 \uC911",
   "In production": "\uC0DD\uC0B0 \uC911",
@@ -1313,7 +1306,53 @@ var KO = {
   "Ordered": "\uBA85\uB839\uB428",
   "Done at {time}": "{time}\uC5D0 \uC644\uB8CC",
   "Cards": "\uCE74\uB4DC",
-  "Show a card on the game for the upgrade, unit or building the commentators are talking about": "\uD574\uC124\uC790\uAC00 \uC774\uC57C\uAE30\uD558\uB294 \uC5C5\uADF8\uB808\uC774\uB4DC, \uC720\uB2DB, \uAC74\uBB3C\uC744 \uAC8C\uC784 \uD654\uBA74\uC5D0 \uCE74\uB4DC\uB85C \uBCF4\uC5EC \uC90D\uB2C8\uB2E4"
+  "Show a card on the game for the upgrade, unit or building the commentators are talking about": "\uD574\uC124\uC790\uAC00 \uC774\uC57C\uAE30\uD558\uB294 \uC5C5\uADF8\uB808\uC774\uB4DC, \uC720\uB2DB, \uAC74\uBB3C\uC744 \uAC8C\uC784 \uD654\uBA74\uC5D0 \uCE74\uB4DC\uB85C \uBCF4\uC5EC \uC90D\uB2C8\uB2E4",
+  "The server could not write the cast.": "\uC11C\uBC84\uAC00 \uC911\uACC4 \uB300\uBCF8\uC744 \uC4F0\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.",
+  "The server stopped before the cast was written.": "\uC911\uACC4 \uB300\uBCF8\uC774 \uB05D\uB098\uAE30 \uC804\uC5D0 \uC11C\uBC84\uAC00 \uBA48\uCDC4\uC2B5\uB2C8\uB2E4.",
+  "The cast is ready": "\uC911\uACC4\uAC00 \uC900\uBE44\uB418\uC5C8\uC2B5\uB2C8\uB2E4",
+  "Watch it from the Cast window or the timeline.": "\uC911\uACC4 \uCC3D\uC774\uB098 \uD0C0\uC784\uB77C\uC778\uC5D0\uC11C \uBCF4\uC138\uC694.",
+  "Reading the game": "\uAC8C\uC784\uC744 \uC77D\uB294 \uC911",
+  "Planning the story": "\uD750\uB984\uC744 \uAD6C\uC0C1\uD558\uB294 \uC911",
+  "Writing the script: part {n} of {of}, {lines} lines so far": "\uB300\uBCF8 \uC791\uC131 \uC911: {of}\uBD80 \uC911 {n}\uBD80, \uC9C0\uAE08\uAE4C\uC9C0 {lines}\uC904",
+  "Writing the script": "\uB300\uBCF8 \uC791\uC131 \uC911",
+  "Voicing: {n} of {of} lines": "\uC74C\uC131 \uC0DD\uC131: {of}\uC904 \uC911 {n}\uC904",
+  "Timing it": "\uD0C0\uC774\uBC0D \uB9DE\uCD94\uB294 \uC911",
+  "Cast this game": "\uC774 \uAC8C\uC784 \uC911\uACC4\uD558\uAE30",
+  "Read the game": "\uAC8C\uC784 \uC77D\uAE30",
+  "{n} parts, {cards} cards": "{n}\uBD80, \uCE74\uB4DC {cards}\uC7A5",
+  "{n} lines": "{n}\uC904",
+  "planning the story": "\uD750\uB984 \uAD6C\uC0C1 \uC911",
+  "part {n} of {of}, {lines} lines so far": "{of}\uBD80 \uC911 {n}\uBD80, \uC9C0\uAE08\uAE4C\uC9C0 {lines}\uC904",
+  "Voicing": "\uC74C\uC131 \uC0DD\uC131",
+  "{n} of {of} lines": "{of}\uC904 \uC911 {n}\uC904",
+  "Back": "\uB4A4\uB85C",
+  "Cancel": "\uCDE8\uC18C",
+  "The cast could not be made": "\uC911\uACC4\uB97C \uB9CC\uB4E4\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4",
+  "Making the cast": "\uC911\uACC4\uB97C \uB9CC\uB4DC\uB294 \uC911",
+  "You can close this window and keep watching the replay; the timeline says when the cast is ready.": "\uC774 \uCC3D\uC744 \uB2EB\uACE0 \uB9AC\uD50C\uB808\uC774\uB97C \uACC4\uC18D \uBCF4\uC154\uB3C4 \uB429\uB2C8\uB2E4. \uC911\uACC4\uAC00 \uC900\uBE44\uB418\uBA74 \uD0C0\uC784\uB77C\uC778\uC5D0 \uD45C\uC2DC\uB429\uB2C8\uB2E4.",
+  "About {minutes} minutes long \xB7 about ${usd} from your balance \xB7 usually {from}\u2013{to} minutes to make": "\uC57D {minutes}\uBD84 \uBD84\uB7C9 \xB7 \uC794\uC561\uC5D0\uC11C \uC57D ${usd} \xB7 \uB9CC\uB4DC\uB294 \uB370 \uBCF4\uD1B5 {from}\u2013{to}\uBD84",
+  "Make a new one": "\uC0C8\uB85C \uB9CC\uB4E4\uAE30",
+  "Make cast": "\uC911\uACC4 \uB9CC\uB4E4\uAE30",
+  "Voiced": "\uC74C\uC131",
+  "Captions only": "\uC790\uB9C9\uB9CC",
+  "Show upgrades and units on screen": "\uC5C5\uADF8\uB808\uC774\uB4DC\uC640 \uC720\uB2DB\uC744 \uD654\uBA74\uC5D0 \uBCF4\uC5EC \uC90D\uB2C8\uB2E4",
+  "Optional: a language, a tone, what to talk about more\u2026": "\uC120\uD0DD: \uC5B8\uC5B4, \uB9D0\uD22C, \uB354 \uB2E4\uB918\uC73C\uBA74 \uD558\uB294 \uB0B4\uC6A9\u2026",
+  "Delete": "\uC0AD\uC81C",
+  "{caster} and {analyst}": "{caster}, {analyst}",
+  "made {when}": "{when}\uC5D0 \uB9CC\uB4E6",
+  "Made before": "\uB9CC\uB4E4\uC5B4 \uB454 \uC911\uACC4",
+  "A new cast": "\uC0C8 \uC911\uACC4",
+  "Format": "\uD615\uC2DD",
+  "Banter": "\uC7A1\uB2F4",
+  "Voices": "\uC74C\uC131",
+  "Notes": "\uBA54\uBAA8",
+  "This server has no voices set up: the cast is shown as captions.": "\uC774 \uC11C\uBC84\uC5D0\uB294 \uC74C\uC131\uC774 \uC124\uC815\uB418\uC5B4 \uC788\uC9C0 \uC54A\uC544 \uC911\uACC4\uAC00 \uC790\uB9C9\uC73C\uB85C \uB098\uC635\uB2C8\uB2E4.",
+  "Making the cast\u2026": "\uC911\uACC4 \uB9CC\uB4DC\uB294 \uC911\u2026",
+  "Watch cast": "\uC911\uACC4 \uBCF4\uAE30",
+  "Cast\u2026": "\uC911\uACC4\u2026",
+  "A broadcast of this game: two commentators, written and voiced by the scmjs.dev AI, with the camera on the action": "\uC774 \uAC8C\uC784\uC758 \uC911\uACC4: scmjs.dev AI\uAC00 \uC4F0\uACE0 \uBAA9\uC18C\uB9AC\uB97C \uC785\uD78C \uB450 \uD574\uC124\uC790\uC640, \uC804\uD22C\uB97C \uB530\uB77C\uAC00\uB294 \uCE74\uBA54\uB77C",
+  "Making the cast: {what} \xB7 {time}": "\uC911\uACC4 \uB9CC\uB4DC\uB294 \uC911: {what} \xB7 {time}",
+  "The cast is ready.": "\uC911\uACC4\uAC00 \uC900\uBE44\uB418\uC5C8\uC2B5\uB2C8\uB2E4."
 };
 
 // played.ts
@@ -3518,6 +3557,109 @@ var Reel = class {
   }
 };
 
+// castmake.ts
+function writingProgress(text) {
+  const story2 = /"storyline"\s*:\s*"((?:[^"\\]|\\.)*)"/.exec(text);
+  let storyline = null;
+  if (story2) {
+    try {
+      storyline = JSON.parse(`"${story2[1]}"`);
+    } catch {
+      storyline = null;
+    }
+  }
+  const moments = [...text.matchAll(/"moment"\s*:\s*(\d+)/g)];
+  return { storyline, lines: moments.length, stretch: moments.length ? Number(moments[moments.length - 1][1]) : -1 };
+}
+async function readStream(body, each) {
+  const reader = body.getReader(), decoder2 = new TextDecoder();
+  let buffer = "";
+  for (; ; ) {
+    const { value, done } = await reader.read();
+    if (value) buffer += decoder2.decode(value, { stream: true });
+    let cut2;
+    while ((cut2 = buffer.indexOf("\n\n")) >= 0) {
+      const frame = buffer.slice(0, cut2);
+      buffer = buffer.slice(cut2 + 2);
+      const data = frame.split("\n").filter((l) => l.startsWith("data:")).map((l) => l.slice(5).trimStart()).join("\n");
+      if (!data) continue;
+      try {
+        each(JSON.parse(data));
+      } catch {
+      }
+    }
+    if (done) return;
+  }
+}
+var VOICE_BATCH = 12;
+function batches(items, size = VOICE_BATCH) {
+  const out = [];
+  for (let i = 0; i < items.length; i += size) out.push({ from: i, items: items.slice(i, i + size) });
+  return out;
+}
+function estimate2(seconds2, options, usdPer1kChars) {
+  const minutes = seconds2 / 60;
+  const banter = options.banter === "lots" ? 1.1 : options.banter === "off" ? 0.9 : 1;
+  const chars = minutes * 540 * banter;
+  const scriptUsd = 0.12 + minutes * 0.033;
+  return {
+    scriptUsd,
+    voiceUsd: usdPer1kChars === null ? 0 : chars / 1e3 * usdPer1kChars,
+    minutes,
+    making: options.format === "game" ? [2, 3] : [1, 2]
+  };
+}
+async function replayKey(bytes) {
+  const digest = await crypto.subtle.digest("SHA-256", new Uint8Array(bytes));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+var castKey = (replay, options, voiced, notes) => `${replay}:${options.format}:${options.banter}:${voiced ? "voiced" : "captions"}:${notes.trim().toLowerCase()}`;
+var CastStore = class {
+  db = null;
+  open() {
+    this.db ??= new Promise((resolve) => {
+      try {
+        const req = indexedDB.open("scmjs.plugin.aftermath.casts", 1);
+        req.onupgradeneeded = () => {
+          const store = req.result.createObjectStore("casts", { keyPath: "key" });
+          store.createIndex("replay", "replay");
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => resolve(null);
+      } catch {
+        resolve(null);
+      }
+    });
+    return this.db;
+  }
+  async run(mode, work) {
+    const db = await this.open();
+    if (!db) return null;
+    return new Promise((resolve) => {
+      try {
+        const req = work(db.transaction("casts", mode).objectStore("casts"));
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => resolve(null);
+      } catch {
+        resolve(null);
+      }
+    });
+  }
+  async put(cast) {
+    return await this.run("readwrite", (s) => s.put(cast)) !== null;
+  }
+  get(key) {
+    return this.run("readonly", (s) => s.get(key)).then((c) => c ?? null);
+  }
+  async forReplay(replay) {
+    const all = await this.run("readonly", (s) => s.index("replay").getAll(replay));
+    return (all ?? []).sort((a, b) => b.made - a.made);
+  }
+  async remove(key) {
+    await this.run("readwrite", (s) => s.delete(key));
+  }
+};
+
 // charts.ts
 var LEFT = 46;
 var RIGHT = 96;
@@ -4608,7 +4750,7 @@ function nearestSample(frames, frame) {
 }
 
 // plugin.ts
-var DEFAULTS = { orders: false, legend: true, heat: "losses", speed: 8, workers: false, chart: "lead", tab: "summary", insightTab: "economy", resource: "both", insightMetric: "income", castFormat: "game", castBanter: "light", castCards: true, version: 5 };
+var DEFAULTS = { orders: false, legend: true, heat: "losses", speed: 8, workers: false, chart: "lead", tab: "summary", insightTab: "economy", resource: "both", insightMetric: "income", castFormat: "game", castBanter: "light", castCards: true, castVoiced: true, castNotes: "", version: 5 };
 var FRONT_FRAMES = 120;
 var FIGHT_LEAD = 48;
 var TWINS = /* @__PURE__ */ new Set([37, 47]);
@@ -4674,6 +4816,15 @@ function fightMark(f) {
   return null;
 }
 var STYLE = `
+.afm-cast-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 14px; }
+.afm-cast-head .afm-dim { font-variant-numeric: tabular-nums; }
+.afm-cast-story { margin: 4px 0; padding: 8px 12px; border-left: 3px solid var(--accent, #4fd1c5); color: var(--text-dim, #99a2b3); font-style: italic; line-height: 1.45; max-height: 9em; overflow: auto; }
+.afm-cast-error { margin: 4px 0; color: var(--danger, #e05050); }
+.afm-cast-kept { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--border, rgba(255,255,255,0.08)); }
+.afm-cast-kept:last-child { border-bottom: none; }
+.afm-cast-kept > div:first-child { min-width: 0; }
+.afm-cast-kept .afm-dim { font-size: 12px; overflow-wrap: anywhere; }
+.afm-cast-estimate { margin: 6px 0; font-size: 12px; }
 .afm-busy { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2; display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 8px; background: rgba(10, 12, 16, 0.8); color: #e8ecf2; font-size: 13px; pointer-events: none; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4); white-space: nowrap; }
 .afm-busy[hidden] { display: none; }
 .afm-settling iframe { opacity: 0; }
@@ -5443,7 +5594,24 @@ function activate(api) {
   let account = null;
   let castOffer = null;
   const casts = /* @__PURE__ */ new Map();
-  const casting = { entry: null, busy: null, error: null, reel: null, made: null, abort: null, speed: 0 };
+  const store = new CastStore();
+  const casting = { entry: null, error: null, reel: null, made: null, speed: 0 };
+  let making = null;
+  const ready = /* @__PURE__ */ new Map();
+  const makingWatchers = /* @__PURE__ */ new Set();
+  const makingMoved = () => {
+    for (const w2 of makingWatchers) w2();
+    strip?.update();
+  };
+  const replayKeys = /* @__PURE__ */ new WeakMap();
+  const replayOf = (entry) => {
+    let k = replayKeys.get(entry);
+    if (!k) {
+      k = replayKey(entry.bytes);
+      replayKeys.set(entry, k);
+    }
+    return k;
+  };
   async function askOffer() {
     const a = account;
     if (!a || a.state().kind === "guest") {
@@ -5455,7 +5623,7 @@ function activate(api) {
       const res = await fetch(`${a.serverUrl()}/v1/info`, { headers: a.headers() });
       const info = await res.json();
       if (a !== account) return;
-      castOffer = info.recipes?.some((r) => r.name === "cast" && r.enabled) ? { speech: !!info.speech } : null;
+      castOffer = info.recipes?.some((r) => r.name === "cast" && r.enabled) ? { speech: !!info.speech, usdPer1kChars: info.speechUsdPer1kChars ?? null } : null;
     } catch {
       castOffer = null;
     }
@@ -5470,17 +5638,49 @@ function activate(api) {
     if (typeof json.remaining?.balanceUsd === "number") a.noteBalance(json.remaining.balanceUsd);
     return json;
   }
+  async function writeScript(input, m) {
+    const a = account;
+    if (!a) throw new Error(t("Sign in to scmjs.dev to make a cast."));
+    const res = await fetch(`${a.serverUrl()}/v1/recipes/cast`, {
+      method: "POST",
+      headers: { ...a.headers(), "content-type": "application/json", accept: "text/event-stream" },
+      body: JSON.stringify({ protocol: 1, input }),
+      signal: m.abort.signal
+    });
+    if (!res.ok || !res.body) {
+      const json = await res.json().catch(() => null);
+      throw new Error(json?.error?.message ?? t("The server answered {status}.", { status: res.status }));
+    }
+    let text = "", output = null, failed = null;
+    await readStream(res.body, (e) => {
+      if (e.event === "thinking" && m.stage === "reading") {
+        m.stage = "planning";
+        makingMoved();
+      } else if (e.event === "delta" && typeof e.text === "string") {
+        text += e.text;
+        const again = [...text.matchAll(/\{\s*"storyline"/g)];
+        if (again.length > 1) text = text.slice(again[again.length - 1].index);
+        m.stage = "writing";
+        m.writing = writingProgress(text);
+        makingMoved();
+      } else if (e.event === "result") {
+        output = e.output;
+        const balance = e.remaining?.balanceUsd;
+        if (typeof balance === "number") a.noteBalance(balance);
+      } else if (e.event === "error") failed = e.error?.message ?? t("The server could not write the cast.");
+    });
+    if (failed) throw new Error(failed);
+    if (!output) throw new Error(t("The server stopped before the cast was written."));
+    return output;
+  }
   const plainName = (name) => name.replace(/^(Terran|Zerg|Protoss) /, "");
-  async function makeCast(entry, options, signal) {
-    const done = entry.played;
-    const clips = options.format === "game" ? castSegments(done.fights, done.timeline.frames) : highlightClips(done.fights, done.timeline.frames);
-    if (!clips.length) throw new Error(t("This game has no key moments to cast."));
-    const map = done.timeline.map;
+  async function castGameOf(entry) {
+    const done = entry.played, map = done.timeline.map;
     const players = entry.report.players.filter((p) => done.timeline.samples.players.some((q) => q.slot === p.player.index));
     await api.data.load();
     const tables = { units: api.data.units(), upgrades: api.data.upgrades(), techs: api.data.techs() };
     const durations = tables.units && tables.upgrades && tables.techs ? (kind, id, level) => kind === "unit" ? tables.units.buildTime[id] ?? null : kind === "upgrade" ? tables.upgrades.timeCost[id] + tables.upgrades.timeFactor[id] * (level - 1) : tables.techs.researchTime[id] ?? null : void 0;
-    const castGame = {
+    return {
       map: plainText(entry.report.replay.header.mapName),
       timeline: done.timeline,
       players: players.map((p) => ({ index: p.player.index, name: p.player.name, race: p.player.race, leftAt: p.leftAt, build: p.build })),
@@ -5498,90 +5698,145 @@ function activate(api) {
       },
       durations
     };
-    const input = castInput(castGame, clips, void 0, options);
-    input.seed = Math.floor(Math.random() * 2e9);
-    casting.busy = t("Writing the cast\u2026");
-    strip?.update();
-    const written = await call("/v1/recipes/cast", { input }, signal);
-    const lines = written.output.lines;
-    let voices = lines.map(() => null);
-    if (castOffer?.speech) {
-      casting.busy = t("Voicing the cast\u2026");
-      strip?.update();
-      const spoken2 = await call("/v1/speech", { lines: lines.map((l) => ({ speaker: l.speaker, text: l.text })) }, signal);
-      const ctx = new AudioContext();
-      try {
-        voices = await Promise.all(spoken2.clips.map(async (c) => {
-          const bytes = Uint8Array.from(atob(c.audio), (ch) => ch.charCodeAt(0));
-          try {
-            return await ctx.decodeAudioData(bytes.buffer);
-          } catch {
-            return null;
-          }
-        }));
-      } finally {
-        void ctx.close();
-      }
+  }
+  const clipsOf = (entry, format) => format === "game" ? castSegments(entry.played.fights, entry.played.timeline.frames) : highlightClips(entry.played.fights, entry.played.timeline.frames);
+  const castSeconds = (entry, format) => clipsOf(entry, format).reduce((n, c) => n + (c.to - c.from) * FRAME_MS / 1e3 / (c.speed ?? 1), 0);
+  async function ready_(key, input, lines, clips, game2) {
+    const ctx = new AudioContext();
+    let voices;
+    try {
+      voices = await Promise.all(clips.map(async (c) => {
+        if (!c) return null;
+        try {
+          return await ctx.decodeAudioData(c.slice(0));
+        } catch {
+          return null;
+        }
+      }));
+    } finally {
+      void ctx.close();
     }
     const plan = schedule(lines, voices.map((v, i) => v?.duration ?? estimate(lines[i].text)), input.moments);
-    return { input, lines, voices, plan, cards: new Map(castCards(castGame).map((c) => [c.id, c])) };
+    return { key, input, lines, voices, plan, cards: new Map(castCards(game2).map((c) => [c.id, c])) };
   }
-  async function startCast() {
-    const entry = current;
-    if (!entry?.played || casting.entry) return;
-    casting.entry = entry;
-    casting.error = null;
-    casting.abort = new AbortController();
-    const ctx = castOffer?.speech ? new AudioContext() : null;
+  async function makeCast(entry, options, voiced, notes) {
+    if (making || !entry.played) return;
+    const replay = await replayOf(entry);
+    const m = {
+      entry,
+      key: castKey(replay, options, voiced, notes),
+      options,
+      voiced,
+      notes,
+      started: Date.now(),
+      stage: "reading",
+      stretches: 0,
+      cards: 0,
+      writing: { storyline: null, lines: 0, stretch: -1 },
+      voicedLines: 0,
+      lines: 0,
+      abort: new AbortController(),
+      error: null
+    };
+    making = m;
+    makingMoved();
     strip?.render();
     try {
-      const options = { format: settings.castFormat, banter: settings.castBanter };
-      const key = `${entry.id}:${options.format}:${options.banter}`;
-      let made = casts.get(key);
-      if (!made) {
-        made = await makeCast(entry, options, casting.abort.signal);
-        casts.set(key, made);
+      const clips = clipsOf(entry, options.format);
+      if (!clips.length) throw new Error(t("This game has no key moments to cast."));
+      const game2 = await castGameOf(entry);
+      const input = castInput(game2, clips, notes.trim() || void 0, options);
+      input.seed = Math.floor(Math.random() * 2e9);
+      m.stretches = input.moments.length;
+      m.cards = castCards(game2).length;
+      makingMoved();
+      const written = await writeScript(input, m);
+      const lines = written.lines;
+      m.lines = lines.length;
+      let clipFiles = lines.map(() => null);
+      if (voiced) {
+        m.stage = "voicing";
+        makingMoved();
+        const parts = batches(lines);
+        let next = 0;
+        const lanes = Array.from({ length: Math.min(2, parts.length) }, async () => {
+          while (next < parts.length) {
+            const part = parts[next++];
+            const spoken2 = await call("/v1/speech", { lines: part.items.map((l) => ({ speaker: l.speaker, text: l.text })) }, m.abort.signal);
+            spoken2.clips.forEach((c, i) => {
+              clipFiles[part.from + i] = Uint8Array.from(atob(c.audio), (ch) => ch.charCodeAt(0)).buffer;
+            });
+            m.voicedLines += part.items.length;
+            makingMoved();
+          }
+        });
+        await Promise.all(lanes);
+        clipFiles = [...clipFiles];
       }
-      if (current !== entry || casting.entry !== entry) {
-        void ctx?.close();
-        return;
-      }
-      casting.busy = null;
-      casting.speed = settings.speed;
-      casting.made = made;
-      setFollowing(true);
-      casting.reel = new Reel({
-        frame: () => gameClock() ? game.seeking ? null : game.frameNow(settings.speed) : current?.frame ?? null,
-        seek: (f) => seek(f),
-        // (The strip is drawn again so its speed menu says the speed the stretch plays at.)
-        speed: (n) => {
-          settings.speed = n;
-          if (gameClock()) game.speed(n);
-          strip?.render();
-        },
-        play: () => play(),
-        pause: () => stop(),
-        playing: () => playing3,
-        changed: () => redraw(),
-        ended: () => endCast()
-      }, made.input.moments, made.plan, made.voices, ctx);
-      casting.reel.start();
+      m.stage = "timing";
+      makingMoved();
+      const made = await ready_(m.key, input, lines, clipFiles, game2);
+      casts.set(m.key, made);
+      await store.put({ key: m.key, replay, options, voiced, notes, made: Date.now(), input, lines, storyline: written.storyline, interests: written.interests ?? null, clips: clipFiles });
+      if (making === m) making = null;
+      ready.set(entry.id, m.key);
+      api.ui.toast({ kind: "ok", title: t("The cast is ready"), detail: t("Watch it from the Cast window or the timeline.") });
+      makingMoved();
+      strip?.render();
     } catch (err) {
-      void ctx?.close();
-      if (err?.name !== "AbortError") casting.error = err instanceof Error ? err.message : String(err);
-      casting.entry = null;
-      casting.busy = null;
+      if (err?.name === "AbortError") {
+        if (making === m) making = null;
+      } else m.error = err instanceof Error ? err.message : String(err);
+      makingMoved();
+      strip?.render();
     }
+  }
+  async function madeOf(entry, key) {
+    const have = casts.get(key);
+    if (have) return have;
+    const kept = await store.get(key);
+    if (!kept) return null;
+    const made = await ready_(key, kept.input, kept.lines, kept.clips, await castGameOf(entry));
+    casts.set(key, made);
+    return made;
+  }
+  async function watchCast(made, ctx) {
+    const entry = current;
+    if (!entry?.played) {
+      void ctx?.close();
+      return;
+    }
+    if (casting.entry) endCast();
+    ready.delete(entry.id);
+    casting.entry = entry;
+    casting.error = null;
+    casting.speed = settings.speed;
+    casting.made = made;
+    setFollowing(true);
+    casting.reel = new Reel({
+      frame: () => gameClock() ? game.seeking ? null : game.frameNow(settings.speed) : current?.frame ?? null,
+      seek: (f) => seek(f),
+      // (The strip is drawn again so its speed menu says the speed the stretch plays at.)
+      speed: (n) => {
+        settings.speed = n;
+        if (gameClock()) game.speed(n);
+        strip?.render();
+      },
+      play: () => play(),
+      pause: () => stop(),
+      playing: () => playing3,
+      changed: () => redraw(),
+      ended: () => endCast()
+    }, made.input.moments, made.plan, made.voices, made.voices.some(Boolean) ? ctx : (void ctx?.close(), null));
+    casting.reel.start();
     strip?.render();
   }
   function endCast() {
     if (!casting.entry) return;
-    casting.abort?.abort();
     const reel = casting.reel;
     casting.reel = null;
     casting.made = null;
     casting.entry = null;
-    casting.busy = null;
     if (reel) {
       reel.stop();
       settings.speed = casting.speed;
@@ -5590,6 +5845,183 @@ function activate(api) {
     }
     redraw();
     strip?.render();
+  }
+  function makingLine(m) {
+    switch (m.stage) {
+      case "reading":
+        return t("Reading the game");
+      case "planning":
+        return t("Planning the story");
+      case "writing":
+        return m.writing.stretch >= 0 ? t("Writing the script: part {n} of {of}, {lines} lines so far", { n: m.writing.stretch + 1, of: m.stretches, lines: m.writing.lines }) : t("Writing the script");
+      case "voicing":
+        return t("Voicing: {n} of {of} lines", { n: m.voicedLines, of: m.lines });
+      case "timing":
+        return t("Timing it");
+    }
+  }
+  function openCastWindow() {
+    const entry = current;
+    if (!entry?.played || !castOffer) return;
+    const el2 = api.ui.el;
+    api.ui.dialog({
+      title: t("Cast this game"),
+      size: "md",
+      buttons: [],
+      mount: (body, dialog) => {
+        let timer = 0;
+        const draw2 = async () => {
+          if (!dialog.isOpen()) return;
+          const m = making && making.entry === entry ? making : null;
+          body.replaceChildren(m ? progressView(m) : await optionsView());
+        };
+        const watcher = () => {
+          void draw2();
+        };
+        makingWatchers.add(watcher);
+        timer = window.setInterval(() => {
+          if (making?.entry === entry && !making.error) void draw2();
+        }, 1e3);
+        const progressView = (m) => {
+          const elapsed = Math.floor((Date.now() - m.started) / 1e3);
+          const step2 = (label2, state2, detail) => {
+            const line = w.statusLine();
+            const text = detail ? `${label2} \u2014 ${detail}` : label2;
+            if (state2 === "busy") line.busy(text);
+            else line.set(state2 === "todo" ? el2("span", { className: "afm-dim" }, text) : text, state2 === "done" ? "ok" : state2 === "error" ? "error" : void 0);
+            return line;
+          };
+          const order = ["reading", "planning", "writing", "voicing", "timing"];
+          const at = order.indexOf(m.stage);
+          const state = (i) => m.error && i === at ? "error" : i < at ? "done" : i === at ? "busy" : "todo";
+          const writingAt = Math.max(order.indexOf("planning"), Math.min(at, order.indexOf("writing")));
+          const rows = [
+            step2(t("Read the game"), at > 0 ? "done" : state(0), m.stretches ? t("{n} parts, {cards} cards", { n: m.stretches, cards: m.cards }) : void 0),
+            step2(t("Writing the script"), at > 2 ? "done" : state(writingAt), at > 2 ? t("{n} lines", { n: m.lines }) : m.stage === "planning" ? t("planning the story") : m.writing.stretch >= 0 ? t("part {n} of {of}, {lines} lines so far", { n: m.writing.stretch + 1, of: m.stretches, lines: m.writing.lines }) : void 0),
+            ...m.voiced ? [step2(t("Voicing"), at > 3 ? "done" : state(3), at >= 3 ? t("{n} of {of} lines", { n: m.voicedLines, of: m.lines }) : void 0)] : [],
+            step2(t("Timing it"), state(4))
+          ];
+          const opening2 = m.writing.storyline ? /^.*?[.!?](?=\s|$)/.exec(m.writing.storyline.trim())?.[0] ?? null : null;
+          const story2 = opening2 ? el2("blockquote", { className: "afm-cast-story" }, opening2) : null;
+          const cancel = w.button(m.error ? t("Back") : t("Cancel"), { onClick: () => {
+            m.abort.abort();
+            if (making === m) making = null;
+            makingMoved();
+            strip?.render();
+            void draw2();
+          } });
+          const again = m.error ? w.button(t("Try again"), { primary: true, onClick: () => {
+            if (making === m) making = null;
+            void makeCast(entry, m.options, m.voiced, m.notes);
+          } }) : null;
+          return w.column(
+            el2("div", { className: "afm-cast-head" }, el2("b", {}, m.error ? t("The cast could not be made") : t("Making the cast")), el2("span", { className: "afm-dim" }, formatTime(elapsed * 1e3 / FRAME_MS))),
+            ...rows,
+            ...story2 ? [story2] : [],
+            ...m.error ? [el2("p", { className: "afm-cast-error" }, m.error)] : [w.hint(t("You can close this window and keep watching the replay; the timeline says when the cast is ready."))],
+            w.row(cancel, ...again ? [again] : [])
+          );
+        };
+        const optionsView = async () => {
+          const replay = await replayOf(entry);
+          const kept = await store.forReplay(replay);
+          const offer = castOffer;
+          let format = settings.castFormat, banter = settings.castBanter, voiced = settings.castVoiced && !!offer?.speech, notes = settings.castNotes;
+          const estimateLine = el2("p", { className: "afm-dim afm-cast-estimate" });
+          const update = () => {
+            const e = estimate2(castSeconds(entry, format), { format, banter }, voiced ? offer?.usdPer1kChars ?? null : null);
+            const usd = e.scriptUsd + e.voiceUsd;
+            estimateLine.textContent = t("About {minutes} minutes long \xB7 about ${usd} from your balance \xB7 usually {from}\u2013{to} minutes to make", {
+              minutes: Math.round(e.minutes),
+              usd: usd.toFixed(2),
+              from: e.making[0],
+              to: e.making[1]
+            });
+            const same = kept.find((k) => k.key === castKey(replay, { format, banter }, voiced, notes));
+            make.textContent = same ? t("Make a new one") : t("Make cast");
+          };
+          const formatPick = w.segmented([{ value: "game", label: t("Whole game") }, { value: "highlights", label: t("Key moments") }], { value: format, onChange: (v) => {
+            format = v;
+            settings.castFormat = format;
+            save();
+            update();
+          } });
+          const banterPick = w.select([{ value: "off", label: t("No banter") }, { value: "light", label: t("Some banter") }, { value: "lots", label: t("Lots of banter") }], { value: banter, onChange: (v) => {
+            banter = v;
+            settings.castBanter = banter;
+            save();
+            update();
+          } });
+          const voicePick = w.segmented([{ value: "voiced", label: t("Voiced") }, { value: "captions", label: t("Captions only") }], { value: voiced ? "voiced" : "captions", onChange: (v) => {
+            voiced = v === "voiced" && !!offer?.speech;
+            settings.castVoiced = v === "voiced";
+            save();
+            update();
+          } });
+          if (!offer?.speech) voicePick.set("captions");
+          const cardsPick = w.checkbox(t("Show upgrades and units on screen"), { value: settings.castCards, onChange: (v) => {
+            settings.castCards = v;
+            save();
+            redraw();
+          } });
+          const notesField = w.text({ value: notes, placeholder: t("Optional: a language, a tone, what to talk about more\u2026"), onChange: (v) => {
+            notes = v.slice(0, 300);
+            settings.castNotes = notes;
+            save();
+            update();
+          } });
+          const make = w.button(t("Make cast"), { primary: true, onClick: () => {
+            void makeCast(entry, { format, banter }, voiced, notes);
+          } });
+          const keptRows = kept.map((k) => {
+            const label2 = [k.options.format === "game" ? t("Whole game") : t("Key moments"), k.options.banter === "off" ? t("No banter") : k.options.banter === "lots" ? t("Lots of banter") : t("Some banter"), k.voiced ? t("Voiced") : t("Captions only")].join(" \xB7 ");
+            const watch = w.button(t("Watch"), { primary: true, onClick: async () => {
+              const ctx = k.voiced ? new AudioContext() : null;
+              const made = await madeOf(entry, k.key);
+              if (!made) {
+                void ctx?.close();
+                return;
+              }
+              dialog.close();
+              void watchCast(made, ctx);
+            } });
+            const remove2 = w.button(t("Delete"), { onClick: async () => {
+              await store.remove(k.key);
+              casts.delete(k.key);
+              void draw2();
+            } });
+            return el2(
+              "div",
+              { className: "afm-cast-kept" },
+              el2("div", {}, el2("b", {}, label2), el2("div", { className: "afm-dim" }, [k.notes ? `\u201C${k.notes}\u201D` : null, k.interests ? t("{caster} and {analyst}", k.interests) : null, t("made {when}", { when: new Date(k.made).toLocaleString() })].filter(Boolean).join(" \xB7 "))),
+              w.row(watch, remove2)
+            );
+          });
+          update();
+          return w.column(
+            ...keptRows.length ? [w.group(t("Made before"), ...keptRows)] : [],
+            w.group(
+              t("A new cast"),
+              w.form([
+                { label: t("Format"), field: formatPick },
+                { label: t("Banter"), field: banterPick },
+                { label: t("Voices"), field: voicePick },
+                { label: t("Cards"), field: cardsPick },
+                { label: t("Notes"), field: notesField }
+              ]),
+              ...!offer?.speech ? [w.hint(t("This server has no voices set up: the cast is shown as captions."))] : [],
+              estimateLine,
+              w.row(make)
+            )
+          );
+        };
+        void draw2();
+        return () => {
+          makingWatchers.delete(watcher);
+          clearInterval(timer);
+        };
+      }
+    });
   }
   function castCard(ctx) {
     const id = settings.castCards ? casting.reel?.card() : null;
@@ -5600,9 +6032,9 @@ function activate(api) {
     const frame = (gameClock() ? game.frameNow(settings.speed) : null) ?? entry.frame;
     const who = entry.report.players.find((p) => p.player.index === card.player)?.player;
     const name = card.kind === "unit" ? plainName(api.names.unit(card.type)).replace(/\s*\([^)]*\)\s*$/, "") : card.kind === "tech" ? api.names.tech(card.type) : card.level > 1 ? `${api.names.upgrade(card.type)} ${card.level}` : api.names.upgrade(card.type);
-    const making = frame < card.done && card.done > card.start;
-    const share = making ? Math.max(0, Math.min(1, (frame - card.start) / (card.done - card.start))) : 1;
-    const status = making ? t("{what} \xB7 {time} left", { what: card.kind === "unit" ? isBuilding(card.type) ? t("Building") : t("In production") : t("Researching"), time: formatTime(card.done - frame) }) : frame < card.start ? t("Ordered") : t("Done at {time}", { time: formatTime(card.done) });
+    const making2 = frame < card.done && card.done > card.start;
+    const share = making2 ? Math.max(0, Math.min(1, (frame - card.start) / (card.done - card.start))) : 1;
+    const status = making2 ? t("{what} \xB7 {time} left", { what: card.kind === "unit" ? isBuilding(card.type) ? t("Building") : t("In production") : t("Researching"), time: formatTime(card.done - frame) }) : frame < card.start ? t("Ordered") : t("Done at {time}", { time: formatTime(card.done) });
     let pic = null;
     if (typeof api.graphics.icon === "function") {
       pic = api.graphics.icon(card.kind, card.type);
@@ -5633,7 +6065,7 @@ function activate(api) {
     ctx.fillText(name, tx, y0 + 25, tw);
     ctx.fillStyle = "rgba(255,255,255,0.14)";
     ctx.fillRect(tx, y0 + 46, tw, 5);
-    ctx.fillStyle = making ? colour : "#7fd18b";
+    ctx.fillStyle = making2 ? colour : "#7fd18b";
     ctx.fillRect(tx, y0 + 46, tw * share, 5);
     ctx.font = "500 11px system-ui, sans-serif";
     ctx.fillStyle = "#b9c0cc";
@@ -7020,25 +7452,28 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
         this.update();
       });
       this.statsButton = toggle(t("Map stats"), () => showStats(lensOf() !== "map"));
-      const castButton = castOffer && entry.played ? w.button(casting.entry === entry ? t("Stop cast") : t("Cast"), { className: "sm", title: castOffer.speech ? t("Watch the key moments with two commentators: the camera follows the action, and the scmjs.dev AI writes what they say and voices it. Made once a replay, from your account's balance.") : t("Watch the key moments with two commentators: the camera follows the action, and the scmjs.dev AI writes what they say, shown as captions. Made once a replay, from your account's balance."), onClick: () => casting.entry === entry ? endCast() : void startCast() }) : null;
-      const castFormat = castButton && casting.entry !== entry ? w.select([
-        { value: "game", label: t("Whole game") },
-        { value: "highlights", label: t("Key moments") }
-      ], { value: settings.castFormat, title: t("Cast the whole game, played fast through the quiet parts, or only its key moments"), onChange: (v) => {
-        settings.castFormat = v;
-        save();
-        castFormat?.blur();
-      } }) : null;
-      const castBanter = castButton && casting.entry !== entry ? w.select([
-        { value: "off", label: t("No banter") },
-        { value: "light", label: t("Some banter") },
-        { value: "lots", label: t("Lots of banter") }
-      ], { value: settings.castBanter, title: t("How much the two commentators chat about other things when little is happening"), onChange: (v) => {
-        settings.castBanter = v;
-        save();
-        castBanter?.blur();
-      } }) : null;
-      const castCardsButton = castButton ? toggle(t("Cards"), () => {
+      const castState = casting.entry === entry ? "playing" : making?.entry === entry ? making.error ? "failed" : "making" : ready.has(entry.id) ? "ready" : "idle";
+      const castButton = castOffer && entry.played ? w.button(castState === "playing" ? t("Stop cast") : castState === "making" ? t("Making the cast\u2026") : castState === "ready" ? t("Watch cast") : t("Cast\u2026"), {
+        className: "sm",
+        primary: castState === "ready",
+        title: t("A broadcast of this game: two commentators, written and voiced by the scmjs.dev AI, with the camera on the action"),
+        onClick: async () => {
+          if (castState === "playing") {
+            endCast();
+            return;
+          }
+          if (castState === "ready") {
+            const key = ready.get(entry.id);
+            const ctx = new AudioContext();
+            const made = await madeOf(entry, key);
+            if (made) void watchCast(made, ctx);
+            else void ctx.close();
+            return;
+          }
+          openCastWindow();
+        }
+      }) : null;
+      const castCardsButton = castButton && castState === "playing" ? toggle(t("Cards"), () => {
         settings.castCards = !settings.castCards;
         save();
         redraw();
@@ -7072,8 +7507,6 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
         eyes,
         this.status,
         retry,
-        castFormat,
-        castBanter,
         castCardsButton,
         castButton,
         analysis,
@@ -7133,13 +7566,12 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
         line = t("Waiting to be analysed.");
         why = t("Replays are analysed one at a time: the one in front first, then the others with a tab, then the ones only in Map stats.");
       }
-      if (casting.entry === entry && casting.busy) line = casting.busy;
-      else if (casting.entry === entry && casting.reel) {
+      if (casting.entry === entry && casting.reel) {
         const p = casting.reel.progress();
         line = t("Cast: part {n} of {of}", { n: p.moment + 1, of: p.of });
-      } else if (casting.error && !casting.entry) {
-        line = t("The cast could not be made: {reason}", { reason: casting.error });
-      }
+      } else if (making?.entry === entry) {
+        line = making.error ? t("The cast could not be made: {reason}", { reason: making.error }) : t("Making the cast: {what} \xB7 {time}", { what: makingLine(making), time: formatTime((Date.now() - making.started) / FRAME_MS) });
+      } else if (ready.has(entry.id)) line = t("The cast is ready.");
       const onMap = lensOf() === "map";
       if (onMap) {
         const n = counted2(entry).length, waiting = waitingOf(entry);
@@ -7416,6 +7848,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
     game.dispose();
     simWatch.dispose();
     endCast();
+    making?.abort.abort();
     accountChange?.();
     accountWatch.dispose();
     imageListener.dispose();
