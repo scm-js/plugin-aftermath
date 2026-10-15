@@ -8,7 +8,8 @@
  */
 import type { ReplayTimeline } from "./vendor/scm-sim";
 import type { Fight } from "./fights";
-import { NOT_MADE, WORKERS, counted, isBuilding } from "./played";
+import { NOT_MADE, WORKERS, buildings, counted, isBuilding } from "./played";
+import { incomeRate, supplyBlocks } from "./economy";
 import type { Base } from "./story";
 
 export const FRAME_SECONDS = 0.042;
@@ -23,8 +24,14 @@ const AFTER = frameOf(6);
 const LOSS_BUCKET = frameOf(3);
 /** The most timed facts in one moment; past this, losses are bucketed wider. */
 const MAX_EVENTS = 60;
-/** Build steps said for each player's opening. */
-const OPENING_STEPS = 12;
+/** Build steps said for each player's opening, and how far into the game it reaches (six minutes). */
+const OPENING_STEPS = 18;
+const OPENING_UNTIL = frameOf(360);
+/** A supply block worth saying lasted this long (six seconds). */
+const BLOCK_SAID = frameOf(6);
+/** Command Center, Hatchery, Lair, Hive, Nexus; and what makes units: Barracks, Factory, Starport, Gateway, Stargate, Robotics Facility. */
+const HALL_TYPES = new Set([106, 131, 132, 133, 154]);
+const PRODUCTION = new Set([111, 113, 114, 160, 167, 155]);
 /** Supply Depot, Refinery, Extractor, Pylon, Assimilator, Overlord: not news when the first goes down. */
 const ROUTINE = new Set([109, 110, 149, 156, 157, 42]);
 
@@ -33,7 +40,13 @@ const ROUTINE = new Set([109, 110, 149, 156, 157, 42]);
 export type CastSpeaker = "caster" | "analyst";
 
 export interface CastInput {
-  game: { map: string; length: number; players: { id: number; name: string; race: "Zerg" | "Terran" | "Protoss"; result: "won" | "lost" | "left" | "unknown" }[] };
+  game: {
+    map: string;
+    length: number;
+    players: { id: number; name: string; race: "Zerg" | "Terran" | "Protoss"; result: "won" | "lost" | "left" | "unknown" }[];
+    /** Each player's opening as ordered, with the supply each step was ordered at. */
+    openings?: string[];
+  };
   moments: CastMoment[];
   wishes?: string;
 }
@@ -42,6 +55,8 @@ export interface CastMoment {
   from: number;
   to: number;
   title: string;
+  /** Where each player stands when the clip starts: economy, buildings, upgrades, the whole army. */
+  state?: string[];
   before: string[];
   events: { at: number; text: string }[];
   after: string[];
@@ -145,17 +160,65 @@ export function castInput(game: CastGame, clips: readonly Clip[], wishes?: strin
     firsts.push({ frame: e.frame, player: e.owner, type: e.type });
   }
 
+  const built = buildings(t);
+  const series = (index: number) => t.samples.players.find((s) => s.slot === index);
+  const perMinute = (v: number) => (v >= 1000 ? `${(Math.round(v / 100) * 100).toLocaleString("en-US")}` : String(Math.round(v / 10) * 10));
+
+  /** Where each player stands at a frame, a few lines each: economy, buildings, upgrades, the whole army. */
   const standing = (frame: number) => {
     const out: string[] = [];
     const i = sample(frame), units = unitsByType(t, frame);
     for (const p of game.players) {
-      const q = t.samples.players.find((s) => s.slot === p.index);
+      const q = series(p.index);
       if (!q) continue;
-      const army = [...(units.get(p.index) ?? new Map<number, number>())].filter(([type]) => !WORKERS.has(type)).sort((a, b) => b[1] - a[1]);
-      const mix = army.slice(0, 6).map(([type, k]) => `${k} ${n.unit(type)}`).join(", ");
-      out.push(`${p.name} at ${clock(frame)}: supply ${q.supplyUsed[i] ?? 0}/${q.supplyMax[i] ?? 0}, ${q.workers[i] ?? 0} workers, army worth ${worth(q.armyValue[i] ?? 0)}${mix ? ` (${mix})` : ""}, ${q.minerals[i] ?? 0} minerals and ${q.gas[i] ?? 0} gas in the bank`);
+      const income = q.mineralsGathered && q.gasGathered
+        ? `, mining about ${perMinute(incomeRate(t.samples.frame, q.mineralsGathered)[i] ?? 0)} minerals and ${perMinute(incomeRate(t.samples.frame, q.gasGathered)[i] ?? 0)} gas a minute` : "";
+      out.push(`${p.name} at ${clock(frame)}: supply ${q.supplyUsed[i] ?? 0}/${q.supplyMax[i] ?? 0}, ${q.workers[i] ?? 0} workers${income}, ${q.minerals[i] ?? 0} minerals and ${q.gas[i] ?? 0} gas in the bank`);
+      const have = new Map<number, number>();
+      for (const b of built) if (b.owner === p.index && b.done !== null && b.done <= frame && (b.to === null || b.to > frame) && !ROUTINE.has(b.type)) have.set(b.type, (have.get(b.type) ?? 0) + 1);
+      const rank = (type: number) => (HALL_TYPES.has(type) ? 0 : PRODUCTION.has(type) ? 1 : 2);
+      const list = [...have].sort((a, b) => rank(a[0]) - rank(b[0]) || b[1] - a[1]).map(([type, k]) => `${k} ${n.unit(type)}`);
+      if (list.length) out.push(`${p.name}'s buildings: ${list.join(", ")}`);
+      const levels = new Map<string, number>();
+      for (const r of t.research) if (r.player === p.index && r.frame <= frame) {
+        const name = r.kind === "tech" ? n.tech(r.id) : n.upgrade(r.id);
+        levels.set(name, Math.max(levels.get(name) ?? 0, r.kind === "tech" ? 0 : r.level));
+      }
+      out.push(levels.size ? `${p.name}'s upgrades and research: ${[...levels].map(([name, level]) => (level > 1 ? `${name} ${level}` : name)).join(", ")}` : `${p.name} has no upgrades or research yet`);
+      const army = [...(units.get(p.index) ?? new Map<number, number>())].filter(([type]) => !WORKERS.has(type) && !ROUTINE.has(type)).sort((a, b) => b[1] - a[1]);
+      const count = army.reduce((k, [, c]) => k + c, 0);
+      out.push(army.length ? `${p.name}'s whole army, wherever it stands: ${army.map(([type, k]) => `${k} ${n.unit(type)}`).join(", ")} (${count} units, worth ${worth(q.armyValue[i] ?? 0)})` : `${p.name} has no army`);
     }
     return out;
+  };
+
+  /** Spans a player stood at the supply limit for long, between two frames. */
+  const blocks = (from: number, to: number) => {
+    const out: { frame: number; text: string }[] = [];
+    for (const p of game.players) {
+      const q = series(p.index);
+      if (!q) continue;
+      for (const b of supplyBlocks(t.samples.frame, q.supplyUsed, q.supplyMax, to)) {
+        if (b.to < from || b.to - b.from < BLOCK_SAID) continue;
+        out.push({ frame: b.from, text: `${p.name} is supply blocked at ${q.supplyUsed[sample(b.from)] ?? 0} supply from ${clock(b.from)} to ${clock(b.to)}` });
+      }
+    }
+    return out;
+  };
+
+  /** A player's opening as ordered, with the supply at each order: workers taken as read, a unit only the first time. */
+  const opening = (p: CastPlayer) => {
+    const q = series(p.index);
+    const seenTrain = new Set<number>();
+    const steps = p.build.filter((s, k, all) => {
+      if (s.frame > OPENING_UNTIL) return false;
+      if ((s.kind === "train" || s.kind === "morph") && WORKERS.has(s.id)) return false;
+      if (s.kind === "train" || (s.kind === "morph" && !isBuilding(s.id))) { if (seenTrain.has(s.id)) return false; seenTrain.add(s.id); }
+      return !all.slice(0, k).some((b) => b.kind === s.kind && b.id === s.id && s.frame - b.frame < frameOf(30));
+    }).slice(0, OPENING_STEPS);
+    if (!steps.length) return null;
+    const what = (s: CastPlayer["build"][number]) => (s.kind === "upgrade" ? n.upgrade(s.id) : s.kind === "tech" ? n.tech(s.id) : n.unit(s.id));
+    return `${p.name} (${RACES[p.race] ?? "Terran"}), supply and time of each order: ${steps.map((s) => `${q ? `${q.supplyUsed[sample(s.frame)] ?? 0} ` : ""}${what(s)} (${clock(s.frame)})`).join(", ")}`;
   };
 
   const happened = (from: number, to: number) => {
@@ -209,7 +272,7 @@ export function castInput(game: CastGame, clips: readonly Clip[], wishes?: strin
       if (!shown.has(s.player)) continue;
       const lost = [...s.lostTypes].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([type, k]) => plural(k, n.unit(type))).join(", ");
       const share = s.had > 0 ? Math.round((s.lostValue / s.had) * 100) : 0;
-      out.push(`${nameOf(s.player)} lost ${lost || "nothing"}${s.lostValue ? ` (${worth(s.lostValue)} worth, ${share}% of everything they had)` : ""}${s.army ? `, with ${s.army} fighting unit${s.army === 1 ? "" : "s"} there when it began` : ""}`);
+      out.push(`${nameOf(s.player)} lost ${lost || "nothing"}${s.lostValue ? ` (${worth(s.lostValue)} worth, ${share}% of their whole army and workers)` : ""}${s.army ? `; ${s.army} of their fighting units were at the fight when it began` : ""}`);
     }
     out.push(f.winner === null ? "Neither side came out clearly ahead" : `${nameOf(f.winner)} came out ahead`);
     return out;
@@ -218,23 +281,15 @@ export function castInput(game: CastGame, clips: readonly Clip[], wishes?: strin
   const moments: CastMoment[] = clips.map((c, i) => {
     const since = i ? clips[i - 1].to : 0;
     const before: string[] = [];
-    if (i === 0) {
-      for (const p of game.players) {
-        // (Workers are taken as read, and the same order again soon after is one step: a building ordered twice, an add-on spammed.)
-        const steps = p.build.filter((s, k, all) => s.frame <= c.from && !((s.kind === "train" || s.kind === "morph") && WORKERS.has(s.id))
-          && !all.slice(0, k).some((b) => b.kind === s.kind && b.id === s.id && s.frame - b.frame < frameOf(30))).slice(0, OPENING_STEPS);
-        if (steps.length) before.push(`${p.name}'s opening: ${steps.map((s) => `${clock(s.frame)} ${s.kind === "upgrade" ? n.upgrade(s.id) : s.kind === "tech" ? n.tech(s.id) : n.unit(s.id)}${s.count > 1 ? ` ×${s.count}` : ""}`).join(", ")}`);
-      }
-    }
-    for (const h of happened(since, c.from)) before.push(`${clock(h.frame)} ${h.text}`);
-    before.push(...standing(c.from));
+    for (const h of [...happened(since, c.from), ...blocks(since, c.from)].sort((a, b) => a.frame - b.frame)) before.push(`${clock(h.frame)} ${h.text}`);
+    const state = standing(c.from);
     const l = lead(c.from);
-    if (l) before.push(l);
+    if (l) state.push(l);
 
     const events: CastMoment["events"] = [];
     for (const f of c.fights) {
-      const sides = f.sides.filter((s) => shown.has(s.player) && s.army).map((s) => `${nameOf(s.player)} with ${s.army} fighting unit${s.army === 1 ? "" : "s"}`);
-      events.push({ at: seconds(Math.max(c.from, f.from - frameOf(4))), text: `Armies close at ${n.place(f.x, f.y)}${sides.length ? `: ${sides.join(" against ")}` : ""}` });
+      const sides = f.sides.filter((s) => shown.has(s.player) && s.army).map((s) => `${s.army} of ${nameOf(s.player)}'s fighting units`);
+      events.push({ at: seconds(Math.max(c.from, f.from - frameOf(4))), text: `Armies close at ${n.place(f.x, f.y)}${sides.length ? `; at the fight: ${sides.join(", ")}` : ""}` });
     }
     for (const h of happened(c.from, c.to)) events.push({ at: seconds(h.frame), text: h.text });
     for (const x of losses(c.from, c.to)) events.push({ at: seconds(x.frame), text: x.text });
@@ -248,7 +303,7 @@ export function castInput(game: CastGame, clips: readonly Clip[], wishes?: strin
     }
     const key = c.fights.find((f) => f.turning) ?? c.fights[0];
     const title = key ? `${key.turning ? "The turning point" : key.tier === "decisive" ? "A decisive fight" : key.tier === "major" ? "A major fight" : "A fight"} at ${n.place(key.x, key.y)}` : "The game";
-    return { from: seconds(c.from), to: seconds(c.to), title, before: before.slice(0, 40), events: events.slice(0, 120), after: after.slice(0, 20) };
+    return { from: seconds(c.from), to: seconds(c.to), title, state: state.slice(0, 20), before: before.slice(0, 40), events: events.slice(0, 120), after: after.slice(0, 20) };
   });
 
   return {
@@ -259,6 +314,7 @@ export function castInput(game: CastGame, clips: readonly Clip[], wishes?: strin
         id: p.index, name: p.name, race: RACES[p.race] ?? "Terran",
         result: game.winner === null ? (p.leftAt !== null ? "left" : "unknown") : p.index === game.winner ? "won" : p.leftAt !== null ? "left" : "lost",
       })),
+      openings: game.players.map(opening).filter((o): o is string => o !== null),
     },
     moments,
     ...(wishes?.trim() ? { wishes: wishes.trim() } : {}),

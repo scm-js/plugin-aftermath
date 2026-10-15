@@ -74,23 +74,31 @@ describe("the facts sent", () => {
   it("writes the opening, what changed, where things stand, what fell and how it came out", () => {
     const g = game();
     const input = castInput(g, highlightClips(g.fights, g.timeline.frames), " louder ");
-    expect(input.game).toEqual({ map: "Ridge", length: 400, players: [{ id: 0, name: "Tara", race: "Terran", result: "won" }, { id: 1, name: "Zed", race: "Zerg", result: "left" }] });
+    expect(input.game).toEqual({
+      map: "Ridge", length: 400, players: [{ id: 0, name: "Tara", race: "Terran", result: "won" }, { id: 1, name: "Zed", race: "Zerg", result: "left" }],
+      // Workers taken as read; the supply each step was ordered at.
+      openings: ["Tara (Terran), supply and time of each order: 40 Unit 111 (0:20), 40 Marine (0:40)", "Zed (Zerg), supply and time of each order: 40 Unit 142 (0:30)"],
+    });
     expect(input.wishes).toBe("louder");
     const [m] = input.moments;
     expect([m.from, m.to, m.title]).toEqual([260, 326, "A decisive fight at the middle"]);
-    expect(m.before).toContain("Tara's opening: 0:20 Unit 111, 0:40 Marine ×2");
-    expect(m.before).toContain("2:00 Zed takes a base at 4 o'clock (their second)");
-    expect(m.before).toContain("3:20 Zed makes their first Mutalisk");
-    expect(m.before).toContain("4:10 Tara finishes Upgrade 9");
-    expect(m.before).toContain("2:30 Zed starts their first Lair");
-    expect(m.before).toContain("Tara at 4:20: supply 40/50, 20 workers, army worth 100 (2 Marine), 200 minerals and 50 gas in the bank");
-    expect(m.before.at(-1)).toBe("Zed leads in army at 4:20: 400 against 100 for Tara");
+    expect(m.before).toEqual(["1:40 Tara makes their first Marine", "2:00 Zed takes a base at 4 o'clock (their second)", "2:30 Zed starts their first Lair", "3:20 Zed makes their first Mutalisk", "4:10 Tara finishes Upgrade 9"]);
+    expect(m.state).toEqual([
+      "Tara at 4:20: supply 40/50, 20 workers, 200 minerals and 50 gas in the bank",
+      "Tara's upgrades and research: Upgrade 9",
+      "Tara's whole army, wherever it stands: 2 Marine (2 units, worth 100)",
+      "Zed at 4:20: supply 40/50, 20 workers, 200 minerals and 50 gas in the bank",
+      "Zed has no upgrades or research yet",
+      "Zed's whole army, wherever it stands: 2 Mutalisk (2 units, worth 400)",
+      "Zed leads in army at 4:20: 400 against 100 for Tara",
+    ]);
     expect(m.events).toEqual([
-      { at: 296, text: "Armies close at the middle: Tara with 10 fighting units against Zed with 12 fighting units" },
+      { at: 296, text: "Armies close at the middle; at the fight: 10 of Tara's fighting units, 12 of Zed's fighting units" },
       { at: 305, text: "Zed loses 2 Mutalisk" },
       { at: 318, text: "Tara loses 1 Marine" },
     ]);
-    expect(m.after).toContain("Zed lost 6 Zergling, 2 Mutalisk (600 worth, 40% of everything they had), with 12 fighting units there when it began");
+    // What fell is weighed against everything the side had; the units at the fight are said apart from the whole army.
+    expect(m.after).toContain("Zed lost 6 Zergling, 2 Mutalisk (600 worth, 40% of their whole army and workers); 12 of their fighting units were at the fight when it began");
     expect(m.after).toContain("Tara came out ahead");
     expect(m.after).toContain("Tara leads in army at 5:26: 1.5k against 400 for Zed");
     expect(m.after.at(-1)).toBe("Tara wins; the game ends at 6:40");

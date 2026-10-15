@@ -2756,6 +2756,114 @@ var GameView = class {
   }
 };
 
+// economy.ts
+var INCOME_WINDOW = FRAMES_PER_MINUTE;
+var LINE_REACH = 8 * 32;
+var MAX_SUPPLY = 200;
+var playing2 = (s) => s.supplyMax.some((n) => n > 0);
+function incomeRate(frames, gathered, window2 = INCOME_WINDOW) {
+  const out = new Array(frames.length).fill(0);
+  let j = 0;
+  for (let i = 0; i < frames.length; i++) {
+    while (j < i && frames[i] - frames[j] > window2) j++;
+    const span = frames[i] - frames[j];
+    out[i] = span > 0 ? (gathered[i] - gathered[j]) * FRAMES_PER_MINUTE / span : 0;
+  }
+  return out;
+}
+function supplyBlocks(frames, used, max, until = Infinity) {
+  const out = [];
+  let from = -1;
+  for (let i = 0; i < frames.length && frames[i] <= until; i++) {
+    const blocked = max[i] > 0 && max[i] < MAX_SUPPLY && used[i] >= max[i];
+    if (blocked && from < 0) from = frames[i];
+    else if (!blocked && from >= 0) {
+      out.push({ from, to: frames[i] });
+      from = -1;
+    }
+  }
+  if (from >= 0) out.push({ from, to: Math.min(until, frames[frames.length - 1]) });
+  return out.filter((b) => b.to > b.from);
+}
+function meanUntil(frames, values, until) {
+  let sum = 0, n = 0;
+  for (let i = 0; i < frames.length && frames[i] <= until; i++) {
+    sum += values(i);
+    n++;
+  }
+  return n ? sum / n : 0;
+}
+function lineSaturation(t, lines, index, players) {
+  const p = t.positions;
+  if (!p || !lines.lines.length) return [];
+  const minutes = Math.ceil(t.frames / FRAMES_PER_MINUTE);
+  const sums = /* @__PURE__ */ new Map();
+  const samplesIn = new Array(minutes).fill(0);
+  const want = new Set(players);
+  for (let i = 0; i < p.frame.length; i++) {
+    const m = Math.min(minutes - 1, Math.floor(p.frame[i] / FRAMES_PER_MINUTE));
+    samplesIn[m]++;
+    for (let r = p.start[i]; r < p.start[i + 1]; r++) {
+      const u = p.unit[r], owner = index.owner[u];
+      if (!want.has(owner) || !WORKERS2.has(index.type[u])) continue;
+      const x = p.x[r], y = p.y[r];
+      let best = -1, bestD = LINE_REACH;
+      for (let l = 0; l < lines.lines.length; l++) {
+        const d = Math.hypot(lines.lines[l].x - x, lines.lines[l].y - y);
+        if (d <= bestD) {
+          bestD = d;
+          best = l;
+        }
+      }
+      if (best < 0) continue;
+      const key = `${best}:${owner}`;
+      let row = sums.get(key);
+      if (!row) {
+        row = { line: best, player: owner, sum: new Array(minutes).fill(0) };
+        sums.set(key, row);
+      }
+      row.sum[m]++;
+    }
+  }
+  const out = [];
+  for (const row of sums.values()) {
+    const perMinute = row.sum.map((s, m) => samplesIn[m] ? s / samplesIn[m] : 0);
+    const first = perMinute.findIndex((n) => n >= 3);
+    if (first < 0) continue;
+    const l = lines.lines[row.line];
+    out.push({ line: row.line, player: row.player, x: l.x, y: l.y, fields: l.fields, perMinute, first });
+  }
+  return out.sort((a, b) => a.first - b.first || a.player - b.player);
+}
+function economy(t, lines, index, leftAt = /* @__PURE__ */ new Map()) {
+  const f = t.samples.frame;
+  const end = f[f.length - 1] ?? 0;
+  const inGame = t.samples.players.filter(playing2);
+  const exact = inGame.length > 0 && inGame.every((s) => Array.isArray(s.mineralsGathered) && s.mineralsGathered.length === f.length);
+  const players = inGame.map((s) => {
+    const until = leftAt.get(s.slot) ?? end;
+    let last = 0;
+    while (last + 1 < f.length && f[last + 1] <= until) last++;
+    const income = exact ? { minerals: incomeRate(f, s.mineralsGathered), gas: incomeRate(f, s.gasGathered) } : null;
+    const mined = exact ? { minerals: s.mineralsGathered[last] - s.mineralsGathered[0], gas: s.gasGathered[last] - s.gasGathered[0] } : null;
+    const minutes = (f[last] - f[0]) / FRAMES_PER_MINUTE;
+    let peak = { n: 0, frame: 0 };
+    for (let i = 0; i <= last; i++) if (s.workers[i] > peak.n) peak = { n: s.workers[i], frame: f[i] };
+    const blocks = supplyBlocks(f, s.supplyUsed, s.supplyMax, until);
+    return {
+      slot: s.slot,
+      income,
+      mined,
+      averageIncome: mined && minutes > 0 ? (mined.minerals + mined.gas) / minutes : null,
+      averageBank: meanUntil(f, (i) => s.minerals[i] + s.gas[i], until),
+      peakWorkers: peak,
+      blocks,
+      blockedFrames: blocks.reduce((a, b) => a + b.to - b.from, 0)
+    };
+  });
+  return { exact, players, lines: lineSaturation(t, lines, index, players.map((p) => p.slot)), minutes: Math.ceil(t.frames / FRAMES_PER_MINUTE) };
+}
+
 // cast.ts
 var FRAME_SECONDS = 0.042;
 var seconds = (frame) => Math.round(frame * FRAME_SECONDS * 10) / 10;
@@ -2765,7 +2873,11 @@ var FIRST_LEAD_IN = frameOf(40);
 var AFTER = frameOf(6);
 var LOSS_BUCKET = frameOf(3);
 var MAX_EVENTS = 60;
-var OPENING_STEPS = 12;
+var OPENING_STEPS = 18;
+var OPENING_UNTIL = frameOf(360);
+var BLOCK_SAID = frameOf(6);
+var HALL_TYPES = /* @__PURE__ */ new Set([106, 131, 132, 133, 154]);
+var PRODUCTION = /* @__PURE__ */ new Set([111, 113, 114, 160, 167, 155]);
 var ROUTINE = /* @__PURE__ */ new Set([109, 110, 149, 156, 157, 42]);
 function highlightClips(fights2, frames) {
   const keys = fights2.filter((f) => f.key).sort((a, b) => a.from - b.from);
@@ -2824,17 +2936,61 @@ function castInput(game, clips, wishes) {
     seen.add(k);
     firsts.push({ frame: e.frame, player: e.owner, type: e.type });
   }
+  const built = buildings(t);
+  const series2 = (index) => t.samples.players.find((s) => s.slot === index);
+  const perMinute = (v) => v >= 1e3 ? `${(Math.round(v / 100) * 100).toLocaleString("en-US")}` : String(Math.round(v / 10) * 10);
   const standing = (frame) => {
     const out = [];
     const i = sample(frame), units = unitsByType(t, frame);
     for (const p of game.players) {
-      const q = t.samples.players.find((s) => s.slot === p.index);
+      const q = series2(p.index);
       if (!q) continue;
-      const army = [...units.get(p.index) ?? /* @__PURE__ */ new Map()].filter(([type]) => !WORKERS2.has(type)).sort((a, b) => b[1] - a[1]);
-      const mix = army.slice(0, 6).map(([type, k]) => `${k} ${n.unit(type)}`).join(", ");
-      out.push(`${p.name} at ${clock(frame)}: supply ${q.supplyUsed[i] ?? 0}/${q.supplyMax[i] ?? 0}, ${q.workers[i] ?? 0} workers, army worth ${worth(q.armyValue[i] ?? 0)}${mix ? ` (${mix})` : ""}, ${q.minerals[i] ?? 0} minerals and ${q.gas[i] ?? 0} gas in the bank`);
+      const income = q.mineralsGathered && q.gasGathered ? `, mining about ${perMinute(incomeRate(t.samples.frame, q.mineralsGathered)[i] ?? 0)} minerals and ${perMinute(incomeRate(t.samples.frame, q.gasGathered)[i] ?? 0)} gas a minute` : "";
+      out.push(`${p.name} at ${clock(frame)}: supply ${q.supplyUsed[i] ?? 0}/${q.supplyMax[i] ?? 0}, ${q.workers[i] ?? 0} workers${income}, ${q.minerals[i] ?? 0} minerals and ${q.gas[i] ?? 0} gas in the bank`);
+      const have = /* @__PURE__ */ new Map();
+      for (const b of built) if (b.owner === p.index && b.done !== null && b.done <= frame && (b.to === null || b.to > frame) && !ROUTINE.has(b.type)) have.set(b.type, (have.get(b.type) ?? 0) + 1);
+      const rank = (type) => HALL_TYPES.has(type) ? 0 : PRODUCTION.has(type) ? 1 : 2;
+      const list = [...have].sort((a, b) => rank(a[0]) - rank(b[0]) || b[1] - a[1]).map(([type, k]) => `${k} ${n.unit(type)}`);
+      if (list.length) out.push(`${p.name}'s buildings: ${list.join(", ")}`);
+      const levels = /* @__PURE__ */ new Map();
+      for (const r of t.research) if (r.player === p.index && r.frame <= frame) {
+        const name = r.kind === "tech" ? n.tech(r.id) : n.upgrade(r.id);
+        levels.set(name, Math.max(levels.get(name) ?? 0, r.kind === "tech" ? 0 : r.level));
+      }
+      out.push(levels.size ? `${p.name}'s upgrades and research: ${[...levels].map(([name, level]) => level > 1 ? `${name} ${level}` : name).join(", ")}` : `${p.name} has no upgrades or research yet`);
+      const army = [...units.get(p.index) ?? /* @__PURE__ */ new Map()].filter(([type]) => !WORKERS2.has(type) && !ROUTINE.has(type)).sort((a, b) => b[1] - a[1]);
+      const count = army.reduce((k, [, c]) => k + c, 0);
+      out.push(army.length ? `${p.name}'s whole army, wherever it stands: ${army.map(([type, k]) => `${k} ${n.unit(type)}`).join(", ")} (${count} units, worth ${worth(q.armyValue[i] ?? 0)})` : `${p.name} has no army`);
     }
     return out;
+  };
+  const blocks = (from, to) => {
+    const out = [];
+    for (const p of game.players) {
+      const q = series2(p.index);
+      if (!q) continue;
+      for (const b of supplyBlocks(t.samples.frame, q.supplyUsed, q.supplyMax, to)) {
+        if (b.to < from || b.to - b.from < BLOCK_SAID) continue;
+        out.push({ frame: b.from, text: `${p.name} is supply blocked at ${q.supplyUsed[sample(b.from)] ?? 0} supply from ${clock(b.from)} to ${clock(b.to)}` });
+      }
+    }
+    return out;
+  };
+  const opening = (p) => {
+    const q = series2(p.index);
+    const seenTrain = /* @__PURE__ */ new Set();
+    const steps = p.build.filter((s, k, all) => {
+      if (s.frame > OPENING_UNTIL) return false;
+      if ((s.kind === "train" || s.kind === "morph") && WORKERS2.has(s.id)) return false;
+      if (s.kind === "train" || s.kind === "morph" && !isBuilding(s.id)) {
+        if (seenTrain.has(s.id)) return false;
+        seenTrain.add(s.id);
+      }
+      return !all.slice(0, k).some((b) => b.kind === s.kind && b.id === s.id && s.frame - b.frame < frameOf(30));
+    }).slice(0, OPENING_STEPS);
+    if (!steps.length) return null;
+    const what = (s) => s.kind === "upgrade" ? n.upgrade(s.id) : s.kind === "tech" ? n.tech(s.id) : n.unit(s.id);
+    return `${p.name} (${RACES[p.race] ?? "Terran"}), supply and time of each order: ${steps.map((s) => `${q ? `${q.supplyUsed[sample(s.frame)] ?? 0} ` : ""}${what(s)} (${clock(s.frame)})`).join(", ")}`;
   };
   const happened = (from, to) => {
     const out = [];
@@ -2884,7 +3040,7 @@ function castInput(game, clips, wishes) {
       if (!shown.has(s.player)) continue;
       const lost = [...s.lostTypes].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([type, k]) => plural(k, n.unit(type))).join(", ");
       const share = s.had > 0 ? Math.round(s.lostValue / s.had * 100) : 0;
-      out.push(`${nameOf(s.player)} lost ${lost || "nothing"}${s.lostValue ? ` (${worth(s.lostValue)} worth, ${share}% of everything they had)` : ""}${s.army ? `, with ${s.army} fighting unit${s.army === 1 ? "" : "s"} there when it began` : ""}`);
+      out.push(`${nameOf(s.player)} lost ${lost || "nothing"}${s.lostValue ? ` (${worth(s.lostValue)} worth, ${share}% of their whole army and workers)` : ""}${s.army ? `; ${s.army} of their fighting units were at the fight when it began` : ""}`);
     }
     out.push(f.winner === null ? "Neither side came out clearly ahead" : `${nameOf(f.winner)} came out ahead`);
     return out;
@@ -2892,20 +3048,14 @@ function castInput(game, clips, wishes) {
   const moments = clips.map((c, i) => {
     const since = i ? clips[i - 1].to : 0;
     const before = [];
-    if (i === 0) {
-      for (const p of game.players) {
-        const steps = p.build.filter((s, k, all) => s.frame <= c.from && !((s.kind === "train" || s.kind === "morph") && WORKERS2.has(s.id)) && !all.slice(0, k).some((b) => b.kind === s.kind && b.id === s.id && s.frame - b.frame < frameOf(30))).slice(0, OPENING_STEPS);
-        if (steps.length) before.push(`${p.name}'s opening: ${steps.map((s) => `${clock(s.frame)} ${s.kind === "upgrade" ? n.upgrade(s.id) : s.kind === "tech" ? n.tech(s.id) : n.unit(s.id)}${s.count > 1 ? ` \xD7${s.count}` : ""}`).join(", ")}`);
-      }
-    }
-    for (const h of happened(since, c.from)) before.push(`${clock(h.frame)} ${h.text}`);
-    before.push(...standing(c.from));
+    for (const h of [...happened(since, c.from), ...blocks(since, c.from)].sort((a, b) => a.frame - b.frame)) before.push(`${clock(h.frame)} ${h.text}`);
+    const state = standing(c.from);
     const l = lead(c.from);
-    if (l) before.push(l);
+    if (l) state.push(l);
     const events = [];
     for (const f of c.fights) {
-      const sides = f.sides.filter((s) => shown.has(s.player) && s.army).map((s) => `${nameOf(s.player)} with ${s.army} fighting unit${s.army === 1 ? "" : "s"}`);
-      events.push({ at: seconds(Math.max(c.from, f.from - frameOf(4))), text: `Armies close at ${n.place(f.x, f.y)}${sides.length ? `: ${sides.join(" against ")}` : ""}` });
+      const sides = f.sides.filter((s) => shown.has(s.player) && s.army).map((s) => `${s.army} of ${nameOf(s.player)}'s fighting units`);
+      events.push({ at: seconds(Math.max(c.from, f.from - frameOf(4))), text: `Armies close at ${n.place(f.x, f.y)}${sides.length ? `; at the fight: ${sides.join(", ")}` : ""}` });
     }
     for (const h of happened(c.from, c.to)) events.push({ at: seconds(h.frame), text: h.text });
     for (const x of losses2(c.from, c.to)) events.push({ at: seconds(x.frame), text: x.text });
@@ -2918,7 +3068,7 @@ function castInput(game, clips, wishes) {
     }
     const key = c.fights.find((f) => f.turning) ?? c.fights[0];
     const title = key ? `${key.turning ? "The turning point" : key.tier === "decisive" ? "A decisive fight" : key.tier === "major" ? "A major fight" : "A fight"} at ${n.place(key.x, key.y)}` : "The game";
-    return { from: seconds(c.from), to: seconds(c.to), title, before: before.slice(0, 40), events: events.slice(0, 120), after: after.slice(0, 20) };
+    return { from: seconds(c.from), to: seconds(c.to), title, state: state.slice(0, 20), before: before.slice(0, 40), events: events.slice(0, 120), after: after.slice(0, 20) };
   });
   return {
     game: {
@@ -2929,7 +3079,8 @@ function castInput(game, clips, wishes) {
         name: p.name,
         race: RACES[p.race] ?? "Terran",
         result: game.winner === null ? p.leftAt !== null ? "left" : "unknown" : p.index === game.winner ? "won" : p.leftAt !== null ? "left" : "lost"
-      }))
+      })),
+      openings: game.players.map(opening).filter((o) => o !== null)
     },
     moments,
     ...wishes?.trim() ? { wishes: wishes.trim() } : {}
@@ -3508,114 +3659,6 @@ function nearest2(xs, x) {
     else hi = mid;
   }
   return lo > 0 && Math.abs(xs[lo - 1] - x) <= Math.abs(xs[lo] - x) ? lo - 1 : lo;
-}
-
-// economy.ts
-var INCOME_WINDOW = FRAMES_PER_MINUTE;
-var LINE_REACH = 8 * 32;
-var MAX_SUPPLY = 200;
-var playing2 = (s) => s.supplyMax.some((n) => n > 0);
-function incomeRate(frames, gathered, window2 = INCOME_WINDOW) {
-  const out = new Array(frames.length).fill(0);
-  let j = 0;
-  for (let i = 0; i < frames.length; i++) {
-    while (j < i && frames[i] - frames[j] > window2) j++;
-    const span = frames[i] - frames[j];
-    out[i] = span > 0 ? (gathered[i] - gathered[j]) * FRAMES_PER_MINUTE / span : 0;
-  }
-  return out;
-}
-function supplyBlocks(frames, used, max, until = Infinity) {
-  const out = [];
-  let from = -1;
-  for (let i = 0; i < frames.length && frames[i] <= until; i++) {
-    const blocked = max[i] > 0 && max[i] < MAX_SUPPLY && used[i] >= max[i];
-    if (blocked && from < 0) from = frames[i];
-    else if (!blocked && from >= 0) {
-      out.push({ from, to: frames[i] });
-      from = -1;
-    }
-  }
-  if (from >= 0) out.push({ from, to: Math.min(until, frames[frames.length - 1]) });
-  return out.filter((b) => b.to > b.from);
-}
-function meanUntil(frames, values, until) {
-  let sum = 0, n = 0;
-  for (let i = 0; i < frames.length && frames[i] <= until; i++) {
-    sum += values(i);
-    n++;
-  }
-  return n ? sum / n : 0;
-}
-function lineSaturation(t, lines, index, players) {
-  const p = t.positions;
-  if (!p || !lines.lines.length) return [];
-  const minutes = Math.ceil(t.frames / FRAMES_PER_MINUTE);
-  const sums = /* @__PURE__ */ new Map();
-  const samplesIn = new Array(minutes).fill(0);
-  const want = new Set(players);
-  for (let i = 0; i < p.frame.length; i++) {
-    const m = Math.min(minutes - 1, Math.floor(p.frame[i] / FRAMES_PER_MINUTE));
-    samplesIn[m]++;
-    for (let r = p.start[i]; r < p.start[i + 1]; r++) {
-      const u = p.unit[r], owner = index.owner[u];
-      if (!want.has(owner) || !WORKERS2.has(index.type[u])) continue;
-      const x = p.x[r], y = p.y[r];
-      let best = -1, bestD = LINE_REACH;
-      for (let l = 0; l < lines.lines.length; l++) {
-        const d = Math.hypot(lines.lines[l].x - x, lines.lines[l].y - y);
-        if (d <= bestD) {
-          bestD = d;
-          best = l;
-        }
-      }
-      if (best < 0) continue;
-      const key = `${best}:${owner}`;
-      let row = sums.get(key);
-      if (!row) {
-        row = { line: best, player: owner, sum: new Array(minutes).fill(0) };
-        sums.set(key, row);
-      }
-      row.sum[m]++;
-    }
-  }
-  const out = [];
-  for (const row of sums.values()) {
-    const perMinute = row.sum.map((s, m) => samplesIn[m] ? s / samplesIn[m] : 0);
-    const first = perMinute.findIndex((n) => n >= 3);
-    if (first < 0) continue;
-    const l = lines.lines[row.line];
-    out.push({ line: row.line, player: row.player, x: l.x, y: l.y, fields: l.fields, perMinute, first });
-  }
-  return out.sort((a, b) => a.first - b.first || a.player - b.player);
-}
-function economy(t, lines, index, leftAt = /* @__PURE__ */ new Map()) {
-  const f = t.samples.frame;
-  const end = f[f.length - 1] ?? 0;
-  const inGame = t.samples.players.filter(playing2);
-  const exact = inGame.length > 0 && inGame.every((s) => Array.isArray(s.mineralsGathered) && s.mineralsGathered.length === f.length);
-  const players = inGame.map((s) => {
-    const until = leftAt.get(s.slot) ?? end;
-    let last = 0;
-    while (last + 1 < f.length && f[last + 1] <= until) last++;
-    const income = exact ? { minerals: incomeRate(f, s.mineralsGathered), gas: incomeRate(f, s.gasGathered) } : null;
-    const mined = exact ? { minerals: s.mineralsGathered[last] - s.mineralsGathered[0], gas: s.gasGathered[last] - s.gasGathered[0] } : null;
-    const minutes = (f[last] - f[0]) / FRAMES_PER_MINUTE;
-    let peak = { n: 0, frame: 0 };
-    for (let i = 0; i <= last; i++) if (s.workers[i] > peak.n) peak = { n: s.workers[i], frame: f[i] };
-    const blocks = supplyBlocks(f, s.supplyUsed, s.supplyMax, until);
-    return {
-      slot: s.slot,
-      income,
-      mined,
-      averageIncome: mined && minutes > 0 ? (mined.minerals + mined.gas) / minutes : null,
-      averageBank: meanUntil(f, (i) => s.minerals[i] + s.gas[i], until),
-      peakWorkers: peak,
-      blocks,
-      blockedFrames: blocks.reduce((a, b) => a + b.to - b.from, 0)
-    };
-  });
-  return { exact, players, lines: lineSaturation(t, lines, index, players.map((p) => p.slot)), minutes: Math.ceil(t.frames / FRAMES_PER_MINUTE) };
 }
 
 // tech.ts
