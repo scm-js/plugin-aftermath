@@ -172,6 +172,39 @@ change). Switching tabs switches replays, each keeping its own place on the time
 closing the tab closes the replay. With an ordinary map in front, Aftermath's panels go
 away; **View ▸ Aftermath** opens the panel anyway, to drop replays on.
 
+**The replay, or the map.** In the editor at scmjs.dev, with your copy of StarCraft given to
+the site, a replay's tab opens on the **Replay**: the replay played out by the game's own code
+in the map's place, with its own graphics: Remastered's when your copy is Remastered and **View ▸ Remastered Graphics** is ticked, the classic ones otherwise. The switch in the top-left corner goes between it and the **Map**, the
+overhead view with Aftermath's marks, heat maps and Map stats. The timeline drives
+whichever is shown: Play, the speed, a press on the timeline, the keys and Spectate's
+camera all move the game while it is in front, and the timeline follows the game. Once the
+game is analysed, a jump anywhere in it takes about a second: the analysis keeps moments of
+the game as it goes, and the game starts from the nearest. A jump past where the analysis
+has got to plays the game ahead, which takes longer; the game is seen moving on meanwhile,
+with a spinner over it and the timeline saying how far it has got. The arrow keys scroll the game while it has the keyboard, as in the game;
+the other keys stay Aftermath's. The game is shown without its console: the editor's
+minimap shows the game's units as the game's own minimap would, its box is where the game
+looks, and a press or a drag on it moves the game's camera there. Switching between the
+replay and the map keeps your place: each opens where the other was looking, at the same
+scale. The replay can show between half and twice as much of the map as the game itself
+does, so a map zoomed further out or in than that opens the replay at the nearest it can.
+Map stats shows on the map, so opening it switches to the
+map, and closing it goes back to the game. One game is shown at a time: switching to
+another replay's tab starts that one.
+
+Over the replay, **Orders** draws the recent orders on the game itself, **Legend** keys
+them, and Spectate's line at the top says what the camera shows. The **Vision** menu under
+the replay shows the game as everyone sees it, or through one player's eyes: only what that
+player could see, with the fog of war over the rest, on the editor's minimap too. With a
+player chosen, Spectate follows that player's game: their fights, their army, their new
+bases, and an enemy army about to meet theirs seen from their side.
+
+Point at a unit or a building in the replay and a tooltip says what the game's console
+would: its name and owner, its hit points, shields and energy, and what it is doing. For a
+building that is training, researching, upgrading or still going up, that is a progress bar,
+with the training queue under it. In a replay this works for every player's units, as the
+game's own replay console does, but only for what the chosen eyes can see.
+
 While a replay's tab is in front:
 
 **Under the map**, the timeline:
@@ -183,9 +216,10 @@ While a replay's tab is in front:
   **End** go to the start and the end. These keys belong to the replay only while its tab
   is in front.
 - Four switches, lit while they are on: **Spectate** (the camera follows the action, see
-  below), **Orders** (the recent orders over the units drawn faintly), **Map stats** (every
-  replay of the map together, see above) and **Legend** (a key to the marks in the map's
-  bottom-left corner).
+  below), **Orders** (the recent orders over the units drawn faintly, or over the game in
+  the Replay view), **Map stats** (every replay of the map together, see above) and
+  **Legend** (a key to the marks in the map's bottom-left corner).
+- In the Replay view, the **Vision** menu: everyone, or one player's eyes (see above).
 - How the analysis is going, or that it is done.
 - The graph's menu: actions per minute, or, once the game is analysed, the army lead (in a
   game of two), army value, army size, workers, supply, minerals or gas in the bank, or
@@ -226,7 +260,13 @@ action the way an observer would. Aftermath works out where to look for the whol
 fight that matters (from a few seconds before it starts, held until it is over), two armies
 about to meet, a new base going down, and otherwise each player's main army on the move,
 taking turns; early on, before there are armies, it looks at the players' main bases in
-turn. A line at the top of the map says what the camera shows. Scroll the map, or go to a
+turn. It moves the way an observer does, too. It holds still while the action stays near
+the middle of the screen. It pans to something within reach, starting a moment before it
+happens, and cuts to anything further than a screen or so away. It keeps a moving army a
+little behind the middle, so you see where the army is heading. A pan takes the same time
+to watch at any speed. In the Replay view the game moves its own camera along this path as
+it draws, so the camera stays smooth and in step with the picture. A line at the top of the
+map says what the camera shows. Scroll the map, or go to a
 place from the panel, and the camera lets go (the switch goes dark); press **F** or the
 switch and it follows again. Going to a fight, or **N** and **Shift+N**, keep it following.
 

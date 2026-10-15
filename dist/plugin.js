@@ -954,6 +954,10 @@ var KO = {
   "Open Replay\u2026": "\uB9AC\uD50C\uB808\uC774 \uC5F4\uAE30\u2026",
   "Ordered {n} times": "{n}\uBC88 \uBA85\uB839\uD568",
   "Pause": "\uC77C\uC2DC \uC815\uC9C0",
+  "Starting the game of {name}\u2026": "{name} \uAC8C\uC784\uC744 \uC2DC\uC791\uD558\uB294 \uC911\u2026",
+  "Going to {time}\u2026": "{time}(\uC73C)\uB85C \uAC00\uB294 \uC911\u2026",
+  "Going to {time}\u2026 {percent}%": "{time}(\uC73C)\uB85C \uAC00\uB294 \uC911\u2026 {percent}%",
+  "The game could not be shown: {message}": "\uAC8C\uC784\uC744 \uBCF4\uC5EC \uC904 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4: {message}",
   "Play": "\uC7AC\uC0DD",
   "Playback speed": "\uC7AC\uC0DD \uC18D\uB3C4",
   "Protoss": "\uD504\uB85C\uD1A0\uC2A4",
@@ -1176,7 +1180,24 @@ var KO = {
   "Back to the game": "\uAC8C\uC784\uC73C\uB85C \uB3CC\uC544\uAC00\uAE30",
   "Every replay of this map you have open, taken together: where players start, the bases they take, where they fight ({n} replays)": "\uC5F4\uC5B4 \uB454 \uC774 \uB9F5\uC758 \uB9AC\uD50C\uB808\uC774\uB97C \uBAA8\uB450 \uD568\uAED8 \uBD05\uB2C8\uB2E4. \uC5B4\uB514\uC11C \uC2DC\uC791\uD558\uB294\uC9C0, \uC5B4\uB290 \uAE30\uC9C0\uB97C \uAC00\uC838\uAC00\uB294\uC9C0, \uC5B4\uB514\uC11C \uC2F8\uC6B0\uB294\uC9C0(\uB9AC\uD50C\uB808\uC774 {n}\uAC1C)",
   "Every replay of this map you have open, taken together: where players start, the bases they take, where they fight. Add more replays of the map there.": "\uC5F4\uC5B4 \uB454 \uC774 \uB9F5\uC758 \uB9AC\uD50C\uB808\uC774\uB97C \uBAA8\uB450 \uD568\uAED8 \uBD05\uB2C8\uB2E4. \uC5B4\uB514\uC11C \uC2DC\uC791\uD558\uB294\uC9C0, \uC5B4\uB290 \uAE30\uC9C0\uB97C \uAC00\uC838\uAC00\uB294\uC9C0, \uC5B4\uB514\uC11C \uC2F8\uC6B0\uB294\uC9C0. \uAC70\uAE30\uC11C \uC774 \uB9F5\uC758 \uB9AC\uD50C\uB808\uC774\uB97C \uB354 \uCD94\uAC00\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
-  "The timeline is one game's: press it to go back to that game": "\uD0C0\uC784\uB77C\uC778\uC740 \uAC8C\uC784 \uD558\uB098\uC758 \uAC83\uC785\uB2C8\uB2E4. \uB204\uB974\uBA74 \uADF8 \uAC8C\uC784\uC73C\uB85C \uB3CC\uC544\uAC11\uB2C8\uB2E4"
+  "The timeline is one game's: press it to go back to that game": "\uD0C0\uC784\uB77C\uC778\uC740 \uAC8C\uC784 \uD558\uB098\uC758 \uAC83\uC785\uB2C8\uB2E4. \uB204\uB974\uBA74 \uADF8 \uAC8C\uC784\uC73C\uB85C \uB3CC\uC544\uAC11\uB2C8\uB2E4",
+  "O: what the players told their units to do in the last eight seconds, over the game": "O: \uCD5C\uADFC 8\uCD08 \uB3D9\uC548 \uD50C\uB808\uC774\uC5B4\uAC00 \uC720\uB2DB\uC5D0\uAC8C \uB0B4\uB9B0 \uBA85\uB839\uC744 \uAC8C\uC784 \uC704\uC5D0 \uD45C\uC2DC",
+  "Over the game the legend keys the orders: turn Orders on to see it": "\uAC8C\uC784 \uC704\uC5D0\uC11C\uB294 \uBC94\uB840\uAC00 \uBA85\uB839 \uAE30\uD638\uB97C \uC124\uBA85\uD569\uB2C8\uB2E4. \uBCF4\uB824\uBA74 \uBA85\uB839\uC744 \uCF1C\uC138\uC694",
+  "Vision: everyone": "\uC2DC\uC57C: \uBAA8\uB450",
+  "Under construction": "\uAC74\uC124 \uC911",
+  "Training {name}": "{name} \uC0DD\uC0B0 \uC911",
+  "Researching {name}": "{name} \uC5F0\uAD6C \uC911",
+  "Upgrading {name}": "{name} \uC5C5\uADF8\uB808\uC774\uB4DC \uC911",
+  "Morphing into {name}": "{name}(\uC73C)\uB85C \uBCC0\uD0DC \uC911",
+  "Building {name}": "{name} \uAC74\uC124 \uC911",
+  "Nuclear missile ready": "\uD575\uBBF8\uC0AC\uC77C \uC900\uBE44 \uC644\uB8CC",
+  "Calling down a nuclear strike": "\uD575 \uACF5\uACA9 \uC720\uB3C4 \uC911",
+  "Hit points": "\uCCB4\uB825",
+  "Shields": "\uBCF4\uD638\uB9C9",
+  "Energy": "\uC5D0\uB108\uC9C0",
+  "{n} left": "{n} \uB0A8\uC74C",
+  "Vision: {name}": "\uC2DC\uC57C: {name}",
+  "Whose eyes the game is seen through: one player's shows only what they could see, with the fog of war": "\uB204\uAD6C\uC758 \uC2DC\uC57C\uB85C \uAC8C\uC784\uC744 \uBCFC\uC9C0. \uD55C \uD50C\uB808\uC774\uC5B4\uB97C \uACE0\uB974\uBA74 \uADF8 \uD50C\uB808\uC774\uC5B4\uAC00 \uBCFC \uC218 \uC788\uB358 \uAC83\uB9CC \uC804\uC7A5\uC758 \uC548\uAC1C\uC640 \uD568\uAED8 \uBCF4\uC785\uB2C8\uB2E4"
 };
 
 // played.ts
@@ -1800,7 +1821,7 @@ function groupsAt(t, index, sample, cost) {
   }
   return out;
 }
-function direct(t, index, fights2, bases2, cost) {
+function direct(t, index, fights2, bases2, cost, only) {
   const p = t.positions;
   if (!p || !p.frame.length) return [];
   const costed = t.events.some((e) => e.kind === "died" && cost(e.type) > 0);
@@ -1841,14 +1862,15 @@ function direct(t, index, fights2, bases2, cost) {
       const ga = groups[a], gb = groups[b];
       if (ga.player === gb.player || Math.hypot(ga.x - gb.x, ga.y - gb.y) > MEETING) continue;
       const players = [ga.player, gb.player].sort((x, y) => x - y);
-      out.push({ kind: "meeting", key: `m${players.join("-")}`, score: 40 + weight(ga) + weight(gb), x: (ga.x + gb.x) / 2, y: (ga.y + gb.y) / 2, players });
+      const own = only === void 0 ? null : ga.player === only ? ga : gb.player === only ? gb : null;
+      out.push({ kind: "meeting", key: `m${players.join("-")}`, score: 40 + weight(ga) + weight(gb), x: own ? own.x : (ga.x + gb.x) / 2, y: own ? own.y : (ga.y + gb.y) / 2, players });
     }
     bases2.forEach((b, n) => {
       if (frame >= b.frame && frame <= b.frame + BASE_LOOK) out.push({ kind: "base", key: `b${n}`, score: 35, x: b.x, y: b.y, players: [b.player], base: b });
     });
     for (const [player, g] of mains) previous2.set(player, g);
     for (const [player, at] of homes) out.push({ kind: "home", key: `h${player}`, score: 2, x: at.x, y: at.y, players: [player] });
-    return out;
+    return only === void 0 ? out : out.filter((c) => c.players.includes(only));
   };
   const shots = [];
   let cur = null;
@@ -1912,6 +1934,114 @@ function lookAt(shot, frame) {
   if (!b || frame <= a.frame) return { x: a.x, y: a.y };
   const k = Math.min(1, (frame - a.frame) / Math.max(1, b.frame - a.frame));
   return { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k };
+}
+
+// camera.ts
+var EVERY = 2;
+var CUT = 1.25;
+var DEAD = { fight: 0.2, other: 0.4 };
+var EASE = { seconds: 0.2, fewestFrames: 4, mostFrames: 160 };
+var LEAD_FRAMES = 36;
+var LEAD_MOST = 0.3;
+var LEAD_SPEED = 1.5;
+function smoothed(path) {
+  if (path.length < 3) return path;
+  return path.map((p, i) => {
+    const a = path[Math.max(0, i - 1)], b = path[Math.min(path.length - 1, i + 1)];
+    return { frame: p.frame, x: (a.x + 2 * p.x + b.x) / 4, y: (a.y + 2 * p.y + b.y) / 4 };
+  });
+}
+function along(path, frame) {
+  let i = 0;
+  while (i + 1 < path.length && path[i + 1].frame <= frame) i++;
+  const p1 = path[i], p2 = path[i + 1];
+  if (!p2 || frame <= p1.frame) return { x: p1.x, y: p1.y };
+  const p0 = path[i - 1] ?? p1, p3 = path[i + 2] ?? p2;
+  const t = Math.min(1, (frame - p1.frame) / Math.max(1, p2.frame - p1.frame)), t2 = t * t, t3 = t2 * t;
+  const cr = (a, b, c, d) => 0.5 * (2 * b + (c - a) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (3 * b - a - 3 * c + d) * t3);
+  return { x: cr(p0.x, p1.x, p2.x, p3.x), y: cr(p0.y, p1.y, p2.y, p3.y) };
+}
+function cameraTrack(shots, o) {
+  if (!shots.length) return null;
+  const w = Math.max(1, o.view.width), h = Math.max(1, o.view.height);
+  const clampX = (x2) => o.map.width <= w ? o.map.width / 2 : Math.max(w / 2, Math.min(o.map.width - w / 2, x2));
+  const clampY = (y2) => o.map.height <= h ? o.map.height / 2 : Math.max(h / 2, Math.min(o.map.height - h / 2, y2));
+  const paths = /* @__PURE__ */ new Map();
+  const pathOf = (s) => {
+    let p = paths.get(s);
+    if (!p) {
+      p = smoothed(s.path);
+      paths.set(s, p);
+    }
+    return p;
+  };
+  const aim = (s, frame) => {
+    const path = pathOf(s), at = along(path, frame);
+    if (s.kind === "army" && path.length > 1) {
+      const a = along(path, frame - LEAD_FRAMES / 2), b = along(path, frame + LEAD_FRAMES / 2);
+      const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy);
+      if (len > 0) {
+        const moving = Math.min(1, len / LEAD_FRAMES / LEAD_SPEED);
+        const ahead = Math.min(len, LEAD_MOST * Math.min(w, h) / 2) + moving * DEAD.other * Math.min(w, h) / 2;
+        at.x += dx / len * ahead;
+        at.y += dy / len * ahead;
+      }
+    }
+    return { x: clampX(at.x), y: clampY(at.y) };
+  };
+  const n = Math.floor(Math.max(0, o.frames) / EVERY) + 2;
+  const rawX = new Float32Array(n), rawY = new Float32Array(n), cut2 = new Uint8Array(n);
+  let x = 0, y = 0, shown = -1;
+  for (let i = 0; i < n; i++) {
+    const frame = i * EVERY;
+    const si = Math.max(0, shotAt(shots, frame)), shot = shots[si], target = aim(shot, frame);
+    const dead = shot.kind === "fight" ? DEAD.fight : DEAD.other;
+    const dx = target.x - x, dy = target.y - y, away = Math.max(Math.abs(dx) / w, Math.abs(dy) / h);
+    if (i === 0 || away > CUT) {
+      x = target.x;
+      y = target.y;
+      cut2[i] = 1;
+    } else if (si !== shown && away > dead / 2) {
+      x = target.x;
+      y = target.y;
+    } else {
+      const zx = dead * w / 2, zy = dead * h / 2;
+      if (Math.abs(dx) > zx) x = target.x - Math.sign(dx) * zx;
+      if (Math.abs(dy) > zy) y = target.y - Math.sign(dy) * zy;
+    }
+    shown = si;
+    rawX[i] = x;
+    rawY[i] = y;
+  }
+  const sigma = Math.max(EASE.fewestFrames, Math.min(EASE.mostFrames, EASE.seconds * Math.max(1, o.rate))) / EVERY;
+  const reach = Math.ceil(sigma * 3), bell = new Float64Array(reach + 1);
+  for (let k = 0; k <= reach; k++) bell[k] = Math.exp(-(k * k) / (2 * sigma * sigma));
+  const xs = new Float32Array(n), ys = new Float32Array(n);
+  for (let from = 0; from < n; ) {
+    let to = from + 1;
+    while (to < n && !cut2[to]) to++;
+    for (let i = from; i < to; i++) {
+      let sx = 0, sy = 0, sw = 0;
+      for (let j = Math.max(from, i - reach), last = Math.min(to - 1, i + reach); j <= last; j++) {
+        const b = bell[Math.abs(j - i)];
+        sx += rawX[j] * b;
+        sy += rawY[j] * b;
+        sw += b;
+      }
+      xs[i] = sx / sw;
+      ys[i] = sy / sw;
+    }
+    from = to;
+  }
+  return { every: EVERY, x: xs, y: ys, cut: cut2 };
+}
+function trackAt(t, frame) {
+  const last = t.x.length - 1, pos = Math.max(0, frame) / t.every, i = Math.min(last, Math.floor(pos));
+  if (i >= last || t.cut[i + 1]) return { x: t.x[i], y: t.y[i] };
+  const a = i > 0 && !t.cut[i] ? i - 1 : i, d = i + 2 <= last && !t.cut[i + 2] ? i + 2 : i + 1;
+  const k = pos - i, k2 = k * k, k3 = k2 * k;
+  const cr = (v) => 0.5 * (2 * v[i] + (v[i + 1] - v[a]) * k + (2 * v[a] - 5 * v[i] + 4 * v[i + 1] - v[d]) * k2 + (3 * v[i] - v[a] - 3 * v[i + 1] + v[d]) * k3);
+  return { x: cr(t.x), y: cr(t.y) };
 }
 
 // story.ts
@@ -2029,6 +2159,455 @@ function hardestHit(f) {
   return worst;
 }
 
+// gameview.ts
+var MINIMAP_MS = 66;
+var GameView = class {
+  api;
+  hooks;
+  handle;
+  words;
+  element = null;
+  view = null;
+  subs = [];
+  /** The replay loaded in the viewer, and the one being loaded. */
+  holding = null;
+  wanted = null;
+  /** Whether the engine can play here: unknown until asked, then kept. */
+  canPlay = null;
+  asking = null;
+  sim = null;
+  changed;
+  /**
+   * A seek asked for and not yet arrived: until the viewer shows a frame there, what it says it shows is the moment
+   * it is leaving (it reports the frame on screen while it runs ahead), which is not the clock any more.
+   */
+  aiming = null;
+  /** Where the game is to look once it holds the replay (the map's place when the switch came), in pixels. */
+  look = null;
+  /** The squares of the game's minimap, for the editor's, while it holds a replay. */
+  units = null;
+  /** Its fog as a picture of the map a pixel a tile (black never seen, half black seen before), made once per squares. */
+  fogImage = null;
+  /** The page plays camera tracks (the replay loaded said so), and the track it was last given, if it still follows it. */
+  tracks = false;
+  sent = null;
+  /** The frame the game last said it shows, when, and whether it was playing (`frameNow`). */
+  said = null;
+  /** How much of the map the game shows, pixels, as it last said. */
+  shows = null;
+  /** The editor's minimap is told where the game looks at most this often (it redraws for each). */
+  told = 0;
+  telling = null;
+  /** Over the game while it starts or a jump runs: a spinner and a line (`busy`). */
+  busyBox = null;
+  busyLine = null;
+  busyTimer = null;
+  /** View ▸ Remastered Graphics as the game was last told it (null: not yet, for the replay loaded). */
+  remastered = null;
+  /** Whose eyes the game was last told, for the replay loaded (undefined: not yet; the page opens a replay on its own). */
+  eyesTold = void 0;
+  /**
+   * Over the game, under the spinner: what the plugin draws there (`setOverlay`), in the game's place — the map's
+   * pixels where the game shows them, from where the game last said it looks.
+   */
+  over = null;
+  drawOver = null;
+  looking = null;
+  /** The tooltip by the pointer over the game (`tip`), in the editor's own style. */
+  tipBox = null;
+  constructor(api, hooks, title, words) {
+    this.api = api;
+    this.hooks = hooks;
+    this.words = words;
+    this.handle = api.ui.mapView({
+      title,
+      mount: (el) => {
+        this.element = el;
+        const over = document.createElement("canvas");
+        over.className = "afm-over";
+        el.append(over);
+        this.over = over;
+        const box = document.createElement("div"), spin = document.createElement("span"), line = document.createElement("span");
+        box.className = "afm-busy";
+        box.hidden = true;
+        box.setAttribute("role", "status");
+        spin.className = "afm-spin";
+        box.append(spin, line);
+        const tip = document.createElement("div");
+        tip.className = "tooltip afm-tip";
+        tip.hidden = true;
+        el.append(box, tip);
+        this.tipBox = tip;
+        this.busyBox = box;
+        this.busyLine = line;
+      },
+      onShow: (look) => this.lookAt(look),
+      minimap: {
+        draw: (ctx, m) => this.drawUnits(ctx, m),
+        press: (x, y) => {
+          if (this.view && this.loaded) {
+            this.view.camera(x, y);
+            hooks.movedByUser();
+          }
+        }
+      }
+    });
+    this.changed = this.handle.onChange((on) => {
+      hooks.shown(on);
+      this.redrawOver();
+      if (!on) this.hooks.hover(null);
+    });
+  }
+  /** A replay is loaded in the viewer and no other is on its way. */
+  get loaded() {
+    return this.holding !== null && this.wanted === null;
+  }
+  /** A replay is on its way into the viewer. */
+  get loading() {
+    return this.wanted !== null;
+  }
+  /**
+   * The spinner over the game, with `text` beside it; null takes it away. It shows only once the wait has gone on a
+   * moment, so a quick jump does not flash it.
+   */
+  busy(text) {
+    const box = this.busyBox;
+    if (!box || !this.busyLine) return;
+    if (text === null) {
+      if (this.busyTimer) clearTimeout(this.busyTimer);
+      this.busyTimer = null;
+      box.hidden = true;
+      return;
+    }
+    this.busyLine.textContent = text;
+    if (!box.hidden || this.busyTimer) return;
+    this.busyTimer = setTimeout(() => {
+      this.busyTimer = null;
+      box.hidden = false;
+    }, 200);
+  }
+  /** Look where `look` says, at its scale (the viewer keeps to what the game allows): now, or once the replay is in. */
+  lookAt(look) {
+    if (this.view && this.loaded) {
+      this.view.camera(look.x, look.y, look.height);
+      this.sent = null;
+      this.look = null;
+    } else this.look = look;
+  }
+  /** The game's minimap on the editor's: its fog over the ground, as the game darkens it, then its squares. */
+  drawUnits(ctx, m) {
+    const u = this.units;
+    if (!u || !this.loaded) return;
+    const fog = this.fogOf(u);
+    if (fog) {
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(fog, m.x(0), m.y(0), fog.width * 32 * m.scale, fog.height * 32 * m.scale);
+      ctx.restore();
+    }
+    const { boxes, colours } = u;
+    for (let i = 0; i < colours.length; i++) {
+      const w = Math.max(2, boxes[i * 4 + 2] * m.scale), h = Math.max(2, boxes[i * 4 + 3] * m.scale);
+      ctx.fillStyle = `#${colours[i].toString(16).padStart(6, "0")}`;
+      ctx.fillRect(m.x(boxes[i * 4]) - w / 2, m.y(boxes[i * 4 + 1]) - h / 2, w, h);
+    }
+  }
+  /** The fog of these squares as a picture a pixel a tile; null when there is none (the fog off, or an older game page). */
+  fogOf(u) {
+    if (!u.fog || !u.wide) return null;
+    if (this.fogImage?.of === u) return this.fogImage.canvas;
+    const wide = u.wide, high = u.fog.length / wide;
+    const canvas = this.fogImage?.canvas ?? document.createElement("canvas");
+    if (canvas.width !== wide || canvas.height !== high) {
+      canvas.width = wide;
+      canvas.height = high;
+    }
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    const image = ctx.createImageData(wide, high), px = image.data;
+    for (let i = 0; i < u.fog.length; i++) px[i * 4 + 3] = u.fog[i] === 2 ? 0 : u.fog[i] === 1 ? 128 : 255;
+    ctx.putImageData(image, 0, 0);
+    this.fogImage = { of: u, canvas };
+    return canvas;
+  }
+  setService(sim) {
+    if (sim === this.sim) return;
+    this.sim = sim;
+    this.canPlay = null;
+    this.asking = null;
+  }
+  /** Whether the Game view can be offered: the scm-sim plugin has one, and the browser has the game's files. */
+  async available() {
+    const sim = this.sim;
+    if (!sim?.present || typeof sim.view !== "function") return false;
+    if (this.canPlay !== null) return this.canPlay;
+    this.asking ??= sim.status().then((s) => this.canPlay = s.available, () => this.canPlay = false);
+    return this.asking;
+  }
+  /** Offer the Game view on a replay's tab, and show it there when `show`. */
+  async offer(entry, show) {
+    if (entry.docId === null || !await this.available()) return false;
+    this.handle.offer(true, entry.docId);
+    if (show) this.handle.show(true, entry.docId);
+    return true;
+  }
+  /** The tab in front shows the game. */
+  get shown() {
+    return this.handle.isShown();
+  }
+  /** Show the map (or the game again) on a replay's tab. */
+  show(on, docId) {
+    this.handle.show(on, docId);
+  }
+  /** The viewer holds this replay, loaded and ready to be driven. */
+  holds(id) {
+    return id !== null && this.holding === id && this.wanted === null;
+  }
+  make() {
+    if (this.view) return this.view;
+    const sim = this.sim;
+    if (!sim?.view || !this.element) return null;
+    const view = sim.view(this.element);
+    this.view = view;
+    this.subs = [
+      view.onFrame((f) => {
+        if (this.holding === null || this.wanted !== null) return;
+        const a = this.aiming;
+        if (a) {
+          if (f.seeking !== null) {
+            a.sawSeeking = true;
+            a.from ??= f.seeking;
+            a.at = f.seeking;
+            this.hooks.seeking();
+            return;
+          }
+          const near = Math.abs(f.frame - a.frame) <= 48;
+          const ended = a.sawSeeking && a.at !== null && f.frame >= a.at && f.frame <= a.frame + 48;
+          if (!near && !ended) return;
+          this.aiming = null;
+        }
+        this.said = { frame: f.frame, at: performance.now(), playing: f.playing };
+        this.hooks.frame(this.holding, f);
+      }),
+      view.onCamera((c) => {
+        if (!this.loaded) return;
+        if (c.width > 0 && c.height > 0) {
+          this.shows = { width: c.width, height: c.height };
+          this.looking = { x: c.x, y: c.y, width: c.width, height: c.height };
+          this.redrawOver();
+          this.tellMinimap({ x: c.x, y: c.y, width: c.width, height: c.height }, c.byUser);
+        }
+        if (c.byUser) {
+          this.sent = null;
+          this.hooks.movedByUser();
+        }
+      })
+    ];
+    if (typeof view.onHover === "function") this.subs.push(view.onHover((h) => this.hooks.hover(this.loaded && this.shown ? h : null)));
+    if (typeof view.onUnits === "function") this.subs.push(view.onUnits((u) => {
+      if (!this.loaded) return;
+      this.units = u;
+      this.handle.redrawMinimap?.();
+    }));
+    return view;
+  }
+  /**
+   * Load `entry` into the viewer when it holds another, then put it at `frame`, playing or paused at `speed`. Resolves
+   * false when it could not be (the viewer is gone, or the replay did not play), with the reason on `state`.
+   */
+  async hold(entry, frame, playing2, speed) {
+    const view = this.make();
+    if (!view) return false;
+    if (this.holding !== entry.id || this.wanted !== null) {
+      if (this.wanted === entry.id) return false;
+      this.wanted = entry.id;
+      this.units = null;
+      this.looking = null;
+      this.redrawOver();
+      this.hooks.hover(null);
+      this.handle.redrawMinimap?.();
+      this.hooks.state(this.words.loading(entry.fileName));
+      this.sent = null;
+      this.said = null;
+      try {
+        const viewed = await view.load(entry.bytes, entry.fileName);
+        this.tracks = viewed.follows === true && typeof view.follow === "function";
+      } catch (err) {
+        if (this.wanted !== entry.id) return false;
+        this.wanted = null;
+        this.holding = null;
+        this.hooks.state(this.words.failed(err instanceof Error ? err.message : String(err)));
+        return false;
+      }
+      if (this.wanted !== entry.id) return false;
+      this.wanted = null;
+      this.holding = entry.id;
+      this.hooks.state(null);
+      this.remastered = null;
+      this.eyesTold = void 0;
+    }
+    this.graphics();
+    this.eyes(entry.eyes);
+    if (this.look) this.lookAt(this.look);
+    view.speed(speed);
+    if (Math.round(frame) > 0) this.seek(frame);
+    view.play(playing2);
+    return true;
+  }
+  /**
+   * The game drawn with Remastered's pictures or the classic ones as View ▸ Remastered Graphics says, at once when the
+   * tick moves. (The game has its own choice, the play page's; the editor's is the one the person sees here.)
+   */
+  graphics() {
+    const view = this.view, on = this.api.view.flags().hdGraphics === true;
+    if (!view || !this.loaded || on === this.remastered) return;
+    this.remastered = on;
+    view.options({ remastered: on }).catch(() => {
+    });
+  }
+  /** See the game through a player's eyes, with the fog of war (their slot), or everyone's with none (null). */
+  eyes(slot) {
+    const view = this.view;
+    if (!view || !this.loaded || slot === this.eyesTold) return;
+    this.eyesTold = slot;
+    view.options({ fog: slot !== null }).catch(() => {
+    });
+    if (slot !== null) view.player(slot);
+  }
+  /**
+   * Show `content` in the tooltip by the pointer, at `x`, `y` in the game's CSS pixels (below and right of it, or the
+   * other side where it would leave the game); null hides it.
+   */
+  tip(content, x = 0, y = 0) {
+    const box = this.tipBox, el = this.element;
+    if (!box || !el) return;
+    if (!content) {
+      box.hidden = true;
+      box.replaceChildren();
+      return;
+    }
+    box.replaceChildren(content);
+    box.hidden = false;
+    const w = box.offsetWidth, h = box.offsetHeight, room = { w: el.clientWidth, h: el.clientHeight };
+    const left = x + 16 + w <= room.w ? x + 16 : Math.max(4, x - 12 - w);
+    const top = y + 20 + h <= room.h ? y + 20 : Math.max(4, y - 10 - h);
+    box.style.left = `${Math.round(left)}px`;
+    box.style.top = `${Math.round(top)}px`;
+  }
+  /** What to draw over the game, given the map's pixels where the game shows them. */
+  setOverlay(draw) {
+    this.drawOver = draw;
+    this.redrawOver();
+  }
+  /** Draw over the game again: when what is drawn changed (the game's own moves redraw it as it says them). */
+  redrawOver() {
+    const c = this.over, el = this.element;
+    if (!c || !el) return;
+    const dpr = window.devicePixelRatio || 1;
+    const cw = Math.max(1, Math.round(el.clientWidth * dpr)), ch = Math.max(1, Math.round(el.clientHeight * dpr));
+    if (c.width !== cw || c.height !== ch) {
+      c.width = cw;
+      c.height = ch;
+    }
+    const ctx = c.getContext("2d");
+    if (!ctx) return;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, cw, ch);
+    const at = this.looking;
+    if (!this.drawOver || !at || !this.loaded || !this.shown) return;
+    const w = el.clientWidth, h = el.clientHeight, kx = w / at.width, ky = h / at.height;
+    const x0 = at.x - at.width / 2, y0 = at.y - at.height / 2;
+    const view = {
+      zoom: kx,
+      tilePx: 32 * kx,
+      x: (px) => (px - x0) * kx,
+      y: (py) => (py - y0) * ky,
+      visible: { x0: Math.floor(x0 / 32), y0: Math.floor(y0 / 32), x1: Math.ceil((x0 + at.width) / 32), y1: Math.ceil((y0 + at.height) / 32) }
+    };
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.drawOver(ctx, view);
+  }
+  play(on) {
+    this.view?.play(on);
+  }
+  speed(multiplier) {
+    this.view?.speed(multiplier);
+  }
+  seek(frame) {
+    if (!this.view) return;
+    this.aiming = { frame: Math.round(frame), sawSeeking: false, from: null, at: null };
+    this.view.seek(Math.round(frame));
+  }
+  /** A seek is on its way: the clock is where it was sent, not where the game still shows. */
+  get seeking() {
+    return this.aiming !== null;
+  }
+  /** How far a jump has run, 0 to 1, once the viewer has said; null before (or for a jump with no way to go). */
+  get seekProgress() {
+    const a = this.aiming;
+    if (!a || a.from === null || a.at === null || a.frame <= a.from) return null;
+    return Math.max(0, Math.min(1, (a.at - a.from) / (a.frame - a.from)));
+  }
+  /** Look at a point of the map, in pixels. (The game lets go of a track for it.) */
+  camera(x, y) {
+    if (this.view) {
+      this.view.camera(x, y);
+      this.sent = null;
+    }
+  }
+  /** The game moves its camera along tracks itself (`follow`); otherwise `camera` it is, frame by frame. */
+  get follows() {
+    return this.loaded && this.tracks;
+  }
+  /** Have the game follow `track`, or stop (null). The same track again is not sent again while the game follows it. */
+  follow(track) {
+    if (!this.view || !this.follows) {
+      this.sent = null;
+      return;
+    }
+    if (track === this.sent) return;
+    this.sent = track;
+    this.view.follow(track);
+  }
+  /**
+   * The frame the game shows now: the one it last said, carried on at `speed` since while it plays (it says one ten
+   * times a second), no further than a fifth of a second's worth.
+   */
+  frameNow(speed) {
+    const s = this.said;
+    if (!s) return null;
+    if (!s.playing) return s.frame;
+    return s.frame + Math.min(200, performance.now() - s.at) / FRAME_MS * speed;
+  }
+  /** How much of the map the game shows, pixels, once it has said. */
+  get viewSize() {
+    return this.loaded ? this.shows : null;
+  }
+  /** Where the game looks, on the editor's minimap: at once when the person moved it, else at most every `MINIMAP_MS`. */
+  tellMinimap(camera, now) {
+    const tell = () => {
+      this.telling = null;
+      this.told = performance.now();
+      this.handle.setCamera?.(camera);
+    };
+    if (this.telling) clearTimeout(this.telling);
+    this.telling = null;
+    const wait = MINIMAP_MS - (performance.now() - this.told);
+    if (now || wait <= 0) tell();
+    else this.telling = setTimeout(tell, wait);
+  }
+  dispose() {
+    if (this.busyTimer) clearTimeout(this.busyTimer);
+    if (this.telling) clearTimeout(this.telling);
+    for (const s of this.subs) s.dispose();
+    this.subs = [];
+    this.changed.dispose();
+    this.view?.dispose();
+    this.view = null;
+    this.handle.dispose();
+  }
+};
+
 // plugin.ts
 var DEFAULTS = { orders: false, legend: true, heat: "losses", speed: 8, workers: false, chart: "lead", tab: "summary", version: 5 };
 var FRONT_FRAMES = 120;
@@ -2080,6 +2659,26 @@ function fightMark(f) {
   return null;
 }
 var STYLE = `
+.afm-busy { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2; display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 8px; background: rgba(10, 12, 16, 0.8); color: #e8ecf2; font-size: 13px; pointer-events: none; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4); white-space: nowrap; }
+.afm-busy[hidden] { display: none; }
+.afm-over { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+.afm-tip { position: absolute; z-index: 3; pointer-events: none; display: block; max-width: 280px; padding: 6px 8px; }
+.afm-tip[hidden] { display: none; }
+.afm-tip-body { display: flex; flex-direction: column; gap: 4px; min-width: 190px; }
+.afm-tip-head { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.afm-tip-head .afm-dim { margin-left: auto; padding-left: 8px; overflow: hidden; text-overflow: ellipsis; }
+.afm-tip-swatch { width: 8px; height: 8px; flex: none; border-radius: 2px; }
+.afm-tip-row { display: flex; align-items: center; gap: 6px; }
+.afm-tip-label { flex: none; width: 62px; color: var(--text-dim); }
+.afm-tip-track { min-width: 70px; }
+.afm-tip-num { flex: none; min-width: 52px; text-align: right; font-variant-numeric: tabular-nums; }
+.afm-tip-work { margin-top: 2px; color: var(--gold-hi, var(--text)); }
+.afm-tip-queue { display: flex; gap: 3px; }
+.afm-tip-icon { width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; background: var(--bg-1); border: 1px solid var(--border); border-radius: 3px; }
+.afm-tip-icon.afm-first { border-color: var(--gold, #d8b04a); }
+.afm-busy .afm-spin { width: 16px; height: 16px; flex: none; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.22); border-top-color: var(--accent, #4fd1c5); animation: afm-spin 0.8s linear infinite; }
+@keyframes afm-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .afm-busy .afm-spin { animation-duration: 2.4s; } }
 .afm { display: flex; flex-direction: column; gap: 8px; font-size: 12px; flex: 1; min-height: 0; }
 .afm > * { flex-shrink: 0; }
 .afm .afm-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
@@ -2186,6 +2785,165 @@ function activate(api) {
   let playing2 = false;
   let raf = 0;
   let lastTick = 0;
+  let gameState = null;
+  let statsHidGame = false;
+  const offered = /* @__PURE__ */ new Set();
+  const game = new GameView(api, {
+    frame: (id, f) => {
+      if (!current || current.id !== id || !gameClock()) return;
+      current.frame = f.frame;
+      if (playing2 && !f.playing && f.seeking === null && f.frame >= current.report.frames - 1) stop();
+      tick();
+      showBusy();
+    },
+    movedByUser: () => letGo(),
+    shown: (on) => handOver(on),
+    state: (text) => {
+      gameState = text;
+      strip?.update();
+      showBusy();
+    },
+    seeking: () => {
+      strip?.update();
+      showBusy();
+    },
+    hover: (h) => showHover(h)
+  }, "Replay", {
+    loading: (name) => t("Starting the game of {name}\u2026", { name }),
+    failed: (message) => t("The game could not be shown: {message}", { message })
+  });
+  let lastHover = null;
+  function showHover(h) {
+    lastHover = h;
+    const entry = current;
+    if (!h || !entry || !game.holds(entry.id) || lensOf() === "map") {
+      game.tip(null);
+      return;
+    }
+    game.tip(tipFor(entry, h.unit), h.x, h.y);
+  }
+  function tipBar(fraction, colour) {
+    const pct = Math.max(0, Math.min(100, fraction * 100));
+    return el("span", { className: "progress-track afm-tip-track" }, el("i", { style: `width:${pct.toFixed(1)}%;background:${colour}` }));
+  }
+  function tipIcon(type, owner, first) {
+    const box = el("span", { className: first ? "afm-tip-icon afm-first" : "afm-tip-icon", title: api.names.unit(type) });
+    const pic = api.graphics.unitImage(type, { owner });
+    if (!pic) {
+      api.graphics.requestUnit(type);
+      return box;
+    }
+    const size = 22, k = Math.min(size / pic.width, size / pic.height, 1);
+    const c = el("canvas", { width: size, height: size });
+    c.getContext("2d")?.drawImage(pic.image, (size - pic.width * k) / 2, (size - pic.height * k) / 2, pic.width * k, pic.height * k);
+    box.append(c);
+    return box;
+  }
+  function workLine(u) {
+    switch (u.work) {
+      case "construction":
+        return t("Under construction");
+      case "train":
+        return t("Training {name}", { name: api.names.unit(u.workId) });
+      case "research":
+        return t("Researching {name}", { name: api.names.tech(u.workId) });
+      case "upgrade":
+        return t("Upgrading {name}", { name: api.names.upgrade(u.workId) });
+      case "morph":
+        return t("Morphing into {name}", { name: api.names.unit(u.workId) });
+      case "addon":
+        return t("Building {name}", { name: api.names.unit(u.workId) });
+      case "nuke":
+        return u.type === 108 ? t("Nuclear missile ready") : t("Calling down a nuclear strike");
+      default:
+        return u.completed ? null : t("Under construction");
+    }
+  }
+  function tipFor(entry, u) {
+    const owner = entry.report.players.find((p) => p.player.index === u.owner);
+    const colour = owner?.player.color ?? api.graphics.playerColor(u.owner);
+    const rows = [el(
+      "div",
+      { className: "afm-tip-head" },
+      el("span", { className: "afm-tip-swatch", style: `background:${colour}` }),
+      el("b", {}, api.names.unit(u.type)),
+      owner ? el("span", { className: "afm-dim" }, owner.player.name) : null
+    )];
+    const stat = (label2, value, max, barColour) => rows.push(el(
+      "div",
+      { className: "afm-tip-row" },
+      el("span", { className: "afm-tip-label" }, label2),
+      tipBar(max > 0 ? value / max : 0, barColour),
+      el("span", { className: "afm-tip-num" }, `${value}/${max}`)
+    ));
+    if (!u.invincible && u.hpMax > 0) {
+      const f = u.hp / u.hpMax;
+      stat(t("Hit points"), u.hp, u.hpMax, f > 2 / 3 ? "var(--ok, #4caf50)" : f > 1 / 3 ? "var(--warn, #e0b030)" : "var(--danger, #e05050)");
+    }
+    if (u.shields >= 0) stat(t("Shields"), u.shields, u.shieldsMax, "var(--teal, #4fd1c5)");
+    if (u.energy >= 0) stat(t("Energy"), u.energy, u.energyMax, "var(--sel-hi, #9b8cff)");
+    if (u.resources >= 0) rows.push(el("div", { className: "afm-tip-row afm-dim" }, t("{n} left", { n: u.resources })));
+    const doing = workLine(u);
+    if (doing) {
+      rows.push(el("div", { className: "afm-tip-work" }, doing));
+      if (u.progress >= 0) rows.push(el("div", { className: "afm-tip-row" }, tipBar(u.progress / 100, "var(--gold, #d8b04a)"), el("span", { className: "afm-tip-num" }, `${u.progress}%`)));
+    }
+    if (u.work === "train" && u.queue.length > 1) rows.push(el("div", { className: "afm-tip-queue" }, ...u.queue.map((type, i) => tipIcon(type, u.owner, i === 0))));
+    return el("div", { className: "afm-tip-body" }, ...rows);
+  }
+  function showBusy() {
+    const entry = current;
+    if (!entry || !game.shown) {
+      game.busy(null);
+      return;
+    }
+    if (game.loading) {
+      game.busy(gameState);
+      return;
+    }
+    if (game.seeking) {
+      const done = game.seekProgress;
+      game.busy(done === null || done < 0.05 ? t("Going to {time}\u2026", { time: formatTime(entry.frame) }) : t("Going to {time}\u2026 {percent}%", { time: formatTime(entry.frame), percent: Math.floor(done * 100) }));
+      return;
+    }
+    game.busy(null);
+  }
+  function letGo() {
+    if (!cam.following || lensOf() === "map") return;
+    cam.following = false;
+    cam.asked = [];
+    strip?.update();
+  }
+  const gameClock = () => current !== null && game.shown && game.holds(current.id);
+  function handOver(on) {
+    const entry = current;
+    if (!entry) return;
+    if (on) {
+      cancelAnimationFrame(raf);
+      const asked = entry.frame;
+      void game.hold(entry, asked, playing2, settings.speed).then((ok) => {
+        if (ok && current === entry && Math.round(entry.frame) !== Math.round(asked)) game.seek(entry.frame);
+        if (!ok && playing2 && current === entry) runClock();
+        strip?.update();
+      });
+    } else {
+      game.play(false);
+      if (playing2) runClock();
+    }
+    tick();
+    showBusy();
+  }
+  function gameFor(entry) {
+    if (entry.docId === null) return;
+    if (!offered.has(entry.id)) {
+      offered.add(entry.id);
+      void game.offer(entry, true).then((ok) => {
+        if (!ok) offered.delete(entry.id);
+      });
+      return;
+    }
+    if (game.shown && !game.holds(entry.id)) handOver(true);
+  }
   const style = document.createElement("style");
   style.textContent = STYLE;
   document.head.append(style);
@@ -2204,7 +2962,7 @@ function activate(api) {
         const replay = await parseReplay(bytes);
         const id = nextId++, map = readChk(replay.chk);
         const group = [...loaded, ...batch].find((l) => likeness(map, l.map) >= SAME_MAP)?.group ?? id;
-        batch.push({ id, fileName: file.name, report: analyse(replay), map, bytes, docId: null, group, excluded: false, frame: 0, hidden: /* @__PURE__ */ new Set(), played: null, failed: null });
+        batch.push({ id, fileName: file.name, report: analyse(replay), map, bytes, docId: null, group, excluded: false, frame: 0, hidden: /* @__PURE__ */ new Set(), played: null, failed: null, eyes: null });
       } catch (err) {
         const detail = err instanceof ReplayError ? translate(err.message) : String(err);
         api.ui.toast({ kind: "error", title: t("Could not read {name}", { name: file.name }), detail });
@@ -2251,7 +3009,7 @@ function activate(api) {
       heatCache = null;
       side?.render();
       strip?.update();
-      overlay.redraw();
+      redraw();
       if (!into) api.ui.toast({ kind: "ok", title: t("{n, plural, one {# replay} other {# replays}} added to Map stats", { n: added.length }), detail: t("Each is analysed in the background, after the replays open in tabs. Map stats is under the map.") });
     }
     pump();
@@ -2319,45 +3077,86 @@ function activate(api) {
       showSide();
       showStrip();
       overlay.show();
+      gameFor(current);
     } else {
       closeStrip();
       if (!sideAsked) closeSide();
     }
     side?.render();
     strip?.render();
-    overlay.redraw();
+    redraw();
   }
   function seek(f) {
     if (!current) return;
     if (lensOf() === "map") showStats(false);
     current.frame = Math.max(0, Math.min(current.report.frames, Math.round(f)));
+    if (gameClock()) game.seek(current.frame);
     tick();
+    showBusy();
   }
-  const cam = { following: true, x: -1, y: -1, shot: -1, last: 0, asked: [] };
-  const CUT = 640;
+  const cam = { following: true, asked: [], made: null, raf: 0 };
+  function trackOf(entry) {
+    const shots = shotsOf(entry);
+    if (!shots?.length) return null;
+    let view = game.shown ? game.viewSize : null;
+    if (!view) {
+      const v = api.view.visible();
+      view = { width: (v.x1 - v.x0) * 32, height: (v.y1 - v.y0) * 32 };
+    }
+    const m = cam.made, near = (a, b) => Math.abs(a - b) <= b * 0.1;
+    if (m && m.shots === shots && m.speed === settings.speed && near(view.width, m.width) && near(view.height, m.height)) return m.track;
+    const track = cameraTrack(shots, {
+      view,
+      map: { width: entry.map.width * 32, height: entry.map.height * 32 },
+      frames: Math.max(entry.report.frames, entry.played.timeline.frames),
+      rate: 1e3 / FRAME_MS * settings.speed
+    });
+    if (!track) return null;
+    cam.made = { shots, speed: settings.speed, width: view.width, height: view.height, track };
+    return track;
+  }
+  function shotsOf(entry) {
+    const done = entry.played;
+    if (!done) return [];
+    const eyes = game.shown && game.holds(entry.id) ? entry.eyes : null;
+    const player = eyes === null ? void 0 : entry.report.players.find((p) => p.player.slot === eyes)?.player.index;
+    if (player === void 0) return done.shots;
+    let shots = done.shotsFor.get(player);
+    if (!shots) {
+      shots = done.direct(player);
+      done.shotsFor.set(player, shots);
+    }
+    return shots.length ? shots : done.shots;
+  }
   function follow() {
     const entry = current;
-    if (!entry?.played?.shots.length || lensOf() === "map" || !cam.following || entry.docId === null || api.document.id() !== entry.docId) return;
+    const on = !!entry?.played?.shots.length && lensOf() !== "map" && cam.following && entry.docId !== null && api.document.id() === entry.docId;
+    if (game.shown) {
+      const track2 = on && entry && game.holds(entry.id) ? trackOf(entry) : null;
+      if (!track2 || game.follows) {
+        game.follow(track2);
+        return;
+      }
+      const f = game.frameNow(settings.speed);
+      if (f === null) return;
+      const at2 = trackAt(track2, f);
+      game.camera(at2.x, at2.y);
+      if (playing2 && !cam.raf) cam.raf = requestAnimationFrame(() => {
+        cam.raf = 0;
+        follow();
+      });
+      return;
+    }
+    if (!on || !entry) return;
     if (movedByUser()) {
       cam.following = false;
       cam.asked = [];
       return;
     }
-    const shots = entry.played.shots, i = shotAt(shots, entry.frame);
-    if (i < 0) return;
-    const target = lookAt(shots[i], entry.frame);
-    const now = performance.now(), dt = Math.min(0.1, (now - cam.last) / 1e3);
-    cam.last = now;
-    if (!playing2 || cam.x < 0 || Math.hypot(target.x - cam.x, target.y - cam.y) > CUT) {
-      cam.x = target.x;
-      cam.y = target.y;
-    } else {
-      const k = 1 - Math.exp(-dt / 0.35);
-      cam.x += (target.x - cam.x) * k;
-      cam.y += (target.y - cam.y) * k;
-    }
-    cam.shot = i;
-    lookTo(cam.x / 32, cam.y / 32);
+    const track = trackOf(entry);
+    if (!track) return;
+    const at = trackAt(track, entry.frame);
+    lookTo(at.x / 32, at.y / 32);
   }
   function lensOf() {
     if (settings.tab === "map" && sidePanel?.isOpen()) return "map";
@@ -2372,7 +3171,17 @@ function activate(api) {
       settings.tab = "map";
       sideHidden = false;
       showSide(true);
-    } else if (settings.tab === "map") settings.tab = gameTab;
+      if (game.shown) {
+        statsHidGame = true;
+        game.show(false);
+      }
+    } else {
+      if (settings.tab === "map") settings.tab = gameTab;
+      if (statsHidGame) {
+        statsHidGame = false;
+        game.show(true);
+      }
+    }
     save();
     heatCache = null;
     side?.render();
@@ -2386,12 +3195,16 @@ function activate(api) {
   }
   const waitingOf = (of) => sim?.present ? mapGames(of).filter((l) => !l.excluded && !l.played && !l.failed).length : 0;
   function lookTo(tx, ty) {
+    if (game.shown) {
+      game.camera(tx * 32, ty * 32);
+      return;
+    }
     api.view.center(tx, ty);
     cam.asked.push({ x: tx, y: ty });
     if (cam.asked.length > 8) cam.asked.shift();
   }
   function movedByUser() {
-    if (!current || !cam.asked.length) return false;
+    if (game.shown || !current || !cam.asked.length) return false;
     const v = api.view.visible(), hw = (v.x1 - v.x0) / 2, hh = (v.y1 - v.y0) / 2;
     const cx = (v.x0 + v.x1) / 2, cy = (v.y0 + v.y1) / 2;
     const clamp = (n, lo, hi) => hi < lo ? (lo + hi) / 2 : Math.max(lo, Math.min(hi, n));
@@ -2400,9 +3213,8 @@ function activate(api) {
   function setFollowing(on) {
     cam.following = on;
     cam.asked = [];
-    cam.x = -1;
     if (on) follow();
-    overlay.redraw();
+    redraw();
     strip?.update();
   }
   function captionOf(entry, shot) {
@@ -2423,16 +3235,27 @@ function activate(api) {
     follow();
     side?.update();
     strip?.update();
-    overlay.redraw();
+    if (!game.shown) overlay.redraw();
+    else game.redrawOver();
   }
   function play() {
     if (!current || playing2) return;
     if (lensOf() === "map") showStats(false);
     if (current.frame >= current.report.frames) current.frame = 0;
     playing2 = true;
+    if (gameClock()) {
+      game.play(true);
+      strip?.update();
+      return;
+    }
+    runClock();
+    strip?.update();
+  }
+  function runClock() {
+    cancelAnimationFrame(raf);
     lastTick = performance.now();
     const step2 = (now) => {
-      if (!playing2 || !current) return;
+      if (!playing2 || !current || gameClock()) return;
       const dt = now - lastTick;
       lastTick = now;
       current.frame = Math.min(current.report.frames, current.frame + dt / FRAME_MS * settings.speed);
@@ -2441,11 +3264,11 @@ function activate(api) {
       if (playing2) raf = requestAnimationFrame(step2);
     };
     raf = requestAnimationFrame(step2);
-    strip?.update();
   }
   function stop() {
     playing2 = false;
     cancelAnimationFrame(raf);
+    game.play(false);
     strip?.update();
   }
   let keys = [];
@@ -2531,7 +3354,9 @@ function activate(api) {
         adv: advantage(timeline),
         bases: taken,
         totals: totals(timeline, taken, cost),
-        shots: direct(timeline, index, fights2, taken, cost)
+        shots: direct(timeline, index, fights2, taken, cost),
+        shotsFor: /* @__PURE__ */ new Map(),
+        direct: (only) => direct(timeline, index, fights2, taken, cost, only)
       };
       for (const b of entry.played.standing) api.graphics.requestUnit(b.type);
     } catch (err) {
@@ -2546,7 +3371,7 @@ function activate(api) {
       if (current && current.group === entry.group) {
         side?.render();
         strip?.render();
-        overlay.redraw();
+        redraw();
       }
       announce(entry);
     }
@@ -2759,24 +3584,35 @@ function activate(api) {
         markLoss(ctx, v.x(lost[i].x), v.y(lost[i].y), 3 + k * 6, withAlpha(p.player.color, 1 - k));
       }
     }
-    if (lens === "orders" || !done) {
-      const r = Math.max(2.5, 5 * Math.min(1, s * 2));
-      for (const p of players) {
-        const clicks = p.clicks;
-        for (let i = firstAfter(clicks, frame - TRAIL_FRAMES); i < clicks.length && clicks[i].frame <= frame; i++) {
-          const c = clicks[i];
-          const k = 1 - (frame - c.frame) / TRAIL_FRAMES;
-          ctx.globalAlpha = Math.max(0.1, k);
-          markOrder(ctx, c.kind, v.x(c.x), v.y(c.y), r, p.player.color, k);
-        }
-      }
-      ctx.globalAlpha = 1;
-    }
+    if (lens === "orders" || !done) drawOrders(ctx, v, players, frame);
     if (settings.legend) legend(ctx, lens, done !== null);
     caption(ctx, cur);
   }
+  function drawOrders(ctx, v, players, frame) {
+    const r = Math.max(2.5, 5 * Math.min(1, v.tilePx / 32 * 2));
+    for (const p of players) {
+      const clicks = p.clicks;
+      for (let i = firstAfter(clicks, frame - TRAIL_FRAMES); i < clicks.length && clicks[i].frame <= frame; i++) {
+        const c = clicks[i];
+        const k = 1 - (frame - c.frame) / TRAIL_FRAMES;
+        ctx.globalAlpha = Math.max(0.1, k);
+        markOrder(ctx, c.kind, v.x(c.x), v.y(c.y), r, p.player.color, k);
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+  function drawOverGame(ctx, v) {
+    const cur = current;
+    if (!cur || !game.holds(cur.id) || lensOf() === "map") return;
+    const players = cur.report.players.filter((p) => !cur.hidden.has(p.player.id));
+    if (settings.orders) {
+      drawOrders(ctx, v, players, game.frameNow(settings.speed) ?? cur.frame);
+      if (settings.legend) legend(ctx, "orders", cur.played !== null, true);
+    }
+    caption(ctx, cur);
+  }
   function caption(ctx, entry) {
-    const shots = entry.played?.shots ?? [];
+    const shots = shotsOf(entry);
     const i = cam.following && shots.length ? shotAt(shots, entry.frame) : -1;
     if (i < 0) return;
     pill(ctx, captionOf(entry, shots[i]), shots[i].players.map((pl) => entry.report.players.find((p) => p.player.index === pl)?.player.color ?? "#888"));
@@ -2799,7 +3635,7 @@ function activate(api) {
     ctx.textAlign = "start";
     ctx.textBaseline = "alphabetic";
   }
-  function legend(ctx, lens, analysed) {
+  function legend(ctx, lens, analysed, inGame = false) {
     const grey = "#c8cdd7";
     const items = [];
     if (lens === "map") {
@@ -2818,12 +3654,12 @@ function activate(api) {
         ctx.fillRect(x - 7, y - 3, 14, 6);
       }, translate(HEAT_LABELS[mode])]);
     } else {
-      items.push([(x, y) => markBuilding(ctx, x - 6, y - 4, 12, 8, grey, "built", null, 1), analysed ? t("A building; dashed while it goes up") : t("A building ordered")]);
-      if (analysed) items.push([(x, y) => {
+      if (!inGame) items.push([(x, y) => markBuilding(ctx, x - 6, y - 4, 12, 8, grey, "built", null, 1), analysed ? t("A building; dashed while it goes up") : t("A building ordered")]);
+      if (analysed && !inGame) items.push([(x, y) => {
         markUnit(ctx, x - 3, y, 3.5, grey, false);
         markUnit(ctx, x + 4, y, 3.5, grey, true);
       }, t("A unit, and a worker")]);
-      if (lens === "watch" && analysed) {
+      if (lens === "watch" && analysed && !inGame) {
         items.push(
           [(x, y) => markKill(ctx, x - 7, y + 3, x + 7, y - 3, grey), t("A kill, from the killer")],
           [(x, y) => markLoss(ctx, x, y, 4, grey), t("A loss")],
@@ -2840,7 +3676,7 @@ function activate(api) {
         );
       }
     }
-    const title = translate(LEGEND_TITLES[lens]);
+    const title = inGame ? t("Orders") : translate(LEGEND_TITLES[lens]);
     const note = lens === "map" ? null : t("In the player's colour");
     ctx.font = "11px system-ui, sans-serif";
     const widest = Math.max(...items.map(([, text]) => ctx.measureText(text).width), note ? ctx.measureText(note).width : 0);
@@ -2890,8 +3726,14 @@ function activate(api) {
     above: "objects",
     draw
   });
+  game.setOverlay(drawOverGame);
+  function redraw() {
+    overlay.redraw();
+    game.redrawOver();
+  }
   const imageListener = api.graphics.onImageLoaded(() => {
     if (current && overlay.isVisible()) overlay.redraw();
+    if (lastHover) showHover(lastHover);
   });
   function toggle(label2, onClick) {
     const b = el("button", { type: "button", className: "afm-toggle" }, label2);
@@ -2912,7 +3754,7 @@ function activate(api) {
   function showOrders(on) {
     settings.orders = on;
     save();
-    overlay.redraw();
+    redraw();
     strip?.update();
   }
   function chartOf(entry) {
@@ -2955,7 +3797,7 @@ function activate(api) {
     if (current?.played?.shots.length) {
       seek(Math.max(0, f.from - FIGHT_LEAD));
       setFollowing(true);
-      api.view.flash({ rect: { x0: Math.max(0, Math.floor(f.rect.x0 / 32) - 2), y0: Math.max(0, Math.floor(f.rect.y0 / 32) - 2), x1: Math.ceil(f.rect.x1 / 32) + 2, y1: Math.ceil(f.rect.y1 / 32) + 2 }, kind: "attention" });
+      if (!game.shown) api.view.flash({ rect: { x0: Math.max(0, Math.floor(f.rect.x0 / 32) - 2), y0: Math.max(0, Math.floor(f.rect.y0 / 32) - 2), x1: Math.ceil(f.rect.x1 / 32) + 2, y1: Math.ceil(f.rect.y1 / 32) + 2 }, kind: "attention" });
       return;
     }
     const rect = { x0: Math.max(0, Math.floor(f.rect.x0 / 32) - 2), y0: Math.max(0, Math.floor(f.rect.y0 / 32) - 2), x1: Math.ceil(f.rect.x1 / 32) + 2, y1: Math.ceil(f.rect.y1 / 32) + 2 };
@@ -2964,6 +3806,10 @@ function activate(api) {
   function goTo(frame, x, y, rect) {
     cam.following = false;
     seek(frame);
+    if (game.shown) {
+      game.camera(x, y);
+      return;
+    }
     api.view.center(Math.floor(x / 32), Math.floor(y / 32));
     if (rect) api.view.flash({ rect, kind: "attention" });
   }
@@ -2996,12 +3842,12 @@ function activate(api) {
         sideAsked = false;
         if (!closing) sideHidden = true;
         heatCache = null;
-        overlay.redraw();
+        redraw();
         strip?.update();
       }
     });
     sidePanel = handle;
-    overlay.redraw();
+    redraw();
   }
   function closeSide() {
     closing = true;
@@ -3111,7 +3957,7 @@ function activate(api) {
           if (entry.hidden.has(p.player.id)) entry.hidden.delete(p.player.id);
           else entry.hidden.add(p.player.id);
           heatCache = null;
-          overlay.redraw();
+          redraw();
           this.render();
           strip?.update();
         });
@@ -3580,6 +4426,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
     ordersButton = null;
     legendButton = null;
     statsButton = null;
+    eyesSelect = null;
     /** Where the pointer is over the graph, in CSS pixels from its left; null when it is not. */
     hover = null;
     get canvasTitle() {
@@ -3599,6 +4446,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
       const speed = w.select([1, 2, 4, 8, 16, 32].map((n) => ({ value: n, label: `${n}\xD7` })), { value: settings.speed, title: t("Playback speed"), onChange: (v) => {
         settings.speed = Number(v);
         save();
+        if (gameClock()) game.speed(settings.speed);
         speed.blur();
       } });
       const chart = chartOf(entry);
@@ -3627,15 +4475,25 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
       } }) : null;
       this.spectateButton = toggle(t("Spectate"), () => spectate());
       this.ordersButton = toggle(t("Orders"), () => showOrders(!settings.orders));
-      this.ordersButton.title = t("O: what the players told their units to do in the last eight seconds, over the units drawn faintly");
       this.legendButton = toggle(t("Legend"), () => {
         settings.legend = !settings.legend;
         save();
-        overlay.redraw();
+        redraw();
         this.update();
       });
-      this.legendButton.title = t("A key to the marks, in the map's corner");
       this.statsButton = toggle(t("Map stats"), () => showStats(lensOf() !== "map"));
+      const eyes = w.select([
+        { value: -1, label: t("Vision: everyone") },
+        ...entry.report.players.map((p) => ({ value: p.player.slot, label: t("Vision: {name}", { name: p.player.name }) }))
+      ], { value: entry.eyes ?? -1, title: t("Whose eyes the game is seen through: one player's shows only what they could see, with the fog of war"), onChange: (v) => {
+        const slot = Number(v);
+        entry.eyes = slot < 0 ? null : slot;
+        if (game.holds(entry.id)) game.eyes(entry.eyes);
+        follow();
+        redraw();
+        eyes.blur();
+      } });
+      this.eyesSelect = eyes;
       this.root.append(el(
         "div",
         { className: "afm-row" },
@@ -3643,6 +4501,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
         this.timeLabel,
         speed,
         el("span", { className: "afm-toggles" }, this.spectateButton, this.ordersButton, this.statsButton, this.legendButton),
+        eyes,
         this.status,
         retry,
         chartSelect
@@ -3680,7 +4539,12 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
       this.timeLabel.textContent = `${formatTime(entry.frame)} / ${formatTime(entry.report.frames)}`;
       let line = "";
       let why = "";
-      if (running?.entry === entry) {
+      if (gameState && game.shown) {
+        line = gameState;
+      } else if (game.shown && game.seeking) {
+        const done = game.seekProgress;
+        line = done === null || done < 0.05 ? t("Going to {time}\u2026", { time: formatTime(entry.frame) }) : t("Going to {time}\u2026 {percent}%", { time: formatTime(entry.frame), percent: Math.floor(done * 100) });
+      } else if (running?.entry === entry) {
         line = running.fraction < 0 ? t("Analysing the game\u2026") : t("Analysing the game: {percent}%", { percent: Math.floor(running.fraction * 100) });
         why = t("The game engine plays the replay through in the background to see what really happened: the armies, the fights, what was lost. You can watch the replay meanwhile.");
       } else if (entry.played) {
@@ -3710,8 +4574,13 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
       this.spectateButton.title = !shots ? t("The camera follows the game once it has been analysed") : onMap ? t("Back to the game, with the camera following the action") : following ? t("F: the camera follows the action as an observer would; scroll the map, or press here, to look around yourself") : t("F: follow the action as an observer would: the fights that matter, armies about to meet, new bases, the armies on the move");
       this.ordersButton.classList.toggle("afm-on", settings.orders);
       this.ordersButton.setAttribute("aria-pressed", String(settings.orders));
+      this.ordersButton.title = game.shown ? t("O: what the players told their units to do in the last eight seconds, over the game") : t("O: what the players told their units to do in the last eight seconds, over the units drawn faintly");
       this.legendButton.classList.toggle("afm-on", settings.legend);
       this.legendButton.setAttribute("aria-pressed", String(settings.legend));
+      const keyless = game.shown && !onMap && !settings.orders;
+      this.legendButton.disabled = keyless;
+      this.legendButton.title = keyless ? t("Over the game the legend keys the orders: turn Orders on to see it") : t("A key to the marks, in the map's corner");
+      this.eyesSelect.hidden = !game.shown || onMap;
       const games = mapGames(entry).length;
       this.statsButton.textContent = games > 1 ? t("Map stats \xB7 {n}", { n: games }) : t("Map stats");
       this.statsButton.classList.toggle("afm-on", onMap);
@@ -3923,15 +4792,19 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
   if (bottomDock) api.ui.fileType({ name: msg2("StarCraft replay"), extensions: [".rep"], open: (files) => void load(files) });
   const simWatch = api.services.watch("scm-sim.engine", (service) => {
     sim = service;
+    game.setService(service);
+    if (current) gameFor(current);
     pump();
     strip?.render();
   });
   api.events.on("document", () => sync());
   api.events.on("view", () => {
+    game.graphics();
+    if (game.shown) return;
     if (!cam.following || !current?.played?.shots.length || lensOf() === "map" || api.document.id() !== current.docId || !movedByUser()) return;
     cam.following = false;
     cam.asked = [];
-    overlay.redraw();
+    redraw();
     strip?.update();
   });
   api.events.on("language", () => {
@@ -3940,8 +4813,10 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
   });
   return () => {
     stop();
+    cancelAnimationFrame(cam.raf);
     bindKeys(false);
     running?.controller.abort();
+    game.dispose();
     simWatch.dispose();
     imageListener.dispose();
     style.remove();

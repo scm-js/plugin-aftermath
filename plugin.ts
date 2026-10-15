@@ -39,8 +39,10 @@ import { buildings as standingBuildings, isBuilding, losses, lossPoints, madeRow
 import { fights as findFights, kills as findKills, topKillers, type Fight, type FightKind, type Kill, type Killer } from "./fights";
 import { clockOf, mapReport, winnerOf, type MapReport } from "./report";
 import { direct, lookAt, shotAt, type Shot } from "./director";
+import { cameraTrack, trackAt, type CameraTrack } from "./camera";
 import { advantage, bases as takenBases, hardestHit, leads, story, totals, type Advantage, type Base, type PlayerTotals } from "./story";
-import type { ReplayTimeline, ScmSimService } from "./vendor/scm-sim";
+import type { ReplayTimeline, ScmSimService, ViewHover, ViewHoverUnit } from "./vendor/scm-sim";
+import { GameView } from "./gameview";
 
 /* ── State ──────────────────────────────────────────────── */
 
@@ -95,6 +97,8 @@ interface Loaded {
   played: Played | null;
   /** Why playing it through failed, for the timeline to say and offer again. */
   failed: string | null;
+  /** In the Replay view, whose eyes the game is seen through (a player's slot, with the fog of war); null: everyone's. */
+  eyes: number | null;
 }
 
 interface Played {
@@ -112,6 +116,9 @@ interface Played {
   totals: PlayerTotals[];
   /** Where Spectate's camera looks, shot by shot. */
   shots: Shot[];
+  /** Spectate's shots of one player's game, for watching through their eyes (`shotsOf`), made when first asked. */
+  shotsFor: Map<number, Shot[]>;
+  direct: (only: number) => Shot[];
 }
 
 /** What fell this recently is where a fight is now: five seconds. */
@@ -176,6 +183,26 @@ function fightMark(f: Fight): { id: string; label: string; why: string } | null 
 }
 
 const STYLE = `
+.afm-busy { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2; display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 8px; background: rgba(10, 12, 16, 0.8); color: #e8ecf2; font-size: 13px; pointer-events: none; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4); white-space: nowrap; }
+.afm-busy[hidden] { display: none; }
+.afm-over { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+.afm-tip { position: absolute; z-index: 3; pointer-events: none; display: block; max-width: 280px; padding: 6px 8px; }
+.afm-tip[hidden] { display: none; }
+.afm-tip-body { display: flex; flex-direction: column; gap: 4px; min-width: 190px; }
+.afm-tip-head { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.afm-tip-head .afm-dim { margin-left: auto; padding-left: 8px; overflow: hidden; text-overflow: ellipsis; }
+.afm-tip-swatch { width: 8px; height: 8px; flex: none; border-radius: 2px; }
+.afm-tip-row { display: flex; align-items: center; gap: 6px; }
+.afm-tip-label { flex: none; width: 62px; color: var(--text-dim); }
+.afm-tip-track { min-width: 70px; }
+.afm-tip-num { flex: none; min-width: 52px; text-align: right; font-variant-numeric: tabular-nums; }
+.afm-tip-work { margin-top: 2px; color: var(--gold-hi, var(--text)); }
+.afm-tip-queue { display: flex; gap: 3px; }
+.afm-tip-icon { width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; background: var(--bg-1); border: 1px solid var(--border); border-radius: 3px; }
+.afm-tip-icon.afm-first { border-color: var(--gold, #d8b04a); }
+.afm-busy .afm-spin { width: 16px; height: 16px; flex: none; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.22); border-top-color: var(--accent, #4fd1c5); animation: afm-spin 0.8s linear infinite; }
+@keyframes afm-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .afm-busy .afm-spin { animation-duration: 2.4s; } }
 .afm { display: flex; flex-direction: column; gap: 8px; font-size: 12px; flex: 1; min-height: 0; }
 .afm > * { flex-shrink: 0; }
 .afm .afm-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
@@ -290,6 +317,155 @@ export function activate(api: PluginApi) {
   let raf = 0;
   let lastTick = 0;
 
+  /* ── The Game view (gameview.ts): the replay played out in the map's place, and then the clock ── */
+
+  /** What the Game view is doing with the replay in front, for the timeline's line; null when nothing. */
+  let gameState: string | null = null;
+  /** Map stats put the map in front of the game: it goes back to the game when Map stats closes. */
+  let statsHidGame = false;
+  /** Replays whose tab has been offered the Replay view. */
+  const offered = new Set<number>();
+  const game = new GameView(api, {
+    frame: (id, f) => {
+      if (!current || current.id !== id || !gameClock()) return;
+      current.frame = f.frame;
+      // (The game stops by itself at the replay's end.)
+      if (playing && !f.playing && f.seeking === null && f.frame >= current.report.frames - 1) stop();
+      tick();
+      showBusy();
+    },
+    movedByUser: () => letGo(),
+    shown: (on) => handOver(on),
+    state: (text) => { gameState = text; strip?.update(); showBusy(); },
+    seeking: () => { strip?.update(); showBusy(); },
+    hover: (h) => showHover(h),
+  }, "Replay", {
+    loading: (name) => t("Starting the game of {name}…", { name }),
+    failed: (message) => t("The game could not be shown: {message}", { message }),
+  });
+  /* ── The tooltip over the game: what the console would have said of the unit under the pointer ── */
+
+  let lastHover: ViewHover | null = null;
+  function showHover(h: ViewHover | null): void {
+    lastHover = h;
+    const entry = current;
+    if (!h || !entry || !game.holds(entry.id) || lensOf() === "map") { game.tip(null); return; }
+    game.tip(tipFor(entry, h.unit), h.x, h.y);
+  }
+
+  /** A bar of the editor's own, `fraction` full, in `colour`. */
+  function tipBar(fraction: number, colour: string): HTMLElement {
+    const pct = Math.max(0, Math.min(100, fraction * 100));
+    return el("span", { className: "progress-track afm-tip-track" }, el("i", { style: `width:${pct.toFixed(1)}%;background:${colour}` }));
+  }
+
+  /** A unit type's picture, small, in its owner's colours; its name until the picture has loaded. */
+  function tipIcon(type: number, owner: number, first: boolean): HTMLElement {
+    const box = el("span", { className: first ? "afm-tip-icon afm-first" : "afm-tip-icon", title: api.names.unit(type) });
+    const pic = api.graphics.unitImage(type, { owner });
+    if (!pic) { api.graphics.requestUnit(type); return box; }
+    const size = 22, k = Math.min(size / pic.width, size / pic.height, 1);
+    const c = el("canvas", { width: size, height: size }) as HTMLCanvasElement;
+    c.getContext("2d")?.drawImage(pic.image, (size - pic.width * k) / 2, (size - pic.height * k) / 2, pic.width * k, pic.height * k);
+    box.append(c);
+    return box;
+  }
+
+  /** What the unit is busy with, in words; null when nothing. */
+  function workLine(u: ViewHoverUnit): string | null {
+    switch (u.work) {
+      case "construction": return t("Under construction");
+      case "train": return t("Training {name}", { name: api.names.unit(u.workId) });
+      case "research": return t("Researching {name}", { name: api.names.tech(u.workId) });
+      case "upgrade": return t("Upgrading {name}", { name: api.names.upgrade(u.workId) });
+      case "morph": return t("Morphing into {name}", { name: api.names.unit(u.workId) });
+      case "addon": return t("Building {name}", { name: api.names.unit(u.workId) });
+      case "nuke": return u.type === 108 ? t("Nuclear missile ready") : t("Calling down a nuclear strike");
+      default: return u.completed ? null : t("Under construction");
+    }
+  }
+
+  function tipFor(entry: Loaded, u: ViewHoverUnit): HTMLElement {
+    const owner = entry.report.players.find((p) => p.player.index === u.owner);
+    const colour = owner?.player.color ?? api.graphics.playerColor(u.owner);
+    const rows: HTMLElement[] = [el("div", { className: "afm-tip-head" },
+      el("span", { className: "afm-tip-swatch", style: `background:${colour}` }),
+      el("b", {}, api.names.unit(u.type)),
+      owner ? el("span", { className: "afm-dim" }, owner.player.name) : null)];
+    const stat = (label: string, value: number, max: number, barColour: string) => rows.push(el("div", { className: "afm-tip-row" },
+      el("span", { className: "afm-tip-label" }, label), tipBar(max > 0 ? value / max : 0, barColour), el("span", { className: "afm-tip-num" }, `${value}/${max}`)));
+    if (!u.invincible && u.hpMax > 0) {
+      const f = u.hp / u.hpMax;
+      stat(t("Hit points"), u.hp, u.hpMax, f > 2 / 3 ? "var(--ok, #4caf50)" : f > 1 / 3 ? "var(--warn, #e0b030)" : "var(--danger, #e05050)");
+    }
+    if (u.shields >= 0) stat(t("Shields"), u.shields, u.shieldsMax, "var(--teal, #4fd1c5)");
+    if (u.energy >= 0) stat(t("Energy"), u.energy, u.energyMax, "var(--sel-hi, #9b8cff)");
+    if (u.resources >= 0) rows.push(el("div", { className: "afm-tip-row afm-dim" }, t("{n} left", { n: u.resources })));
+    const doing = workLine(u);
+    if (doing) {
+      rows.push(el("div", { className: "afm-tip-work" }, doing));
+      if (u.progress >= 0) rows.push(el("div", { className: "afm-tip-row" }, tipBar(u.progress / 100, "var(--gold, #d8b04a)"), el("span", { className: "afm-tip-num" }, `${u.progress}%`)));
+    }
+    if (u.work === "train" && u.queue.length > 1) rows.push(el("div", { className: "afm-tip-queue" }, ...u.queue.map((type, i) => tipIcon(type, u.owner, i === 0))));
+    return el("div", { className: "afm-tip-body" }, ...rows);
+  }
+
+  /** The spinner over the game while it starts or a jump runs, with the line the timeline has for it. */
+  function showBusy(): void {
+    const entry = current;
+    if (!entry || !game.shown) { game.busy(null); return; }
+    if (game.loading) { game.busy(gameState); return; }
+    if (game.seeking) {
+      const done = game.seekProgress;
+      game.busy(done === null || done < 0.05 ? t("Going to {time}…", { time: formatTime(entry.frame) }) : t("Going to {time}… {percent}%", { time: formatTime(entry.frame), percent: Math.floor(done * 100) }));
+      return;
+    }
+    game.busy(null);
+  }
+
+  /** Spectate's camera lets go: the person moved the view. */
+  function letGo(): void {
+    if (!cam.following || lensOf() === "map") return;
+    cam.following = false;
+    cam.asked = [];
+    strip?.update();
+  }
+
+  /** The Game view is the clock: it shows the replay in front, loaded. */
+  const gameClock = () => current !== null && game.shown && game.holds(current.id);
+
+  /** The tab in front went from the map to the game or back: the clock goes with it, from where it stood. */
+  function handOver(on: boolean): void {
+    const entry = current;
+    if (!entry) return;
+    if (on) {
+      cancelAnimationFrame(raf);
+      const asked = entry.frame;
+      void game.hold(entry, asked, playing, settings.speed).then((ok) => {
+        // (A jump made while the game was starting is where the clock is now: the game goes there too.)
+        if (ok && current === entry && Math.round(entry.frame) !== Math.round(asked)) game.seek(entry.frame);
+        if (!ok && playing && current === entry) runClock();
+        strip?.update();
+      });
+    } else {
+      game.play(false);
+      if (playing) runClock();
+    }
+    tick();
+    showBusy();
+  }
+
+  /** Offer a replay's tab the Game view the first time it comes to the front, showing it there; and load it when shown. */
+  function gameFor(entry: Loaded): void {
+    if (entry.docId === null) return;
+    if (!offered.has(entry.id)) {
+      offered.add(entry.id);
+      void game.offer(entry, true).then((ok) => { if (!ok) offered.delete(entry.id); });
+      return;
+    }
+    if (game.shown && !game.holds(entry.id)) handOver(true);
+  }
+
   const style = document.createElement("style");
   style.textContent = STYLE;
   document.head.append(style);
@@ -316,7 +492,7 @@ export function activate(api: PluginApi) {
         const replay = await parseReplay(bytes);
         const id = nextId++, map = readChk(replay.chk);
         const group = [...loaded, ...batch].find((l) => likeness(map, l.map) >= SAME_MAP)?.group ?? id;
-        batch.push({ id, fileName: file.name, report: analyse(replay), map, bytes, docId: null, group, excluded: false, frame: 0, hidden: new Set(), played: null, failed: null });
+        batch.push({ id, fileName: file.name, report: analyse(replay), map, bytes, docId: null, group, excluded: false, frame: 0, hidden: new Set(), played: null, failed: null, eyes: null });
       } catch (err) {
         const detail = err instanceof ReplayError ? translate(err.message) : String(err);
         api.ui.toast({ kind: "error", title: t("Could not read {name}", { name: file.name }), detail });
@@ -360,7 +536,7 @@ export function activate(api: PluginApi) {
       heatCache = null;
       side?.render();
       strip?.update();
-      overlay.redraw();
+      redraw();
       if (!into) api.ui.toast({ kind: "ok", title: t("{n, plural, one {# replay} other {# replays}} added to Map stats", { n: added.length }), detail: t("Each is analysed in the background, after the replays open in tabs. Map stats is under the map.") });
     }
     pump();
@@ -442,13 +618,14 @@ export function activate(api: PluginApi) {
       showSide();
       showStrip();
       overlay.show();
+      gameFor(current);
     } else {
       closeStrip();
       if (!sideAsked) closeSide();
     }
     side?.render();
     strip?.render();
-    overlay.redraw();
+    redraw();
   }
 
   /* ── Playback ── */
@@ -458,33 +635,76 @@ export function activate(api: PluginApi) {
     // The clock is one game's: moving it brings that game back from Map stats.
     if (lensOf() === "map") showStats(false);
     current.frame = Math.max(0, Math.min(current.report.frames, Math.round(f)));
+    if (gameClock()) game.seek(current.frame);
     tick();
+    showBusy();
   }
 
   /* ── Spectate's camera ── */
 
   /**
-   * The camera follows the shots (`director.ts`) while Spectate is shown and the user has not taken the view: it
-   * glides along with what it shows and between shots near each other, and cuts to one far away, or when the clock
-   * jumps. Where it last put the view is kept, so a view somewhere else means the user moved it, and it lets go.
+   * The camera follows the shots (`director.ts`) while Spectate is shown and the user has not taken the view, along one
+   * track for the whole game (`camera.ts`): still while what it shows stays near the middle, panning to what is near and
+   * cutting to what is far, eased forward and back in time. On the map it is read at Aftermath's clock every time that
+   * moves; the Game view is handed the track and moves along it itself as it draws. Where it last put the map's view is
+   * kept, so a view somewhere else means the user moved it, and it lets go.
    */
-  const cam = { following: true, x: -1, y: -1, shot: -1, last: 0, asked: [] as { x: number; y: number }[] };
-  /** A target this far away (twenty tiles) is cut to rather than glided to. */
-  const CUT = 640;
+  const cam = { following: true, asked: [] as { x: number; y: number }[], made: null as { shots: Shot[]; speed: number; width: number; height: number; track: CameraTrack } | null, raf: 0 };
+
+  /**
+   * The camera's track for a replay, for the view as big as it is now and the speed it plays at: kept until either
+   * changes (the view by a tenth or more), as its pans are timed in the person's seconds and its dead zone is a share of
+   * the view.
+   */
+  function trackOf(entry: Loaded): CameraTrack | null {
+    const shots = shotsOf(entry);
+    if (!shots?.length) return null;
+    let view = game.shown ? game.viewSize : null;
+    if (!view) { const v = api.view.visible(); view = { width: (v.x1 - v.x0) * 32, height: (v.y1 - v.y0) * 32 }; }
+    const m = cam.made, near = (a: number, b: number) => Math.abs(a - b) <= b * 0.1;
+    if (m && m.shots === shots && m.speed === settings.speed && near(view.width, m.width) && near(view.height, m.height)) return m.track;
+    const track = cameraTrack(shots, {
+      view, map: { width: entry.map.width * 32, height: entry.map.height * 32 },
+      frames: Math.max(entry.report.frames, entry.played!.timeline.frames), rate: (1000 / FRAME_MS) * settings.speed,
+    });
+    if (!track) return null;
+    cam.made = { shots, speed: settings.speed, width: view.width, height: view.height, track };
+    return track;
+  }
+
+  /** Spectate's shots for a replay: the whole game's, or in the Replay view through a player's eyes, that player's. */
+  function shotsOf(entry: Loaded): Shot[] {
+    const done = entry.played;
+    if (!done) return [];
+    const eyes = game.shown && game.holds(entry.id) ? entry.eyes : null;
+    const player = eyes === null ? undefined : entry.report.players.find((p) => p.player.slot === eyes)?.player.index;
+    if (player === undefined) return done.shots;
+    let shots = done.shotsFor.get(player);
+    if (!shots) { shots = done.direct(player); done.shotsFor.set(player, shots); }
+    // (A player with nothing to follow, as one who left at once, is the whole game's.)
+    return shots.length ? shots : done.shots;
+  }
 
   function follow(): void {
     const entry = current;
-    if (!entry?.played?.shots.length || lensOf() === "map" || !cam.following || entry.docId === null || api.document.id() !== entry.docId) return;
+    const on = !!entry?.played?.shots.length && lensOf() !== "map" && cam.following && entry.docId !== null && api.document.id() === entry.docId;
+    if (game.shown) {
+      const track = on && entry && game.holds(entry.id) ? trackOf(entry) : null;
+      if (!track || game.follows) { game.follow(track); return; }
+      // A game page from before tracks: moved to the track at the frame it shows, carried on to now, every drawing while it plays.
+      const f = game.frameNow(settings.speed);
+      if (f === null) return;
+      const at = trackAt(track, f);
+      game.camera(at.x, at.y);
+      if (playing && !cam.raf) cam.raf = requestAnimationFrame(() => { cam.raf = 0; follow(); });
+      return;
+    }
+    if (!on || !entry) return;
     if (movedByUser()) { cam.following = false; cam.asked = []; return; }
-    const shots = entry.played.shots, i = shotAt(shots, entry.frame);
-    if (i < 0) return;
-    const target = lookAt(shots[i], entry.frame);
-    const now = performance.now(), dt = Math.min(0.1, (now - cam.last) / 1000);
-    cam.last = now;
-    if (!playing || cam.x < 0 || Math.hypot(target.x - cam.x, target.y - cam.y) > CUT) { cam.x = target.x; cam.y = target.y; }
-    else { const k = 1 - Math.exp(-dt / 0.35); cam.x += (target.x - cam.x) * k; cam.y += (target.y - cam.y) * k; }
-    cam.shot = i;
-    lookTo(cam.x / 32, cam.y / 32);
+    const track = trackOf(entry);
+    if (!track) return;
+    const at = trackAt(track, entry.frame);
+    lookTo(at.x / 32, at.y / 32);
   }
 
   /** What the map shows: Map stats while its tab is open, else the game, with its orders when asked. */
@@ -505,7 +725,12 @@ export function activate(api: PluginApi) {
       settings.tab = "map";
       sideHidden = false;
       showSide(true);
-    } else if (settings.tab === "map") settings.tab = gameTab;
+      // Map stats is drawn on the map: the game steps aside while it is open.
+      if (game.shown) { statsHidGame = true; game.show(false); }
+    } else {
+      if (settings.tab === "map") settings.tab = gameTab;
+      if (statsHidGame) { statsHidGame = false; game.show(true); }
+    }
     save();
     heatCache = null;
     side?.render();
@@ -532,6 +757,8 @@ export function activate(api: PluginApi) {
 
   /** Centre the view on a tile, and remember it as the camera's own doing. */
   function lookTo(tx: number, ty: number): void {
+    // In the Game view the camera is the game's, in pixels; the person moving it is said by the view itself.
+    if (game.shown) { game.camera(tx * 32, ty * 32); return; }
     api.view.center(tx, ty);
     cam.asked.push({ x: tx, y: ty });
     if (cam.asked.length > 8) cam.asked.shift();
@@ -539,7 +766,7 @@ export function activate(api: PluginApi) {
 
   /** The view's middle is not where the camera put it lately, allowing for the map's edge and whole tiles. */
   function movedByUser(): boolean {
-    if (!current || !cam.asked.length) return false;
+    if (game.shown || !current || !cam.asked.length) return false;
     const v = api.view.visible(), hw = (v.x1 - v.x0) / 2, hh = (v.y1 - v.y0) / 2;
     const cx = (v.x0 + v.x1) / 2, cy = (v.y0 + v.y1) / 2;
     const clamp = (n: number, lo: number, hi: number) => (hi < lo ? (lo + hi) / 2 : Math.max(lo, Math.min(hi, n)));
@@ -550,9 +777,8 @@ export function activate(api: PluginApi) {
   function setFollowing(on: boolean): void {
     cam.following = on;
     cam.asked = [];
-    cam.x = -1;
     if (on) follow();
-    overlay.redraw();
+    redraw();
     strip?.update();
   }
 
@@ -577,7 +803,9 @@ export function activate(api: PluginApi) {
     follow();
     side?.update();
     strip?.update();
-    overlay.redraw();
+    // (The map is under the game: only what is drawn over the game.)
+    if (!game.shown) overlay.redraw();
+    else game.redrawOver();
   }
 
   function play(): void {
@@ -585,9 +813,17 @@ export function activate(api: PluginApi) {
     if (lensOf() === "map") showStats(false);
     if (current.frame >= current.report.frames) current.frame = 0;
     playing = true;
+    if (gameClock()) { game.play(true); strip?.update(); return; }
+    runClock();
+    strip?.update();
+  }
+
+  /** Aftermath's own clock, moving the replay in front at the chosen speed; it gives way to the game's when that one takes over. */
+  function runClock(): void {
+    cancelAnimationFrame(raf);
     lastTick = performance.now();
     const step = (now: number) => {
-      if (!playing || !current) return;
+      if (!playing || !current || gameClock()) return;
       const dt = now - lastTick;
       lastTick = now;
       current.frame = Math.min(current.report.frames, current.frame + (dt / FRAME_MS) * settings.speed);
@@ -596,12 +832,12 @@ export function activate(api: PluginApi) {
       if (playing) raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
-    strip?.update();
   }
 
   function stop(): void {
     playing = false;
     cancelAnimationFrame(raf);
+    game.play(false);
     strip?.update();
   }
 
@@ -692,6 +928,7 @@ export function activate(api: PluginApi) {
       entry.played = {
         timeline, standing, index, lost: lossPoints(timeline), lostBy: losses(timeline, cost), fights, kills: findKills(timeline), killers: topKillers(timeline, cost),
         adv: advantage(timeline), bases: taken, totals: totals(timeline, taken, cost), shots: direct(timeline, index, fights, taken, cost),
+        shotsFor: new Map(), direct: (only) => direct(timeline, index, fights, taken, cost, only),
       };
       for (const b of entry.played.standing) api.graphics.requestUnit(b.type);
     } catch (err) {
@@ -703,7 +940,7 @@ export function activate(api: PluginApi) {
       if (running === run) running = null;
       heatCache = null;
       reportCache = null;
-      if (current && current.group === entry.group) { side?.render(); strip?.render(); overlay.redraw(); }
+      if (current && current.group === entry.group) { side?.render(); strip?.render(); redraw(); }
       announce(entry);
     }
   }
@@ -936,26 +1173,44 @@ export function activate(api: PluginApi) {
     }
 
     // The orders of the last few seconds: in Orders, and in Watch until the game is analysed (they are all there is then).
-    if (lens === "orders" || !done) {
-      const r = Math.max(2.5, 5 * Math.min(1, s * 2));
-      for (const p of players) {
-        const clicks = p.clicks;
-        for (let i = firstAfter(clicks, frame - TRAIL_FRAMES); i < clicks.length && clicks[i].frame <= frame; i++) {
-          const c = clicks[i];
-          const k = 1 - (frame - c.frame) / TRAIL_FRAMES;
-          ctx.globalAlpha = Math.max(0.1, k);
-          markOrder(ctx, c.kind, v.x(c.x), v.y(c.y), r, p.player.color, k);
-        }
-      }
-      ctx.globalAlpha = 1;
-    }
+    if (lens === "orders" || !done) drawOrders(ctx, v, players, frame);
     if (settings.legend) legend(ctx, lens, done !== null);
+    caption(ctx, cur);
+  }
+
+  /** The orders of the last few seconds, each fading as it gets older. */
+  function drawOrders(ctx: CanvasRenderingContext2D, v: MapView, players: PlayerReport[], frame: number): void {
+    const r = Math.max(2.5, 5 * Math.min(1, (v.tilePx / 32) * 2));
+    for (const p of players) {
+      const clicks = p.clicks;
+      for (let i = firstAfter(clicks, frame - TRAIL_FRAMES); i < clicks.length && clicks[i].frame <= frame; i++) {
+        const c = clicks[i];
+        const k = 1 - (frame - c.frame) / TRAIL_FRAMES;
+        ctx.globalAlpha = Math.max(0.1, k);
+        markOrder(ctx, c.kind, v.x(c.x), v.y(c.y), r, p.player.color, k);
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /**
+   * Over the Replay view, where the game draws the units and buildings itself: the orders when asked, their legend,
+   * and Spectate's line.
+   */
+  function drawOverGame(ctx: CanvasRenderingContext2D, v: MapView): void {
+    const cur = current;
+    if (!cur || !game.holds(cur.id) || lensOf() === "map") return;
+    const players = cur.report.players.filter((p) => !cur.hidden.has(p.player.id));
+    if (settings.orders) {
+      drawOrders(ctx, v, players, game.frameNow(settings.speed) ?? cur.frame);
+      if (settings.legend) legend(ctx, "orders", cur.played !== null, true);
+    }
     caption(ctx, cur);
   }
 
   /** Spectate's line at the top of the map: what the camera shows, while it follows. */
   function caption(ctx: CanvasRenderingContext2D, entry: Loaded): void {
-    const shots = entry.played?.shots ?? [];
+    const shots = shotsOf(entry);
     const i = cam.following && shots.length ? shotAt(shots, entry.frame) : -1;
     if (i < 0) return;
     pill(ctx, captionOf(entry, shots[i]), shots[i].players.map((pl) => entry.report.players.find((p) => p.player.index === pl)?.player.color ?? "#888"));
@@ -980,7 +1235,7 @@ export function activate(api: PluginApi) {
   }
 
   /** A key to what the view draws, in the map's bottom-left corner, made with the same marks. */
-  function legend(ctx: CanvasRenderingContext2D, lens: Lens, analysed: boolean): void {
+  function legend(ctx: CanvasRenderingContext2D, lens: Lens, analysed: boolean, inGame = false): void {
     const grey = "#c8cdd7";
     type Item = [(x: number, y: number) => void, string];
     const items: Item[] = [];
@@ -993,9 +1248,10 @@ export function activate(api: PluginApi) {
       const mode = heatMode();
       if (mode !== "off") items.push([(x, y) => { const g = ctx.createLinearGradient(x - 7, 0, x + 7, 0); g.addColorStop(0, "rgb(40,80,220)"); g.addColorStop(0.5, "rgb(250,220,60)"); g.addColorStop(1, "rgb(240,50,40)"); ctx.fillStyle = g; ctx.fillRect(x - 7, y - 3, 14, 6); }, translate(HEAT_LABELS[mode])]);
     } else {
-      items.push([(x, y) => markBuilding(ctx, x - 6, y - 4, 12, 8, grey, "built", null, 1), analysed ? t("A building; dashed while it goes up") : t("A building ordered")]);
-      if (analysed) items.push([(x, y) => { markUnit(ctx, x - 3, y, 3.5, grey, false); markUnit(ctx, x + 4, y, 3.5, grey, true); }, t("A unit, and a worker")]);
-      if (lens === "watch" && analysed) {
+      // (Over the Replay view the game draws the units and buildings itself: only the orders are keyed there.)
+      if (!inGame) items.push([(x, y) => markBuilding(ctx, x - 6, y - 4, 12, 8, grey, "built", null, 1), analysed ? t("A building; dashed while it goes up") : t("A building ordered")]);
+      if (analysed && !inGame) items.push([(x, y) => { markUnit(ctx, x - 3, y, 3.5, grey, false); markUnit(ctx, x + 4, y, 3.5, grey, true); }, t("A unit, and a worker")]);
+      if (lens === "watch" && analysed && !inGame) {
         items.push(
           [(x, y) => markKill(ctx, x - 7, y + 3, x + 7, y - 3, grey), t("A kill, from the killer")],
           [(x, y) => markLoss(ctx, x, y, 4, grey), t("A loss")],
@@ -1012,7 +1268,7 @@ export function activate(api: PluginApi) {
         );
       }
     }
-    const title = translate(LEGEND_TITLES[lens]);
+    const title = inGame ? t("Orders") : translate(LEGEND_TITLES[lens]);
     const note = lens === "map" ? null : t("In the player's colour");
     ctx.font = "11px system-ui, sans-serif";
     const widest = Math.max(...items.map(([, text]) => ctx.measureText(text).width), note ? ctx.measureText(note).width : 0);
@@ -1058,7 +1314,13 @@ export function activate(api: PluginApi) {
     above: "objects",
     draw,
   });
-  const imageListener = api.graphics.onImageLoaded(() => { if (current && overlay.isVisible()) overlay.redraw(); });
+  game.setOverlay(drawOverGame);
+  /** Draw again what Aftermath draws, over the map and over the game. */
+  function redraw(): void {
+    overlay.redraw();
+    game.redrawOver();
+  }
+  const imageListener = api.graphics.onImageLoaded(() => { if (current && overlay.isVisible()) overlay.redraw(); if (lastHover) showHover(lastHover); });
 
   /** A switch for the strip: a button that stays pressed while it is on. */
   function toggle(label: string, onClick: () => void): HTMLButtonElement {
@@ -1077,7 +1339,7 @@ export function activate(api: PluginApi) {
   function showOrders(on: boolean): void {
     settings.orders = on;
     save();
-    overlay.redraw();
+    redraw();
     strip?.update();
   }
 
@@ -1122,7 +1384,7 @@ export function activate(api: PluginApi) {
     if (current?.played?.shots.length) {
       seek(Math.max(0, f.from - FIGHT_LEAD));
       setFollowing(true);
-      api.view.flash({ rect: { x0: Math.max(0, Math.floor(f.rect.x0 / 32) - 2), y0: Math.max(0, Math.floor(f.rect.y0 / 32) - 2), x1: Math.ceil(f.rect.x1 / 32) + 2, y1: Math.ceil(f.rect.y1 / 32) + 2 }, kind: "attention" });
+      if (!game.shown) api.view.flash({ rect: { x0: Math.max(0, Math.floor(f.rect.x0 / 32) - 2), y0: Math.max(0, Math.floor(f.rect.y0 / 32) - 2), x1: Math.ceil(f.rect.x1 / 32) + 2, y1: Math.ceil(f.rect.y1 / 32) + 2 }, kind: "attention" });
       return;
     }
     const rect = { x0: Math.max(0, Math.floor(f.rect.x0 / 32) - 2), y0: Math.max(0, Math.floor(f.rect.y0 / 32) - 2), x1: Math.ceil(f.rect.x1 / 32) + 2, y1: Math.ceil(f.rect.y1 / 32) + 2 };
@@ -1134,6 +1396,7 @@ export function activate(api: PluginApi) {
     // A place asked for: the camera lets go of the view (F follows again).
     cam.following = false;
     seek(frame);
+    if (game.shown) { game.camera(x, y); return; }
     api.view.center(Math.floor(x / 32), Math.floor(y / 32));
     if (rect) api.view.flash({ rect, kind: "attention" });
   }
@@ -1172,12 +1435,12 @@ export function activate(api: PluginApi) {
         if (!closing) sideHidden = true;
         // With Map stats gone, the map shows the game again.
         heatCache = null;
-        overlay.redraw();
+        redraw();
         strip?.update();
       },
     });
     sidePanel = handle;
-    overlay.redraw();
+    redraw();
   }
   function closeSide(): void { closing = true; sidePanel?.close(); closing = false; }
 
@@ -1284,7 +1547,7 @@ export function activate(api: PluginApi) {
         line.addEventListener("click", () => {
           if (entry.hidden.has(p.player.id)) entry.hidden.delete(p.player.id); else entry.hidden.add(p.player.id);
           heatCache = null;
-          overlay.redraw();
+          redraw();
           this.render();
           strip?.update();
         });
@@ -1714,6 +1977,7 @@ export function activate(api: PluginApi) {
     private ordersButton: HTMLButtonElement | null = null;
     private legendButton: HTMLButtonElement | null = null;
     private statsButton: HTMLButtonElement | null = null;
+    private eyesSelect: HTMLSelectElement | null = null;
     /** Where the pointer is over the graph, in CSS pixels from its left; null when it is not. */
     private hover: number | null = null;
     private get canvasTitle(): string {
@@ -1733,7 +1997,7 @@ export function activate(api: PluginApi) {
       this.playButton = w.button("", { primary: true, className: "sm", title: t("Space plays and pauses. ← and → go 10 seconds back or on, a minute with Shift; N and Shift+N go to the next and the previous key moment; F follows the action or lets the camera go; O shows the orders; Home and End go to the start and the end."), onClick: () => (playing ? stop() : play()) });
       this.timeLabel = el("span", { className: "afm-time" });
       // A menu keeps the focus, and Space and the arrows with it: each gives it back once chosen.
-      const speed = w.select([1, 2, 4, 8, 16, 32].map((n) => ({ value: n, label: `${n}×` })), { value: settings.speed, title: t("Playback speed"), onChange: (v) => { settings.speed = Number(v); save(); speed.blur(); } });
+      const speed = w.select([1, 2, 4, 8, 16, 32].map((n) => ({ value: n, label: `${n}×` })), { value: settings.speed, title: t("Playback speed"), onChange: (v) => { settings.speed = Number(v); save(); if (gameClock()) game.speed(settings.speed); speed.blur(); } });
       const chart = chartOf(entry);
       const chartSelect = w.select([
         ...(entry.played?.adv ? [{ value: "lead", label: t("Army lead") }] : []),
@@ -1755,12 +2019,24 @@ export function activate(api: PluginApi) {
       // The switches: the camera, the orders, Map stats, the legend.
       this.spectateButton = toggle(t("Spectate"), () => spectate());
       this.ordersButton = toggle(t("Orders"), () => showOrders(!settings.orders));
-      this.ordersButton.title = t("O: what the players told their units to do in the last eight seconds, over the units drawn faintly");
-      this.legendButton = toggle(t("Legend"), () => { settings.legend = !settings.legend; save(); overlay.redraw(); this.update(); });
-      this.legendButton.title = t("A key to the marks, in the map's corner");
+      this.legendButton = toggle(t("Legend"), () => { settings.legend = !settings.legend; save(); redraw(); this.update(); });
       this.statsButton = toggle(t("Map stats"), () => showStats(lensOf() !== "map"));
+      // In the Replay view: the game as everyone sees it, or through one player's eyes, with the fog of war.
+      const eyes = w.select([
+        { value: -1, label: t("Vision: everyone") },
+        ...entry.report.players.map((p) => ({ value: p.player.slot, label: t("Vision: {name}", { name: p.player.name }) })),
+      ], { value: entry.eyes ?? -1, title: t("Whose eyes the game is seen through: one player's shows only what they could see, with the fog of war"), onChange: (v) => {
+        const slot = Number(v);
+        entry.eyes = slot < 0 ? null : slot;
+        if (game.holds(entry.id)) game.eyes(entry.eyes);
+        // (Spectate follows the player whose eyes these are.)
+        follow();
+        redraw();
+        eyes.blur();
+      } });
+      this.eyesSelect = eyes;
       this.root.append(el("div", { className: "afm-row" }, this.playButton, this.timeLabel, speed,
-        el("span", { className: "afm-toggles" }, this.spectateButton, this.ordersButton, this.statsButton, this.legendButton),
+        el("span", { className: "afm-toggles" }, this.spectateButton, this.ordersButton, this.statsButton, this.legendButton), eyes,
         this.status, retry, chartSelect));
 
       // The lane of marks and the graph, one canvas: press or drag anywhere on it to go there.
@@ -1791,7 +2067,14 @@ export function activate(api: PluginApi) {
       this.timeLabel!.textContent = `${formatTime(entry.frame)} / ${formatTime(entry.report.frames)}`;
       let line = "";
       let why = "";
-      if (running?.entry === entry) {
+      if (gameState && game.shown) {
+        line = gameState;
+      } else if (game.shown && game.seeking) {
+        // (A jump starts from the nearest moment kept, the analysis's or the viewer's own, and plays on from there: a
+        // long one before the analysis has been that far shows how far it has got.)
+        const done = game.seekProgress;
+        line = done === null || done < 0.05 ? t("Going to {time}…", { time: formatTime(entry.frame) }) : t("Going to {time}… {percent}%", { time: formatTime(entry.frame), percent: Math.floor(done * 100) });
+      } else if (running?.entry === entry) {
         line = running.fraction < 0 ? t("Analysing the game…") : t("Analysing the game: {percent}%", { percent: Math.floor(running.fraction * 100) });
         why = t("The game engine plays the replay through in the background to see what really happened: the armies, the fights, what was lost. You can watch the replay meanwhile.");
       } else if (entry.played) {
@@ -1826,8 +2109,15 @@ export function activate(api: PluginApi) {
         : t("F: follow the action as an observer would: the fights that matter, armies about to meet, new bases, the armies on the move");
       this.ordersButton!.classList.toggle("afm-on", settings.orders);
       this.ordersButton!.setAttribute("aria-pressed", String(settings.orders));
+      this.ordersButton!.title = game.shown ? t("O: what the players told their units to do in the last eight seconds, over the game")
+        : t("O: what the players told their units to do in the last eight seconds, over the units drawn faintly");
       this.legendButton!.classList.toggle("afm-on", settings.legend);
       this.legendButton!.setAttribute("aria-pressed", String(settings.legend));
+      // (Over the game only the orders have marks of Aftermath's own: there the legend keys them, and waits for them.)
+      const keyless = game.shown && !onMap && !settings.orders;
+      this.legendButton!.disabled = keyless;
+      this.legendButton!.title = keyless ? t("Over the game the legend keys the orders: turn Orders on to see it") : t("A key to the marks, in the map's corner");
+      this.eyesSelect!.hidden = !game.shown || onMap;
       const games = mapGames(entry).length;
       this.statsButton!.textContent = games > 1 ? t("Map stats · {n}", { n: games }) : t("Map stats");
       this.statsButton!.classList.toggle("afm-on", onMap);
@@ -2024,23 +2314,28 @@ export function activate(api: PluginApi) {
   if (bottomDock) api.ui.fileType({ name: msg("StarCraft replay"), extensions: [".rep"], open: (files) => void load(files) });
 
   // Last: a service already there is announced at once, and the answer reaches the panels.
-  const simWatch = api.services.watch<ScmSimService>("scm-sim.engine", (service) => { sim = service; pump(); strip?.render(); });
+  const simWatch = api.services.watch<ScmSimService>("scm-sim.engine", (service) => { sim = service; game.setService(service); if (current) gameFor(current); pump(); strip?.render(); });
 
   api.events.on("document", () => sync());
   // The view moved by the user, even with the clock still: Spectate's camera lets go.
   api.events.on("view", () => {
+    game.graphics();
+    // (The game shown, the map's view is hidden and still: the minimap moves the game, and the game says so itself.)
+    if (game.shown) return;
     if (!cam.following || !current?.played?.shots.length || lensOf() === "map" || api.document.id() !== current.docId || !movedByUser()) return;
     cam.following = false;
     cam.asked = [];
-    overlay.redraw();
+    redraw();
     strip?.update();
   });
   api.events.on("language", () => { side?.render(); strip?.render(); });
 
   return () => {
     stop();
+    cancelAnimationFrame(cam.raf);
     bindKeys(false);
     running?.controller.abort();
+    game.dispose();
     simWatch.dispose();
     imageListener.dispose();
     style.remove();
