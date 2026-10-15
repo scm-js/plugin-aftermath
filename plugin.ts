@@ -307,18 +307,50 @@ export function activate(api: PluginApi) {
       if (playing && !f.playing && f.seeking === null && f.frame >= current.report.frames - 1) stop();
       tick();
     },
-    movedByUser: () => {
-      if (!cam.following || lensOf() === "map") return;
-      cam.following = false;
-      cam.asked = [];
-      strip?.update();
-    },
+    camera: (c) => mirrorGame(c),
+    movedByUser: () => letGo(),
     shown: (on) => handOver(on),
     state: (text) => { gameState = text; strip?.update(); },
   }, "Game", {
     loading: (name) => t("Starting the game of {name}…", { name }),
     failed: (message) => t("The game could not be shown: {message}", { message }),
   });
+  /** Spectate's camera lets go: the person moved the view. */
+  function letGo(): void {
+    if (!cam.following || lensOf() === "map") return;
+    cam.following = false;
+    cam.asked = [];
+    strip?.update();
+  }
+
+  /**
+   * The editor's view kept where the game looks, the same size, so its minimap's box is the game's and the map, shown
+   * again, is where the game was. Where it was put last, and when, is kept: a view that moved since is the person's
+   * (a press on the minimap), and the game follows it.
+   */
+  let mirrored: { x: number; y: number; at: number } | null = null;
+  function mirrorGame(c: { x: number; y: number; width: number }): void {
+    if (!game.shown || !current || api.document.id() !== current.docId) return;
+    const v = api.view.visible(), shown = v.x1 - v.x0, wanted = c.width / 32;
+    if (shown > 0 && wanted > 0 && Math.abs(shown - wanted) > 0.5) api.view.setZoom(api.view.zoom() * (shown / wanted));
+    mirrored = { x: c.x / 32, y: c.y / 32, at: performance.now() };
+    api.view.center(mirrored.x, mirrored.y);
+  }
+  /** The editor's view moved while the game is shown: an echo of `mirrorGame`, or the person on the minimap. */
+  function editorViewMoved(): void {
+    if (!game.shown || !current || api.document.id() !== current.docId) return;
+    const v = api.view.visible(), hw = (v.x1 - v.x0) / 2, hh = (v.y1 - v.y0) / 2, cx = (v.x0 + v.x1) / 2, cy = (v.y0 + v.y1) / 2;
+    if (mirrored) {
+      // (Allowing for the map's edges, where either view stops short of the middle asked for.)
+      const clamp = (n: number, lo: number, hi: number) => (hi < lo ? (lo + hi) / 2 : Math.max(lo, Math.min(hi, n)));
+      const near = Math.abs(clamp(mirrored.x, hw, current.map.width - hw) - cx) <= 1.5 && Math.abs(clamp(mirrored.y, hh, current.map.height - hh) - cy) <= 1.5;
+      if (near || performance.now() - mirrored.at < 120) return;
+    }
+    mirrored = { x: cx, y: cy, at: performance.now() };
+    game.camera(cx * 32, cy * 32);
+    letGo();
+  }
+
   /** The Game view is the clock: it shows the replay in front, loaded. */
   const gameClock = () => current !== null && game.shown && game.holds(current.id);
 
@@ -2110,6 +2142,7 @@ export function activate(api: PluginApi) {
   api.events.on("document", () => sync());
   // The view moved by the user, even with the clock still: Spectate's camera lets go.
   api.events.on("view", () => {
+    if (game.shown) { editorViewMoved(); return; }
     if (!cam.following || !current?.played?.shots.length || lensOf() === "map" || api.document.id() !== current.docId || !movedByUser()) return;
     cam.following = false;
     cam.asked = [];

@@ -181,7 +181,9 @@ whichever is shown: Play, the speed, a press on the timeline, the keys and Spect
 camera all move the game while it is in front, and the timeline follows the game. The
 first jump far into a game takes a few seconds while the engine plays ahead; jumps after
 that are quick. The arrow keys scroll the game while it has the keyboard, as in the game;
-the other keys stay Aftermath's. Map stats shows on the map, so opening it switches to the
+the other keys stay Aftermath's. The game is shown without its console: the editor's
+minimap stands in for the game's, its box where the game looks, and a press or a drag on it
+moves the game's camera there. Map stats shows on the map, so opening it switches to the
 map, and closing it goes back to the game. One game is shown at a time: switching to
 another replay's tab starts that one.
 

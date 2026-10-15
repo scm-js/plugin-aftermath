@@ -11,7 +11,7 @@
  * the game's files (the engine's page says so). Otherwise nothing changes: the tab has the map alone.
  */
 import type { Disposable, MapViewHandle, PluginApi } from "@scm-js/plugin-api";
-import type { ScmSimService, ScmSimView, ViewFrame } from "./vendor/scm-sim";
+import type { ScmSimService, ScmSimView, ViewCamera, ViewFrame } from "./vendor/scm-sim";
 
 /** What the Game view needs of a replay. */
 export interface Held {
@@ -24,7 +24,9 @@ export interface Held {
 export interface GameViewHooks {
   /** The frame the viewer shows, for the replay it holds. */
   frame(id: number, f: ViewFrame): void;
-  /** The person moved the game's camera (the minimap, the arrows). */
+  /** Where the game's camera looks, whenever it moved: its middle and what it shows, in pixels. */
+  camera(c: ViewCamera): void;
+  /** The person moved the game's camera (the arrows). */
   movedByUser(): void;
   /** The tab in front changed between the map and the game. */
   shown(shown: boolean): void;
@@ -109,7 +111,7 @@ export class GameView {
         }
         this.hooks.frame(this.holding, f);
       }),
-      view.onCamera((c) => { if (c.byUser) this.hooks.movedByUser(); }),
+      view.onCamera((c) => { this.hooks.camera(c); if (c.byUser) this.hooks.movedByUser(); }),
     ];
     return view;
   }
