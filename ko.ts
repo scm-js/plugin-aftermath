@@ -425,4 +425,12 @@ export const KO: Record<string, string> = {
   "A broadcast of this game: two commentators, written and voiced by the scmjs.dev AI, with the camera on the action": "이 게임의 중계: scmjs.dev AI가 쓰고 목소리를 입힌 두 해설자와, 전투를 따라가는 카메라",
   "Making the cast: {what} · {time}": "중계 만드는 중: {what} · {time}",
   "The cast is ready.": "중계가 준비되었습니다.",
+  "The browser would not go full screen.": "브라우저가 전체 화면으로 전환하지 않았습니다.",
+  "Leave the cinematic view": "시네마틱 보기 끝내기",
+  "Supply {used}/{max}": "인구 {used}/{max}",
+  "army {value}": "병력 {value}",
+  "Key fight": "주요 교전",
+  "{name} wins": "{name} 승리",
+  "Cinematic": "시네마틱",
+  "The game full screen, dressed as a broadcast, without the editor around it. Esc leaves.": "편집기 없이 게임을 방송처럼 전체 화면으로 봅니다. Esc로 나갑니다.",
 };

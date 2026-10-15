@@ -1352,7 +1352,15 @@ var KO = {
   "Cast\u2026": "\uC911\uACC4\u2026",
   "A broadcast of this game: two commentators, written and voiced by the scmjs.dev AI, with the camera on the action": "\uC774 \uAC8C\uC784\uC758 \uC911\uACC4: scmjs.dev AI\uAC00 \uC4F0\uACE0 \uBAA9\uC18C\uB9AC\uB97C \uC785\uD78C \uB450 \uD574\uC124\uC790\uC640, \uC804\uD22C\uB97C \uB530\uB77C\uAC00\uB294 \uCE74\uBA54\uB77C",
   "Making the cast: {what} \xB7 {time}": "\uC911\uACC4 \uB9CC\uB4DC\uB294 \uC911: {what} \xB7 {time}",
-  "The cast is ready.": "\uC911\uACC4\uAC00 \uC900\uBE44\uB418\uC5C8\uC2B5\uB2C8\uB2E4."
+  "The cast is ready.": "\uC911\uACC4\uAC00 \uC900\uBE44\uB418\uC5C8\uC2B5\uB2C8\uB2E4.",
+  "The browser would not go full screen.": "\uBE0C\uB77C\uC6B0\uC800\uAC00 \uC804\uCCB4 \uD654\uBA74\uC73C\uB85C \uC804\uD658\uD558\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4.",
+  "Leave the cinematic view": "\uC2DC\uB124\uB9C8\uD2F1 \uBCF4\uAE30 \uB05D\uB0B4\uAE30",
+  "Supply {used}/{max}": "\uC778\uAD6C {used}/{max}",
+  "army {value}": "\uBCD1\uB825 {value}",
+  "Key fight": "\uC8FC\uC694 \uAD50\uC804",
+  "{name} wins": "{name} \uC2B9\uB9AC",
+  "Cinematic": "\uC2DC\uB124\uB9C8\uD2F1",
+  "The game full screen, dressed as a broadcast, without the editor around it. Esc leaves.": "\uD3B8\uC9D1\uAE30 \uC5C6\uC774 \uAC8C\uC784\uC744 \uBC29\uC1A1\uCC98\uB7FC \uC804\uCCB4 \uD654\uBA74\uC73C\uB85C \uBD05\uB2C8\uB2E4. Esc\uB85C \uB098\uAC11\uB2C8\uB2E4."
 };
 
 // played.ts
@@ -2729,6 +2737,10 @@ var GameView = class {
   }
   play(on) {
     this.view?.play(on);
+  }
+  /** The element the game and what is drawn over it live in: what the cinematic view takes full screen. */
+  get root() {
+    return this.element ?? null;
   }
   speed(multiplier) {
     this.view?.speed(multiplier);
@@ -4816,6 +4828,14 @@ function fightMark(f) {
   return null;
 }
 var STYLE = `
+.afm-cinema { background: #000; }
+.afm-cinema .afm-tip, .afm-cinema .afm-busy { display: none; }
+.afm-cinema-layer { position: absolute; inset: 0; z-index: 4; cursor: none; }
+.afm-cinema-layer.afm-awake { cursor: default; }
+.afm-cinema-controls { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; gap: 8px; opacity: 0; transition: opacity 0.25s; }
+.afm-cinema-layer.afm-awake .afm-cinema-controls { opacity: 1; }
+.afm-cinema-controls button { font: 600 13px system-ui, sans-serif; padding: 7px 14px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.25); background: rgba(10,12,16,0.8); color: #f0f3f8; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { .afm-cinema-controls { transition: none; } }
 .afm-cast-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 14px; }
 .afm-cast-head .afm-dim { font-variant-numeric: tabular-nums; }
 .afm-cast-story { margin: 4px 0; padding: 8px 12px; border-left: 3px solid var(--accent, #4fd1c5); color: var(--text-dim, #99a2b3); font-style: italic; line-height: 1.45; max-height: 9em; overflow: auto; }
@@ -5812,6 +5832,9 @@ function activate(api) {
     casting.error = null;
     casting.speed = settings.speed;
     casting.made = made;
+    cinema.castStarted = performance.now();
+    cinema.lastMoment = -1;
+    cinema.banner = null;
     setFollowing(true);
     casting.reel = new Reel({
       frame: () => gameClock() ? game.seeking ? null : game.frameNow(settings.speed) : current?.frame ?? null,
@@ -5837,6 +5860,7 @@ function activate(api) {
     casting.reel = null;
     casting.made = null;
     casting.entry = null;
+    void setCinema(false);
     if (reel) {
       reel.stop();
       settings.speed = casting.speed;
@@ -6023,6 +6047,156 @@ function activate(api) {
       }
     });
   }
+  const cinema = { on: false, controls: null, idle: 0, castStarted: 0, lastMoment: -1, banner: null };
+  const cinemaPossible = () => !!current && game.shown && game.holds(current.id) && typeof game.root?.requestFullscreen === "function";
+  async function setCinema(on) {
+    if (on) {
+      const root = game.root;
+      if (!cinemaPossible() || !root) return;
+      try {
+        await root.requestFullscreen();
+      } catch {
+        api.ui.toast({ kind: "warn", title: t("The browser would not go full screen.") });
+      }
+    } else if (document.fullscreenElement && document.fullscreenElement === game.root) {
+      await document.exitFullscreen().catch(() => {
+      });
+    }
+  }
+  function onFullscreen() {
+    const root = game.root;
+    const on = !!root && document.fullscreenElement === root;
+    if (on === cinema.on) return;
+    cinema.on = on;
+    root?.classList.toggle("afm-cinema", on);
+    cinema.controls?.remove();
+    cinema.controls = null;
+    if (on && root) {
+      const layer = el("div", { className: "afm-cinema-layer" });
+      const pause = el("button", { type: "button" }, playing3 ? t("Pause") : t("Play"));
+      const exit = el("button", { type: "button" }, t("Leave the cinematic view"));
+      pause.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (playing3) stop();
+        else play();
+        pause.textContent = playing3 ? t("Pause") : t("Play");
+      });
+      exit.addEventListener("click", (e) => {
+        e.stopPropagation();
+        void setCinema(false);
+      });
+      const bar = el("div", { className: "afm-cinema-controls" }, pause, exit);
+      layer.append(bar);
+      layer.addEventListener("pointermove", () => {
+        layer.classList.add("afm-awake");
+        clearTimeout(cinema.idle);
+        cinema.idle = window.setTimeout(() => layer.classList.remove("afm-awake"), 2500);
+      });
+      root.append(layer);
+      cinema.controls = layer;
+    }
+    redraw();
+    strip?.render();
+  }
+  document.addEventListener("fullscreenchange", onFullscreen);
+  const mapTitle = (entry) => plainText(entry.report.replay.header.mapName).split("|").map((x) => x.trim()).filter(Boolean).pop() ?? "";
+  function broadcastBar(ctx, entry, frame) {
+    const dpr = window.devicePixelRatio || 1, W = ctx.canvas.width / dpr;
+    const tl = entry.played?.timeline;
+    const players = entry.report.players.filter((p) => !tl || tl.samples.players.some((q) => q.slot === p.player.index));
+    const h = 58;
+    const grad = ctx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, "rgba(6,8,12,0.92)");
+    grad.addColorStop(1, "rgba(6,8,12,0.72)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, h);
+    const i = tl ? sampleAt(tl.samples.frame, frame) : -1;
+    const race = (r) => r === 0 ? t("Zerg") : r === 1 ? t("Terran") : t("Protoss");
+    const side2 = (p, right) => {
+      const q = tl?.samples.players.find((s) => s.slot === p.player.index);
+      const x = right ? W - 24 : 24;
+      ctx.textAlign = right ? "right" : "left";
+      ctx.textBaseline = "alphabetic";
+      ctx.fillStyle = p.player.color;
+      ctx.fillRect(right ? W - 8 : 0, 0, 8, h);
+      ctx.font = "800 19px system-ui, sans-serif";
+      ctx.fillStyle = "#f4f6fa";
+      ctx.fillText(p.player.name, x, 25);
+      ctx.font = "600 12px system-ui, sans-serif";
+      ctx.fillStyle = p.player.color;
+      const stats = q && i >= 0 ? `${race(p.player.race)} \xB7 ${t("Supply {used}/{max}", { used: supplyShown(q.supplyUsed[i] ?? 0), max: supplyShown(q.supplyMax[i] ?? 0) })} \xB7 ${t("{n} workers", { n: q.workers[i] ?? 0 })} \xB7 ${t("army {value}", { value: number(q.armyValue[i] ?? 0) })}` : race(p.player.race);
+      ctx.fillText(stats, x, 45);
+    };
+    if (players.length >= 1) side2(players[0], false);
+    if (players.length >= 2) side2(players[1], true);
+    ctx.textAlign = "center";
+    ctx.font = "800 22px system-ui, sans-serif";
+    ctx.fillStyle = "#f4f6fa";
+    ctx.fillText(formatTime(frame), W / 2, 28);
+    ctx.font = "600 11px system-ui, sans-serif";
+    ctx.fillStyle = "#9aa3b2";
+    ctx.fillText(mapTitle(entry).toUpperCase(), W / 2, 46);
+    ctx.textAlign = "start";
+  }
+  function centreCard(ctx, lines, alpha) {
+    if (alpha <= 0) return;
+    const dpr = window.devicePixelRatio || 1, W = ctx.canvas.width / dpr, H = ctx.canvas.height / dpr;
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, alpha);
+    ctx.fillStyle = "rgba(6,8,12,0.78)";
+    const h = 40 + lines.length * 40;
+    ctx.fillRect(0, H / 2 - h / 2, W, h);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    lines.forEach((l, k) => {
+      ctx.font = l.font;
+      ctx.fillStyle = l.colour;
+      ctx.fillText(l.text, W / 2, H / 2 - h / 2 + 40 + k * 40);
+    });
+    ctx.restore();
+  }
+  function cinemaDress(ctx, entry) {
+    const frame = (gameClock() ? game.frameNow(settings.speed) : null) ?? entry.frame;
+    broadcastBar(ctx, entry, frame);
+    const reel = casting.reel, made = casting.made;
+    if (!reel || !made || casting.entry !== entry) return;
+    const now = performance.now();
+    const players = entry.report.players.filter((p) => made.input.game.players.some((q) => q.id === p.player.index));
+    const since = (now - cinema.castStarted) / 1e3;
+    if (since < 6 && players.length >= 2) {
+      centreCard(ctx, [
+        { text: `${players[0].player.name}  vs  ${players[1].player.name}`, font: "800 34px system-ui, sans-serif", colour: "#f4f6fa" },
+        { text: mapTitle(entry), font: "600 16px system-ui, sans-serif", colour: "#9aa3b2" }
+      ], since < 5 ? 1 : 6 - since);
+    }
+    const at = reel.progress().moment;
+    if (at !== cinema.lastMoment) {
+      cinema.lastMoment = at;
+      const m = made.input.moments[at];
+      if (m && (m.speed ?? 1) === 1 && m.title) cinema.banner = { text: m.title, at: now };
+    }
+    const b = cinema.banner;
+    if (b && now - b.at < 6e3) {
+      const dpr = window.devicePixelRatio || 1, W = ctx.canvas.width / dpr;
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, (6e3 - (now - b.at)) / 600);
+      ctx.font = "800 15px system-ui, sans-serif";
+      const label2 = t("Key fight").toUpperCase(), tw = ctx.measureText(`${label2}   ${b.text}`).width + 36;
+      ctx.fillStyle = "#e05050";
+      ctx.fillRect(W / 2 - tw / 2, 70, tw, 30);
+      ctx.fillStyle = "#ffffff";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(`${label2}   ${b.text}`, W / 2, 85);
+      ctx.restore();
+    }
+    const last = made.input.moments[made.input.moments.length - 1];
+    const winner = made.input.game.players.find((p) => p.result === "won");
+    if (last && winner && frame >= last.to / (FRAME_MS / 1e3) - 24) {
+      const who = entry.report.players.find((p) => p.player.index === winner.id)?.player;
+      centreCard(ctx, [{ text: t("{name} wins", { name: winner.name }), font: "800 34px system-ui, sans-serif", colour: who?.color ?? "#f4f6fa" }], 1);
+    }
+  }
   function castCard(ctx) {
     const id = settings.castCards ? casting.reel?.card() : null;
     const entry = casting.entry;
@@ -6044,7 +6218,7 @@ function activate(api) {
       pic = api.graphics.unitImage(card.type, { owner: card.player });
       if (!pic) api.graphics.requestUnit(card.type);
     }
-    const x0 = 14, y0 = 36, w2 = 280, h = 70, colour = who?.color ?? "#888";
+    const x0 = 14, y0 = cinema.on ? 72 : 36, w2 = 280, h = 70, colour = who?.color ?? "#888";
     ctx.fillStyle = "rgba(10,12,16,0.84)";
     ctx.fillRect(x0, y0, w2, h);
     ctx.fillStyle = colour;
@@ -6078,8 +6252,9 @@ function activate(api) {
     if (!said) return;
     const dpr = window.devicePixelRatio || 1, viewW = ctx.canvas.width / dpr, viewH = ctx.canvas.height / dpr;
     const who = said.speaker === "caster" ? t("Caster") : t("Analyst");
-    ctx.font = "500 15px system-ui, sans-serif";
-    const maxW = Math.min(720, viewW - 40);
+    const big = cinema.on, size = big ? 22 : 15;
+    ctx.font = `500 ${size}px system-ui, sans-serif`;
+    const maxW = Math.min(big ? 1e3 : 720, viewW - 40);
     const words = said.text.split(" "), rows = [];
     let row = "";
     for (const word of words) {
@@ -6090,8 +6265,8 @@ function activate(api) {
       } else row = next;
     }
     if (row) rows.push(row);
-    const lineH = 21, h = rows.length * lineH + 30, w2 = Math.max(...rows.map((r) => ctx.measureText(r).width), 120) + 28;
-    const x0 = Math.round(viewW / 2 - w2 / 2), y0 = Math.round(viewH - h - 24);
+    const lineH = Math.round(size * 1.4), h = rows.length * lineH + 30, w2 = Math.max(...rows.map((r) => ctx.measureText(r).width), 120) + 28;
+    const x0 = Math.round(viewW / 2 - w2 / 2), y0 = Math.round(viewH - h - (big ? 48 : 24));
     ctx.fillStyle = "rgba(10,12,16,0.78)";
     ctx.fillRect(x0, y0, w2, h);
     ctx.font = "700 11px system-ui, sans-serif";
@@ -6099,7 +6274,7 @@ function activate(api) {
     ctx.textBaseline = "top";
     ctx.textAlign = "left";
     ctx.fillText(who.toUpperCase(), x0 + 14, y0 + 9);
-    ctx.font = "500 15px system-ui, sans-serif";
+    ctx.font = `500 ${size}px system-ui, sans-serif`;
     ctx.fillStyle = "#f0f3f8";
     rows.forEach((r, i) => ctx.fillText(r, x0 + 14, y0 + 24 + i * lineH));
     ctx.textAlign = "start";
@@ -6409,6 +6584,12 @@ function activate(api) {
     const cur = current;
     if (!cur || !game.holds(cur.id) || lensOf() === "map") return;
     const players = cur.report.players.filter((p) => !cur.hidden.has(p.player.id));
+    if (cinema.on) {
+      cinemaDress(ctx, cur);
+      subtitle(ctx);
+      castCard(ctx);
+      return;
+    }
     if (settings.orders) {
       drawOrders(ctx, v, players, game.frameNow(settings.speed) ?? cur.frame);
       if (settings.legend && !casting.reel) legend(ctx, "orders", cur.played !== null, true);
@@ -7473,6 +7654,9 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
           openCastWindow();
         }
       }) : null;
+      const cinemaButton = castButton && castState === "playing" && cinemaPossible() ? w.button(t("Cinematic"), { className: "sm", title: t("The game full screen, dressed as a broadcast, without the editor around it. Esc leaves."), onClick: () => {
+        void setCinema(true);
+      } }) : null;
       const castCardsButton = castButton && castState === "playing" ? toggle(t("Cards"), () => {
         settings.castCards = !settings.castCards;
         save();
@@ -7508,6 +7692,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
         this.status,
         retry,
         castCardsButton,
+        cinemaButton,
         castButton,
         analysis,
         chartSelect
@@ -7849,6 +8034,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
     simWatch.dispose();
     endCast();
     making?.abort.abort();
+    document.removeEventListener("fullscreenchange", onFullscreen);
     accountChange?.();
     accountWatch.dispose();
     imageListener.dispose();

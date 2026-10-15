@@ -35,7 +35,7 @@ import { analyse, buildOrderRows, formatTime, FRAMES_PER_MINUTE, heat, TOWN_HALL
 import { likeness, plainText, readChk, type ChkInfo } from "./chk";
 import { FRAME_MS, parseReplay, ReplayError } from "./replay";
 import { KO } from "./ko";
-import { buildings as standingBuildings, isBuilding, losses, lossPoints, madeRows, mineralLines, presencePoints, series, unitIndex, unitsAt, WORKERS, type Metric, type Point, type Standing, type UnitIndex } from "./played";
+import { buildings as standingBuildings, isBuilding, losses, lossPoints, madeRows, mineralLines, presencePoints, sampleAt, series, unitIndex, unitsAt, WORKERS, type Metric, type Point, type Standing, type UnitIndex } from "./played";
 import { fights as findFights, kills as findKills, topKillers, type Fight, type FightKind, type Kill, type Killer } from "./fights";
 import { clockOf, mapReport, winnerOf, type MapReport } from "./report";
 import { direct, lookAt, shotAt, type Shot } from "./director";
@@ -217,6 +217,14 @@ function fightMark(f: Fight): { id: string; label: string; why: string } | null 
 }
 
 const STYLE = `
+.afm-cinema { background: #000; }
+.afm-cinema .afm-tip, .afm-cinema .afm-busy { display: none; }
+.afm-cinema-layer { position: absolute; inset: 0; z-index: 4; cursor: none; }
+.afm-cinema-layer.afm-awake { cursor: default; }
+.afm-cinema-controls { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; gap: 8px; opacity: 0; transition: opacity 0.25s; }
+.afm-cinema-layer.afm-awake .afm-cinema-controls { opacity: 1; }
+.afm-cinema-controls button { font: 600 13px system-ui, sans-serif; padding: 7px 14px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.25); background: rgba(10,12,16,0.8); color: #f0f3f8; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { .afm-cinema-controls { transition: none; } }
 .afm-cast-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 14px; }
 .afm-cast-head .afm-dim { font-variant-numeric: tabular-nums; }
 .afm-cast-story { margin: 4px 0; padding: 8px 12px; border-left: 3px solid var(--accent, #4fd1c5); color: var(--text-dim, #99a2b3); font-style: italic; line-height: 1.45; max-height: 9em; overflow: auto; }
@@ -1261,6 +1269,9 @@ export function activate(api: PluginApi) {
     casting.error = null;
     casting.speed = settings.speed;
     casting.made = made;
+    cinema.castStarted = performance.now();
+    cinema.lastMoment = -1;
+    cinema.banner = null;
     setFollowing(true);
     casting.reel = new Reel({
       frame: () => (gameClock() ? (game.seeking ? null : game.frameNow(settings.speed)) : current?.frame ?? null),
@@ -1284,6 +1295,7 @@ export function activate(api: PluginApi) {
     casting.reel = null;
     casting.made = null;
     casting.entry = null;
+    void setCinema(false);
     if (reel) {
       reel.stop();
       settings.speed = casting.speed;
@@ -1420,6 +1432,152 @@ export function activate(api: PluginApi) {
     });
   }
 
+  /* ── The cinematic view: the Game view full screen, dressed as a broadcast ── */
+
+  /**
+   * Whether the cinematic view is on (the Game view is the full-screen element), its controls, and what it shows for a
+   * moment: the title card from when the cast started, a banner when a key fight begins.
+   */
+  const cinema = { on: false, controls: null as HTMLElement | null, idle: 0, castStarted: 0, lastMoment: -1, banner: null as { text: string; at: number } | null };
+  /** The cinematic view needs the Game view: the game drawn by its engine, in an element of Aftermath's own. */
+  const cinemaPossible = () => !!current && game.shown && game.holds(current.id) && typeof game.root?.requestFullscreen === "function";
+
+  async function setCinema(on: boolean): Promise<void> {
+    if (on) {
+      const root = game.root;
+      if (!cinemaPossible() || !root) return;
+      try { await root.requestFullscreen(); } catch { api.ui.toast({ kind: "warn", title: t("The browser would not go full screen.") }); }
+    } else if (document.fullscreenElement && document.fullscreenElement === game.root) {
+      await document.exitFullscreen().catch(() => {});
+    }
+  }
+
+  /** In or out of full screen (Esc included): the broadcast dress goes on or comes off. */
+  function onFullscreen(): void {
+    const root = game.root;
+    const on = !!root && document.fullscreenElement === root;
+    if (on === cinema.on) return;
+    cinema.on = on;
+    root?.classList.toggle("afm-cinema", on);
+    cinema.controls?.remove();
+    cinema.controls = null;
+    if (on && root) {
+      // Over the game, a layer that hears the pointer (the game's own page would take it): moving shows the controls.
+      const layer = el("div", { className: "afm-cinema-layer" });
+      const pause = el("button", { type: "button" }, playing ? t("Pause") : t("Play")) as HTMLButtonElement;
+      const exit = el("button", { type: "button" }, t("Leave the cinematic view")) as HTMLButtonElement;
+      pause.addEventListener("click", (e) => { e.stopPropagation(); if (playing) stop(); else play(); pause.textContent = playing ? t("Pause") : t("Play"); });
+      exit.addEventListener("click", (e) => { e.stopPropagation(); void setCinema(false); });
+      const bar = el("div", { className: "afm-cinema-controls" }, pause, exit);
+      layer.append(bar);
+      layer.addEventListener("pointermove", () => {
+        layer.classList.add("afm-awake");
+        clearTimeout(cinema.idle);
+        cinema.idle = window.setTimeout(() => layer.classList.remove("afm-awake"), 2500);
+      });
+      root.append(layer);
+      cinema.controls = layer;
+    }
+    redraw();
+    strip?.render();
+  }
+  document.addEventListener("fullscreenchange", onFullscreen);
+
+  /** A map's name as a broadcast says it: what follows the last bar (\`| iCCup | Fighting Spirit\` is Fighting Spirit). */
+  const mapTitle = (entry: Loaded) => plainText(entry.report.replay.header.mapName).split("|").map((x) => x.trim()).filter(Boolean).pop() ?? "";
+
+  /** The broadcast's bar along the top: each player's name, race and numbers, the game's clock in the middle. */
+  function broadcastBar(ctx: CanvasRenderingContext2D, entry: Loaded, frame: number): void {
+    const dpr = window.devicePixelRatio || 1, W = ctx.canvas.width / dpr;
+    const tl = entry.played?.timeline;
+    const players = entry.report.players.filter((p) => !tl || tl.samples.players.some((q) => q.slot === p.player.index));
+    const h = 58;
+    const grad = ctx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, "rgba(6,8,12,0.92)"); grad.addColorStop(1, "rgba(6,8,12,0.72)");
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, W, h);
+    const i = tl ? sampleAt(tl.samples.frame, frame) : -1;
+    const race = (r: number) => (r === 0 ? t("Zerg") : r === 1 ? t("Terran") : t("Protoss"));
+    const side = (p: PlayerReport, right: boolean) => {
+      const q = tl?.samples.players.find((s) => s.slot === p.player.index);
+      const x = right ? W - 24 : 24;
+      ctx.textAlign = right ? "right" : "left"; ctx.textBaseline = "alphabetic";
+      ctx.fillStyle = p.player.color; ctx.fillRect(right ? W - 8 : 0, 0, 8, h);
+      ctx.font = "800 19px system-ui, sans-serif"; ctx.fillStyle = "#f4f6fa";
+      ctx.fillText(p.player.name, x, 25);
+      ctx.font = "600 12px system-ui, sans-serif"; ctx.fillStyle = p.player.color;
+      const stats = q && i >= 0
+        ? `${race(p.player.race)} · ${t("Supply {used}/{max}", { used: supplyShown(q.supplyUsed[i] ?? 0), max: supplyShown(q.supplyMax[i] ?? 0) })} · ${t("{n} workers", { n: q.workers[i] ?? 0 })} · ${t("army {value}", { value: number(q.armyValue[i] ?? 0) })}`
+        : race(p.player.race);
+      ctx.fillText(stats, x, 45);
+    };
+    if (players.length >= 1) side(players[0], false);
+    if (players.length >= 2) side(players[1], true);
+    ctx.textAlign = "center";
+    ctx.font = "800 22px system-ui, sans-serif"; ctx.fillStyle = "#f4f6fa";
+    ctx.fillText(formatTime(frame), W / 2, 28);
+    ctx.font = "600 11px system-ui, sans-serif"; ctx.fillStyle = "#9aa3b2";
+    ctx.fillText(mapTitle(entry).toUpperCase(), W / 2, 46);
+    ctx.textAlign = "start";
+  }
+
+  /** A card in the middle of the screen for a moment: the title at the start, the result at the end. */
+  function centreCard(ctx: CanvasRenderingContext2D, lines: { text: string; font: string; colour: string }[], alpha: number): void {
+    if (alpha <= 0) return;
+    const dpr = window.devicePixelRatio || 1, W = ctx.canvas.width / dpr, H = ctx.canvas.height / dpr;
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, alpha);
+    ctx.fillStyle = "rgba(6,8,12,0.78)";
+    const h = 40 + lines.length * 40;
+    ctx.fillRect(0, H / 2 - h / 2, W, h);
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    lines.forEach((l, k) => { ctx.font = l.font; ctx.fillStyle = l.colour; ctx.fillText(l.text, W / 2, H / 2 - h / 2 + 40 + k * 40); });
+    ctx.restore();
+  }
+
+  /** The broadcast's dress over the game, in the cinematic view: the bar, the title, a key fight's banner, the result. */
+  function cinemaDress(ctx: CanvasRenderingContext2D, entry: Loaded): void {
+    const frame = (gameClock() ? game.frameNow(settings.speed) : null) ?? entry.frame;
+    broadcastBar(ctx, entry, frame);
+    const reel = casting.reel, made = casting.made;
+    if (!reel || !made || casting.entry !== entry) return;
+    const now = performance.now();
+    const players = entry.report.players.filter((p) => made.input.game.players.some((q) => q.id === p.player.index));
+    // The title, for the first seconds.
+    const since = (now - cinema.castStarted) / 1000;
+    if (since < 6 && players.length >= 2) {
+      centreCard(ctx, [
+        { text: `${players[0].player.name}  vs  ${players[1].player.name}`, font: "800 34px system-ui, sans-serif", colour: "#f4f6fa" },
+        { text: mapTitle(entry), font: "600 16px system-ui, sans-serif", colour: "#9aa3b2" },
+      ], since < 5 ? 1 : 6 - since);
+    }
+    // A banner when a key fight begins.
+    const at = reel.progress().moment;
+    if (at !== cinema.lastMoment) {
+      cinema.lastMoment = at;
+      const m = made.input.moments[at];
+      if (m && (m.speed ?? 1) === 1 && m.title) cinema.banner = { text: m.title, at: now };
+    }
+    const b = cinema.banner;
+    if (b && now - b.at < 6000) {
+      const dpr = window.devicePixelRatio || 1, W = ctx.canvas.width / dpr;
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, (6000 - (now - b.at)) / 600);
+      ctx.font = "800 15px system-ui, sans-serif";
+      const label = t("Key fight").toUpperCase(), tw = ctx.measureText(`${label}   ${b.text}`).width + 36;
+      ctx.fillStyle = "#e05050"; ctx.fillRect(W / 2 - tw / 2, 70, tw, 30);
+      ctx.fillStyle = "#ffffff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(`${label}   ${b.text}`, W / 2, 85);
+      ctx.restore();
+    }
+    // The result, over the last frame.
+    const last = made.input.moments[made.input.moments.length - 1];
+    const winner = made.input.game.players.find((p) => p.result === "won");
+    if (last && winner && frame >= last.to / (FRAME_MS / 1000) - 24) {
+      const who = entry.report.players.find((p) => p.player.index === winner.id)?.player;
+      centreCard(ctx, [{ text: t("{name} wins", { name: winner.name }), font: "800 34px system-ui, sans-serif", colour: who?.color ?? "#f4f6fa" }], 1);
+    }
+  }
+
   /**
    * The card of what is being talked about, at the top left of the view: its icon, whose it is, its name, and how far
    * along it is at the frame the game shows — a bar while it is being made or researched, when it was done after.
@@ -1445,7 +1603,7 @@ export function activate(api: PluginApi) {
     if (typeof api.graphics.icon === "function") { pic = api.graphics.icon(card.kind, card.type); if (!pic) api.graphics.requestIcons(); }
     if (!pic && card.kind === "unit") { pic = api.graphics.unitImage(card.type, { owner: card.player }); if (!pic) api.graphics.requestUnit(card.type); }
     // (Below the line the editor writes at the map's top left.)
-    const x0 = 14, y0 = 36, w = 280, h = 70, colour = who?.color ?? "#888";
+    const x0 = 14, y0 = cinema.on ? 72 : 36, w = 280, h = 70, colour = who?.color ?? "#888";
     ctx.fillStyle = "rgba(10,12,16,0.84)";
     ctx.fillRect(x0, y0, w, h);
     ctx.fillStyle = colour;
@@ -1471,8 +1629,9 @@ export function activate(api: PluginApi) {
     if (!said) return;
     const dpr = window.devicePixelRatio || 1, viewW = ctx.canvas.width / dpr, viewH = ctx.canvas.height / dpr;
     const who = said.speaker === "caster" ? t("Caster") : t("Analyst");
-    ctx.font = "500 15px system-ui, sans-serif";
-    const maxW = Math.min(720, viewW - 40);
+    const big = cinema.on, size = big ? 22 : 15;
+    ctx.font = `500 ${size}px system-ui, sans-serif`;
+    const maxW = Math.min(big ? 1000 : 720, viewW - 40);
     const words = said.text.split(" "), rows: string[] = [];
     let row = "";
     for (const word of words) {
@@ -1480,15 +1639,15 @@ export function activate(api: PluginApi) {
       if (ctx.measureText(next).width > maxW && row) { rows.push(row); row = word; } else row = next;
     }
     if (row) rows.push(row);
-    const lineH = 21, h = rows.length * lineH + 30, w = Math.max(...rows.map((r) => ctx.measureText(r).width), 120) + 28;
-    const x0 = Math.round(viewW / 2 - w / 2), y0 = Math.round(viewH - h - 24);
+    const lineH = Math.round(size * 1.4), h = rows.length * lineH + 30, w = Math.max(...rows.map((r) => ctx.measureText(r).width), 120) + 28;
+    const x0 = Math.round(viewW / 2 - w / 2), y0 = Math.round(viewH - h - (big ? 48 : 24));
     ctx.fillStyle = "rgba(10,12,16,0.78)";
     ctx.fillRect(x0, y0, w, h);
     ctx.font = "700 11px system-ui, sans-serif";
     ctx.fillStyle = said.speaker === "caster" ? "#f2c14e" : "#7fc8f8";
     ctx.textBaseline = "top"; ctx.textAlign = "left";
     ctx.fillText(who.toUpperCase(), x0 + 14, y0 + 9);
-    ctx.font = "500 15px system-ui, sans-serif";
+    ctx.font = `500 ${size}px system-ui, sans-serif`;
     ctx.fillStyle = "#f0f3f8";
     rows.forEach((r, i) => ctx.fillText(r, x0 + 14, y0 + 24 + i * lineH));
     ctx.textAlign = "start"; ctx.textBaseline = "alphabetic";
@@ -1825,6 +1984,8 @@ export function activate(api: PluginApi) {
     const cur = current;
     if (!cur || !game.holds(cur.id) || lensOf() === "map") return;
     const players = cur.report.players.filter((p) => !cur.hidden.has(p.player.id));
+    // (The cinematic view is a broadcast: its own dress, no editor marks.)
+    if (cinema.on) { cinemaDress(ctx, cur); subtitle(ctx); castCard(ctx); return; }
     if (settings.orders) {
       drawOrders(ctx, v, players, game.frameNow(settings.speed) ?? cur.frame);
       if (settings.legend && !casting.reel) legend(ctx, "orders", cur.played !== null, true);
@@ -2833,6 +2994,9 @@ export function activate(api: PluginApi) {
           },
         })
         : null;
+      const cinemaButton = castButton && castState === "playing" && cinemaPossible()
+        ? w.button(t("Cinematic"), { className: "sm", title: t("The game full screen, dressed as a broadcast, without the editor around it. Esc leaves."), onClick: () => { void setCinema(true); } })
+        : null;
       const castCardsButton = castButton && castState === "playing" ? toggle(t("Cards"), () => { settings.castCards = !settings.castCards; save(); redraw(); this.render(); }) : null;
       if (castCardsButton) { castCardsButton.title = t("Show a card on the game for the upgrade, unit or building the commentators are talking about"); castCardsButton.classList.toggle("afm-on", settings.castCards); castCardsButton.setAttribute("aria-pressed", String(settings.castCards)); }
       const analysis = insightPossible ? w.button(t("Analysis"), { className: "sm", title: t("Open the Analysis window: the game's economy and tech in charts and numbers"), onClick: () => openInsight() }) : null;
@@ -2852,7 +3016,7 @@ export function activate(api: PluginApi) {
       this.eyesSelect = eyes;
       this.root.append(el("div", { className: "afm-row" }, this.playButton, this.timeLabel, speed,
         el("span", { className: "afm-toggles" }, this.spectateButton, this.ordersButton, this.statsButton, this.legendButton), eyes,
-        this.status, retry, castCardsButton, castButton, analysis, chartSelect));
+        this.status, retry, castCardsButton, cinemaButton, castButton, analysis, chartSelect));
 
       // The lane of marks and the graph, one canvas: press or drag anywhere on it to go there.
       const canvas = el("canvas") as HTMLCanvasElement;
@@ -3177,6 +3341,7 @@ export function activate(api: PluginApi) {
     simWatch.dispose();
     endCast();
     making?.abort.abort();
+    document.removeEventListener("fullscreenchange", onFullscreen);
     accountChange?.();
     accountWatch.dispose();
     imageListener.dispose();

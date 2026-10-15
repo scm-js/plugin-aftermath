@@ -435,6 +435,8 @@ export class GameView {
   }
 
   play(on: boolean): void { this.view?.play(on); }
+  /** The element the game and what is drawn over it live in: what the cinematic view takes full screen. */
+  get root(): HTMLElement | null { return this.element ?? null; }
   speed(multiplier: number): void { this.view?.speed(multiplier); }
   seek(frame: number): void {
     if (!this.view) return;
