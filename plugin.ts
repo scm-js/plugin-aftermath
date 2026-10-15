@@ -206,6 +206,7 @@ function fightMark(f: Fight): { id: string; label: string; why: string } | null 
 const STYLE = `
 .afm-busy { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2; display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 8px; background: rgba(10, 12, 16, 0.8); color: #e8ecf2; font-size: 13px; pointer-events: none; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4); white-space: nowrap; }
 .afm-busy[hidden] { display: none; }
+.afm-settling iframe { opacity: 0; }
 .afm-over { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
 .afm-tip { position: absolute; z-index: 3; pointer-events: none; display: block; max-width: 280px; padding: 6px 8px; }
 .afm-tip[hidden] { display: none; }
@@ -452,7 +453,7 @@ export function activate(api: PluginApi) {
     seeking: () => { strip?.update(); showBusy(); },
     hover: (h) => showHover(h),
   }, "Replay", {
-    loading: (name) => t("Starting the game of {name}…", { name }),
+    loading: (name) => t("Loading {name}…", { name }),
     failed: (message) => t("The game could not be shown: {message}", { message }),
   });
   /* ── The tooltip over the game: what the console would have said of the unit under the pointer ── */
@@ -572,7 +573,9 @@ export function activate(api: PluginApi) {
     if (entry.docId === null) return;
     if (!offered.has(entry.id)) {
       offered.add(entry.id);
-      void game.offer(entry, true).then((ok) => { if (!ok) offered.delete(entry.id); });
+      // (The game opens where the map does, not where the editor's view stood when the tab came in.)
+      const at = startTile(entry);
+      void game.offer(entry, true, { x: at.tx * 32 + 16, y: at.ty * 32 + 16 }).then((ok) => { if (!ok) offered.delete(entry.id); });
       return;
     }
     if (game.shown && !game.holds(entry.id)) handOver(true);
@@ -681,13 +684,17 @@ export function activate(api: PluginApi) {
    * location (or where they first built, on a map without one for them).
    */
   function startView(entry: Loaded): void {
+    const at = startTile(entry);
+    api.view.setZoom(1);
+    api.view.center(at.tx, at.ty);
+  }
+  function startTile(entry: Loaded): { tx: number; ty: number } {
     const first = entry.report.players[0];
     const start = first ? api.query.startLocations().find((s) => s.owner === first.player.index) : undefined;
     const built = first?.placements[0];
-    api.view.setZoom(1);
-    if (start) api.view.center(start.tx, start.ty);
-    else if (built) api.view.center(built.tx, built.ty);
-    else api.view.center(Math.floor(entry.map.width / 2), Math.floor(entry.map.height / 2));
+    if (start) return { tx: start.tx, ty: start.ty };
+    if (built) return { tx: built.tx, ty: built.ty };
+    return { tx: Math.floor(entry.map.width / 2), ty: Math.floor(entry.map.height / 2) };
   }
 
   /** The replay whose map is being opened: the tab that appears is its. */

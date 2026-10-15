@@ -954,7 +954,7 @@ var KO = {
   "Open Replay\u2026": "\uB9AC\uD50C\uB808\uC774 \uC5F4\uAE30\u2026",
   "Ordered {n} times": "{n}\uBC88 \uBA85\uB839\uD568",
   "Pause": "\uC77C\uC2DC \uC815\uC9C0",
-  "Starting the game of {name}\u2026": "{name} \uAC8C\uC784\uC744 \uC2DC\uC791\uD558\uB294 \uC911\u2026",
+  "Loading {name}\u2026": "{name} \uBD88\uB7EC\uC624\uB294 \uC911\u2026",
   "Going to {time}\u2026": "{time}(\uC73C)\uB85C \uAC00\uB294 \uC911\u2026",
   "Going to {time}\u2026 {percent}%": "{time}(\uC73C)\uB85C \uAC00\uB294 \uC911\u2026 {percent}%",
   "The game could not be shown: {message}": "\uAC8C\uC784\uC744 \uBCF4\uC5EC \uC904 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4: {message}",
@@ -2224,6 +2224,7 @@ function hardestHit(f) {
 
 // gameview.ts
 var MINIMAP_MS = 66;
+var SETTLE_MS = 600;
 var GameView = class {
   api;
   hooks;
@@ -2245,8 +2246,16 @@ var GameView = class {
    * it is leaving (it reports the frame on screen while it runs ahead), which is not the clock any more.
    */
   aiming = null;
-  /** Where the game is to look once it holds the replay (the map's place when the switch came), in pixels. */
+  /**
+   * Where the game is to look once it holds the replay (the map's place when the switch came), in pixels. A height of
+   * 0 is the map's own scale: as much of the map top to bottom as the frame is tall.
+   */
   look = null;
+  /**
+   * The game is hidden while a replay loads and until it says it looks at the height it was sent (or a moment has
+   * passed): it opens at its own scale, and the look sent after would show as a jump.
+   */
+  settling = null;
   /** The squares of the game's minimap, for the editor's, while it holds a replay. */
   units = null;
   /** Its fog as a picture of the map a pixel a tile (black never seen, half black seen before), made once per squares. */
@@ -2349,13 +2358,36 @@ var GameView = class {
       box.hidden = false;
     }, 200);
   }
-  /** Look where `look` says, at its scale (the viewer keeps to what the game allows): now, or once the replay is in. */
+  /**
+   * Look where `look` says, at its scale (the viewer keeps to what the game allows): now, or once the replay is in.
+   * The height sent, when it was sent now.
+   */
   lookAt(look) {
-    if (this.view && this.loaded) {
-      this.view.camera(look.x, look.y, look.height);
-      this.sent = null;
-      this.look = null;
-    } else this.look = look;
+    if (!this.view || !this.loaded) {
+      this.look = look;
+      return null;
+    }
+    const height = look.height > 0 ? look.height : this.element?.clientHeight ?? 0;
+    this.view.camera(look.x, look.y, height > 0 ? height : void 0);
+    this.sent = null;
+    this.look = null;
+    return height > 0 ? height : null;
+  }
+  /** Hide the game until it settles (`settling`), or show it. */
+  settle(on) {
+    if (this.settling?.timer) clearTimeout(this.settling.timer);
+    this.settling = on ? { height: null, timer: null } : null;
+    this.element?.classList.toggle("afm-settling", on);
+  }
+  /** The game is in: show it once it says it looks at `height` (the game keeps to 240–960), or after a moment. */
+  settleAt(height) {
+    if (!this.settling) return;
+    if (height === null) {
+      this.settle(false);
+      return;
+    }
+    this.settling.height = Math.max(240, Math.min(960, Math.round(height)));
+    this.settling.timer = setTimeout(() => this.settle(false), SETTLE_MS);
   }
   /** The game's minimap on the editor's: its fog over the ground, as the game darkens it, then its squares. */
   drawUnits(ctx, m) {
@@ -2407,11 +2439,15 @@ var GameView = class {
     this.asking ??= sim.status().then((s) => this.canPlay = s.available, () => this.canPlay = false);
     return this.asking;
   }
-  /** Offer the Game view on a replay's tab, and show it there when `show`. */
-  async offer(entry, show) {
+  /**
+   * Offer the Game view on a replay's tab, and show it there when `show`: looking at `start` (map pixels) at the map's
+   * own scale, rather than where the editor's view stood when the tab came in.
+   */
+  async offer(entry, show, start) {
     if (entry.docId === null || !await this.available()) return false;
     this.handle.offer(true, entry.docId);
     if (show) this.handle.show(true, entry.docId);
+    if (show && start && !this.holds(entry.id)) this.look = { x: start.x, y: start.y, width: 0, height: 0 };
     return true;
   }
   /** The tab in front shows the game. */
@@ -2454,6 +2490,8 @@ var GameView = class {
       }),
       view.onCamera((c) => {
         if (!this.loaded) return;
+        const s = this.settling;
+        if (s && s.height !== null && Math.abs(c.height - s.height) <= 2) this.settle(false);
         if (c.width > 0 && c.height > 0) {
           this.shows = { width: c.width, height: c.height };
           this.looking = { x: c.x, y: c.y, width: c.width, height: c.height };
@@ -2492,6 +2530,7 @@ var GameView = class {
       this.hooks.state(this.words.loading(entry.fileName));
       this.sent = null;
       this.said = null;
+      this.settle(true);
       try {
         const viewed = await view.load(entry.bytes, entry.fileName);
         this.tracks = viewed.follows === true && typeof view.follow === "function";
@@ -2499,6 +2538,7 @@ var GameView = class {
         if (this.wanted !== entry.id) return false;
         this.wanted = null;
         this.holding = null;
+        this.settle(false);
         this.hooks.state(this.words.failed(err instanceof Error ? err.message : String(err)));
         return false;
       }
@@ -2511,7 +2551,7 @@ var GameView = class {
     }
     this.graphics();
     this.eyes(entry.eyes);
-    if (this.look) this.lookAt(this.look);
+    this.settleAt(this.look ? this.lookAt(this.look) : null);
     view.speed(speed);
     if (Math.round(frame) > 0) this.seek(frame);
     view.play(playing3);
@@ -2662,6 +2702,7 @@ var GameView = class {
   dispose() {
     if (this.busyTimer) clearTimeout(this.busyTimer);
     if (this.telling) clearTimeout(this.telling);
+    this.settle(false);
     for (const s of this.subs) s.dispose();
     this.subs = [];
     this.changed.dispose();
@@ -3432,6 +3473,7 @@ function fightMark(f) {
 var STYLE = `
 .afm-busy { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2; display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 8px; background: rgba(10, 12, 16, 0.8); color: #e8ecf2; font-size: 13px; pointer-events: none; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4); white-space: nowrap; }
 .afm-busy[hidden] { display: none; }
+.afm-settling iframe { opacity: 0; }
 .afm-over { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
 .afm-tip { position: absolute; z-index: 3; pointer-events: none; display: block; max-width: 280px; padding: 6px 8px; }
 .afm-tip[hidden] { display: none; }
@@ -3681,7 +3723,7 @@ function activate(api) {
     },
     hover: (h) => showHover(h)
   }, "Replay", {
-    loading: (name) => t("Starting the game of {name}\u2026", { name }),
+    loading: (name) => t("Loading {name}\u2026", { name }),
     failed: (message) => t("The game could not be shown: {message}", { message })
   });
   let lastHover = null;
@@ -3809,7 +3851,8 @@ function activate(api) {
     if (entry.docId === null) return;
     if (!offered.has(entry.id)) {
       offered.add(entry.id);
-      void game.offer(entry, true).then((ok) => {
+      const at = startTile(entry);
+      void game.offer(entry, true, { x: at.tx * 32 + 16, y: at.ty * 32 + 16 }).then((ok) => {
         if (!ok) offered.delete(entry.id);
       });
       return;
@@ -3907,13 +3950,17 @@ function activate(api) {
     return true;
   }
   function startView(entry) {
+    const at = startTile(entry);
+    api.view.setZoom(1);
+    api.view.center(at.tx, at.ty);
+  }
+  function startTile(entry) {
     const first = entry.report.players[0];
     const start = first ? api.query.startLocations().find((s) => s.owner === first.player.index) : void 0;
     const built = first?.placements[0];
-    api.view.setZoom(1);
-    if (start) api.view.center(start.tx, start.ty);
-    else if (built) api.view.center(built.tx, built.ty);
-    else api.view.center(Math.floor(entry.map.width / 2), Math.floor(entry.map.height / 2));
+    if (start) return { tx: start.tx, ty: start.ty };
+    if (built) return { tx: built.tx, ty: built.ty };
+    return { tx: Math.floor(entry.map.width / 2), ty: Math.floor(entry.map.height / 2) };
   }
   let opening = null;
   function remove(entry) {
