@@ -39,6 +39,7 @@ import { buildings as standingBuildings, isBuilding, losses, lossPoints, madeRow
 import { fights as findFights, kills as findKills, topKillers, type Fight, type FightKind, type Kill, type Killer } from "./fights";
 import { clockOf, mapReport, winnerOf, type MapReport } from "./report";
 import { direct, lookAt, shotAt, type Shot } from "./director";
+import { cameraTrack, trackAt, type CameraTrack } from "./camera";
 import { advantage, bases as takenBases, hardestHit, leads, story, totals, type Advantage, type Base, type PlayerTotals } from "./story";
 import type { ReplayTimeline, ScmSimService } from "./vendor/scm-sim";
 import { GameView } from "./gameview";
@@ -177,6 +178,11 @@ function fightMark(f: Fight): { id: string; label: string; why: string } | null 
 }
 
 const STYLE = `
+.afm-busy { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2; display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 8px; background: rgba(10, 12, 16, 0.8); color: #e8ecf2; font-size: 13px; pointer-events: none; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4); white-space: nowrap; }
+.afm-busy[hidden] { display: none; }
+.afm-busy .afm-spin { width: 16px; height: 16px; flex: none; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.22); border-top-color: var(--accent, #4fd1c5); animation: afm-spin 0.8s linear infinite; }
+@keyframes afm-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .afm-busy .afm-spin { animation-duration: 2.4s; } }
 .afm { display: flex; flex-direction: column; gap: 8px; font-size: 12px; flex: 1; min-height: 0; }
 .afm > * { flex-shrink: 0; }
 .afm .afm-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
@@ -297,7 +303,7 @@ export function activate(api: PluginApi) {
   let gameState: string | null = null;
   /** Map stats put the map in front of the game: it goes back to the game when Map stats closes. */
   let statsHidGame = false;
-  /** Replays whose tab has been offered the Game view. */
+  /** Replays whose tab has been offered the Replay view. */
   const offered = new Set<number>();
   const game = new GameView(api, {
     frame: (id, f) => {
@@ -306,49 +312,35 @@ export function activate(api: PluginApi) {
       // (The game stops by itself at the replay's end.)
       if (playing && !f.playing && f.seeking === null && f.frame >= current.report.frames - 1) stop();
       tick();
+      showBusy();
     },
-    camera: (c) => mirrorGame(c),
     movedByUser: () => letGo(),
     shown: (on) => handOver(on),
-    state: (text) => { gameState = text; strip?.update(); },
-  }, "Game", {
+    state: (text) => { gameState = text; strip?.update(); showBusy(); },
+    seeking: () => { strip?.update(); showBusy(); },
+  }, "Replay", {
     loading: (name) => t("Starting the game of {name}…", { name }),
     failed: (message) => t("The game could not be shown: {message}", { message }),
   });
+  /** The spinner over the game while it starts or a jump runs, with the line the timeline has for it. */
+  function showBusy(): void {
+    const entry = current;
+    if (!entry || !game.shown) { game.busy(null); return; }
+    if (game.loading) { game.busy(gameState); return; }
+    if (game.seeking) {
+      const done = game.seekProgress;
+      game.busy(done === null || done < 0.05 ? t("Going to {time}…", { time: formatTime(entry.frame) }) : t("Going to {time}… {percent}%", { time: formatTime(entry.frame), percent: Math.floor(done * 100) }));
+      return;
+    }
+    game.busy(null);
+  }
+
   /** Spectate's camera lets go: the person moved the view. */
   function letGo(): void {
     if (!cam.following || lensOf() === "map") return;
     cam.following = false;
     cam.asked = [];
     strip?.update();
-  }
-
-  /**
-   * The editor's view kept where the game looks, the same size, so its minimap's box is the game's and the map, shown
-   * again, is where the game was. Where it was put last, and when, is kept: a view that moved since is the person's
-   * (a press on the minimap), and the game follows it.
-   */
-  let mirrored: { x: number; y: number; at: number } | null = null;
-  function mirrorGame(c: { x: number; y: number; width: number }): void {
-    if (!game.shown || !current || api.document.id() !== current.docId) return;
-    const v = api.view.visible(), shown = v.x1 - v.x0, wanted = c.width / 32;
-    if (shown > 0 && wanted > 0 && Math.abs(shown - wanted) > 0.5) api.view.setZoom(api.view.zoom() * (shown / wanted));
-    mirrored = { x: c.x / 32, y: c.y / 32, at: performance.now() };
-    api.view.center(mirrored.x, mirrored.y);
-  }
-  /** The editor's view moved while the game is shown: an echo of `mirrorGame`, or the person on the minimap. */
-  function editorViewMoved(): void {
-    if (!game.shown || !current || api.document.id() !== current.docId) return;
-    const v = api.view.visible(), hw = (v.x1 - v.x0) / 2, hh = (v.y1 - v.y0) / 2, cx = (v.x0 + v.x1) / 2, cy = (v.y0 + v.y1) / 2;
-    if (mirrored) {
-      // (Allowing for the map's edges, where either view stops short of the middle asked for.)
-      const clamp = (n: number, lo: number, hi: number) => (hi < lo ? (lo + hi) / 2 : Math.max(lo, Math.min(hi, n)));
-      const near = Math.abs(clamp(mirrored.x, hw, current.map.width - hw) - cx) <= 1.5 && Math.abs(clamp(mirrored.y, hh, current.map.height - hh) - cy) <= 1.5;
-      if (near || performance.now() - mirrored.at < 120) return;
-    }
-    mirrored = { x: cx, y: cy, at: performance.now() };
-    game.camera(cx * 32, cy * 32);
-    letGo();
   }
 
   /** The Game view is the clock: it shows the replay in front, loaded. */
@@ -360,12 +352,19 @@ export function activate(api: PluginApi) {
     if (!entry) return;
     if (on) {
       cancelAnimationFrame(raf);
-      void game.hold(entry, entry.frame, playing, settings.speed).then((ok) => { if (!ok && playing && current === entry) runClock(); strip?.update(); });
+      const asked = entry.frame;
+      void game.hold(entry, asked, playing, settings.speed).then((ok) => {
+        // (A jump made while the game was starting is where the clock is now: the game goes there too.)
+        if (ok && current === entry && Math.round(entry.frame) !== Math.round(asked)) game.seek(entry.frame);
+        if (!ok && playing && current === entry) runClock();
+        strip?.update();
+      });
     } else {
       game.play(false);
       if (playing) runClock();
     }
     tick();
+    showBusy();
   }
 
   /** Offer a replay's tab the Game view the first time it comes to the front, showing it there; and load it when shown. */
@@ -550,32 +549,61 @@ export function activate(api: PluginApi) {
     current.frame = Math.max(0, Math.min(current.report.frames, Math.round(f)));
     if (gameClock()) game.seek(current.frame);
     tick();
+    showBusy();
   }
 
   /* ── Spectate's camera ── */
 
   /**
-   * The camera follows the shots (`director.ts`) while Spectate is shown and the user has not taken the view: it
-   * glides along with what it shows and between shots near each other, and cuts to one far away, or when the clock
-   * jumps. Where it last put the view is kept, so a view somewhere else means the user moved it, and it lets go.
+   * The camera follows the shots (`director.ts`) while Spectate is shown and the user has not taken the view, along one
+   * track for the whole game (`camera.ts`): still while what it shows stays near the middle, panning to what is near and
+   * cutting to what is far, eased forward and back in time. On the map it is read at Aftermath's clock every time that
+   * moves; the Game view is handed the track and moves along it itself as it draws. Where it last put the map's view is
+   * kept, so a view somewhere else means the user moved it, and it lets go.
    */
-  const cam = { following: true, x: -1, y: -1, shot: -1, last: 0, asked: [] as { x: number; y: number }[] };
-  /** A target this far away (twenty tiles) is cut to rather than glided to. */
-  const CUT = 640;
+  const cam = { following: true, asked: [] as { x: number; y: number }[], made: null as { shots: Shot[]; speed: number; width: number; height: number; track: CameraTrack } | null, raf: 0 };
+
+  /**
+   * The camera's track for a replay, for the view as big as it is now and the speed it plays at: kept until either
+   * changes (the view by a tenth or more), as its pans are timed in the person's seconds and its dead zone is a share of
+   * the view.
+   */
+  function trackOf(entry: Loaded): CameraTrack | null {
+    const shots = entry.played?.shots;
+    if (!shots?.length) return null;
+    let view = game.shown ? game.viewSize : null;
+    if (!view) { const v = api.view.visible(); view = { width: (v.x1 - v.x0) * 32, height: (v.y1 - v.y0) * 32 }; }
+    const m = cam.made, near = (a: number, b: number) => Math.abs(a - b) <= b * 0.1;
+    if (m && m.shots === shots && m.speed === settings.speed && near(view.width, m.width) && near(view.height, m.height)) return m.track;
+    const track = cameraTrack(shots, {
+      view, map: { width: entry.map.width * 32, height: entry.map.height * 32 },
+      frames: Math.max(entry.report.frames, entry.played!.timeline.frames), rate: (1000 / FRAME_MS) * settings.speed,
+    });
+    if (!track) return null;
+    cam.made = { shots, speed: settings.speed, width: view.width, height: view.height, track };
+    return track;
+  }
 
   function follow(): void {
     const entry = current;
-    if (!entry?.played?.shots.length || lensOf() === "map" || !cam.following || entry.docId === null || api.document.id() !== entry.docId) return;
+    const on = !!entry?.played?.shots.length && lensOf() !== "map" && cam.following && entry.docId !== null && api.document.id() === entry.docId;
+    if (game.shown) {
+      const track = on && entry && game.holds(entry.id) ? trackOf(entry) : null;
+      if (!track || game.follows) { game.follow(track); return; }
+      // A game page from before tracks: moved to the track at the frame it shows, carried on to now, every drawing while it plays.
+      const f = game.frameNow(settings.speed);
+      if (f === null) return;
+      const at = trackAt(track, f);
+      game.camera(at.x, at.y);
+      if (playing && !cam.raf) cam.raf = requestAnimationFrame(() => { cam.raf = 0; follow(); });
+      return;
+    }
+    if (!on || !entry) return;
     if (movedByUser()) { cam.following = false; cam.asked = []; return; }
-    const shots = entry.played.shots, i = shotAt(shots, entry.frame);
-    if (i < 0) return;
-    const target = lookAt(shots[i], entry.frame);
-    const now = performance.now(), dt = Math.min(0.1, (now - cam.last) / 1000);
-    cam.last = now;
-    if (!playing || cam.x < 0 || Math.hypot(target.x - cam.x, target.y - cam.y) > CUT) { cam.x = target.x; cam.y = target.y; }
-    else { const k = 1 - Math.exp(-dt / 0.35); cam.x += (target.x - cam.x) * k; cam.y += (target.y - cam.y) * k; }
-    cam.shot = i;
-    lookTo(cam.x / 32, cam.y / 32);
+    const track = trackOf(entry);
+    if (!track) return;
+    const at = trackAt(track, entry.frame);
+    lookTo(at.x / 32, at.y / 32);
   }
 
   /** What the map shows: Map stats while its tab is open, else the game, with its orders when asked. */
@@ -648,7 +676,6 @@ export function activate(api: PluginApi) {
   function setFollowing(on: boolean): void {
     cam.following = on;
     cam.asked = [];
-    cam.x = -1;
     if (on) follow();
     overlay.redraw();
     strip?.update();
@@ -1902,8 +1929,10 @@ export function activate(api: PluginApi) {
       if (gameState && game.shown) {
         line = gameState;
       } else if (game.shown && game.seeking) {
-        // (The first long jump in a game runs the engine ahead; later ones start from moments it kept on the way.)
-        line = t("Going to {time}…", { time: formatTime(entry.frame) });
+        // (A jump starts from the nearest moment kept, the analysis's or the viewer's own, and plays on from there: a
+        // long one before the analysis has been that far shows how far it has got.)
+        const done = game.seekProgress;
+        line = done === null || done < 0.05 ? t("Going to {time}…", { time: formatTime(entry.frame) }) : t("Going to {time}… {percent}%", { time: formatTime(entry.frame), percent: Math.floor(done * 100) });
       } else if (running?.entry === entry) {
         line = running.fraction < 0 ? t("Analysing the game…") : t("Analysing the game: {percent}%", { percent: Math.floor(running.fraction * 100) });
         why = t("The game engine plays the replay through in the background to see what really happened: the armies, the fights, what was lost. You can watch the replay meanwhile.");
@@ -2142,7 +2171,9 @@ export function activate(api: PluginApi) {
   api.events.on("document", () => sync());
   // The view moved by the user, even with the clock still: Spectate's camera lets go.
   api.events.on("view", () => {
-    if (game.shown) { editorViewMoved(); return; }
+    game.graphics();
+    // (The game shown, the map's view is hidden and still: the minimap moves the game, and the game says so itself.)
+    if (game.shown) return;
     if (!cam.following || !current?.played?.shots.length || lensOf() === "map" || api.document.id() !== current.docId || !movedByUser()) return;
     cam.following = false;
     cam.asked = [];
@@ -2153,6 +2184,7 @@ export function activate(api: PluginApi) {
 
   return () => {
     stop();
+    cancelAnimationFrame(cam.raf);
     bindKeys(false);
     running?.controller.abort();
     game.dispose();

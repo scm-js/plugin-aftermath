@@ -28,6 +28,7 @@ export const KO: Record<string, string> = {
   "Pause": "일시 정지",
   "Starting the game of {name}…": "{name} 게임을 시작하는 중…",
   "Going to {time}…": "{time}(으)로 가는 중…",
+  "Going to {time}… {percent}%": "{time}(으)로 가는 중… {percent}%",
   "The game could not be shown: {message}": "게임을 보여 줄 수 없습니다: {message}",
   "Play": "재생",
   "Playback speed": "재생 속도",

@@ -172,18 +172,23 @@ change). Switching tabs switches replays, each keeping its own place on the time
 closing the tab closes the replay. With an ordinary map in front, Aftermath's panels go
 away; **View ▸ Aftermath** opens the panel anyway, to drop replays on.
 
-**The game, or the map.** In the editor at scmjs.dev, with your copy of StarCraft given to
-the site, a replay's tab opens on the **Game**: the replay played out by the game's own code
-in the map's place, with its own graphics (Remastered's when your copy is Remastered) and
-its console. The switch in the top-left corner goes between it and the **Map**, the
+**The replay, or the map.** In the editor at scmjs.dev, with your copy of StarCraft given to
+the site, a replay's tab opens on the **Replay**: the replay played out by the game's own code
+in the map's place, with its own graphics: Remastered's when your copy is Remastered and **View ▸ Remastered Graphics** is ticked, the classic ones otherwise. The switch in the top-left corner goes between it and the **Map**, the
 overhead view with Aftermath's marks, heat maps and Map stats. The timeline drives
 whichever is shown: Play, the speed, a press on the timeline, the keys and Spectate's
-camera all move the game while it is in front, and the timeline follows the game. The
-first jump far into a game takes a few seconds while the engine plays ahead; jumps after
-that are quick. The arrow keys scroll the game while it has the keyboard, as in the game;
+camera all move the game while it is in front, and the timeline follows the game. Once the
+game is analysed, a jump anywhere in it takes about a second: the analysis keeps moments of
+the game as it goes, and the game starts from the nearest. A jump past where the analysis
+has got to plays the game ahead, which takes longer; the game is seen moving on meanwhile,
+with a spinner over it and the timeline saying how far it has got. The arrow keys scroll the game while it has the keyboard, as in the game;
 the other keys stay Aftermath's. The game is shown without its console: the editor's
-minimap stands in for the game's, its box where the game looks, and a press or a drag on it
-moves the game's camera there. Map stats shows on the map, so opening it switches to the
+minimap shows the game's units as the game's own minimap would, its box is where the game
+looks, and a press or a drag on it moves the game's camera there. Switching between the
+replay and the map keeps your place: each opens where the other was looking, at the same
+scale. The replay can show between half and twice as much of the map as the game itself
+does, so a map zoomed further out or in than that opens the replay at the nearest it can.
+Map stats shows on the map, so opening it switches to the
 map, and closing it goes back to the game. One game is shown at a time: switching to
 another replay's tab starts that one.
 
@@ -241,7 +246,13 @@ action the way an observer would. Aftermath works out where to look for the whol
 fight that matters (from a few seconds before it starts, held until it is over), two armies
 about to meet, a new base going down, and otherwise each player's main army on the move,
 taking turns; early on, before there are armies, it looks at the players' main bases in
-turn. A line at the top of the map says what the camera shows. Scroll the map, or go to a
+turn. It moves the way an observer does, too. It holds still while the action stays near
+the middle of the screen. It pans to something within reach, starting a moment before it
+happens, and cuts to anything further than a screen or so away. It keeps a moving army a
+little behind the middle, so you see where the army is heading. A pan takes the same time
+to watch at any speed. In the Replay view the game moves its own camera along this path as
+it draws, so the camera stays smooth and in step with the picture. A line at the top of the
+map says what the camera shows. Scroll the map, or go to a
 place from the panel, and the camera lets go (the switch goes dark); press **F** or the
 switch and it follows again. Going to a fight, or **N** and **Shift+N**, keep it following.
 

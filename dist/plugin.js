@@ -956,6 +956,7 @@ var KO = {
   "Pause": "\uC77C\uC2DC \uC815\uC9C0",
   "Starting the game of {name}\u2026": "{name} \uAC8C\uC784\uC744 \uC2DC\uC791\uD558\uB294 \uC911\u2026",
   "Going to {time}\u2026": "{time}(\uC73C)\uB85C \uAC00\uB294 \uC911\u2026",
+  "Going to {time}\u2026 {percent}%": "{time}(\uC73C)\uB85C \uAC00\uB294 \uC911\u2026 {percent}%",
   "The game could not be shown: {message}": "\uAC8C\uC784\uC744 \uBCF4\uC5EC \uC904 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4: {message}",
   "Play": "\uC7AC\uC0DD",
   "Playback speed": "\uC7AC\uC0DD \uC18D\uB3C4",
@@ -1917,6 +1918,114 @@ function lookAt(shot, frame) {
   return { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k };
 }
 
+// camera.ts
+var EVERY = 2;
+var CUT = 1.25;
+var DEAD = { fight: 0.2, other: 0.4 };
+var EASE = { seconds: 0.2, fewestFrames: 4, mostFrames: 160 };
+var LEAD_FRAMES = 36;
+var LEAD_MOST = 0.3;
+var LEAD_SPEED = 1.5;
+function smoothed(path) {
+  if (path.length < 3) return path;
+  return path.map((p, i) => {
+    const a = path[Math.max(0, i - 1)], b = path[Math.min(path.length - 1, i + 1)];
+    return { frame: p.frame, x: (a.x + 2 * p.x + b.x) / 4, y: (a.y + 2 * p.y + b.y) / 4 };
+  });
+}
+function along(path, frame) {
+  let i = 0;
+  while (i + 1 < path.length && path[i + 1].frame <= frame) i++;
+  const p1 = path[i], p2 = path[i + 1];
+  if (!p2 || frame <= p1.frame) return { x: p1.x, y: p1.y };
+  const p0 = path[i - 1] ?? p1, p3 = path[i + 2] ?? p2;
+  const t = Math.min(1, (frame - p1.frame) / Math.max(1, p2.frame - p1.frame)), t2 = t * t, t3 = t2 * t;
+  const cr = (a, b, c, d) => 0.5 * (2 * b + (c - a) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (3 * b - a - 3 * c + d) * t3);
+  return { x: cr(p0.x, p1.x, p2.x, p3.x), y: cr(p0.y, p1.y, p2.y, p3.y) };
+}
+function cameraTrack(shots, o) {
+  if (!shots.length) return null;
+  const w = Math.max(1, o.view.width), h = Math.max(1, o.view.height);
+  const clampX = (x2) => o.map.width <= w ? o.map.width / 2 : Math.max(w / 2, Math.min(o.map.width - w / 2, x2));
+  const clampY = (y2) => o.map.height <= h ? o.map.height / 2 : Math.max(h / 2, Math.min(o.map.height - h / 2, y2));
+  const paths = /* @__PURE__ */ new Map();
+  const pathOf = (s) => {
+    let p = paths.get(s);
+    if (!p) {
+      p = smoothed(s.path);
+      paths.set(s, p);
+    }
+    return p;
+  };
+  const aim = (s, frame) => {
+    const path = pathOf(s), at = along(path, frame);
+    if (s.kind === "army" && path.length > 1) {
+      const a = along(path, frame - LEAD_FRAMES / 2), b = along(path, frame + LEAD_FRAMES / 2);
+      const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy);
+      if (len > 0) {
+        const moving = Math.min(1, len / LEAD_FRAMES / LEAD_SPEED);
+        const ahead = Math.min(len, LEAD_MOST * Math.min(w, h) / 2) + moving * DEAD.other * Math.min(w, h) / 2;
+        at.x += dx / len * ahead;
+        at.y += dy / len * ahead;
+      }
+    }
+    return { x: clampX(at.x), y: clampY(at.y) };
+  };
+  const n = Math.floor(Math.max(0, o.frames) / EVERY) + 2;
+  const rawX = new Float32Array(n), rawY = new Float32Array(n), cut2 = new Uint8Array(n);
+  let x = 0, y = 0, shown = -1;
+  for (let i = 0; i < n; i++) {
+    const frame = i * EVERY;
+    const si = Math.max(0, shotAt(shots, frame)), shot = shots[si], target = aim(shot, frame);
+    const dead = shot.kind === "fight" ? DEAD.fight : DEAD.other;
+    const dx = target.x - x, dy = target.y - y, away = Math.max(Math.abs(dx) / w, Math.abs(dy) / h);
+    if (i === 0 || away > CUT) {
+      x = target.x;
+      y = target.y;
+      cut2[i] = 1;
+    } else if (si !== shown && away > dead / 2) {
+      x = target.x;
+      y = target.y;
+    } else {
+      const zx = dead * w / 2, zy = dead * h / 2;
+      if (Math.abs(dx) > zx) x = target.x - Math.sign(dx) * zx;
+      if (Math.abs(dy) > zy) y = target.y - Math.sign(dy) * zy;
+    }
+    shown = si;
+    rawX[i] = x;
+    rawY[i] = y;
+  }
+  const sigma = Math.max(EASE.fewestFrames, Math.min(EASE.mostFrames, EASE.seconds * Math.max(1, o.rate))) / EVERY;
+  const reach = Math.ceil(sigma * 3), bell = new Float64Array(reach + 1);
+  for (let k = 0; k <= reach; k++) bell[k] = Math.exp(-(k * k) / (2 * sigma * sigma));
+  const xs = new Float32Array(n), ys = new Float32Array(n);
+  for (let from = 0; from < n; ) {
+    let to = from + 1;
+    while (to < n && !cut2[to]) to++;
+    for (let i = from; i < to; i++) {
+      let sx = 0, sy = 0, sw = 0;
+      for (let j = Math.max(from, i - reach), last = Math.min(to - 1, i + reach); j <= last; j++) {
+        const b = bell[Math.abs(j - i)];
+        sx += rawX[j] * b;
+        sy += rawY[j] * b;
+        sw += b;
+      }
+      xs[i] = sx / sw;
+      ys[i] = sy / sw;
+    }
+    from = to;
+  }
+  return { every: EVERY, x: xs, y: ys, cut: cut2 };
+}
+function trackAt(t, frame) {
+  const last = t.x.length - 1, pos = Math.max(0, frame) / t.every, i = Math.min(last, Math.floor(pos));
+  if (i >= last || t.cut[i + 1]) return { x: t.x[i], y: t.y[i] };
+  const a = i > 0 && !t.cut[i] ? i - 1 : i, d = i + 2 <= last && !t.cut[i + 2] ? i + 2 : i + 1;
+  const k = pos - i, k2 = k * k, k3 = k2 * k;
+  const cr = (v) => 0.5 * (2 * v[i] + (v[i + 1] - v[a]) * k + (2 * v[a] - 5 * v[i] + 4 * v[i + 1] - v[d]) * k2 + (3 * v[i] - v[a] - 3 * v[i + 1] + v[d]) * k3);
+  return { x: cr(t.x), y: cr(t.y) };
+}
+
 // story.ts
 var HALLS3 = /* @__PURE__ */ new Set([106, 131, 154]);
 var LEAD2 = 0.1;
@@ -2033,7 +2142,9 @@ function hardestHit(f) {
 }
 
 // gameview.ts
+var MINIMAP_MS = 66;
 var GameView = class {
+  api;
   hooks;
   handle;
   words;
@@ -2053,13 +2164,103 @@ var GameView = class {
    * it is leaving (it reports the frame on screen while it runs ahead), which is not the clock any more.
    */
   aiming = null;
+  /** Where the game is to look once it holds the replay (the map's place when the switch came), in pixels. */
+  look = null;
+  /** The squares of the game's minimap, for the editor's, while it holds a replay. */
+  units = null;
+  /** The page plays camera tracks (the replay loaded said so), and the track it was last given, if it still follows it. */
+  tracks = false;
+  sent = null;
+  /** The frame the game last said it shows, when, and whether it was playing (`frameNow`). */
+  said = null;
+  /** How much of the map the game shows, pixels, as it last said. */
+  shows = null;
+  /** The editor's minimap is told where the game looks at most this often (it redraws for each). */
+  told = 0;
+  telling = null;
+  /** Over the game while it starts or a jump runs: a spinner and a line (`busy`). */
+  busyBox = null;
+  busyLine = null;
+  busyTimer = null;
+  /** View ▸ Remastered Graphics as the game was last told it (null: not yet, for the replay loaded). */
+  remastered = null;
   constructor(api, hooks, title, words) {
+    this.api = api;
     this.hooks = hooks;
     this.words = words;
-    this.handle = api.ui.mapView({ title, mount: (el) => {
-      this.element = el;
-    } });
+    this.handle = api.ui.mapView({
+      title,
+      mount: (el) => {
+        this.element = el;
+        const box = document.createElement("div"), spin = document.createElement("span"), line = document.createElement("span");
+        box.className = "afm-busy";
+        box.hidden = true;
+        box.setAttribute("role", "status");
+        spin.className = "afm-spin";
+        box.append(spin, line);
+        el.append(box);
+        this.busyBox = box;
+        this.busyLine = line;
+      },
+      onShow: (look) => this.lookAt(look),
+      minimap: {
+        draw: (ctx, m) => this.drawUnits(ctx, m),
+        press: (x, y) => {
+          if (this.view && this.loaded) {
+            this.view.camera(x, y);
+            hooks.movedByUser();
+          }
+        }
+      }
+    });
     this.changed = this.handle.onChange((on) => hooks.shown(on));
+  }
+  /** A replay is loaded in the viewer and no other is on its way. */
+  get loaded() {
+    return this.holding !== null && this.wanted === null;
+  }
+  /** A replay is on its way into the viewer. */
+  get loading() {
+    return this.wanted !== null;
+  }
+  /**
+   * The spinner over the game, with `text` beside it; null takes it away. It shows only once the wait has gone on a
+   * moment, so a quick jump does not flash it.
+   */
+  busy(text) {
+    const box = this.busyBox;
+    if (!box || !this.busyLine) return;
+    if (text === null) {
+      if (this.busyTimer) clearTimeout(this.busyTimer);
+      this.busyTimer = null;
+      box.hidden = true;
+      return;
+    }
+    this.busyLine.textContent = text;
+    if (!box.hidden || this.busyTimer) return;
+    this.busyTimer = setTimeout(() => {
+      this.busyTimer = null;
+      box.hidden = false;
+    }, 200);
+  }
+  /** Look where `look` says, at its scale (the viewer keeps to what the game allows): now, or once the replay is in. */
+  lookAt(look) {
+    if (this.view && this.loaded) {
+      this.view.camera(look.x, look.y, look.height);
+      this.sent = null;
+      this.look = null;
+    } else this.look = look;
+  }
+  /** The game's minimap squares on the editor's minimap. */
+  drawUnits(ctx, m) {
+    const u = this.units;
+    if (!u || !this.loaded) return;
+    const { boxes, colours } = u;
+    for (let i = 0; i < colours.length; i++) {
+      const w = Math.max(2, boxes[i * 4 + 2] * m.scale), h = Math.max(2, boxes[i * 4 + 3] * m.scale);
+      ctx.fillStyle = `#${colours[i].toString(16).padStart(6, "0")}`;
+      ctx.fillRect(m.x(boxes[i * 4]) - w / 2, m.y(boxes[i * 4 + 1]) - h / 2, w, h);
+    }
   }
   setService(sim) {
     if (sim === this.sim) return;
@@ -2107,18 +2308,36 @@ var GameView = class {
         if (a) {
           if (f.seeking !== null) {
             a.sawSeeking = true;
+            a.from ??= f.seeking;
+            a.at = f.seeking;
+            this.hooks.seeking();
             return;
           }
-          if (Math.abs(f.frame - a.frame) > 48 && !a.sawSeeking) return;
+          const near = Math.abs(f.frame - a.frame) <= 48;
+          const ended = a.sawSeeking && a.at !== null && f.frame >= a.at && f.frame <= a.frame + 48;
+          if (!near && !ended) return;
           this.aiming = null;
         }
+        this.said = { frame: f.frame, at: performance.now(), playing: f.playing };
         this.hooks.frame(this.holding, f);
       }),
       view.onCamera((c) => {
-        this.hooks.camera(c);
-        if (c.byUser) this.hooks.movedByUser();
+        if (!this.loaded) return;
+        if (c.width > 0 && c.height > 0) {
+          this.shows = { width: c.width, height: c.height };
+          this.tellMinimap({ x: c.x, y: c.y, width: c.width, height: c.height }, c.byUser);
+        }
+        if (c.byUser) {
+          this.sent = null;
+          this.hooks.movedByUser();
+        }
       })
     ];
+    if (typeof view.onUnits === "function") this.subs.push(view.onUnits((u) => {
+      if (!this.loaded) return;
+      this.units = u;
+      this.handle.redrawMinimap?.();
+    }));
     return view;
   }
   /**
@@ -2131,9 +2350,14 @@ var GameView = class {
     if (this.holding !== entry.id || this.wanted !== null) {
       if (this.wanted === entry.id) return false;
       this.wanted = entry.id;
+      this.units = null;
+      this.handle.redrawMinimap?.();
       this.hooks.state(this.words.loading(entry.fileName));
+      this.sent = null;
+      this.said = null;
       try {
-        await view.load(entry.bytes, entry.fileName);
+        const viewed = await view.load(entry.bytes, entry.fileName);
+        this.tracks = viewed.follows === true && typeof view.follow === "function";
       } catch (err) {
         if (this.wanted !== entry.id) return false;
         this.wanted = null;
@@ -2145,11 +2369,25 @@ var GameView = class {
       this.wanted = null;
       this.holding = entry.id;
       this.hooks.state(null);
+      this.remastered = null;
     }
+    this.graphics();
+    if (this.look) this.lookAt(this.look);
     view.speed(speed);
     if (Math.round(frame) > 0) this.seek(frame);
     view.play(playing2);
     return true;
+  }
+  /**
+   * The game drawn with Remastered's pictures or the classic ones as View ▸ Remastered Graphics says, at once when the
+   * tick moves. (The game has its own choice, the play page's; the editor's is the one the person sees here.)
+   */
+  graphics() {
+    const view = this.view, on = this.api.view.flags().hdGraphics === true;
+    if (!view || !this.loaded || on === this.remastered) return;
+    this.remastered = on;
+    view.options({ remastered: on }).catch(() => {
+    });
   }
   play(on) {
     this.view?.play(on);
@@ -2159,18 +2397,70 @@ var GameView = class {
   }
   seek(frame) {
     if (!this.view) return;
-    this.aiming = { frame: Math.round(frame), sawSeeking: false };
+    this.aiming = { frame: Math.round(frame), sawSeeking: false, from: null, at: null };
     this.view.seek(Math.round(frame));
   }
   /** A seek is on its way: the clock is where it was sent, not where the game still shows. */
   get seeking() {
     return this.aiming !== null;
   }
-  /** Look at a point of the map, in pixels. */
+  /** How far a jump has run, 0 to 1, once the viewer has said; null before (or for a jump with no way to go). */
+  get seekProgress() {
+    const a = this.aiming;
+    if (!a || a.from === null || a.at === null || a.frame <= a.from) return null;
+    return Math.max(0, Math.min(1, (a.at - a.from) / (a.frame - a.from)));
+  }
+  /** Look at a point of the map, in pixels. (The game lets go of a track for it.) */
   camera(x, y) {
-    this.view?.camera(x, y);
+    if (this.view) {
+      this.view.camera(x, y);
+      this.sent = null;
+    }
+  }
+  /** The game moves its camera along tracks itself (`follow`); otherwise `camera` it is, frame by frame. */
+  get follows() {
+    return this.loaded && this.tracks;
+  }
+  /** Have the game follow `track`, or stop (null). The same track again is not sent again while the game follows it. */
+  follow(track) {
+    if (!this.view || !this.follows) {
+      this.sent = null;
+      return;
+    }
+    if (track === this.sent) return;
+    this.sent = track;
+    this.view.follow(track);
+  }
+  /**
+   * The frame the game shows now: the one it last said, carried on at `speed` since while it plays (it says one ten
+   * times a second), no further than a fifth of a second's worth.
+   */
+  frameNow(speed) {
+    const s = this.said;
+    if (!s) return null;
+    if (!s.playing) return s.frame;
+    return s.frame + Math.min(200, performance.now() - s.at) / FRAME_MS * speed;
+  }
+  /** How much of the map the game shows, pixels, once it has said. */
+  get viewSize() {
+    return this.loaded ? this.shows : null;
+  }
+  /** Where the game looks, on the editor's minimap: at once when the person moved it, else at most every `MINIMAP_MS`. */
+  tellMinimap(camera, now) {
+    const tell = () => {
+      this.telling = null;
+      this.told = performance.now();
+      this.handle.setCamera?.(camera);
+    };
+    if (this.telling) clearTimeout(this.telling);
+    this.telling = null;
+    const wait = MINIMAP_MS - (performance.now() - this.told);
+    if (now || wait <= 0) tell();
+    else this.telling = setTimeout(tell, wait);
   }
   dispose() {
+    if (this.busyTimer) clearTimeout(this.busyTimer);
+    if (this.telling) clearTimeout(this.telling);
     for (const s of this.subs) s.dispose();
     this.subs = [];
     this.changed.dispose();
@@ -2231,6 +2521,11 @@ function fightMark(f) {
   return null;
 }
 var STYLE = `
+.afm-busy { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2; display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 8px; background: rgba(10, 12, 16, 0.8); color: #e8ecf2; font-size: 13px; pointer-events: none; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4); white-space: nowrap; }
+.afm-busy[hidden] { display: none; }
+.afm-busy .afm-spin { width: 16px; height: 16px; flex: none; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.22); border-top-color: var(--accent, #4fd1c5); animation: afm-spin 0.8s linear infinite; }
+@keyframes afm-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .afm-busy .afm-spin { animation-duration: 2.4s; } }
 .afm { display: flex; flex-direction: column; gap: 8px; font-size: 12px; flex: 1; min-height: 0; }
 .afm > * { flex-shrink: 0; }
 .afm .afm-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
@@ -2346,43 +2641,45 @@ function activate(api) {
       current.frame = f.frame;
       if (playing2 && !f.playing && f.seeking === null && f.frame >= current.report.frames - 1) stop();
       tick();
+      showBusy();
     },
-    camera: (c) => mirrorGame(c),
     movedByUser: () => letGo(),
     shown: (on) => handOver(on),
     state: (text) => {
       gameState = text;
       strip?.update();
+      showBusy();
+    },
+    seeking: () => {
+      strip?.update();
+      showBusy();
     }
-  }, "Game", {
+  }, "Replay", {
     loading: (name) => t("Starting the game of {name}\u2026", { name }),
     failed: (message) => t("The game could not be shown: {message}", { message })
   });
+  function showBusy() {
+    const entry = current;
+    if (!entry || !game.shown) {
+      game.busy(null);
+      return;
+    }
+    if (game.loading) {
+      game.busy(gameState);
+      return;
+    }
+    if (game.seeking) {
+      const done = game.seekProgress;
+      game.busy(done === null || done < 0.05 ? t("Going to {time}\u2026", { time: formatTime(entry.frame) }) : t("Going to {time}\u2026 {percent}%", { time: formatTime(entry.frame), percent: Math.floor(done * 100) }));
+      return;
+    }
+    game.busy(null);
+  }
   function letGo() {
     if (!cam.following || lensOf() === "map") return;
     cam.following = false;
     cam.asked = [];
     strip?.update();
-  }
-  let mirrored = null;
-  function mirrorGame(c) {
-    if (!game.shown || !current || api.document.id() !== current.docId) return;
-    const v = api.view.visible(), shown = v.x1 - v.x0, wanted = c.width / 32;
-    if (shown > 0 && wanted > 0 && Math.abs(shown - wanted) > 0.5) api.view.setZoom(api.view.zoom() * (shown / wanted));
-    mirrored = { x: c.x / 32, y: c.y / 32, at: performance.now() };
-    api.view.center(mirrored.x, mirrored.y);
-  }
-  function editorViewMoved() {
-    if (!game.shown || !current || api.document.id() !== current.docId) return;
-    const v = api.view.visible(), hw = (v.x1 - v.x0) / 2, hh = (v.y1 - v.y0) / 2, cx = (v.x0 + v.x1) / 2, cy = (v.y0 + v.y1) / 2;
-    if (mirrored) {
-      const clamp = (n, lo, hi) => hi < lo ? (lo + hi) / 2 : Math.max(lo, Math.min(hi, n));
-      const near = Math.abs(clamp(mirrored.x, hw, current.map.width - hw) - cx) <= 1.5 && Math.abs(clamp(mirrored.y, hh, current.map.height - hh) - cy) <= 1.5;
-      if (near || performance.now() - mirrored.at < 120) return;
-    }
-    mirrored = { x: cx, y: cy, at: performance.now() };
-    game.camera(cx * 32, cy * 32);
-    letGo();
   }
   const gameClock = () => current !== null && game.shown && game.holds(current.id);
   function handOver(on) {
@@ -2390,7 +2687,9 @@ function activate(api) {
     if (!entry) return;
     if (on) {
       cancelAnimationFrame(raf);
-      void game.hold(entry, entry.frame, playing2, settings.speed).then((ok) => {
+      const asked = entry.frame;
+      void game.hold(entry, asked, playing2, settings.speed).then((ok) => {
+        if (ok && current === entry && Math.round(entry.frame) !== Math.round(asked)) game.seek(entry.frame);
         if (!ok && playing2 && current === entry) runClock();
         strip?.update();
       });
@@ -2399,6 +2698,7 @@ function activate(api) {
       if (playing2) runClock();
     }
     tick();
+    showBusy();
   }
   function gameFor(entry) {
     if (entry.docId === null) return;
@@ -2559,32 +2859,58 @@ function activate(api) {
     current.frame = Math.max(0, Math.min(current.report.frames, Math.round(f)));
     if (gameClock()) game.seek(current.frame);
     tick();
+    showBusy();
   }
-  const cam = { following: true, x: -1, y: -1, shot: -1, last: 0, asked: [] };
-  const CUT = 640;
+  const cam = { following: true, asked: [], made: null, raf: 0 };
+  function trackOf(entry) {
+    const shots = entry.played?.shots;
+    if (!shots?.length) return null;
+    let view = game.shown ? game.viewSize : null;
+    if (!view) {
+      const v = api.view.visible();
+      view = { width: (v.x1 - v.x0) * 32, height: (v.y1 - v.y0) * 32 };
+    }
+    const m = cam.made, near = (a, b) => Math.abs(a - b) <= b * 0.1;
+    if (m && m.shots === shots && m.speed === settings.speed && near(view.width, m.width) && near(view.height, m.height)) return m.track;
+    const track = cameraTrack(shots, {
+      view,
+      map: { width: entry.map.width * 32, height: entry.map.height * 32 },
+      frames: Math.max(entry.report.frames, entry.played.timeline.frames),
+      rate: 1e3 / FRAME_MS * settings.speed
+    });
+    if (!track) return null;
+    cam.made = { shots, speed: settings.speed, width: view.width, height: view.height, track };
+    return track;
+  }
   function follow() {
     const entry = current;
-    if (!entry?.played?.shots.length || lensOf() === "map" || !cam.following || entry.docId === null || api.document.id() !== entry.docId) return;
+    const on = !!entry?.played?.shots.length && lensOf() !== "map" && cam.following && entry.docId !== null && api.document.id() === entry.docId;
+    if (game.shown) {
+      const track2 = on && entry && game.holds(entry.id) ? trackOf(entry) : null;
+      if (!track2 || game.follows) {
+        game.follow(track2);
+        return;
+      }
+      const f = game.frameNow(settings.speed);
+      if (f === null) return;
+      const at2 = trackAt(track2, f);
+      game.camera(at2.x, at2.y);
+      if (playing2 && !cam.raf) cam.raf = requestAnimationFrame(() => {
+        cam.raf = 0;
+        follow();
+      });
+      return;
+    }
+    if (!on || !entry) return;
     if (movedByUser()) {
       cam.following = false;
       cam.asked = [];
       return;
     }
-    const shots = entry.played.shots, i = shotAt(shots, entry.frame);
-    if (i < 0) return;
-    const target = lookAt(shots[i], entry.frame);
-    const now = performance.now(), dt = Math.min(0.1, (now - cam.last) / 1e3);
-    cam.last = now;
-    if (!playing2 || cam.x < 0 || Math.hypot(target.x - cam.x, target.y - cam.y) > CUT) {
-      cam.x = target.x;
-      cam.y = target.y;
-    } else {
-      const k = 1 - Math.exp(-dt / 0.35);
-      cam.x += (target.x - cam.x) * k;
-      cam.y += (target.y - cam.y) * k;
-    }
-    cam.shot = i;
-    lookTo(cam.x / 32, cam.y / 32);
+    const track = trackOf(entry);
+    if (!track) return;
+    const at = trackAt(track, entry.frame);
+    lookTo(at.x / 32, at.y / 32);
   }
   function lensOf() {
     if (settings.tab === "map" && sidePanel?.isOpen()) return "map";
@@ -2641,7 +2967,6 @@ function activate(api) {
   function setFollowing(on) {
     cam.following = on;
     cam.asked = [];
-    cam.x = -1;
     if (on) follow();
     overlay.redraw();
     strip?.update();
@@ -3939,7 +4264,8 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
       if (gameState && game.shown) {
         line = gameState;
       } else if (game.shown && game.seeking) {
-        line = t("Going to {time}\u2026", { time: formatTime(entry.frame) });
+        const done = game.seekProgress;
+        line = done === null || done < 0.05 ? t("Going to {time}\u2026", { time: formatTime(entry.frame) }) : t("Going to {time}\u2026 {percent}%", { time: formatTime(entry.frame), percent: Math.floor(done * 100) });
       } else if (running?.entry === entry) {
         line = running.fraction < 0 ? t("Analysing the game\u2026") : t("Analysing the game: {percent}%", { percent: Math.floor(running.fraction * 100) });
         why = t("The game engine plays the replay through in the background to see what really happened: the armies, the fights, what was lost. You can watch the replay meanwhile.");
@@ -4190,10 +4516,8 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
   });
   api.events.on("document", () => sync());
   api.events.on("view", () => {
-    if (game.shown) {
-      editorViewMoved();
-      return;
-    }
+    game.graphics();
+    if (game.shown) return;
     if (!cam.following || !current?.played?.shots.length || lensOf() === "map" || api.document.id() !== current.docId || !movedByUser()) return;
     cam.following = false;
     cam.asked = [];
@@ -4206,6 +4530,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
   });
   return () => {
     stop();
+    cancelAnimationFrame(cam.raf);
     bindKeys(false);
     running?.controller.abort();
     game.dispose();
