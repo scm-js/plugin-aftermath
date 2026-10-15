@@ -105,6 +105,12 @@ export class GameView {
   private remastered: boolean | null = null;
   /** Whose eyes the game was last told, for the replay loaded (undefined: not yet; the page opens a replay on its own). */
   private eyesTold: number | null | undefined = undefined;
+  /** The race whose music is wanted (null none), and what the game was last told (undefined: not yet, for the replay loaded). */
+  private musicWanted: number | null = null;
+  private musicTold: number | null | undefined = undefined;
+  /** How far the game's sounds and music are wanted turned down, and what the game was last told. */
+  private duckWanted = 1;
+  private duckTold: number | undefined = undefined;
   /**
    * Over the game, under the spinner: what the plugin draws there (`setOverlay`), in the game's place — the map's
    * pixels where the game shows them, from where the game last said it looks.
@@ -353,9 +359,13 @@ export class GameView {
       this.hooks.state(null);
       this.remastered = null;
       this.eyesTold = undefined;
+      this.musicTold = undefined;
+      this.duckTold = undefined;
     }
     this.graphics();
     this.eyes(entry.eyes);
+    this.music(this.musicWanted);
+    this.duck(this.duckWanted);
     // Where the map was looking when the switch came, rather than where the viewer opens a replay.
     this.settleAt(this.look ? this.lookAt(this.look) : null);
     view.speed(speed);
@@ -382,6 +392,27 @@ export class GameView {
     this.eyesTold = slot;
     view.options({ fog: slot !== null }).catch(() => {});
     if (slot !== null) view.player(slot);
+  }
+
+  /**
+   * The music of a race in the game (0 zerg, 1 terran, 2 protoss), or none (null): the game's own tracks, as the play
+   * page plays them. Kept for the next replay loaded. A page from before music plays none.
+   */
+  music(race: number | null): void {
+    this.musicWanted = race;
+    const view = this.view;
+    if (!view || !this.loaded || race === this.musicTold) return;
+    this.musicTold = race;
+    view.options({ music: race }).catch(() => {});
+  }
+
+  /** The game's sounds and music turned down to `fraction` (1: all of it), under a voice of Aftermath's own. */
+  duck(fraction: number): void {
+    this.duckWanted = fraction;
+    const view = this.view;
+    if (!view || !this.loaded || fraction === this.duckTold) return;
+    this.duckTold = fraction;
+    view.options({ duck: fraction }).catch(() => {});
   }
 
   /**

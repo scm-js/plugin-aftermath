@@ -216,6 +216,13 @@ export interface ViewOptions {
   /** The game's sounds (on at first) and their volume, 0 to 1. */
   sound?: boolean;
   volume?: number;
+  /**
+   * The music of a race (0 zerg, 1 terran, 2 protoss), or none (null, as at first). Not remembered: the play page's own
+   * Music box stays as it is. A page from before music ignores it.
+   */
+  music?: number | null;
+  /** The sounds and the music turned down to this fraction (1 at first), eased there: under a voice of the plugin's own. */
+  duck?: number;
   /** Remastered's pictures and its lighting, where the copy has them. The same choice as the play page's Options. */
   remastered?: boolean;
   lighting?: boolean;

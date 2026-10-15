@@ -1296,6 +1296,8 @@ export function activate(api: PluginApi) {
       playing: () => playing,
       changed: () => redraw(),
       ended: () => endCast(),
+      // The game's sounds and music under the commentary, as a broadcast has them.
+      talking: (on) => game.duck(on ? UNDER_VOICE : 1),
     }, made.input.moments, made.plan, made.voices, made.voices.some(Boolean) ? ctx : (void ctx?.close(), null));
     casting.reel.start();
     strip?.render();
@@ -1453,6 +1455,8 @@ export function activate(api: PluginApi) {
    * Whether the cinematic view is on (the Game view is the full-screen element), its controls, and what it shows for a
    * moment: the title card from when the cast started, a banner when a key fight begins.
    */
+  /** The game's sounds and music while a caster talks: this fraction of their loudness. */
+  const UNDER_VOICE = 0.35;
   const cinema = { on: false, controls: null as HTMLElement | null, idle: 0, castStarted: 0, lastMoment: -1, banner: null as { text: string; at: number } | null };
   /** The cinematic view needs the Game view: the game drawn by its engine, in an element of Aftermath's own. */
   const cinemaPossible = () => !!current && game.shown && game.holds(current.id) && typeof game.root?.requestFullscreen === "function";
@@ -1474,6 +1478,8 @@ export function activate(api: PluginApi) {
     if (on === cinema.on) return;
     cinema.on = on;
     root?.classList.toggle("afm-cinema", on);
+    // The game's music while it is on, as the game itself would play it: one of the races in the game, a new pick each time.
+    game.music(on && current ? musicRace(current) : null);
     cinema.controls?.remove();
     cinema.controls = null;
     if (on && root) {
@@ -1497,6 +1503,12 @@ export function activate(api: PluginApi) {
     strip?.render();
   }
   document.addEventListener("fullscreenchange", onFullscreen);
+
+  /** A race of the replay's players (0 zerg, 1 terran, 2 protoss), at random; null when none is known. */
+  function musicRace(entry: Loaded): number | null {
+    const races = [...new Set(entry.report.players.map((p) => p.player.race).filter((r) => r >= 0 && r <= 2))];
+    return races.length ? races[Math.floor(Math.random() * races.length)] : null;
+  }
 
   /** A map's name as a broadcast says it: what follows the last bar (\`| iCCup | Fighting Spirit\` is Fighting Spirit). */
   const mapTitle = (entry: Loaded) => plainText(entry.report.replay.header.mapName).split("|").map((x) => x.trim()).filter(Boolean).pop() ?? "";

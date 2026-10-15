@@ -173,7 +173,10 @@ or the desktop app has its own.
 While a cast plays, pausing pauses the voices and going somewhere else on the timeline ends
 it. Where the game itself is shown (the Game view), **Cinematic** takes it full screen
 without the editor: a broadcast bar with each player's numbers and the clock, a title card,
-a banner when a key fight begins, the winner at the end, and larger captions. Esc leaves.
+a banner when a key fight begins, the winner at the end, and larger captions. It also plays
+the game's music for one of the races in the game, picked each time, the way the game would.
+While a caster talks, the game's sounds and music go quieter, and come back up between
+lines. Esc leaves.
 
 ### Map stats: many replays of one map
 
