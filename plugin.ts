@@ -1133,7 +1133,8 @@ export function activate(api: PluginApi) {
       casting.reel = new Reel({
         frame: () => (gameClock() ? (game.seeking ? null : game.frameNow(settings.speed)) : current?.frame ?? null),
         seek: (f) => seek(f),
-        speed: (n) => { settings.speed = n; if (gameClock()) game.speed(n); strip?.update(); },
+        // (The strip is drawn again so its speed menu says the speed the stretch plays at.)
+        speed: (n) => { settings.speed = n; if (gameClock()) game.speed(n); strip?.render(); },
         play: () => play(),
         pause: () => stop(),
         playing: () => playing,
@@ -1193,7 +1194,8 @@ export function activate(api: PluginApi) {
     let pic: PluginImage | null = null;
     if (typeof api.graphics.icon === "function") { pic = api.graphics.icon(card.kind, card.type); if (!pic) api.graphics.requestIcons(); }
     if (!pic && card.kind === "unit") { pic = api.graphics.unitImage(card.type, { owner: card.player }); if (!pic) api.graphics.requestUnit(card.type); }
-    const x0 = 14, y0 = 14, w = 280, h = 70, colour = who?.color ?? "#888";
+    // (Below the line the editor writes at the map's top left.)
+    const x0 = 14, y0 = 36, w = 280, h = 70, colour = who?.color ?? "#888";
     ctx.fillStyle = "rgba(10,12,16,0.84)";
     ctx.fillRect(x0, y0, w, h);
     ctx.fillStyle = colour;
@@ -1543,7 +1545,8 @@ export function activate(api: PluginApi) {
 
     // The orders of the last few seconds: in Orders, and in Watch until the game is analysed (they are all there is then).
     if (lens === "orders" || !done) drawOrders(ctx, v, players, frame);
-    if (settings.legend) legend(ctx, lens, done !== null);
+    // (A cast is a broadcast: no legend under its captions.)
+    if (settings.legend && !casting.reel) legend(ctx, lens, done !== null);
     caption(ctx, cur);
     subtitle(ctx);
     castCard(ctx);
@@ -1574,7 +1577,7 @@ export function activate(api: PluginApi) {
     const players = cur.report.players.filter((p) => !cur.hidden.has(p.player.id));
     if (settings.orders) {
       drawOrders(ctx, v, players, game.frameNow(settings.speed) ?? cur.frame);
-      if (settings.legend) legend(ctx, "orders", cur.played !== null, true);
+      if (settings.legend && !casting.reel) legend(ctx, "orders", cur.played !== null, true);
     }
     caption(ctx, cur);
     subtitle(ctx);

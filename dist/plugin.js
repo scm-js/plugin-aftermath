@@ -5553,10 +5553,11 @@ function activate(api) {
       casting.reel = new Reel({
         frame: () => gameClock() ? game.seeking ? null : game.frameNow(settings.speed) : current?.frame ?? null,
         seek: (f) => seek(f),
+        // (The strip is drawn again so its speed menu says the speed the stretch plays at.)
         speed: (n) => {
           settings.speed = n;
           if (gameClock()) game.speed(n);
-          strip?.update();
+          strip?.render();
         },
         play: () => play(),
         pause: () => stop(),
@@ -5611,7 +5612,7 @@ function activate(api) {
       pic = api.graphics.unitImage(card.type, { owner: card.player });
       if (!pic) api.graphics.requestUnit(card.type);
     }
-    const x0 = 14, y0 = 14, w2 = 280, h = 70, colour = who?.color ?? "#888";
+    const x0 = 14, y0 = 36, w2 = 280, h = 70, colour = who?.color ?? "#888";
     ctx.fillStyle = "rgba(10,12,16,0.84)";
     ctx.fillRect(x0, y0, w2, h);
     ctx.fillStyle = colour;
@@ -5954,7 +5955,7 @@ function activate(api) {
       }
     }
     if (lens === "orders" || !done) drawOrders(ctx, v, players, frame);
-    if (settings.legend) legend(ctx, lens, done !== null);
+    if (settings.legend && !casting.reel) legend(ctx, lens, done !== null);
     caption(ctx, cur);
     subtitle(ctx);
     castCard(ctx);
@@ -5978,7 +5979,7 @@ function activate(api) {
     const players = cur.report.players.filter((p) => !cur.hidden.has(p.player.id));
     if (settings.orders) {
       drawOrders(ctx, v, players, game.frameNow(settings.speed) ?? cur.frame);
-      if (settings.legend) legend(ctx, "orders", cur.played !== null, true);
+      if (settings.legend && !casting.reel) legend(ctx, "orders", cur.played !== null, true);
     }
     caption(ctx, cur);
     subtitle(ctx);
