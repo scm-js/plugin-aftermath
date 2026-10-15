@@ -1072,6 +1072,7 @@ export function activate(api: PluginApi) {
         place: (x, y) => { const c = clockOf(x, y, map.width * 32, map.height * 32); return c ? `${c} o'clock` : "the middle"; },
       },
     }, clips, undefined, options);
+    input.seed = Math.floor(Math.random() * 2_000_000_000);
     casting.busy = t("Writing the cast…");
     strip?.update();
     const written = await call<{ output: { lines: CastLine[] } }>("/v1/recipes/cast", { input }, signal);

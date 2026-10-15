@@ -5360,6 +5360,7 @@ function activate(api) {
         }
       }
     }, clips, void 0, options);
+    input.seed = Math.floor(Math.random() * 2e9);
     casting.busy = t("Writing the cast\u2026");
     strip?.update();
     const written = await call("/v1/recipes/cast", { input }, signal);

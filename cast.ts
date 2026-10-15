@@ -55,6 +55,8 @@ export interface CastOptions {
 
 export interface CastInput {
   options?: CastOptions;
+  /** Draws the commentators' two interests on the server: a new one each time a cast is made. */
+  seed?: number;
   game: {
     map: string;
     length: number;
