@@ -199,6 +199,12 @@ player could see, with the fog of war over the rest, on the editor's minimap too
 player chosen, Spectate follows that player's game: their fights, their army, their new
 bases, and an enemy army about to meet theirs seen from their side.
 
+Point at a unit or a building in the replay and a tooltip says what the game's console
+would: its name and owner, its hit points, shields and energy, and what it is doing. For a
+building that is training, researching, upgrading or still going up, that is a progress bar,
+with the training queue under it. In a replay this works for every player's units, as the
+game's own replay console does, but only for what the chosen eyes can see.
+
 While a replay's tab is in front:
 
 **Under the map**, the timeline:

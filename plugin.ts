@@ -41,7 +41,7 @@ import { clockOf, mapReport, winnerOf, type MapReport } from "./report";
 import { direct, lookAt, shotAt, type Shot } from "./director";
 import { cameraTrack, trackAt, type CameraTrack } from "./camera";
 import { advantage, bases as takenBases, hardestHit, leads, story, totals, type Advantage, type Base, type PlayerTotals } from "./story";
-import type { ReplayTimeline, ScmSimService } from "./vendor/scm-sim";
+import type { ReplayTimeline, ScmSimService, ViewHover, ViewHoverUnit } from "./vendor/scm-sim";
 import { GameView } from "./gameview";
 
 /* ── State ──────────────────────────────────────────────── */
@@ -186,6 +186,20 @@ const STYLE = `
 .afm-busy { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2; display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 8px; background: rgba(10, 12, 16, 0.8); color: #e8ecf2; font-size: 13px; pointer-events: none; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4); white-space: nowrap; }
 .afm-busy[hidden] { display: none; }
 .afm-over { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+.afm-tip { position: absolute; z-index: 3; pointer-events: none; display: block; max-width: 280px; padding: 6px 8px; }
+.afm-tip[hidden] { display: none; }
+.afm-tip-body { display: flex; flex-direction: column; gap: 4px; min-width: 190px; }
+.afm-tip-head { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.afm-tip-head .afm-dim { margin-left: auto; padding-left: 8px; overflow: hidden; text-overflow: ellipsis; }
+.afm-tip-swatch { width: 8px; height: 8px; flex: none; border-radius: 2px; }
+.afm-tip-row { display: flex; align-items: center; gap: 6px; }
+.afm-tip-label { flex: none; width: 62px; color: var(--text-dim); }
+.afm-tip-track { min-width: 70px; }
+.afm-tip-num { flex: none; min-width: 52px; text-align: right; font-variant-numeric: tabular-nums; }
+.afm-tip-work { margin-top: 2px; color: var(--gold-hi, var(--text)); }
+.afm-tip-queue { display: flex; gap: 3px; }
+.afm-tip-icon { width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; background: var(--bg-1); border: 1px solid var(--border); border-radius: 3px; }
+.afm-tip-icon.afm-first { border-color: var(--gold, #d8b04a); }
 .afm-busy .afm-spin { width: 16px; height: 16px; flex: none; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.22); border-top-color: var(--accent, #4fd1c5); animation: afm-spin 0.8s linear infinite; }
 @keyframes afm-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .afm-busy .afm-spin { animation-duration: 2.4s; } }
@@ -324,10 +338,78 @@ export function activate(api: PluginApi) {
     shown: (on) => handOver(on),
     state: (text) => { gameState = text; strip?.update(); showBusy(); },
     seeking: () => { strip?.update(); showBusy(); },
+    hover: (h) => showHover(h),
   }, "Replay", {
     loading: (name) => t("Starting the game of {name}…", { name }),
     failed: (message) => t("The game could not be shown: {message}", { message }),
   });
+  /* ── The tooltip over the game: what the console would have said of the unit under the pointer ── */
+
+  let lastHover: ViewHover | null = null;
+  function showHover(h: ViewHover | null): void {
+    lastHover = h;
+    const entry = current;
+    if (!h || !entry || !game.holds(entry.id) || lensOf() === "map") { game.tip(null); return; }
+    game.tip(tipFor(entry, h.unit), h.x, h.y);
+  }
+
+  /** A bar of the editor's own, `fraction` full, in `colour`. */
+  function tipBar(fraction: number, colour: string): HTMLElement {
+    const pct = Math.max(0, Math.min(100, fraction * 100));
+    return el("span", { className: "progress-track afm-tip-track" }, el("i", { style: `width:${pct.toFixed(1)}%;background:${colour}` }));
+  }
+
+  /** A unit type's picture, small, in its owner's colours; its name until the picture has loaded. */
+  function tipIcon(type: number, owner: number, first: boolean): HTMLElement {
+    const box = el("span", { className: first ? "afm-tip-icon afm-first" : "afm-tip-icon", title: api.names.unit(type) });
+    const pic = api.graphics.unitImage(type, { owner });
+    if (!pic) { api.graphics.requestUnit(type); return box; }
+    const size = 22, k = Math.min(size / pic.width, size / pic.height, 1);
+    const c = el("canvas", { width: size, height: size }) as HTMLCanvasElement;
+    c.getContext("2d")?.drawImage(pic.image, (size - pic.width * k) / 2, (size - pic.height * k) / 2, pic.width * k, pic.height * k);
+    box.append(c);
+    return box;
+  }
+
+  /** What the unit is busy with, in words; null when nothing. */
+  function workLine(u: ViewHoverUnit): string | null {
+    switch (u.work) {
+      case "construction": return t("Under construction");
+      case "train": return t("Training {name}", { name: api.names.unit(u.workId) });
+      case "research": return t("Researching {name}", { name: api.names.tech(u.workId) });
+      case "upgrade": return t("Upgrading {name}", { name: api.names.upgrade(u.workId) });
+      case "morph": return t("Morphing into {name}", { name: api.names.unit(u.workId) });
+      case "addon": return t("Building {name}", { name: api.names.unit(u.workId) });
+      case "nuke": return u.type === 108 ? t("Nuclear missile ready") : t("Calling down a nuclear strike");
+      default: return u.completed ? null : t("Under construction");
+    }
+  }
+
+  function tipFor(entry: Loaded, u: ViewHoverUnit): HTMLElement {
+    const owner = entry.report.players.find((p) => p.player.index === u.owner);
+    const colour = owner?.player.color ?? api.graphics.playerColor(u.owner);
+    const rows: HTMLElement[] = [el("div", { className: "afm-tip-head" },
+      el("span", { className: "afm-tip-swatch", style: `background:${colour}` }),
+      el("b", {}, api.names.unit(u.type)),
+      owner ? el("span", { className: "afm-dim" }, owner.player.name) : null)];
+    const stat = (label: string, value: number, max: number, barColour: string) => rows.push(el("div", { className: "afm-tip-row" },
+      el("span", { className: "afm-tip-label" }, label), tipBar(max > 0 ? value / max : 0, barColour), el("span", { className: "afm-tip-num" }, `${value}/${max}`)));
+    if (!u.invincible && u.hpMax > 0) {
+      const f = u.hp / u.hpMax;
+      stat(t("Hit points"), u.hp, u.hpMax, f > 2 / 3 ? "var(--ok, #4caf50)" : f > 1 / 3 ? "var(--warn, #e0b030)" : "var(--danger, #e05050)");
+    }
+    if (u.shields >= 0) stat(t("Shields"), u.shields, u.shieldsMax, "var(--teal, #4fd1c5)");
+    if (u.energy >= 0) stat(t("Energy"), u.energy, u.energyMax, "var(--sel-hi, #9b8cff)");
+    if (u.resources >= 0) rows.push(el("div", { className: "afm-tip-row afm-dim" }, t("{n} left", { n: u.resources })));
+    const doing = workLine(u);
+    if (doing) {
+      rows.push(el("div", { className: "afm-tip-work" }, doing));
+      if (u.progress >= 0) rows.push(el("div", { className: "afm-tip-row" }, tipBar(u.progress / 100, "var(--gold, #d8b04a)"), el("span", { className: "afm-tip-num" }, `${u.progress}%`)));
+    }
+    if (u.work === "train" && u.queue.length > 1) rows.push(el("div", { className: "afm-tip-queue" }, ...u.queue.map((type, i) => tipIcon(type, u.owner, i === 0))));
+    return el("div", { className: "afm-tip-body" }, ...rows);
+  }
+
   /** The spinner over the game while it starts or a jump runs, with the line the timeline has for it. */
   function showBusy(): void {
     const entry = current;
@@ -1238,7 +1320,7 @@ export function activate(api: PluginApi) {
     overlay.redraw();
     game.redrawOver();
   }
-  const imageListener = api.graphics.onImageLoaded(() => { if (current && overlay.isVisible()) overlay.redraw(); });
+  const imageListener = api.graphics.onImageLoaded(() => { if (current && overlay.isVisible()) overlay.redraw(); if (lastHover) showHover(lastHover); });
 
   /** A switch for the strip: a button that stays pressed while it is on. */
   function toggle(label: string, onClick: () => void): HTMLButtonElement {

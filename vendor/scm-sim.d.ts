@@ -253,6 +253,50 @@ export interface ViewUnits {
   wide: number;
 }
 
+/**
+ * The unit under the pointer, as the game's console would show it — for a tooltip of your own, as
+ * the view shows the game without its console. Only what the eyes the game is seen through can see.
+ */
+export interface ViewHoverUnit {
+  /** The engine's slot for it: the same unit while it lives. */
+  id: number;
+  /** units.dat id. */
+  type: number;
+  /** The player it belongs to, 0–11. */
+  owner: number;
+  hp: number;
+  hpMax: number;
+  /** A unit that cannot be hurt (its hit points are not shown in the game). */
+  invincible: boolean;
+  /** -1 for a unit with no shields. */
+  shields: number;
+  shieldsMax: number;
+  /** -1 for a unit that casts nothing. */
+  energy: number;
+  energyMax: number;
+  /** False while it goes up, trains or is an egg. */
+  completed: boolean;
+  /** What it is busy with, and `workId` what: the unit type made or morphed into, a techdata.dat or upgrades.dat id. */
+  work: "construction" | "train" | "research" | "upgrade" | "morph" | "addon" | "nuke" | null;
+  workId: number;
+  /** 0–100, how far that work (or its own building) has gone; -1 for none. */
+  progress: number;
+  /** The unit types in training, the first under way. */
+  queue: number[];
+  /** What is left in a mineral field, a geyser or a gas building; -1 for anything else. */
+  resources: number;
+}
+
+/**
+ * What the pointer is on over the view: a unit, and where the pointer is in the element's CSS
+ * pixels; null once it is on nothing. At most thirty times a second, when it or the pointer moved.
+ */
+export interface ViewHover {
+  unit: ViewHoverUnit;
+  x: number;
+  y: number;
+}
+
 /** A key pressed while the view had the keyboard that it does not use itself (all but the arrows, which scroll). */
 export interface ViewKey {
   key: string;
@@ -297,6 +341,8 @@ export interface ScmSimView {
   onCamera(listener: (camera: ViewCamera) => void): Disposable;
   /** The squares for a minimap of your own, as the game's minimap draws them. */
   onUnits(listener: (units: ViewUnits) => void): Disposable;
+  /** The unit under the pointer, for a tooltip; null once the pointer is on nothing (and when it leaves the view). From scm-sim 0.6.0. */
+  onHover(listener: (hover: ViewHover | null) => void): Disposable;
   /**
    * A key the view handed back. It is also pressed again on the editor's window, so the
    * editor's hotkeys and every plugin's act on it as if it had been pressed there.

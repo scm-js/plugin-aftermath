@@ -19,7 +19,7 @@
  * the game's files (the engine's page says so). Otherwise nothing changes: the tab has the map alone.
  */
 import type { Disposable, MapView, MapViewCamera, MapViewHandle, MinimapView, PluginApi } from "@scm-js/plugin-api";
-import type { ScmSimService, ScmSimView, ViewFrame, ViewTrack, ViewUnits } from "./vendor/scm-sim";
+import type { ScmSimService, ScmSimView, ViewFrame, ViewHover, ViewTrack, ViewUnits } from "./vendor/scm-sim";
 import { FRAME_MS } from "./replay";
 
 /** The editor's minimap follows the game's camera at most this often (each move redraws it). */
@@ -46,6 +46,8 @@ export interface GameViewHooks {
   state(text: string | null): void;
   /** A jump runs on towards where it was sent (`GameView.seekProgress`). */
   seeking(): void;
+  /** What the pointer is on over the game (null: nothing, or the game is not shown), for `tip`. */
+  hover(hover: ViewHover | null): void;
 }
 
 export class GameView {
@@ -100,6 +102,8 @@ export class GameView {
   private over: HTMLCanvasElement | null = null;
   private drawOver: ((ctx: CanvasRenderingContext2D, v: MapView) => void) | null = null;
   private looking: { x: number; y: number; width: number; height: number } | null = null;
+  /** The tooltip by the pointer over the game (`tip`), in the editor's own style. */
+  private tipBox: HTMLElement | null = null;
 
   constructor(api: PluginApi, hooks: GameViewHooks, title: string, words: GameView["words"]) {
     this.api = api;
@@ -119,7 +123,11 @@ export class GameView {
         box.setAttribute("role", "status");
         spin.className = "afm-spin";
         box.append(spin, line);
-        el.append(box);
+        const tip = document.createElement("div");
+        tip.className = "tooltip afm-tip";
+        tip.hidden = true;
+        el.append(box, tip);
+        this.tipBox = tip;
         this.busyBox = box;
         this.busyLine = line;
       },
@@ -129,7 +137,7 @@ export class GameView {
         press: (x, y) => { if (this.view && this.loaded) { this.view.camera(x, y); hooks.movedByUser(); } },
       },
     });
-    this.changed = this.handle.onChange((on) => { hooks.shown(on); this.redrawOver(); });
+    this.changed = this.handle.onChange((on) => { hooks.shown(on); this.redrawOver(); if (!on) this.hooks.hover(null); });
   }
 
   /** A replay is loaded in the viewer and no other is on its way. */
@@ -264,6 +272,8 @@ export class GameView {
       }),
     ];
     // (scm-sim before 0.6.0 sends no squares: the editor's minimap then shows the ground alone.)
+    // (scm-sim before 0.6.0 says nothing of the pointer: there is no tooltip.)
+    if (typeof view.onHover === "function") this.subs.push(view.onHover((h) => this.hooks.hover(this.loaded && this.shown ? h : null)));
     if (typeof view.onUnits === "function") this.subs.push(view.onUnits((u) => { if (!this.loaded) return; this.units = u; this.handle.redrawMinimap?.(); }));
     return view;
   }
@@ -281,6 +291,7 @@ export class GameView {
       this.units = null;
       this.looking = null;
       this.redrawOver();
+      this.hooks.hover(null);
       this.handle.redrawMinimap?.();
       this.hooks.state(this.words.loading(entry.fileName));
       this.sent = null;
@@ -331,6 +342,23 @@ export class GameView {
     this.eyesTold = slot;
     view.options({ fog: slot !== null }).catch(() => {});
     if (slot !== null) view.player(slot);
+  }
+
+  /**
+   * Show `content` in the tooltip by the pointer, at `x`, `y` in the game's CSS pixels (below and right of it, or the
+   * other side where it would leave the game); null hides it.
+   */
+  tip(content: HTMLElement | null, x = 0, y = 0): void {
+    const box = this.tipBox, el = this.element;
+    if (!box || !el) return;
+    if (!content) { box.hidden = true; box.replaceChildren(); return; }
+    box.replaceChildren(content);
+    box.hidden = false;
+    const w = box.offsetWidth, h = box.offsetHeight, room = { w: el.clientWidth, h: el.clientHeight };
+    const left = x + 16 + w <= room.w ? x + 16 : Math.max(4, x - 12 - w);
+    const top = y + 20 + h <= room.h ? y + 20 : Math.max(4, y - 10 - h);
+    box.style.left = `${Math.round(left)}px`;
+    box.style.top = `${Math.round(top)}px`;
   }
 
   /** What to draw over the game, given the map's pixels where the game shows them. */

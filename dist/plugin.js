@@ -1184,6 +1184,18 @@ var KO = {
   "O: what the players told their units to do in the last eight seconds, over the game": "O: \uCD5C\uADFC 8\uCD08 \uB3D9\uC548 \uD50C\uB808\uC774\uC5B4\uAC00 \uC720\uB2DB\uC5D0\uAC8C \uB0B4\uB9B0 \uBA85\uB839\uC744 \uAC8C\uC784 \uC704\uC5D0 \uD45C\uC2DC",
   "Over the game the legend keys the orders: turn Orders on to see it": "\uAC8C\uC784 \uC704\uC5D0\uC11C\uB294 \uBC94\uB840\uAC00 \uBA85\uB839 \uAE30\uD638\uB97C \uC124\uBA85\uD569\uB2C8\uB2E4. \uBCF4\uB824\uBA74 \uBA85\uB839\uC744 \uCF1C\uC138\uC694",
   "Vision: everyone": "\uC2DC\uC57C: \uBAA8\uB450",
+  "Under construction": "\uAC74\uC124 \uC911",
+  "Training {name}": "{name} \uC0DD\uC0B0 \uC911",
+  "Researching {name}": "{name} \uC5F0\uAD6C \uC911",
+  "Upgrading {name}": "{name} \uC5C5\uADF8\uB808\uC774\uB4DC \uC911",
+  "Morphing into {name}": "{name}(\uC73C)\uB85C \uBCC0\uD0DC \uC911",
+  "Building {name}": "{name} \uAC74\uC124 \uC911",
+  "Nuclear missile ready": "\uD575\uBBF8\uC0AC\uC77C \uC900\uBE44 \uC644\uB8CC",
+  "Calling down a nuclear strike": "\uD575 \uACF5\uACA9 \uC720\uB3C4 \uC911",
+  "Hit points": "\uCCB4\uB825",
+  "Shields": "\uBCF4\uD638\uB9C9",
+  "Energy": "\uC5D0\uB108\uC9C0",
+  "{n} left": "{n} \uB0A8\uC74C",
   "Vision: {name}": "\uC2DC\uC57C: {name}",
   "Whose eyes the game is seen through: one player's shows only what they could see, with the fog of war": "\uB204\uAD6C\uC758 \uC2DC\uC57C\uB85C \uAC8C\uC784\uC744 \uBCFC\uC9C0. \uD55C \uD50C\uB808\uC774\uC5B4\uB97C \uACE0\uB974\uBA74 \uADF8 \uD50C\uB808\uC774\uC5B4\uAC00 \uBCFC \uC218 \uC788\uB358 \uAC83\uB9CC \uC804\uC7A5\uC758 \uC548\uAC1C\uC640 \uD568\uAED8 \uBCF4\uC785\uB2C8\uB2E4"
 };
@@ -2201,6 +2213,8 @@ var GameView = class {
   over = null;
   drawOver = null;
   looking = null;
+  /** The tooltip by the pointer over the game (`tip`), in the editor's own style. */
+  tipBox = null;
   constructor(api, hooks, title, words) {
     this.api = api;
     this.hooks = hooks;
@@ -2219,7 +2233,11 @@ var GameView = class {
         box.setAttribute("role", "status");
         spin.className = "afm-spin";
         box.append(spin, line);
-        el.append(box);
+        const tip = document.createElement("div");
+        tip.className = "tooltip afm-tip";
+        tip.hidden = true;
+        el.append(box, tip);
+        this.tipBox = tip;
         this.busyBox = box;
         this.busyLine = line;
       },
@@ -2237,6 +2255,7 @@ var GameView = class {
     this.changed = this.handle.onChange((on) => {
       hooks.shown(on);
       this.redrawOver();
+      if (!on) this.hooks.hover(null);
     });
   }
   /** A replay is loaded in the viewer and no other is on its way. */
@@ -2384,6 +2403,7 @@ var GameView = class {
         }
       })
     ];
+    if (typeof view.onHover === "function") this.subs.push(view.onHover((h) => this.hooks.hover(this.loaded && this.shown ? h : null)));
     if (typeof view.onUnits === "function") this.subs.push(view.onUnits((u) => {
       if (!this.loaded) return;
       this.units = u;
@@ -2404,6 +2424,7 @@ var GameView = class {
       this.units = null;
       this.looking = null;
       this.redrawOver();
+      this.hooks.hover(null);
       this.handle.redrawMinimap?.();
       this.hooks.state(this.words.loading(entry.fileName));
       this.sent = null;
@@ -2452,6 +2473,26 @@ var GameView = class {
     view.options({ fog: slot !== null }).catch(() => {
     });
     if (slot !== null) view.player(slot);
+  }
+  /**
+   * Show `content` in the tooltip by the pointer, at `x`, `y` in the game's CSS pixels (below and right of it, or the
+   * other side where it would leave the game); null hides it.
+   */
+  tip(content, x = 0, y = 0) {
+    const box = this.tipBox, el = this.element;
+    if (!box || !el) return;
+    if (!content) {
+      box.hidden = true;
+      box.replaceChildren();
+      return;
+    }
+    box.replaceChildren(content);
+    box.hidden = false;
+    const w = box.offsetWidth, h = box.offsetHeight, room = { w: el.clientWidth, h: el.clientHeight };
+    const left = x + 16 + w <= room.w ? x + 16 : Math.max(4, x - 12 - w);
+    const top = y + 20 + h <= room.h ? y + 20 : Math.max(4, y - 10 - h);
+    box.style.left = `${Math.round(left)}px`;
+    box.style.top = `${Math.round(top)}px`;
   }
   /** What to draw over the game, given the map's pixels where the game shows them. */
   setOverlay(draw) {
@@ -2621,6 +2662,20 @@ var STYLE = `
 .afm-busy { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2; display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 8px; background: rgba(10, 12, 16, 0.8); color: #e8ecf2; font-size: 13px; pointer-events: none; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4); white-space: nowrap; }
 .afm-busy[hidden] { display: none; }
 .afm-over { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+.afm-tip { position: absolute; z-index: 3; pointer-events: none; display: block; max-width: 280px; padding: 6px 8px; }
+.afm-tip[hidden] { display: none; }
+.afm-tip-body { display: flex; flex-direction: column; gap: 4px; min-width: 190px; }
+.afm-tip-head { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.afm-tip-head .afm-dim { margin-left: auto; padding-left: 8px; overflow: hidden; text-overflow: ellipsis; }
+.afm-tip-swatch { width: 8px; height: 8px; flex: none; border-radius: 2px; }
+.afm-tip-row { display: flex; align-items: center; gap: 6px; }
+.afm-tip-label { flex: none; width: 62px; color: var(--text-dim); }
+.afm-tip-track { min-width: 70px; }
+.afm-tip-num { flex: none; min-width: 52px; text-align: right; font-variant-numeric: tabular-nums; }
+.afm-tip-work { margin-top: 2px; color: var(--gold-hi, var(--text)); }
+.afm-tip-queue { display: flex; gap: 3px; }
+.afm-tip-icon { width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; background: var(--bg-1); border: 1px solid var(--border); border-radius: 3px; }
+.afm-tip-icon.afm-first { border-color: var(--gold, #d8b04a); }
 .afm-busy .afm-spin { width: 16px; height: 16px; flex: none; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.22); border-top-color: var(--accent, #4fd1c5); animation: afm-spin 0.8s linear infinite; }
 @keyframes afm-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .afm-busy .afm-spin { animation-duration: 2.4s; } }
@@ -2751,11 +2806,91 @@ function activate(api) {
     seeking: () => {
       strip?.update();
       showBusy();
-    }
+    },
+    hover: (h) => showHover(h)
   }, "Replay", {
     loading: (name) => t("Starting the game of {name}\u2026", { name }),
     failed: (message) => t("The game could not be shown: {message}", { message })
   });
+  let lastHover = null;
+  function showHover(h) {
+    lastHover = h;
+    const entry = current;
+    if (!h || !entry || !game.holds(entry.id) || lensOf() === "map") {
+      game.tip(null);
+      return;
+    }
+    game.tip(tipFor(entry, h.unit), h.x, h.y);
+  }
+  function tipBar(fraction, colour) {
+    const pct = Math.max(0, Math.min(100, fraction * 100));
+    return el("span", { className: "progress-track afm-tip-track" }, el("i", { style: `width:${pct.toFixed(1)}%;background:${colour}` }));
+  }
+  function tipIcon(type, owner, first) {
+    const box = el("span", { className: first ? "afm-tip-icon afm-first" : "afm-tip-icon", title: api.names.unit(type) });
+    const pic = api.graphics.unitImage(type, { owner });
+    if (!pic) {
+      api.graphics.requestUnit(type);
+      return box;
+    }
+    const size = 22, k = Math.min(size / pic.width, size / pic.height, 1);
+    const c = el("canvas", { width: size, height: size });
+    c.getContext("2d")?.drawImage(pic.image, (size - pic.width * k) / 2, (size - pic.height * k) / 2, pic.width * k, pic.height * k);
+    box.append(c);
+    return box;
+  }
+  function workLine(u) {
+    switch (u.work) {
+      case "construction":
+        return t("Under construction");
+      case "train":
+        return t("Training {name}", { name: api.names.unit(u.workId) });
+      case "research":
+        return t("Researching {name}", { name: api.names.tech(u.workId) });
+      case "upgrade":
+        return t("Upgrading {name}", { name: api.names.upgrade(u.workId) });
+      case "morph":
+        return t("Morphing into {name}", { name: api.names.unit(u.workId) });
+      case "addon":
+        return t("Building {name}", { name: api.names.unit(u.workId) });
+      case "nuke":
+        return u.type === 108 ? t("Nuclear missile ready") : t("Calling down a nuclear strike");
+      default:
+        return u.completed ? null : t("Under construction");
+    }
+  }
+  function tipFor(entry, u) {
+    const owner = entry.report.players.find((p) => p.player.index === u.owner);
+    const colour = owner?.player.color ?? api.graphics.playerColor(u.owner);
+    const rows = [el(
+      "div",
+      { className: "afm-tip-head" },
+      el("span", { className: "afm-tip-swatch", style: `background:${colour}` }),
+      el("b", {}, api.names.unit(u.type)),
+      owner ? el("span", { className: "afm-dim" }, owner.player.name) : null
+    )];
+    const stat = (label2, value, max, barColour) => rows.push(el(
+      "div",
+      { className: "afm-tip-row" },
+      el("span", { className: "afm-tip-label" }, label2),
+      tipBar(max > 0 ? value / max : 0, barColour),
+      el("span", { className: "afm-tip-num" }, `${value}/${max}`)
+    ));
+    if (!u.invincible && u.hpMax > 0) {
+      const f = u.hp / u.hpMax;
+      stat(t("Hit points"), u.hp, u.hpMax, f > 2 / 3 ? "var(--ok, #4caf50)" : f > 1 / 3 ? "var(--warn, #e0b030)" : "var(--danger, #e05050)");
+    }
+    if (u.shields >= 0) stat(t("Shields"), u.shields, u.shieldsMax, "var(--teal, #4fd1c5)");
+    if (u.energy >= 0) stat(t("Energy"), u.energy, u.energyMax, "var(--sel-hi, #9b8cff)");
+    if (u.resources >= 0) rows.push(el("div", { className: "afm-tip-row afm-dim" }, t("{n} left", { n: u.resources })));
+    const doing = workLine(u);
+    if (doing) {
+      rows.push(el("div", { className: "afm-tip-work" }, doing));
+      if (u.progress >= 0) rows.push(el("div", { className: "afm-tip-row" }, tipBar(u.progress / 100, "var(--gold, #d8b04a)"), el("span", { className: "afm-tip-num" }, `${u.progress}%`)));
+    }
+    if (u.work === "train" && u.queue.length > 1) rows.push(el("div", { className: "afm-tip-queue" }, ...u.queue.map((type, i) => tipIcon(type, u.owner, i === 0))));
+    return el("div", { className: "afm-tip-body" }, ...rows);
+  }
   function showBusy() {
     const entry = current;
     if (!entry || !game.shown) {
@@ -3598,6 +3733,7 @@ function activate(api) {
   }
   const imageListener = api.graphics.onImageLoaded(() => {
     if (current && overlay.isVisible()) overlay.redraw();
+    if (lastHover) showHover(lastHover);
   });
   function toggle(label2, onClick) {
     const b = el("button", { type: "button", className: "afm-toggle" }, label2);
