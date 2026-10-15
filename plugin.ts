@@ -46,7 +46,7 @@ import { GameView } from "./gameview";
 import { castCards, castInput, castSegments, estimate, highlightClips, schedule, type CastCard, type CastGame, type CastInput, type CastLine, type CastOptions, type Schedule } from "./cast";
 import type { Durations } from "./tech";
 import { Reel } from "./castplay";
-import { CastStore, batches, castKey, estimate as castEstimate, readStream, replayKey, writingProgress, type KeptCast, type Writing } from "./castmake";
+import { CastStore, KEEP_BYTES, KEEP_CASTS, batches, castKey, estimate as castEstimate, readStream, replayKey, writingProgress, type KeptCast, type Writing } from "./castmake";
 import type { ScmjsAccountService } from "./vendor/scmjs-dev";
 import { InsightView, type InsightGame, type Metric as InsightMetric, type Resource } from "./insight";
 
@@ -1071,6 +1071,16 @@ export function activate(api: PluginApi) {
   let making: Making | null = null;
   /** The cast just made for a replay (its key), until it is watched: the strip offers it. */
   const ready = new Map<number, string>();
+  /** The newest cast kept in the browser for a replay (its key): the strip offers that too, after the editor reopens. */
+  const keptFor = new Map<number, string>();
+  /** Replays whose kept casts have been looked up. */
+  const keptChecked = new WeakSet<Loaded>();
+  async function refreshKept(entry: Loaded): Promise<void> {
+    keptChecked.add(entry);
+    const kept = await store.forReplay(await replayOf(entry));
+    if (kept.length) keptFor.set(entry.id, kept[0].key); else keptFor.delete(entry.id);
+    if (current === entry) strip?.render();
+  }
   /** Whatever shows the making (the Cast window), told when it moves. */
   const makingWatchers = new Set<() => void>();
   const makingMoved = () => { for (const w of makingWatchers) w(); strip?.update(); };
@@ -1237,6 +1247,7 @@ export function activate(api: PluginApi) {
       await store.put({ key: m.key, replay, options, voiced, notes, made: Date.now(), input, lines, storyline: written.storyline, interests: written.interests ?? null, clips: clipFiles });
       if (making === m) making = null;
       ready.set(entry.id, m.key);
+      keptFor.set(entry.id, m.key);
       api.ui.toast({ kind: "ok", title: t("The cast is ready"), detail: t("Watch it from the Cast window or the timeline.") });
       makingMoved();
       strip?.render();
@@ -1265,6 +1276,7 @@ export function activate(api: PluginApi) {
     if (!entry?.played) { void ctx?.close(); return; }
     if (casting.entry) endCast();
     ready.delete(entry.id);
+    void store.touch(made.key);
     casting.entry = entry;
     casting.error = null;
     casting.speed = settings.speed;
@@ -1404,14 +1416,16 @@ export function activate(api: PluginApi) {
               dialog.close();
               void watchCast(made, ctx);
             } });
-            const remove = w.button(t("Delete"), { onClick: async () => { await store.remove(k.key); casts.delete(k.key); void draw(); } });
+            const remove = w.button(t("Delete"), { onClick: async () => { await store.remove(k.key); casts.delete(k.key); if (ready.get(entry.id) === k.key) ready.delete(entry.id); await refreshKept(entry); void draw(); } });
             return el("div", { className: "afm-cast-kept" },
               el("div", {}, el("b", {}, label), el("div", { className: "afm-dim" }, [k.notes ? `“${k.notes}”` : null, k.interests ? t("{caster} and {analyst}", k.interests) : null, t("made {when}", { when: new Date(k.made).toLocaleString() })].filter(Boolean).join(" · "))),
               w.row(watch, remove));
           });
           update();
+          const room = await store.usage();
+          const roomLine = room.casts ? w.hint(t("Kept in this browser: {n, plural, one {# cast} other {# casts}}, {mb} MB. Past {max} casts or {maxMb} MB, the ones watched longest ago go.", { n: room.casts, mb: Math.round(room.bytes / 1048576), max: KEEP_CASTS, maxMb: Math.round(KEEP_BYTES / 1048576) })) : null;
           return w.column(
-            ...(keptRows.length ? [w.group(t("Made before"), ...keptRows)] : []),
+            ...(keptRows.length ? [w.group(t("Made before"), ...keptRows, ...(roomLine ? [roomLine] : []))] : []),
             w.group(t("A new cast"),
               w.form([
                 { label: t("Format"), field: formatPick },
@@ -2976,7 +2990,10 @@ export function activate(api: PluginApi) {
       // The Analysis window, on an editor with the tabs it is built of.
       // The cast, when the scmjs.dev server offers one to this account and the game has been analysed: the Cast window,
       // or the cast just made, or Stop while one plays.
-      const castState = casting.entry === entry ? "playing" : making?.entry === entry ? (making.error ? "failed" : "making") : ready.has(entry.id) ? "ready" : "idle";
+      // (A replay's kept casts are looked up once, when it is open and analysed and the server offers casts.)
+      if (castOffer && entry.played && !keptChecked.has(entry)) void refreshKept(entry);
+      const watchKey = ready.get(entry.id) ?? keptFor.get(entry.id);
+      const castState = casting.entry === entry ? "playing" : making?.entry === entry ? (making.error ? "failed" : "making") : watchKey ? "ready" : "idle";
       const castButton = castOffer && entry.played
         ? w.button(castState === "playing" ? t("Stop cast") : castState === "making" ? t("Making the cast…") : castState === "ready" ? t("Watch cast") : t("Cast…"), {
           className: "sm", primary: castState === "ready",
@@ -2984,7 +3001,7 @@ export function activate(api: PluginApi) {
           onClick: async () => {
             if (castState === "playing") { endCast(); return; }
             if (castState === "ready") {
-              const key = ready.get(entry.id)!;
+              const key = watchKey!;
               const ctx = new AudioContext();
               const made = await madeOf(entry, key);
               if (made) void watchCast(made, ctx); else void ctx.close();
@@ -2994,6 +3011,8 @@ export function activate(api: PluginApi) {
           },
         })
         : null;
+      // (With a cast to watch, the window — a new cast, the others kept — is a button of its own.)
+      const castMore = castButton && castState === "ready" ? w.button(t("Cast…"), { className: "sm", title: t("Make a new cast, or watch another kept in this browser"), onClick: () => openCastWindow() }) : null;
       const cinemaButton = castButton && castState === "playing" && cinemaPossible()
         ? w.button(t("Cinematic"), { className: "sm", title: t("The game full screen, dressed as a broadcast, without the editor around it. Esc leaves."), onClick: () => { void setCinema(true); } })
         : null;
@@ -3016,7 +3035,7 @@ export function activate(api: PluginApi) {
       this.eyesSelect = eyes;
       this.root.append(el("div", { className: "afm-row" }, this.playButton, this.timeLabel, speed,
         el("span", { className: "afm-toggles" }, this.spectateButton, this.ordersButton, this.statsButton, this.legendButton), eyes,
-        this.status, retry, castCardsButton, cinemaButton, castButton, analysis, chartSelect));
+        this.status, retry, castCardsButton, cinemaButton, castButton, castMore, analysis, chartSelect));
 
       // The lane of marks and the graph, one canvas: press or drag anywhere on it to go there.
       const canvas = el("canvas") as HTMLCanvasElement;

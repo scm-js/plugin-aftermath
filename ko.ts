@@ -433,4 +433,6 @@ export const KO: Record<string, string> = {
   "{name} wins": "{name} 승리",
   "Cinematic": "시네마틱",
   "The game full screen, dressed as a broadcast, without the editor around it. Esc leaves.": "편집기 없이 게임을 방송처럼 전체 화면으로 봅니다. Esc로 나갑니다.",
+  "Make a new cast, or watch another kept in this browser": "새 중계를 만들거나, 이 브라우저에 보관된 다른 중계를 봅니다",
+  "Kept in this browser: {n, plural, one {# cast} other {# casts}}, {mb} MB. Past {max} casts or {maxMb} MB, the ones watched longest ago go.": "이 브라우저에 보관: 중계 {n}개, {mb} MB. {max}개 또는 {maxMb} MB를 넘으면 가장 오래전에 본 것부터 지웁니다.",
 };

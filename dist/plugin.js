@@ -1360,7 +1360,9 @@ var KO = {
   "Key fight": "\uC8FC\uC694 \uAD50\uC804",
   "{name} wins": "{name} \uC2B9\uB9AC",
   "Cinematic": "\uC2DC\uB124\uB9C8\uD2F1",
-  "The game full screen, dressed as a broadcast, without the editor around it. Esc leaves.": "\uD3B8\uC9D1\uAE30 \uC5C6\uC774 \uAC8C\uC784\uC744 \uBC29\uC1A1\uCC98\uB7FC \uC804\uCCB4 \uD654\uBA74\uC73C\uB85C \uBD05\uB2C8\uB2E4. Esc\uB85C \uB098\uAC11\uB2C8\uB2E4."
+  "The game full screen, dressed as a broadcast, without the editor around it. Esc leaves.": "\uD3B8\uC9D1\uAE30 \uC5C6\uC774 \uAC8C\uC784\uC744 \uBC29\uC1A1\uCC98\uB7FC \uC804\uCCB4 \uD654\uBA74\uC73C\uB85C \uBD05\uB2C8\uB2E4. Esc\uB85C \uB098\uAC11\uB2C8\uB2E4.",
+  "Make a new cast, or watch another kept in this browser": "\uC0C8 \uC911\uACC4\uB97C \uB9CC\uB4E4\uAC70\uB098, \uC774 \uBE0C\uB77C\uC6B0\uC800\uC5D0 \uBCF4\uAD00\uB41C \uB2E4\uB978 \uC911\uACC4\uB97C \uBD05\uB2C8\uB2E4",
+  "Kept in this browser: {n, plural, one {# cast} other {# casts}}, {mb} MB. Past {max} casts or {maxMb} MB, the ones watched longest ago go.": "\uC774 \uBE0C\uB77C\uC6B0\uC800\uC5D0 \uBCF4\uAD00: \uC911\uACC4 {n}\uAC1C, {mb} MB. {max}\uAC1C \uB610\uB294 {maxMb} MB\uB97C \uB118\uC73C\uBA74 \uAC00\uC7A5 \uC624\uB798\uC804\uC5D0 \uBCF8 \uAC83\uBD80\uD130 \uC9C0\uC6C1\uB2C8\uB2E4."
 };
 
 // played.ts
@@ -3621,6 +3623,19 @@ function estimate2(seconds2, options, usdPer1kChars) {
     making: options.format === "game" ? [2, 3] : [1, 2]
   };
 }
+var KEEP_CASTS = 30;
+var KEEP_BYTES = 300 * 1024 * 1024;
+function toEvict(casts, maxCount = KEEP_CASTS, maxBytes = KEEP_BYTES) {
+  const order = [...casts].sort((a, b) => (b.watched ?? b.made) - (a.watched ?? a.made));
+  const out = [];
+  let bytes = 0;
+  order.forEach((c, i) => {
+    bytes += c.bytes;
+    if (i > 0 && (i >= maxCount || bytes > maxBytes)) out.push(c.key);
+  });
+  return out;
+}
+var castBytes = (c) => c.clips.reduce((n, b) => n + (b?.byteLength ?? 0), 0);
 async function replayKey(bytes) {
   const digest = await crypto.subtle.digest("SHA-256", new Uint8Array(bytes));
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -3657,8 +3672,37 @@ var CastStore = class {
       }
     });
   }
+  asked = false;
+  /**
+   * Keep a cast; then ask the browser, once, to keep this storage when it runs short of room (it may say no, and the
+   * casts are then kept as long as it allows), and let go of the casts watched longest ago past the limits.
+   */
   async put(cast) {
-    return await this.run("readwrite", (s) => s.put(cast)) !== null;
+    const ok = await this.run("readwrite", (s) => s.put(cast)) !== null;
+    if (!this.asked) {
+      this.asked = true;
+      try {
+        await navigator.storage?.persist?.();
+      } catch {
+      }
+    }
+    await this.prune();
+    return ok;
+  }
+  /** Say a cast was watched now: the last to go. */
+  async touch(key) {
+    const c = await this.get(key);
+    if (c) await this.run("readwrite", (s) => s.put({ ...c, watched: Date.now() }));
+  }
+  /** Let go of the casts watched longest ago, past the count and the bytes kept. */
+  async prune() {
+    const all = await this.run("readonly", (s) => s.getAll()) ?? [];
+    for (const key of toEvict(all.map((c) => ({ key: c.key, made: c.made, watched: c.watched, bytes: castBytes(c) })))) await this.remove(key);
+  }
+  /** How many casts are kept, and how many bytes of voices. */
+  async usage() {
+    const all = await this.run("readonly", (s) => s.getAll()) ?? [];
+    return { casts: all.length, bytes: all.reduce((n, c) => n + castBytes(c), 0) };
   }
   get(key) {
     return this.run("readonly", (s) => s.get(key)).then((c) => c ?? null);
@@ -5618,6 +5662,15 @@ function activate(api) {
   const casting = { entry: null, error: null, reel: null, made: null, speed: 0 };
   let making = null;
   const ready = /* @__PURE__ */ new Map();
+  const keptFor = /* @__PURE__ */ new Map();
+  const keptChecked = /* @__PURE__ */ new WeakSet();
+  async function refreshKept(entry) {
+    keptChecked.add(entry);
+    const kept = await store.forReplay(await replayOf(entry));
+    if (kept.length) keptFor.set(entry.id, kept[0].key);
+    else keptFor.delete(entry.id);
+    if (current === entry) strip?.render();
+  }
   const makingWatchers = /* @__PURE__ */ new Set();
   const makingMoved = () => {
     for (const w2 of makingWatchers) w2();
@@ -5800,6 +5853,7 @@ function activate(api) {
       await store.put({ key: m.key, replay, options, voiced, notes, made: Date.now(), input, lines, storyline: written.storyline, interests: written.interests ?? null, clips: clipFiles });
       if (making === m) making = null;
       ready.set(entry.id, m.key);
+      keptFor.set(entry.id, m.key);
       api.ui.toast({ kind: "ok", title: t("The cast is ready"), detail: t("Watch it from the Cast window or the timeline.") });
       makingMoved();
       strip?.render();
@@ -5828,6 +5882,7 @@ function activate(api) {
     }
     if (casting.entry) endCast();
     ready.delete(entry.id);
+    void store.touch(made.key);
     casting.entry = entry;
     casting.error = null;
     casting.speed = settings.speed;
@@ -6012,6 +6067,8 @@ function activate(api) {
             const remove2 = w.button(t("Delete"), { onClick: async () => {
               await store.remove(k.key);
               casts.delete(k.key);
+              if (ready.get(entry.id) === k.key) ready.delete(entry.id);
+              await refreshKept(entry);
               void draw2();
             } });
             return el2(
@@ -6022,8 +6079,10 @@ function activate(api) {
             );
           });
           update();
+          const room = await store.usage();
+          const roomLine = room.casts ? w.hint(t("Kept in this browser: {n, plural, one {# cast} other {# casts}}, {mb} MB. Past {max} casts or {maxMb} MB, the ones watched longest ago go.", { n: room.casts, mb: Math.round(room.bytes / 1048576), max: KEEP_CASTS, maxMb: Math.round(KEEP_BYTES / 1048576) })) : null;
           return w.column(
-            ...keptRows.length ? [w.group(t("Made before"), ...keptRows)] : [],
+            ...keptRows.length ? [w.group(t("Made before"), ...keptRows, ...roomLine ? [roomLine] : [])] : [],
             w.group(
               t("A new cast"),
               w.form([
@@ -7633,7 +7692,9 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
         this.update();
       });
       this.statsButton = toggle(t("Map stats"), () => showStats(lensOf() !== "map"));
-      const castState = casting.entry === entry ? "playing" : making?.entry === entry ? making.error ? "failed" : "making" : ready.has(entry.id) ? "ready" : "idle";
+      if (castOffer && entry.played && !keptChecked.has(entry)) void refreshKept(entry);
+      const watchKey = ready.get(entry.id) ?? keptFor.get(entry.id);
+      const castState = casting.entry === entry ? "playing" : making?.entry === entry ? making.error ? "failed" : "making" : watchKey ? "ready" : "idle";
       const castButton = castOffer && entry.played ? w.button(castState === "playing" ? t("Stop cast") : castState === "making" ? t("Making the cast\u2026") : castState === "ready" ? t("Watch cast") : t("Cast\u2026"), {
         className: "sm",
         primary: castState === "ready",
@@ -7644,7 +7705,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
             return;
           }
           if (castState === "ready") {
-            const key = ready.get(entry.id);
+            const key = watchKey;
             const ctx = new AudioContext();
             const made = await madeOf(entry, key);
             if (made) void watchCast(made, ctx);
@@ -7654,6 +7715,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
           openCastWindow();
         }
       }) : null;
+      const castMore = castButton && castState === "ready" ? w.button(t("Cast\u2026"), { className: "sm", title: t("Make a new cast, or watch another kept in this browser"), onClick: () => openCastWindow() }) : null;
       const cinemaButton = castButton && castState === "playing" && cinemaPossible() ? w.button(t("Cinematic"), { className: "sm", title: t("The game full screen, dressed as a broadcast, without the editor around it. Esc leaves."), onClick: () => {
         void setCinema(true);
       } }) : null;
@@ -7694,6 +7756,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
         castCardsButton,
         cinemaButton,
         castButton,
+        castMore,
         analysis,
         chartSelect
       ));

@@ -40,3 +40,14 @@ describe("the server's stream", () => {
     expect(seen[1].text).toBe('{"story');
   });
 });
+
+describe("casts kept in the browser", () => {
+  const cast = (key: string, made: number, bytes: number, watched?: number) => ({ key, made, bytes, ...(watched ? { watched } : {}) });
+  it("lets go of the ones watched or made longest ago past the count, and never the newest", async () => {
+    const { toEvict } = await import("../castmake");
+    const casts = [cast("a", 1, 10), cast("b", 2, 10, 50), cast("c", 3, 10), cast("d", 4, 10)];
+    expect(toEvict(casts, 2, 1000)).toEqual(["c", "a"]);
+    expect(toEvict(casts, 10, 25)).toEqual(["c", "a"]);
+    expect(toEvict([cast("huge", 1, 5000)], 10, 100)).toEqual([]);
+  });
+});

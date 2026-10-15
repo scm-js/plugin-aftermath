@@ -100,6 +100,8 @@ export interface KeptCast {
   voiced: boolean;
   notes: string;
   made: number;
+  /** When it was last watched (absent: never), for which to let go first when the browser's room runs short. */
+  watched?: number;
   input: unknown;
   lines: CastLine[];
   storyline: string;
@@ -107,6 +109,28 @@ export interface KeptCast {
   /** Each line's voice as the file it came as (mp3), or null for captions only. */
   clips: (ArrayBuffer | null)[];
 }
+
+/** Kept casts at most: this many, and this many bytes of voices (a cast is about 5–8 MB). */
+export const KEEP_CASTS = 30;
+export const KEEP_BYTES = 300 * 1024 * 1024;
+
+/**
+ * The casts to let go when there are more than the browser should keep: the ones watched (or made) longest ago, until
+ * what is left is within the count and the bytes. The newest is always kept.
+ */
+export function toEvict(casts: readonly { key: string; made: number; watched?: number; bytes: number }[], maxCount = KEEP_CASTS, maxBytes = KEEP_BYTES): string[] {
+  const order = [...casts].sort((a, b) => (b.watched ?? b.made) - (a.watched ?? a.made));
+  const out: string[] = [];
+  let bytes = 0;
+  order.forEach((c, i) => {
+    bytes += c.bytes;
+    if (i > 0 && (i >= maxCount || bytes > maxBytes)) out.push(c.key);
+  });
+  return out;
+}
+
+/** A kept cast's size: its voices. */
+export const castBytes = (c: Pick<KeptCast, "clips">) => c.clips.reduce((n, b) => n + (b?.byteLength ?? 0), 0);
 
 /** The replay's file as a key: its SHA-256, in hex. */
 export async function replayKey(bytes: Uint8Array): Promise<string> {
@@ -149,7 +173,36 @@ export class CastStore {
     });
   }
 
-  async put(cast: KeptCast): Promise<boolean> { return (await this.run("readwrite", (s) => s.put(cast))) !== null; }
+  private asked = false;
+
+  /**
+   * Keep a cast; then ask the browser, once, to keep this storage when it runs short of room (it may say no, and the
+   * casts are then kept as long as it allows), and let go of the casts watched longest ago past the limits.
+   */
+  async put(cast: KeptCast): Promise<boolean> {
+    const ok = (await this.run("readwrite", (s) => s.put(cast))) !== null;
+    if (!this.asked) { this.asked = true; try { await navigator.storage?.persist?.(); } catch { /* not offered here */ } }
+    await this.prune();
+    return ok;
+  }
+
+  /** Say a cast was watched now: the last to go. */
+  async touch(key: string): Promise<void> {
+    const c = await this.get(key);
+    if (c) await this.run("readwrite", (s) => s.put({ ...c, watched: Date.now() }));
+  }
+
+  /** Let go of the casts watched longest ago, past the count and the bytes kept. */
+  async prune(): Promise<void> {
+    const all = (await this.run("readonly", (s) => s.getAll() as IDBRequest<KeptCast[]>)) ?? [];
+    for (const key of toEvict(all.map((c) => ({ key: c.key, made: c.made, watched: c.watched, bytes: castBytes(c) })))) await this.remove(key);
+  }
+
+  /** How many casts are kept, and how many bytes of voices. */
+  async usage(): Promise<{ casts: number; bytes: number }> {
+    const all = (await this.run("readonly", (s) => s.getAll() as IDBRequest<KeptCast[]>)) ?? [];
+    return { casts: all.length, bytes: all.reduce((n, c) => n + castBytes(c), 0) };
+  }
   get(key: string): Promise<KeptCast | null> { return this.run("readonly", (s) => s.get(key) as IDBRequest<KeptCast>).then((c) => c ?? null); }
   async forReplay(replay: string): Promise<KeptCast[]> {
     const all = await this.run("readonly", (s) => s.index("replay").getAll(replay) as IDBRequest<KeptCast[]>);
