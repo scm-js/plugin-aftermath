@@ -94,18 +94,18 @@ title, or a double-click on the title, makes it fill the map's area. Every chart
 the replay's clock; point at one for the numbers there, and press or drag to go to that
 moment. Its first tab is **Economy**:
 
-- **In numbers**: minerals and gas mined, income a minute on average, what was left
-  unspent on average, the time spent supply blocked and how many times, and the most
-  workers each player had.
-- **Income a minute** over the game, from the game's own count of what was mined, and
-  **Unspent**, what was in the bank. **Both**, **Minerals** and **Gas** above the charts
-  choose what they show.
-- **Workers** over the game.
-- **Supply blocked**: a lane a player, marked where they stood at their supply limit
-  (below 200).
-- **Mineral lines**: for each line a player worked, the workers there minute by minute.
-  Two a field mine at the full rate, and more add little. Workers inside a refinery are not
-  on the map, so these are mineral workers. Press a minute to go there.
+- A card for each player: income a minute on average, what they left unspent on average,
+  and how long and how often they were supply blocked. Under the cards, a sentence
+  comparing the two players in a game of two.
+- One chart: **Income**, **Unspent** or **Workers** over the game, with **Both**,
+  **Minerals** or **Gas** for the first two. Under it, on the same time, a lane for each
+  player marked where they stood at their supply limit (below 200).
+- **Bases and mining**, folded: for each base a player mined from (Main, Base 2, …), how
+  many workers were there minute by minute, by colour. Two a field mine at the full rate.
+  Point at a minute for the numbers, press it to go there. Workers inside a refinery are
+  not on the map, so these are mineral workers.
+- **All the numbers**, folded: mined, income, unspent, supply blocked and the most
+  workers, as a table.
 
 Income needs the game engine to count what was mined, which an engine from before
 October 2026 does not; then the rest is shown without it. The window needs a version of

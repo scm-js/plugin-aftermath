@@ -1217,14 +1217,9 @@ var KO = {
   "Analysis": "\uBD84\uC11D",
   "Open the Analysis window: the game's economy in charts and numbers": "\uBD84\uC11D \uCC3D \uC5F4\uAE30: \uAC8C\uC784\uC758 \uACBD\uC81C\uB97C \uCC28\uD2B8\uC640 \uC22B\uC790\uB85C \uBD05\uB2C8\uB2E4",
   "Economy": "\uACBD\uC81C",
-  "minerals": "\uBBF8\uB124\uB784",
-  "gas": "\uAC00\uC2A4",
-  "minerals and gas": "\uBBF8\uB124\uB784\uACFC \uAC00\uC2A4",
   "Both": "\uB458 \uB2E4",
   "Minerals": "\uBBF8\uB124\uB784",
   "Gas": "\uAC00\uC2A4",
-  "Which resource the income and unspent charts show": "\uC218\uC785\uACFC \uBBF8\uC0AC\uC6A9 \uC790\uC6D0 \uCC28\uD2B8\uC5D0 \uD45C\uC2DC\uD560 \uC790\uC6D0",
-  "Resources": "\uC790\uC6D0",
   "Minerals mined": "\uCC44\uCDE8\uD55C \uBBF8\uB124\uB784",
   "Everything the player's workers brought back": "\uD50C\uB808\uC774\uC5B4\uC758 \uC77C\uAFBC\uC774 \uAC00\uC838\uC628 \uC804\uCCB4 \uC790\uC6D0",
   "Gas mined": "\uCC44\uCDE8\uD55C \uAC00\uC2A4",
@@ -1239,21 +1234,33 @@ var KO = {
   "The most workers the player had at once, and when": "\uD50C\uB808\uC774\uC5B4\uAC00 \uD55C\uB54C \uAC00\uC7A5 \uB9CE\uC774 \uAC00\uC84C\uB358 \uC77C\uAFBC \uC218\uC640 \uADF8 \uC2DC\uC810",
   "{n} at {time}": "{time}\uC5D0 {n}",
   "Unspent": "\uBBF8\uC0AC\uC6A9 \uC790\uC6D0",
-  "Income a minute: {resource}": "\uBD84\uB2F9 \uC218\uC785: {resource}",
-  "Unspent: {resource}": "\uBBF8\uC0AC\uC6A9 \uC790\uC6D0: {resource}",
   "blocked {time} from {at}": "{at}\uBD80\uD130 {time} \uB3D9\uC548 \uB9C9\uD798",
   "Nobody blocked here": "\uC774 \uC2DC\uC810\uC5D0 \uB9C9\uD78C \uD50C\uB808\uC774\uC5B4 \uC5C6\uC74C",
-  "Over the minute before each moment, from the game's own count of what was mined.": "\uAC01 \uC2DC\uC810 \uC9C1\uC804 1\uBD84 \uB3D9\uC548\uC758 \uAC12\uC774\uBA70, \uAC8C\uC784\uC774 \uC9C1\uC811 \uC13C \uCC44\uCDE8\uB7C9\uC744 \uAE30\uC900\uC73C\uB85C \uD569\uB2C8\uB2E4.",
-  "The game engine on this site does not count what was mined yet, so income is not shown. The rest is.": "\uC774 \uC0AC\uC774\uD2B8\uC758 \uAC8C\uC784 \uC5D4\uC9C4\uC740 \uC544\uC9C1 \uCC44\uCDE8\uB7C9\uC744 \uC138\uC9C0 \uC54A\uC544 \uC218\uC785\uC740 \uD45C\uC2DC\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uB098\uBA38\uC9C0\uB294 \uD45C\uC2DC\uD569\uB2C8\uB2E4.",
-  "What was in the bank. Money left there is not yet workers, army or tech.": "\uBCF4\uC720\uD55C \uC790\uC6D0\uC785\uB2C8\uB2E4. \uC313\uC544 \uB454 \uC790\uC6D0\uC740 \uC544\uC9C1 \uC77C\uAFBC, \uBCD1\uB825, \uAE30\uC220\uC774 \uB418\uC9C0 \uC54A\uC740 \uC790\uC6D0\uC785\uB2C8\uB2E4.",
-  "At the supply limit, below 200: nothing more could be made until supply was built.": "\uC778\uAD6C\uC218 \uD55C\uB3C4(200 \uBBF8\uB9CC)\uC5D0 \uAC78\uB9B0 \uC2DC\uAC04\uC785\uB2C8\uB2E4. \uBCF4\uAE09\uC744 \uB298\uB9B4 \uB54C\uAE4C\uC9C0 \uB354 \uC0DD\uC0B0\uD560 \uC218 \uC5C6\uC5C8\uC2B5\uB2C8\uB2E4.",
-  "Mineral lines": "\uBBF8\uB124\uB784 \uC9C0\uB300",
   "Where the workers stood is not in this analysis.": "\uC774 \uBD84\uC11D\uC5D0\uB294 \uC77C\uAFBC\uC758 \uC704\uCE58\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.",
-  "minute": "\uBD84",
-  "{n} fields": "\uAD11\uBB3C {n}\uAC1C",
   "{n} workers at {fields} fields, {per} a field": "\uAD11\uBB3C {fields}\uAC1C\uC5D0 \uC77C\uAFBC {n}\uAE30, \uAD11\uBB3C\uB2F9 {per}\uAE30",
   "Press to go to that minute": "\uB204\uB974\uBA74 \uADF8 \uBD84\uC73C\uB85C \uAC11\uB2C8\uB2E4",
-  "Workers on the map at each mineral line, minute by minute: two a field mine at the full rate, and more add little. Workers in a refinery are not on the map, so these are mineral workers.": "\uBD84\uB9C8\uB2E4 \uAC01 \uBBF8\uB124\uB784 \uC9C0\uB300\uC5D0 \uC788\uB358 \uC77C\uAFBC \uC218\uC785\uB2C8\uB2E4. \uAD11\uBB3C \uD558\uB098\uC5D0 \uB450 \uAE30\uBA74 \uCD5C\uB300 \uC18D\uB3C4\uB85C \uCE90\uACE0, \uADF8 \uC774\uC0C1\uC740 \uAC70\uC758 \uBCF4\uD0EC\uC774 \uB418\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uC815\uC81C\uC18C \uC548\uC758 \uC77C\uAFBC\uC740 \uC9C0\uB3C4\uC5D0 \uC5C6\uC73C\uBBC0\uB85C \uBBF8\uB124\uB784 \uC77C\uAFBC\uB9CC \uC149\uB2C8\uB2E4."
+  "a minute": "\uBD84\uB2F9",
+  "income, on average": "\uD3C9\uADE0 \uC218\uC785",
+  "unspent, on average": "\uD3C9\uADE0 \uBBF8\uC0AC\uC6A9 \uC790\uC6D0",
+  "supply blocked, {n, plural, one {# time} other {# times}}": "\uC778\uAD6C\uC218 \uB9C9\uD798, {n}\uBC88",
+  "never supply blocked": "\uC778\uAD6C\uC218\uAC00 \uB9C9\uD78C \uC801 \uC5C6\uC74C",
+  "Income": "\uC218\uC785",
+  "Which resource the chart shows": "\uCC28\uD2B8\uC5D0 \uD45C\uC2DC\uD560 \uC790\uC6D0",
+  "Economy over the game": "\uAC8C\uC784 \uB3D9\uC548\uC758 \uACBD\uC81C",
+  "over the minute before each moment": "\uAC01 \uC2DC\uC810 \uC9C1\uC804 1\uBD84 \uB3D9\uC548",
+  "what was in the bank, not yet spent": "\uC544\uC9C1 \uC4F0\uC9C0 \uC54A\uACE0 \uBCF4\uC720\uD55C \uC790\uC6D0",
+  "workers on the map and in buildings": "\uC9C0\uB3C4\uC640 \uAC74\uBB3C \uC548\uC758 \uC77C\uAFBC",
+  "Income is not shown: the game engine on this site does not count what was mined yet.": "\uC218\uC785\uC740 \uD45C\uC2DC\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uC774 \uC0AC\uC774\uD2B8\uC758 \uAC8C\uC784 \uC5D4\uC9C4\uC740 \uC544\uC9C1 \uCC44\uCDE8\uB7C9\uC744 \uC138\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
+  "Bases and mining": "\uAE30\uC9C0\uC640 \uCC44\uCDE8",
+  "All the numbers": "\uBAA8\uB4E0 \uC218\uCE58",
+  "They mined about the same.": "\uB450 \uD50C\uB808\uC774\uC5B4\uC758 \uCC44\uCDE8\uB7C9\uC740 \uBE44\uC2B7\uD588\uC2B5\uB2C8\uB2E4.",
+  "{name} mined {n}% more than {other}.": "{name|\uC774} {other}\uBCF4\uB2E4 {n}% \uB354 \uCC44\uCDE8\uD588\uC2B5\uB2C8\uB2E4.",
+  "{name} kept less unspent.": "{name|\uC774} \uC790\uC6D0\uC744 \uB35C \uC313\uC544 \uB450\uC5C8\uC2B5\uB2C8\uB2E4.",
+  "{name} was supply blocked {time} longer.": "{name|\uC740} \uC778\uAD6C\uC218\uAC00 {time} \uB354 \uC624\uB798 \uB9C9\uD614\uC2B5\uB2C8\uB2E4.",
+  "Main": "\uBCF8\uC9C4",
+  "Base {n}": "{n}\uBC88\uC9F8 \uAE30\uC9C0",
+  "Workers a field": "\uAD11\uBB3C\uB2F9 \uC77C\uAFBC",
+  "\xB7 two a field mine at the full rate": "\xB7 \uAD11\uBB3C\uB2F9 \uB450 \uAE30\uBA74 \uCD5C\uB300 \uC18D\uB3C4\uB85C \uCEA1\uB2C8\uB2E4"
 };
 
 // played.ts
@@ -2700,6 +2707,8 @@ var Chart = class {
   /** The same on every chart of a window, so their times line up: the axis' numbers at the left, names at the right. */
   right = RIGHT;
   left = LEFT;
+  /** The minutes under the plot; off for a chart with another under it on the same time axis. */
+  axis = true;
   host;
   tipAt;
   constructor(host, height, tipAt, label) {
@@ -2731,6 +2740,11 @@ var Chart = class {
     this.tip = host.tooltip(this.canvas, (at) => at.offsetX < this.left - 4 ? null : this.tipAt(frameAt(at.offsetX)));
     this.resize = new ResizeObserver(() => this.draw());
     this.resize.observe(this.canvas);
+  }
+  /** Whether to write the minutes under the plot. */
+  showAxis(on) {
+    this.axis = on;
+    this.draw();
   }
   /** The replay's moment, drawn as the brighter line. */
   setNow(frame) {
@@ -2767,7 +2781,7 @@ var Chart = class {
     g.scale(dpr, dpr);
     const width = c.clientWidth, height = c.clientHeight;
     const w = Math.max(1, width - this.left - this.right);
-    const top = TOP, bottom = height - BOTTOM;
+    const top = TOP, bottom = height - (this.axis ? BOTTOM : 2);
     const x = (f) => this.left + Math.max(0, Math.min(this.end, f)) / this.end * w;
     const dim = css(c, "--text-dim", "#99a2b3"), grid = "rgba(255,255,255,0.07)";
     g.font = "10px system-ui, sans-serif";
@@ -2782,6 +2796,7 @@ var Chart = class {
       g.moveTo(px, top);
       g.lineTo(px, bottom);
       g.stroke();
+      if (!this.axis) continue;
       g.fillStyle = dim;
       g.fillText(`${m}:00`, Math.min(px, width - this.right - 14), bottom + 4);
     }
@@ -2877,26 +2892,35 @@ var LineChart = class extends Chart {
     }
   }
 };
+var LANE = 16;
 var LaneChart = class extends Chart {
   rows = [];
   spanColour = "#e5484d";
+  caption;
   constructor(host, tipAt, label) {
     super(host, 0, tipAt, label);
+    this.caption = label;
   }
   set(rows, end, colour) {
     this.rows = rows;
     this.end = Math.max(1, end);
     if (colour) this.spanColour = colour;
-    this.canvas.style.height = `${TOP + rows.length * 22 + BOTTOM}px`;
+    this.canvas.style.height = `${4 + rows.length * LANE + (this.axis ? BOTTOM : 2)}px`;
     this.draw();
   }
   plot(g, box) {
-    const { x, top } = box;
+    const { x } = box;
+    const top = 4;
     const width = this.canvas.clientWidth, text = css(this.canvas, "--text", "#e4e8ef");
-    g.font = "11px system-ui, sans-serif";
+    g.font = "10px system-ui, sans-serif";
     g.textBaseline = "middle";
+    g.textAlign = "right";
+    g.fillStyle = css(this.canvas, "--text-dim", "#99a2b3");
+    const words = this.caption.split(" ");
+    words.forEach((word, i) => g.fillText(word, this.left - 6, top + this.rows.length * LANE / 2 + (i - (words.length - 1) / 2) * 11));
+    g.font = "11px system-ui, sans-serif";
     this.rows.forEach((row, r) => {
-      const y0 = top + r * 22 + 3, h = 16;
+      const y0 = top + r * LANE, h = LANE - 2;
       g.fillStyle = "rgba(255,255,255,0.04)";
       g.fillRect(this.left, y0, width - this.left - this.right, h);
       const lx = width - this.right + 8;
@@ -3100,6 +3124,11 @@ var InsightView = class {
     this.update();
   }
   /* ── Economy ── */
+  /**
+   * The economy, most telling first: a card a player with the three numbers that say most, a sentence comparing
+   * them, then one chart at a time (income, unspent or workers) with the supply blocks under it on the same time,
+   * and the mineral lines and the full table folded away below.
+   */
   economy(body) {
     const game = this.game;
     const { api, t, settings } = this.deps;
@@ -3119,63 +3148,59 @@ var InsightView = class {
     const number = (n) => Math.round(n).toLocaleString();
     const swatch = (slot) => el("span", { className: "afm-tip-swatch", style: `background:${colour(slot)}` });
     const resourceOf = (m, g) => settings.resource === "minerals" ? m : settings.resource === "gas" ? g : m + g;
-    const resourceWord = () => settings.resource === "minerals" ? t("minerals") : settings.resource === "gas" ? t("gas") : t("minerals and gas");
-    const tipFor = (frame, title, value) => {
-      const i = Math.max(0, nearestSample(frames, frame));
-      const rows = shown.map((p) => {
-        const v = value(p.slot, i);
-        return v === null ? null : el("div", { className: "afm-it-row" }, swatch(p.slot), el("span", { className: "afm-gt-name" }, name(p.slot)), el("b", { className: "afm-gt-num" }, v));
-      });
-      return el(
-        "div",
-        { className: "afm-gt" },
-        el("div", { className: "afm-gt-head" }, el("b", {}, formatTime(frames[i])), el("span", { className: "afm-dim" }, title)),
-        ...rows.filter((r) => r !== null),
-        el("div", { className: "afm-gt-foot afm-dim" }, t("Press or drag to go there"))
-      );
-    };
+    if (!eco.exact && settings.metric === "income") settings.metric = "bank";
+    const cards = el("div", { className: "afm-it-cards" }, ...shown.map((p) => el(
+      "div",
+      { className: "afm-it-card", style: `border-top-color:${colour(p.slot)}` },
+      el("div", { className: "afm-it-card-name" }, swatch(p.slot), el("span", { className: "afm-gt-name" }, name(p.slot))),
+      el("div", { className: "afm-it-hero" }, p.averageIncome === null ? "\u2013" : number(p.averageIncome), el("span", { className: "afm-it-unit" }, t("a minute"))),
+      el("div", { className: "afm-dim afm-it-card-line" }, t("income, on average")),
+      el("div", { className: "afm-it-card-line" }, el("b", {}, number(p.averageBank)), " ", el("span", { className: "afm-dim" }, t("unspent, on average"))),
+      p.blockedFrames > 0 ? el("div", { className: "afm-it-card-line" }, el("b", {}, formatTime(p.blockedFrames)), " ", el("span", { className: "afm-dim" }, t("supply blocked, {n, plural, one {# time} other {# times}}", { n: p.blocks.length }))) : el("div", { className: "afm-it-card-line afm-dim" }, t("never supply blocked"))
+    )));
+    const metricItems = [
+      { value: "income", label: t("Income"), disabled: !eco.exact },
+      { value: "bank", label: t("Unspent") },
+      { value: "workers", label: t("Workers") }
+    ];
+    const metric = w.segmented(metricItems, { value: settings.metric, onChange: (v) => {
+      settings.metric = v;
+      this.deps.save();
+      drawMain();
+    } });
     const resource = w.segmented([
       { value: "both", label: t("Both") },
       { value: "minerals", label: t("Minerals") },
       { value: "gas", label: t("Gas") }
-    ], { value: settings.resource, title: t("Which resource the income and unspent charts show"), onChange: (v) => {
+    ], { value: settings.resource, title: t("Which resource the chart shows"), onChange: (v) => {
       settings.resource = v;
       this.deps.save();
-      drawResourceCharts();
+      drawMain();
     } });
-    const filters = el("div", { className: "afm-it-filters" }, el("span", { className: "afm-dim" }, t("Resources")), resource);
-    const table = el("table", { className: "afm-it-table" });
-    const head = el("tr", {}, el("th", {}), ...shown.map((p) => el("th", { scope: "col" }, el("span", { className: "afm-it-player" }, swatch(p.slot), name(p.slot)))));
-    const row = (label, hint, cell) => el("tr", {}, el("th", { scope: "row", title: hint }, label), ...shown.map((p) => el("td", {}, cell(p))));
-    const none = "\u2013";
-    table.append(el("thead", {}, head), el(
-      "tbody",
-      {},
-      row(t("Minerals mined"), t("Everything the player's workers brought back"), (p) => p.mined ? number(p.mined.minerals) : none),
-      row(t("Gas mined"), t("Everything the player's workers brought back"), (p) => p.mined ? number(p.mined.gas) : none),
-      row(t("Income a minute"), t("Minerals and gas a minute, on average over the time the player was in the game"), (p) => p.averageIncome === null ? none : number(p.averageIncome)),
-      row(t("Unspent, on average"), t("Minerals and gas in the bank, on average: lower means the money went to use sooner"), (p) => number(p.averageBank)),
-      row(t("Supply blocked"), t("Time spent at the supply limit (below 200), when nothing more could be made"), (p) => p.blockedFrames > 0 ? t("{time} in {n, plural, one {# block} other {# blocks}}", { time: formatTime(p.blockedFrames), n: p.blocks.length }) : t("never")),
-      row(t("Most workers"), t("The most workers the player had at once, and when"), (p) => t("{n} at {time}", { n: p.peakWorkers.n, time: formatTime(p.peakWorkers.frame) }))
-    ));
-    const section2 = (title, note, ...content) => el("section", { className: "afm-it-section" }, el("h3", {}, title), note ? el("p", { className: "afm-dim afm-it-note" }, note) : null, ...content);
-    const income = eco.exact ? new LineChart(this, 150, (f) => tipFor(f, t("Income a minute"), (slot, i) => {
-      const p = eco.players.find((x) => x.slot === slot);
-      return p.income ? number(resourceOf(p.income.minerals[i], p.income.gas[i])) : null;
-    }), t("Income a minute")) : null;
-    const bank = new LineChart(this, 130, (f) => tipFor(f, t("Unspent"), (slot, i) => number(resourceOf(series2(slot).minerals[i], series2(slot).gas[i]))), t("Unspent"));
-    const drawResourceCharts = () => {
-      if (income) income.set(shown.map((p) => ({ label: name(p.slot), color: colour(p.slot), x: frames, y: p.income.minerals.map((m, i) => resourceOf(m, p.income.gas[i])) })), end);
-      bank.set(shown.map((p) => {
-        const s = series2(p.slot);
-        return { label: name(p.slot), color: colour(p.slot), x: frames, y: s.minerals.map((m, i) => resourceOf(m, s.gas[i])) };
-      }), end);
-      incomeTitle.textContent = t("Income a minute: {resource}", { resource: resourceWord() });
-      bankTitle.textContent = t("Unspent: {resource}", { resource: resourceWord() });
+    const about = el("span", { className: "afm-dim afm-it-about" });
+    const valueAt = (slot, i) => {
+      const p = eco.players.find((x) => x.slot === slot), s = series2(slot);
+      if (settings.metric === "income") return p.income ? resourceOf(p.income.minerals[i], p.income.gas[i]) : 0;
+      if (settings.metric === "bank") return resourceOf(s.minerals[i], s.gas[i]);
+      return s.workers[i];
     };
-    const incomeTitle = el("h3", {}), bankTitle = el("h3", {});
-    const workers = new LineChart(this, 120, (f) => tipFor(f, t("Workers"), (slot, i) => String(series2(slot).workers[i])), t("Workers"));
-    workers.set(shown.map((p) => ({ label: name(p.slot), color: colour(p.slot), x: frames, y: series2(p.slot).workers })), end);
+    const metricTitle = () => settings.metric === "income" ? t("Income a minute") : settings.metric === "bank" ? t("Unspent") : t("Workers");
+    const main = new LineChart(this, 200, (f) => {
+      const i = Math.max(0, nearestSample(frames, f));
+      return el(
+        "div",
+        { className: "afm-gt" },
+        el("div", { className: "afm-gt-head" }, el("b", {}, formatTime(frames[i])), el("span", { className: "afm-dim" }, metricTitle())),
+        ...shown.map((p) => el("div", { className: "afm-it-row" }, swatch(p.slot), el("span", { className: "afm-gt-name" }, name(p.slot)), el("b", { className: "afm-gt-num" }, number(valueAt(p.slot, i))))),
+        el("div", { className: "afm-gt-foot afm-dim" }, t("Press or drag to go there"))
+      );
+    }, t("Economy over the game"));
+    main.showAxis(false);
+    const drawMain = () => {
+      resource.hidden = settings.metric === "workers";
+      about.textContent = settings.metric === "income" ? t("over the minute before each moment") : settings.metric === "bank" ? t("what was in the bank, not yet spent") : t("workers on the map and in buildings");
+      main.set(shown.map((p) => ({ label: name(p.slot), color: colour(p.slot), x: frames, y: frames.map((_, i) => valueAt(p.slot, i)) })), end);
+    };
     const blocks = new LaneChart(this, (f) => {
       const rows = shown.map((p) => {
         const b = p.blocks.find((x) => f >= x.from && f <= x.to);
@@ -3195,49 +3220,106 @@ var InsightView = class {
       );
     }, t("Supply blocked"));
     blocks.set(shown.map((p) => ({ label: name(p.slot), color: colour(p.slot), spans: p.blocks })), end, "rgba(229,72,77,0.85)");
-    this.charts.push(...income ? [income] : [], bank, workers, blocks);
-    drawResourceCharts();
-    body.append(
-      filters,
-      el("section", { className: "afm-it-section" }, el("h3", {}, t("In numbers")), table),
-      income ? el("section", { className: "afm-it-section" }, incomeTitle, el("p", { className: "afm-dim afm-it-note" }, t("Over the minute before each moment, from the game's own count of what was mined.")), income.element) : section2(t("Income a minute"), t("The game engine on this site does not count what was mined yet, so income is not shown. The rest is.")),
-      el("section", { className: "afm-it-section" }, bankTitle, el("p", { className: "afm-dim afm-it-note" }, t("What was in the bank. Money left there is not yet workers, army or tech.")), bank.element),
-      section2(t("Workers"), null, workers.element),
-      section2(t("Supply blocked"), t("At the supply limit, below 200: nothing more could be made until supply was built."), blocks.element),
-      this.saturation(eco, game)
+    this.charts.push(main, blocks);
+    drawMain();
+    const chart = el(
+      "section",
+      { className: "afm-it-section" },
+      el("div", { className: "afm-it-controls" }, metric, resource, about),
+      el("div", { className: "afm-it-chart" }, main.element, blocks.element),
+      eco.exact ? null : el("p", { className: "afm-dim afm-it-note" }, t("Income is not shown: the game engine on this site does not count what was mined yet."))
     );
+    const mining = w.fold({ text: t("Bases and mining"), open: false });
+    mining.body.append(this.saturation(eco, game));
+    const numbers = w.fold({ text: t("All the numbers"), open: false });
+    numbers.body.append(this.table(eco, game));
+    const verdict = this.verdict(eco, game);
+    body.append(cards, ...verdict ? [verdict] : [], chart, mining, numbers);
     for (const c of this.charts) c.draw();
   }
-  /** Workers at each mineral line a player worked, minute by minute. */
+  /** A sentence or two comparing the players, for a game of two; nothing for another. */
+  verdict(eco, game) {
+    const { api, t } = this.deps;
+    const shown = eco.players.filter((p) => !game.players.find((x) => x.slot === p.slot)?.hidden);
+    if (shown.length !== 2) return null;
+    const name = (slot) => game.players.find((p) => p.slot === slot)?.name ?? "";
+    const [a, b] = shown;
+    const said = [];
+    if (a.mined && b.mined) {
+      const ma = a.mined.minerals + a.mined.gas, mb = b.mined.minerals + b.mined.gas;
+      const [hi, lo, more] = ma >= mb ? [a, b, ma / Math.max(1, mb) - 1] : [b, a, mb / Math.max(1, ma) - 1];
+      said.push(more < 0.05 ? t("They mined about the same.") : t("{name} mined {n}% more than {other}.", { name: name(hi.slot), n: Math.round(more * 100), other: name(lo.slot) }));
+    }
+    const lean = a.averageBank <= b.averageBank ? a : b, heavy = lean === a ? b : a;
+    if (heavy.averageBank > lean.averageBank * 1.15) said.push(t("{name} kept less unspent.", { name: name(lean.slot) }));
+    const blocked = a.blockedFrames >= b.blockedFrames ? a : b, freer = blocked === a ? b : a;
+    if (blocked.blockedFrames - freer.blockedFrames >= 24 * 30) said.push(t("{name} was supply blocked {time} longer.", { name: name(blocked.slot), time: formatTime(blocked.blockedFrames - freer.blockedFrames) }));
+    return said.length ? api.ui.el("p", { className: "afm-it-verdict" }, said.join(" ")) : null;
+  }
+  /** Every number, a column a player: the table the charts are drawn from. */
+  table(eco, game) {
+    const { api, t } = this.deps;
+    const el = api.ui.el;
+    const shown = eco.players.filter((p) => !game.players.find((x) => x.slot === p.slot)?.hidden);
+    const player = (slot) => game.players.find((p) => p.slot === slot);
+    const number = (n) => Math.round(n).toLocaleString();
+    const none = "\u2013";
+    const row = (label, hint, cell) => el("tr", {}, el("th", { scope: "row", title: hint }, label), ...shown.map((p) => el("td", {}, cell(p))));
+    return el(
+      "table",
+      { className: "afm-it-table" },
+      el("thead", {}, el("tr", {}, el("th", {}), ...shown.map((p) => el("th", { scope: "col" }, el(
+        "span",
+        { className: "afm-it-player" },
+        el("span", { className: "afm-tip-swatch", style: `background:${player(p.slot)?.color ?? "#888"}` }),
+        player(p.slot)?.name ?? ""
+      ))))),
+      el(
+        "tbody",
+        {},
+        row(t("Minerals mined"), t("Everything the player's workers brought back"), (p) => p.mined ? number(p.mined.minerals) : none),
+        row(t("Gas mined"), t("Everything the player's workers brought back"), (p) => p.mined ? number(p.mined.gas) : none),
+        row(t("Income a minute"), t("Minerals and gas a minute, on average over the time the player was in the game"), (p) => p.averageIncome === null ? none : number(p.averageIncome)),
+        row(t("Unspent, on average"), t("Minerals and gas in the bank, on average: lower means the money went to use sooner"), (p) => number(p.averageBank)),
+        row(t("Supply blocked"), t("Time spent at the supply limit (below 200), when nothing more could be made"), (p) => p.blockedFrames > 0 ? t("{time} in {n, plural, one {# block} other {# blocks}}", { time: formatTime(p.blockedFrames), n: p.blocks.length }) : t("never")),
+        row(t("Most workers"), t("The most workers the player had at once, and when"), (p) => t("{n} at {time}", { n: p.peakWorkers.n, time: formatTime(p.peakWorkers.frame) }))
+      )
+    );
+  }
+  /** Workers at each base a player mined from, minute by minute: colour for how full, the numbers on the pointer. */
   saturation(eco, game) {
     const { api, t } = this.deps;
     const el = api.ui.el;
     const bySlot = new Map(game.players.map((p) => [p.slot, p]));
-    const rows = eco.lines.filter((l) => !bySlot.get(l.player)?.hidden);
-    const title = el("h3", {}, t("Mineral lines"));
-    if (!rows.length) return el("section", { className: "afm-it-section" }, title, el("p", { className: "afm-dim afm-it-note" }, t("Where the workers stood is not in this analysis.")));
+    const players = eco.players.map((p) => p.slot).filter((slot) => !bySlot.get(slot)?.hidden);
+    if (!eco.lines.length) return el("p", { className: "afm-dim afm-it-note" }, t("Where the workers stood is not in this analysis."));
     const minutes = eco.minutes;
-    const grid = el("div", { className: "afm-it-sat", style: `grid-template-columns: 150px repeat(${minutes}, 22px)` });
-    grid.append(el("span", { className: "afm-it-sat-corner afm-dim" }, t("minute")));
+    const grid = el("div", { className: "afm-it-sat", style: `grid-template-columns: 132px repeat(${minutes}, minmax(6px, 1fr))` });
+    grid.append(el("span", {}));
     for (let m = 0; m < minutes; m++) grid.append(el("span", { className: "afm-it-sat-min afm-dim" }, m % 5 === 0 ? String(m) : ""));
-    for (const row of rows) {
-      const p = bySlot.get(row.player);
-      grid.append(el(
-        "span",
-        { className: "afm-it-sat-line" },
-        el("span", { className: "afm-tip-swatch", style: `background:${p?.color ?? "#888"}` }),
-        el("span", { className: "afm-gt-name" }, this.deps.placeOf(row.x, row.y, game.map)),
-        el("span", { className: "afm-dim" }, t("{n} fields", { n: row.fields }))
-      ));
-      row.perMinute.forEach((n, m) => {
-        const perField = n / Math.max(1, row.fields);
-        const a = n < 0.5 ? 0 : 0.1 + 0.7 * Math.min(1, perField / 3);
-        const cell = el("span", { className: "afm-it-sat-cell", style: a ? `background: rgba(79,209,197,${a.toFixed(2)})` : "" }, n >= 0.5 ? String(Math.round(n)) : "");
-        cell.dataset.line = String(row.line);
-        cell.dataset.player = String(row.player);
-        cell.dataset.minute = String(m);
-        grid.append(cell);
-      });
+    const label = /* @__PURE__ */ new Map();
+    for (const slot of players) {
+      eco.lines.filter((l) => l.player === slot).forEach((l, i) => label.set(l, i === 0 ? t("Main") : t("Base {n}", { n: i + 1 })));
+    }
+    const rows = [];
+    for (const slot of players) {
+      for (const row of eco.lines.filter((l) => l.player === slot)) {
+        rows.push(row);
+        grid.append(el(
+          "span",
+          { className: "afm-it-sat-line" },
+          el("span", { className: "afm-tip-swatch", style: `background:${bySlot.get(slot)?.color ?? "#888"}` }),
+          el("span", { className: "afm-gt-name" }, label.get(row) ?? ""),
+          el("span", { className: "afm-dim" }, this.deps.placeOf(row.x, row.y, game.map))
+        ));
+        row.perMinute.forEach((n, m) => {
+          const a = n < 0.5 ? 0 : 0.12 + 0.7 * Math.min(1, n / Math.max(1, row.fields) / 3);
+          const cell = el("span", { className: "afm-it-sat-cell", style: a ? `background: rgba(79,209,197,${a.toFixed(2)})` : "" });
+          cell.dataset.row = String(rows.length - 1);
+          cell.dataset.minute = String(m);
+          grid.append(cell);
+        });
+      }
     }
     const cellAt = (x, y) => {
       const r = grid.getBoundingClientRect();
@@ -3246,14 +3328,13 @@ var InsightView = class {
     };
     this.tips.push(this.deps.tooltip(grid, (at) => {
       const cell = cellAt(at.offsetX, at.offsetY);
-      if (!cell) return null;
-      const row = rows.find((l) => String(l.line) === cell.dataset.line && String(l.player) === cell.dataset.player);
-      if (!row) return null;
+      const row = cell ? rows[Number(cell.dataset.row)] : void 0;
+      if (!cell || !row) return null;
       const m = Number(cell.dataset.minute), n = row.perMinute[m];
       return el(
         "div",
         { className: "afm-gt" },
-        el("div", { className: "afm-gt-head" }, el("b", {}, `${m}:00\u2013${m + 1}:00`), el("span", { className: "afm-dim" }, this.deps.placeOf(row.x, row.y, game.map))),
+        el("div", { className: "afm-gt-head" }, el("b", {}, `${m}:00\u2013${m + 1}:00`), el("span", { className: "afm-dim" }, `${label.get(row) ?? ""} \xB7 ${this.deps.placeOf(row.x, row.y, game.map)}`)),
         el("div", {}, t("{n} workers at {fields} fields, {per} a field", { n: Math.round(n), fields: row.fields, per: (n / row.fields).toFixed(1) })),
         el("div", { className: "afm-gt-foot afm-dim" }, t("Press to go to that minute"))
       );
@@ -3262,13 +3343,14 @@ var InsightView = class {
       const target = e.target;
       if (target instanceof HTMLElement && target.dataset.minute) this.deps.seek(Number(target.dataset.minute) * FRAMES_PER_MINUTE);
     });
-    return el(
-      "section",
-      { className: "afm-it-section" },
-      title,
-      el("p", { className: "afm-dim afm-it-note" }, t("Workers on the map at each mineral line, minute by minute: two a field mine at the full rate, and more add little. Workers in a refinery are not on the map, so these are mineral workers.")),
-      el("div", { className: "afm-it-sat-wrap" }, grid)
+    const key = el(
+      "div",
+      { className: "afm-it-key afm-dim" },
+      t("Workers a field"),
+      ...[0.5, 1, 2, 3].map((per) => el("span", { className: "afm-it-key-step" }, el("span", { className: "afm-it-sat-cell", style: `background: rgba(79,209,197,${(0.12 + 0.7 * Math.min(1, per / 3)).toFixed(2)})` }), per === 3 ? "3+" : String(per))),
+      el("span", {}, t("\xB7 two a field mine at the full rate"))
     );
+    return el("div", {}, key, el("div", { className: "afm-it-sat-wrap" }, grid));
   }
 };
 function nearestSample(frames, frame) {
@@ -3282,7 +3364,7 @@ function nearestSample(frames, frame) {
 }
 
 // plugin.ts
-var DEFAULTS = { orders: false, legend: true, heat: "losses", speed: 8, workers: false, chart: "lead", tab: "summary", insightTab: "economy", resource: "both", version: 5 };
+var DEFAULTS = { orders: false, legend: true, heat: "losses", speed: 8, workers: false, chart: "lead", tab: "summary", insightTab: "economy", resource: "both", insightMetric: "income", version: 5 };
 var FRONT_FRAMES = 120;
 var FIGHT_LEAD = 48;
 var TWINS = /* @__PURE__ */ new Set([37, 47]);
@@ -3290,7 +3372,7 @@ var TRAIL_FRAMES = 8 * 24;
 var KILL_FRAMES = 36;
 var NEW_FRAMES = 6 * 24;
 var SAME_MAP = 0.9;
-var LANE = 16;
+var LANE2 = 16;
 var SENT = /* @__PURE__ */ new Set(["move", "attack", "patrol", "ability"]);
 var msg2 = (text) => text;
 var RACES = [msg2("Zerg"), msg2("Terran"), msg2("Protoss")];
@@ -3395,13 +3477,24 @@ var STYLE = `
 .afm-insight-empty { padding: 24px 8px; color: var(--text-dim, #99a2b3); }
 .afm-insight-tabs { flex: 1; min-height: 0; }
 .afm-insight-tabs > .tab-panel { overflow: auto; padding: 0 4px 16px 0; }
-.afm-it-filters { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 8px; padding: 8px 0; background: var(--bg-1, #1b1e25); border-bottom: 1px solid var(--border, rgba(255,255,255,0.08)); }
 .afm-it-section { margin-top: 16px; }
-.afm-it-section h3 { margin: 0 0 2px; font-size: 12px; font-weight: 600; color: var(--text, #e4e8ef); }
-.afm-it-note { margin: 0 0 6px; font-size: 11px; max-width: 70ch; }
+.afm-it-note { margin: 6px 0 0; font-size: 11px; max-width: 70ch; }
 .afm-insight .afm-dim { color: var(--text-dim, #99a2b3); }
+.afm-it-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; margin-top: 12px; }
+.afm-it-card { padding: 10px 12px 12px; background: var(--bg-2, rgba(255,255,255,0.03)); border: 1px solid var(--border, rgba(255,255,255,0.08)); border-top: 3px solid; border-radius: 6px; }
+.afm-it-card-name { display: flex; align-items: center; gap: 6px; font-weight: 600; margin-bottom: 6px; min-width: 0; }
+.afm-it-hero { font-size: 26px; font-weight: 600; line-height: 1.1; color: var(--text, #e4e8ef); }
+.afm-it-unit { font-size: 12px; font-weight: normal; color: var(--text-dim, #99a2b3); margin-left: 6px; }
+.afm-it-card-line { margin-top: 3px; }
+.afm-it-card-line:nth-of-type(3) { margin-bottom: 8px; }
+.afm-it-verdict { margin: 12px 0 0; font-size: 13px; color: var(--text, #e4e8ef); }
+.afm-it-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin-bottom: 8px; }
+.afm-it-controls .seg + .seg { padding-left: 12px; border-left: 1px solid var(--border, rgba(255,255,255,0.12)); }
+.afm-it-about { font-size: 11px; }
+.afm-it-chart { display: flex; flex-direction: column; gap: 2px; }
 .afm-chart-canvas { display: block; width: 100%; cursor: crosshair; touch-action: none; }
-.afm-it-table { border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.afm-insight details { margin-top: 14px; }
+.afm-it-table { border-collapse: collapse; font-variant-numeric: tabular-nums; margin-top: 6px; }
 .afm-it-table th, .afm-it-table td { padding: 3px 14px 3px 0; text-align: right; font-weight: normal; white-space: nowrap; }
 .afm-it-table tbody th { text-align: left; color: var(--text-dim, #99a2b3); cursor: help; }
 .afm-it-table thead th { padding-bottom: 6px; }
@@ -3409,13 +3502,16 @@ var STYLE = `
 .afm-it-player { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
 .afm-it-row { display: flex; align-items: center; gap: 6px; }
 .afm-it-row .afm-gt-name { flex: 1; min-width: 0; }
+.afm-it-key { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; margin: 6px 0 8px; font-size: 11px; }
+.afm-it-key-step { display: inline-flex; align-items: center; gap: 4px; }
+.afm-it-key .afm-it-sat-cell { width: 12px; height: 12px; display: inline-block; cursor: default; }
 .afm-it-sat-wrap { overflow-x: auto; padding-bottom: 4px; }
-.afm-it-sat { display: grid; gap: 2px; align-items: center; width: max-content; font-variant-numeric: tabular-nums; }
-.afm-it-sat-corner, .afm-it-sat-min { font-size: 10px; }
-.afm-it-sat-min { text-align: left; }
-.afm-it-sat-line { display: flex; align-items: center; gap: 6px; min-width: 0; padding-right: 6px; }
-.afm-it-sat-line .afm-gt-name { flex: 1; }
-.afm-it-sat-cell { height: 20px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text, #e4e8ef); background: rgba(255,255,255,0.03); border-radius: 2px; cursor: pointer; }
+.afm-it-sat { display: grid; gap: 2px; align-items: center; min-width: 100%; }
+.afm-it-sat-min { font-size: 10px; text-align: left; white-space: nowrap; overflow: visible; }
+.afm-it-sat-line { display: flex; align-items: center; gap: 6px; min-width: 0; padding-right: 8px; white-space: nowrap; }
+.afm-it-sat-line .afm-gt-name { flex: none; }
+.afm-it-sat-line .afm-dim { font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
+.afm-it-sat-cell { height: 14px; background: rgba(255,255,255,0.04); border-radius: 2px; cursor: pointer; }
 .afm-busy .afm-spin { width: 16px; height: 16px; flex: none; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.22); border-top-color: var(--accent, #4fd1c5); animation: afm-spin 0.8s linear infinite; }
 @keyframes afm-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .afm-busy .afm-spin { animation-duration: 2.4s; } }
@@ -4788,6 +4884,10 @@ function activate(api) {
             return settings.resource;
           }, set resource(v) {
             settings.resource = v;
+          }, get metric() {
+            return settings.insightMetric;
+          }, set metric(v) {
+            settings.insightMetric = v;
           } },
           save
         });
@@ -5538,7 +5638,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
       if (lensOf() === "map") return t("The timeline is one game's: press it to go back to that game");
       const frames = entry.report.frames || 1, w2 = Math.max(1, c.clientWidth);
       const frame = Math.max(0, Math.min(frames, x / w2 * frames));
-      return graphTip(entry, chartOf(entry), frame, 4 / w2 * frames, y < LANE);
+      return graphTip(entry, chartOf(entry), frame, 4 / w2 * frames, y < LANE2);
     }
     /** Ask the tooltip again: a picture it shows has arrived. */
     refreshTip() {
@@ -5558,7 +5658,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
       g.clearRect(0, 0, cw, ch);
       const frames = entry.report.frames || 1;
       const xOf = (f) => Math.min(frames, Math.max(0, f)) / frames * cw;
-      const lane = LANE * dpr;
+      const lane = LANE2 * dpr;
       const graphTop = lane + 2 * dpr;
       const graphH = Math.max(1, ch - graphTop);
       g.fillStyle = "rgba(128,128,128,0.12)";

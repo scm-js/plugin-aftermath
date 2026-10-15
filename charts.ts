@@ -71,6 +71,8 @@ abstract class Chart {
   /** The same on every chart of a window, so their times line up: the axis' numbers at the left, names at the right. */
   protected readonly right = RIGHT;
   protected readonly left = LEFT;
+  /** The minutes under the plot; off for a chart with another under it on the same time axis. */
+  protected axis = true;
 
   protected readonly host: ChartHost;
   protected readonly tipAt: (frame: number) => HTMLElement | null;
@@ -102,6 +104,9 @@ abstract class Chart {
     this.resize.observe(this.canvas);
   }
 
+  /** Whether to write the minutes under the plot. */
+  showAxis(on: boolean): void { this.axis = on; this.draw(); }
+
   /** The replay's moment, drawn as the brighter line. */
   setNow(frame: number | null): void { if (frame !== this.now) { this.now = frame; this.draw(); } }
   /** The pointer's moment, over this chart or another of the window's. */
@@ -123,7 +128,7 @@ abstract class Chart {
     g.scale(dpr, dpr);
     const width = c.clientWidth, height = c.clientHeight;
     const w = Math.max(1, width - this.left - this.right);
-    const top = TOP, bottom = height - BOTTOM;
+    const top = TOP, bottom = height - (this.axis ? BOTTOM : 2);
     const x = (f: number) => this.left + (Math.max(0, Math.min(this.end, f)) / this.end) * w;
     const dim = css(c, "--text-dim", "#99a2b3"), grid = "rgba(255,255,255,0.07)";
 
@@ -137,6 +142,7 @@ abstract class Chart {
       g.strokeStyle = grid;
       g.lineWidth = 1;
       g.beginPath(); g.moveTo(px, top); g.lineTo(px, bottom); g.stroke();
+      if (!this.axis) continue;
       g.fillStyle = dim;
       g.fillText(`${m}:00`, Math.min(px, width - this.right - 14), bottom + 4);
     }
@@ -233,30 +239,42 @@ export class LineChart extends Chart {
   }
 }
 
-/** A lane a player, with spans along the game's time: when each was supply blocked. */
+/** Height of a lane. */
+const LANE = 16;
+
+/** A thin lane a player, with spans along the game's time (when each was supply blocked), named in the left margin. */
 export class LaneChart extends Chart {
   private rows: LaneRow[] = [];
   private spanColour = "#e5484d";
+  private readonly caption: string;
 
   constructor(host: ChartHost, tipAt: (frame: number) => HTMLElement | null, label: string) {
     super(host, 0, tipAt, label);
+    this.caption = label;
   }
 
   set(rows: LaneRow[], end: number, colour?: string): void {
     this.rows = rows;
     this.end = Math.max(1, end);
     if (colour) this.spanColour = colour;
-    this.canvas.style.height = `${TOP + rows.length * 22 + BOTTOM}px`;
+    this.canvas.style.height = `${4 + rows.length * LANE + (this.axis ? BOTTOM : 2)}px`;
     this.draw();
   }
 
   protected plot(g: CanvasRenderingContext2D, box: { x: (f: number) => number; top: number }): void {
-    const { x, top } = box;
+    const { x } = box;
+    const top = 4;
     const width = this.canvas.clientWidth, text = css(this.canvas, "--text", "#e4e8ef");
-    g.font = "11px system-ui, sans-serif";
+    // What the lanes are, in the margin where the line chart above has its numbers.
+    g.font = "10px system-ui, sans-serif";
     g.textBaseline = "middle";
+    g.textAlign = "right";
+    g.fillStyle = css(this.canvas, "--text-dim", "#99a2b3");
+    const words = this.caption.split(" ");
+    words.forEach((word, i) => g.fillText(word, this.left - 6, top + (this.rows.length * LANE) / 2 + (i - (words.length - 1) / 2) * 11));
+    g.font = "11px system-ui, sans-serif";
     this.rows.forEach((row, r) => {
-      const y0 = top + r * 22 + 3, h = 16;
+      const y0 = top + r * LANE, h = LANE - 2;
       g.fillStyle = "rgba(255,255,255,0.04)";
       g.fillRect(this.left, y0, width - this.left - this.right, h);
       // The player's name at the right, as the line charts name theirs.

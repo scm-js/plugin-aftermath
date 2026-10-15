@@ -43,7 +43,7 @@ import { cameraTrack, trackAt, type CameraTrack } from "./camera";
 import { advantage, bases as takenBases, hardestHit, leads, story, totals, type Advantage, type Base, type PlayerTotals } from "./story";
 import type { ReplayTimeline, ScmSimService, ViewHover, ViewHoverUnit } from "./vendor/scm-sim";
 import { GameView } from "./gameview";
-import { InsightView, type InsightGame, type Resource } from "./insight";
+import { InsightView, type InsightGame, type Metric as InsightMetric, type Resource } from "./insight";
 
 /* ── State ──────────────────────────────────────────────── */
 
@@ -71,6 +71,8 @@ interface Settings {
   /** The Analysis window's tab, and the resource its economy charts show. */
   insightTab: string;
   resource: Resource;
+  /** What the economy's chart shows. */
+  insightMetric: InsightMetric;
   /**
    * 2 from 0.8, when the army lead and the summary came; 3 when the map's marks went into views; 4 when the views became
    * switches; 5 when Map stats came, its heat counting the same games as its marks, always whole.
@@ -78,7 +80,7 @@ interface Settings {
   version: number;
 }
 
-const DEFAULTS: Settings = { orders: false, legend: true, heat: "losses", speed: 8, workers: false, chart: "lead", tab: "summary", insightTab: "economy", resource: "both", version: 5 };
+const DEFAULTS: Settings = { orders: false, legend: true, heat: "losses", speed: 8, workers: false, chart: "lead", tab: "summary", insightTab: "economy", resource: "both", insightMetric: "income", version: 5 };
 
 interface Loaded {
   id: number;
@@ -249,13 +251,24 @@ const STYLE = `
 .afm-insight-empty { padding: 24px 8px; color: var(--text-dim, #99a2b3); }
 .afm-insight-tabs { flex: 1; min-height: 0; }
 .afm-insight-tabs > .tab-panel { overflow: auto; padding: 0 4px 16px 0; }
-.afm-it-filters { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 8px; padding: 8px 0; background: var(--bg-1, #1b1e25); border-bottom: 1px solid var(--border, rgba(255,255,255,0.08)); }
 .afm-it-section { margin-top: 16px; }
-.afm-it-section h3 { margin: 0 0 2px; font-size: 12px; font-weight: 600; color: var(--text, #e4e8ef); }
-.afm-it-note { margin: 0 0 6px; font-size: 11px; max-width: 70ch; }
+.afm-it-note { margin: 6px 0 0; font-size: 11px; max-width: 70ch; }
 .afm-insight .afm-dim { color: var(--text-dim, #99a2b3); }
+.afm-it-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; margin-top: 12px; }
+.afm-it-card { padding: 10px 12px 12px; background: var(--bg-2, rgba(255,255,255,0.03)); border: 1px solid var(--border, rgba(255,255,255,0.08)); border-top: 3px solid; border-radius: 6px; }
+.afm-it-card-name { display: flex; align-items: center; gap: 6px; font-weight: 600; margin-bottom: 6px; min-width: 0; }
+.afm-it-hero { font-size: 26px; font-weight: 600; line-height: 1.1; color: var(--text, #e4e8ef); }
+.afm-it-unit { font-size: 12px; font-weight: normal; color: var(--text-dim, #99a2b3); margin-left: 6px; }
+.afm-it-card-line { margin-top: 3px; }
+.afm-it-card-line:nth-of-type(3) { margin-bottom: 8px; }
+.afm-it-verdict { margin: 12px 0 0; font-size: 13px; color: var(--text, #e4e8ef); }
+.afm-it-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin-bottom: 8px; }
+.afm-it-controls .seg + .seg { padding-left: 12px; border-left: 1px solid var(--border, rgba(255,255,255,0.12)); }
+.afm-it-about { font-size: 11px; }
+.afm-it-chart { display: flex; flex-direction: column; gap: 2px; }
 .afm-chart-canvas { display: block; width: 100%; cursor: crosshair; touch-action: none; }
-.afm-it-table { border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.afm-insight details { margin-top: 14px; }
+.afm-it-table { border-collapse: collapse; font-variant-numeric: tabular-nums; margin-top: 6px; }
 .afm-it-table th, .afm-it-table td { padding: 3px 14px 3px 0; text-align: right; font-weight: normal; white-space: nowrap; }
 .afm-it-table tbody th { text-align: left; color: var(--text-dim, #99a2b3); cursor: help; }
 .afm-it-table thead th { padding-bottom: 6px; }
@@ -263,13 +276,16 @@ const STYLE = `
 .afm-it-player { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
 .afm-it-row { display: flex; align-items: center; gap: 6px; }
 .afm-it-row .afm-gt-name { flex: 1; min-width: 0; }
+.afm-it-key { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; margin: 6px 0 8px; font-size: 11px; }
+.afm-it-key-step { display: inline-flex; align-items: center; gap: 4px; }
+.afm-it-key .afm-it-sat-cell { width: 12px; height: 12px; display: inline-block; cursor: default; }
 .afm-it-sat-wrap { overflow-x: auto; padding-bottom: 4px; }
-.afm-it-sat { display: grid; gap: 2px; align-items: center; width: max-content; font-variant-numeric: tabular-nums; }
-.afm-it-sat-corner, .afm-it-sat-min { font-size: 10px; }
-.afm-it-sat-min { text-align: left; }
-.afm-it-sat-line { display: flex; align-items: center; gap: 6px; min-width: 0; padding-right: 6px; }
-.afm-it-sat-line .afm-gt-name { flex: 1; }
-.afm-it-sat-cell { height: 20px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text, #e4e8ef); background: rgba(255,255,255,0.03); border-radius: 2px; cursor: pointer; }
+.afm-it-sat { display: grid; gap: 2px; align-items: center; min-width: 100%; }
+.afm-it-sat-min { font-size: 10px; text-align: left; white-space: nowrap; overflow: visible; }
+.afm-it-sat-line { display: flex; align-items: center; gap: 6px; min-width: 0; padding-right: 8px; white-space: nowrap; }
+.afm-it-sat-line .afm-gt-name { flex: none; }
+.afm-it-sat-line .afm-dim { font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
+.afm-it-sat-cell { height: 14px; background: rgba(255,255,255,0.04); border-radius: 2px; cursor: pointer; }
 .afm-busy .afm-spin { width: 16px; height: 16px; flex: none; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.22); border-top-color: var(--accent, #4fd1c5); animation: afm-spin 0.8s linear infinite; }
 @keyframes afm-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .afm-busy .afm-spin { animation-duration: 2.4s; } }
@@ -1706,7 +1722,7 @@ export function activate(api: PluginApi) {
           seek: (f) => seek(f),
           placeOf: (x, y, map) => placeOf(x, y, map),
           tooltip: (target, content) => tooltip(target, content),
-          settings: { get tab() { return settings.insightTab; }, set tab(v) { settings.insightTab = v; }, get resource() { return settings.resource; }, set resource(v) { settings.resource = v; } },
+          settings: { get tab() { return settings.insightTab; }, set tab(v) { settings.insightTab = v; }, get resource() { return settings.resource; }, set resource(v) { settings.resource = v; }, get metric() { return settings.insightMetric; }, set metric(v) { settings.insightMetric = v; } },
           save,
         });
         insight = view;
