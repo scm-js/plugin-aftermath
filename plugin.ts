@@ -43,6 +43,9 @@ import { cameraTrack, trackAt, type CameraTrack } from "./camera";
 import { advantage, bases as takenBases, hardestHit, leads, story, totals, type Advantage, type Base, type PlayerTotals } from "./story";
 import type { ReplayTimeline, ScmSimService, ViewHover, ViewHoverUnit } from "./vendor/scm-sim";
 import { GameView } from "./gameview";
+import { castInput, estimate, highlightClips, schedule, type CastInput, type CastLine, type Schedule } from "./cast";
+import { Reel } from "./castplay";
+import type { ScmjsAccountService } from "./vendor/scmjs-dev";
 import { InsightView, type InsightGame, type Metric as InsightMetric, type Resource } from "./insight";
 
 /* ── State ──────────────────────────────────────────────── */
@@ -739,6 +742,7 @@ export function activate(api: PluginApi) {
     if (opening && opening.docId === null && id !== null && !loaded.some((l) => l.docId === id)) opening.docId = id;
     const next = loaded.find((l) => l.docId !== null && l.docId === id) ?? null;
     if (next !== current) {
+      endCast();
       stop();
       current = next;
       heatCache = null;
@@ -1004,6 +1008,173 @@ export function activate(api: PluginApi) {
     const list = entry.played.fights.filter((f) => f.key);
     const f = step > 0 ? list.find((x) => x.from - FIGHT_LEAD > entry.frame + 1) : [...list].reverse().find((x) => x.from - FIGHT_LEAD < entry.frame - 24);
     if (f) goToFight(f);
+  }
+
+  /* ── The cast: two commentators over the game's key moments (the scmjs.dev server writes and voices them) ── */
+
+  /** The scmjs.dev sign-in, when that plugin is on and shares it. */
+  let account: ScmjsAccountService | null = null;
+  /** What the server offers this caller: a cast at all, and voices for it; null until asked, or when it offers none. */
+  let castOffer: { speech: boolean } | null = null;
+  /** A cast written (and voiced) for a replay, kept so a second showing costs nothing. */
+  interface Made { input: CastInput; lines: CastLine[]; voices: (AudioBuffer | null)[]; plan: Schedule }
+  const casts = new Map<number, Made>();
+  /** The cast being made or shown: what the strip says meanwhile, and the reel once it plays. */
+  const casting = { entry: null as Loaded | null, busy: null as string | null, error: null as string | null, reel: null as Reel | null, abort: null as AbortController | null, speed: 0 };
+
+  /** Ask the server what it offers this caller: the cast recipe allowed, and whether it voices. */
+  async function askOffer(): Promise<void> {
+    const a = account;
+    if (!a) { castOffer = null; strip?.render(); return; }
+    try {
+      const res = await fetch(`${a.serverUrl()}/v1/info`, { headers: a.headers() });
+      const info = (await res.json()) as { recipes?: { name: string; enabled: boolean }[]; speech?: boolean };
+      if (a !== account) return;
+      castOffer = info.recipes?.some((r) => r.name === "cast" && r.enabled) ? { speech: !!info.speech } : null;
+    } catch {
+      castOffer = null;
+    }
+    strip?.render();
+  }
+
+  async function call<T>(path: string, body: unknown, signal: AbortSignal): Promise<T> {
+    const a = account;
+    if (!a) throw new Error(t("Sign in to scmjs.dev to make a cast."));
+    const res = await fetch(`${a.serverUrl()}${path}`, { method: "POST", headers: { ...a.headers(), "content-type": "application/json" }, body: JSON.stringify({ protocol: 1, ...(body as object) }), signal });
+    const json = (await res.json().catch(() => null)) as { error?: { message?: string }; remaining?: { balanceUsd?: number } } | null;
+    if (!res.ok || !json) throw new Error(json?.error?.message ?? t("The server answered {status}.", { status: res.status }));
+    if (typeof json.remaining?.balanceUsd === "number") a.noteBalance(json.remaining.balanceUsd);
+    return json as T;
+  }
+
+  /** StarEdit's names, without the race in front ("Terran Marine" is a Marine to a commentator). */
+  const plainName = (name: string) => name.replace(/^(Terran|Zerg|Protoss) /, "");
+
+  /** Write the cast of a replay, voice it when the server can, and work out when each line is said. */
+  async function makeCast(entry: Loaded, signal: AbortSignal): Promise<Made> {
+    const done = entry.played!;
+    const clips = highlightClips(done.fights, done.timeline.frames);
+    if (!clips.length) throw new Error(t("This game has no key moments to cast."));
+    const map = done.timeline.map;
+    const players = entry.report.players.filter((p) => done.timeline.samples.players.some((q) => q.slot === p.player.index));
+    const input = castInput({
+      map: plainText(entry.report.replay.header.mapName),
+      timeline: done.timeline,
+      players: players.map((p) => ({ index: p.player.index, name: p.player.name, race: p.player.race, leftAt: p.leftAt, build: p.build })),
+      fights: done.fights,
+      bases: done.bases,
+      winner: winnerOf(players.map((p) => ({ index: p.player.index, left: p.leftAt !== null })), done.standing),
+      names: {
+        unit: (id) => plainName(api.names.unit(id)), upgrade: (id) => api.names.upgrade(id), tech: (id) => api.names.tech(id),
+        place: (x, y) => { const c = clockOf(x, y, map.width * 32, map.height * 32); return c ? `${c} o'clock` : "the middle"; },
+      },
+    }, clips);
+    casting.busy = t("Writing the cast…");
+    strip?.update();
+    const written = await call<{ output: { lines: CastLine[] } }>("/v1/recipes/cast", { input }, signal);
+    const lines = written.output.lines;
+    let voices: (AudioBuffer | null)[] = lines.map(() => null);
+    if (castOffer?.speech) {
+      casting.busy = t("Voicing the cast…");
+      strip?.update();
+      const spoken = await call<{ clips: { audio: string }[] }>("/v1/speech", { lines: lines.map((l) => ({ speaker: l.speaker, text: l.text })) }, signal);
+      const ctx = new AudioContext();
+      try {
+        voices = await Promise.all(spoken.clips.map(async (c) => {
+          const bytes = Uint8Array.from(atob(c.audio), (ch) => ch.charCodeAt(0));
+          try { return await ctx.decodeAudioData(bytes.buffer); } catch { return null; }
+        }));
+      } finally {
+        void ctx.close();
+      }
+    }
+    const plan = schedule(lines, voices.map((v, i) => v?.duration ?? estimate(lines[i].text)), input.moments);
+    return { input, lines, voices, plan };
+  }
+
+  /** Make the cast of the replay in front (or take the one made before) and play it. */
+  async function startCast(): Promise<void> {
+    const entry = current;
+    if (!entry?.played || casting.entry) return;
+    casting.entry = entry;
+    casting.error = null;
+    casting.abort = new AbortController();
+    // (The sound is let out by this click: an AudioContext made later, after the calls, might not be.)
+    const ctx = castOffer?.speech ? new AudioContext() : null;
+    strip?.render();
+    try {
+      let made = casts.get(entry.id);
+      if (!made) { made = await makeCast(entry, casting.abort.signal); casts.set(entry.id, made); }
+      if (current !== entry || casting.entry !== entry) { void ctx?.close(); return; }
+      casting.busy = null;
+      casting.speed = settings.speed;
+      settings.speed = 1;
+      if (gameClock()) game.speed(1);
+      setFollowing(true);
+      casting.reel = new Reel({
+        frame: () => (gameClock() ? (game.seeking ? null : game.frameNow(1)) : current?.frame ?? null),
+        seek: (f) => seek(f),
+        play: () => play(),
+        pause: () => stop(),
+        playing: () => playing,
+        changed: () => redraw(),
+        ended: () => endCast(),
+      }, made.input.moments, made.plan, made.voices, ctx);
+      casting.reel.start();
+    } catch (err) {
+      void ctx?.close();
+      if ((err as Error)?.name !== "AbortError") casting.error = err instanceof Error ? err.message : String(err);
+      casting.entry = null;
+      casting.busy = null;
+    }
+    strip?.render();
+  }
+
+  /** Stop the cast, being made or playing, and give the replay its speed back. */
+  function endCast(): void {
+    if (!casting.entry) return;
+    casting.abort?.abort();
+    const reel = casting.reel;
+    casting.reel = null;
+    casting.entry = null;
+    casting.busy = null;
+    if (reel) {
+      reel.stop();
+      settings.speed = casting.speed;
+      save();
+      if (gameClock()) game.speed(settings.speed);
+    }
+    redraw();
+    strip?.render();
+  }
+
+  /** What is being said, at the bottom of the view: the speaker and the line. */
+  function subtitle(ctx: CanvasRenderingContext2D): void {
+    const said = casting.reel?.caption();
+    if (!said) return;
+    const dpr = window.devicePixelRatio || 1, viewW = ctx.canvas.width / dpr, viewH = ctx.canvas.height / dpr;
+    const who = said.speaker === "caster" ? t("Caster") : t("Analyst");
+    ctx.font = "500 15px system-ui, sans-serif";
+    const maxW = Math.min(720, viewW - 40);
+    const words = said.text.split(" "), rows: string[] = [];
+    let row = "";
+    for (const word of words) {
+      const next = row ? `${row} ${word}` : word;
+      if (ctx.measureText(next).width > maxW && row) { rows.push(row); row = word; } else row = next;
+    }
+    if (row) rows.push(row);
+    const lineH = 21, h = rows.length * lineH + 30, w = Math.max(...rows.map((r) => ctx.measureText(r).width), 120) + 28;
+    const x0 = Math.round(viewW / 2 - w / 2), y0 = Math.round(viewH - h - 24);
+    ctx.fillStyle = "rgba(10,12,16,0.78)";
+    ctx.fillRect(x0, y0, w, h);
+    ctx.font = "700 11px system-ui, sans-serif";
+    ctx.fillStyle = said.speaker === "caster" ? "#f2c14e" : "#7fc8f8";
+    ctx.textBaseline = "top"; ctx.textAlign = "left";
+    ctx.fillText(who.toUpperCase(), x0 + 14, y0 + 9);
+    ctx.font = "500 15px system-ui, sans-serif";
+    ctx.fillStyle = "#f0f3f8";
+    rows.forEach((r, i) => ctx.fillText(r, x0 + 14, y0 + 24 + i * lineH));
+    ctx.textAlign = "start"; ctx.textBaseline = "alphabetic";
   }
 
   /* ── Playing the game through (the scm-sim plugin's engine), one replay after another ── */
@@ -1309,6 +1480,7 @@ export function activate(api: PluginApi) {
     if (lens === "orders" || !done) drawOrders(ctx, v, players, frame);
     if (settings.legend) legend(ctx, lens, done !== null);
     caption(ctx, cur);
+    subtitle(ctx);
   }
 
   /** The orders of the last few seconds, each fading as it gets older. */
@@ -1339,6 +1511,7 @@ export function activate(api: PluginApi) {
       if (settings.legend) legend(ctx, "orders", cur.played !== null, true);
     }
     caption(ctx, cur);
+    subtitle(ctx);
   }
 
   /** Spectate's line at the top of the map: what the camera shows, while it follows. */
@@ -2320,6 +2493,12 @@ export function activate(api: PluginApi) {
       this.legendButton = toggle(t("Legend"), () => { settings.legend = !settings.legend; save(); redraw(); this.update(); });
       this.statsButton = toggle(t("Map stats"), () => showStats(lensOf() !== "map"));
       // The Analysis window, on an editor with the tabs it is built of.
+      // The cast, when the scmjs.dev server offers one to this account and the game has been analysed.
+      const castButton = castOffer && entry.played
+        ? w.button(casting.entry === entry ? t("Stop cast") : t("Cast"), { className: "sm", title: castOffer.speech
+          ? t("Watch the key moments with two commentators: the camera follows the action, and the scmjs.dev AI writes what they say and voices it. Made once a replay, from your account's balance.")
+          : t("Watch the key moments with two commentators: the camera follows the action, and the scmjs.dev AI writes what they say, shown as captions. Made once a replay, from your account's balance."), onClick: () => (casting.entry === entry ? endCast() : void startCast()) })
+        : null;
       const analysis = insightPossible ? w.button(t("Analysis"), { className: "sm", title: t("Open the Analysis window: the game's economy and tech in charts and numbers"), onClick: () => openInsight() }) : null;
       // In the Replay view: the game as everyone sees it, or through one player's eyes, with the fog of war.
       const eyes = w.select([
@@ -2337,7 +2516,7 @@ export function activate(api: PluginApi) {
       this.eyesSelect = eyes;
       this.root.append(el("div", { className: "afm-row" }, this.playButton, this.timeLabel, speed,
         el("span", { className: "afm-toggles" }, this.spectateButton, this.ordersButton, this.statsButton, this.legendButton), eyes,
-        this.status, retry, analysis, chartSelect));
+        this.status, retry, castButton, analysis, chartSelect));
 
       // The lane of marks and the graph, one canvas: press or drag anywhere on it to go there.
       const canvas = el("canvas") as HTMLCanvasElement;
@@ -2390,6 +2569,9 @@ export function activate(api: PluginApi) {
         line = t("Waiting to be analysed.");
         why = t("Replays are analysed one at a time: the one in front first, then the others with a tab, then the ones only in Map stats.");
       }
+      if (casting.entry === entry && casting.busy) line = casting.busy;
+      else if (casting.entry === entry && casting.reel) { const p = casting.reel.progress(); line = t("Cast: key moment {n} of {of}", { n: p.moment + 1, of: p.of }); }
+      else if (casting.error && !casting.entry) { line = t("The cast could not be made: {reason}", { reason: casting.error }); }
       const onMap = lensOf() === "map";
       if (onMap) {
         // Map stats is no one game's: the line says what it holds, and the timeline is faded.
@@ -2626,6 +2808,14 @@ export function activate(api: PluginApi) {
   // Last: a service already there is announced at once, and the answer reaches the panels.
   const simWatch = api.services.watch<ScmSimService>("scm-sim.engine", (service) => { sim = service; game.setService(service); if (current) gameFor(current); pump(); strip?.render(); });
 
+  let accountChange: (() => void) | null = null;
+  const accountWatch = api.services.watch<ScmjsAccountService>("scmjs-dev.account", (service) => {
+    accountChange?.();
+    account = service;
+    accountChange = service ? service.onChange(() => void askOffer()) : null;
+    void askOffer();
+  });
+
   api.events.on("document", () => sync());
   // The view moved by the user, even with the clock still: Spectate's camera lets go.
   api.events.on("view", () => {
@@ -2647,6 +2837,9 @@ export function activate(api: PluginApi) {
     running?.controller.abort();
     game.dispose();
     simWatch.dispose();
+    endCast();
+    accountChange?.();
+    accountWatch.dispose();
     imageListener.dispose();
     style.remove();
   };

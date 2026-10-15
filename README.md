@@ -134,6 +134,21 @@ game's data. Without the game's data, research shows only when it was done.
 
 The window needs a version of scmJS newer than 0.7.3.
 
+### Cast: the key moments with commentary
+
+With the scmjs.dev plugin signed in to an account the server offers a cast to, an analysed
+replay has a **Cast** button on the timeline. It plays the game's key moments as a
+broadcast would: each from a little before its fight to a little after, at normal speed,
+with the camera following the action, and two commentators talking over it — a
+play-by-play caster and an analyst. The scmjs.dev AI writes what they say from what the
+game engine measured (the builds, the bases, the armies, what fell in each fight), and,
+where the server has voices set up, reads it aloud; what is said is also shown as captions.
+The commentators know only those facts: they do not see micro or spells.
+
+A cast is made once a replay and paid from the account's balance; pressing Cast again
+plays the same one. Pausing pauses the voices; going somewhere else on the timeline ends
+the cast.
+
 ### Map stats: many replays of one map
 
 One game says little about a map; twenty show which starts do well, which bases get taken

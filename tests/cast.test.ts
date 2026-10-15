@@ -1,0 +1,125 @@
+import { describe, expect, it } from "vitest";
+import type { PlayerSeries, ReplayTimeline, UnitEvent } from "../vendor/scm-sim";
+import type { Fight } from "../fights";
+import { castInput, estimate, highlightClips, schedule, unitsByType, type CastGame, type CastLine } from "../cast";
+
+const MARINE = 0, SCV = 7, ZERGLING = 37, MUTALISK = 43, CC = 106, HATCHERY = 131, LAIR = 132;
+const NAMES: Record<number, string> = { [MARINE]: "Marine", [SCV]: "SCV", [ZERGLING]: "Zergling", [MUTALISK]: "Mutalisk", [CC]: "Command Center", [HATCHERY]: "Hatchery", [LAIR]: "Lair" };
+const S = (s: number) => Math.round(s / 0.042);
+
+const fight = (from: number, to: number, extra: Partial<Fight> = {}): Fight => ({
+  from, to, x: 2000, y: 2000, rect: { x0: 0, y0: 0, x1: 0, y1: 0 }, points: [], losses: 10, value: 2000, winner: 0,
+  kind: "battle", tier: "decisive", share: 0.4, turning: false, importance: 0.6, key: true,
+  sides: [
+    { player: 0, lost: 2, lostValue: 100, killed: 8, killedValue: 600, army: 10, armyValue: 500, had: 2000, lostTypes: new Map([[MARINE, 2]]) },
+    { player: 1, lost: 8, lostValue: 600, killed: 2, killedValue: 100, army: 12, armyValue: 600, had: 1500, lostTypes: new Map([[MUTALISK, 2], [ZERGLING, 6]]) },
+  ],
+  ...extra,
+});
+
+describe("highlight clips", () => {
+  it("frames each key fight, longer before the first, and joins clips that would overlap", () => {
+    const clips = highlightClips([fight(S(300), S(320)), fight(S(330), S(340)), fight(S(600), S(630)), fight(S(100), S(110), { key: false })], S(900));
+    expect(clips.map((c) => [Math.round(c.from * 0.042), Math.round(c.to * 0.042), c.fights.length])).toEqual([[260, 346, 2], [580, 636, 1]]);
+  });
+
+  it("stays inside the game", () => {
+    const [c] = highlightClips([fight(S(10), S(895))], S(900));
+    expect([c.from, c.to]).toEqual([0, S(900)]);
+  });
+});
+
+function series(slot: number, n: number, armyValue: number[]): PlayerSeries {
+  const z = () => Array.from({ length: n }, () => 0);
+  return { slot, minerals: z().map(() => 200), gas: z().map(() => 50), supplyUsed: z().map(() => 40), supplyMax: z().map(() => 50), workers: z().map(() => 20), army: z(), armyValue, buildings: z() };
+}
+
+function game(): CastGame {
+  const ev = (frame: number, kind: UnitEvent["kind"], unit: number, type: number, owner: number): UnitEvent => ({ frame, kind, unit, type, owner, x: 100, y: 100 });
+  const events: UnitEvent[] = [
+    ev(0, "born", 0, CC, 0), ev(0, "born", 1, HATCHERY, 1), ev(0, "born", 2, SCV, 0),
+    ev(S(100), "born", 3, MARINE, 0), ev(S(110), "born", 4, MARINE, 0), ev(S(115), "done", 3, MARINE, 0), ev(S(125), "done", 4, MARINE, 0),
+    ev(S(150), "morph", 1, LAIR, 1),
+    ev(S(200), "born", 5, MUTALISK, 1), ev(S(201), "born", 6, MUTALISK, 1), ev(S(240), "done", 5, MUTALISK, 1), ev(S(241), "done", 6, MUTALISK, 1),
+    ev(S(255), "born", 7, MUTALISK, 1),
+    ev(S(305), "died", 5, MUTALISK, 1), ev(S(306), "died", 6, MUTALISK, 1), ev(S(318), "died", 3, MARINE, 0),
+  ];
+  const frames = [0, S(100), S(200), S(300), S(400)];
+  const timeline: ReplayTimeline = {
+    version: 4, frames: S(400), total: S(400), ended: null, map: { width: 128, height: 128 },
+    players: [{ slot: 0, name: "T", race: 1 }, { slot: 1, name: "Z", race: 0 }], events,
+    research: [{ frame: S(250), player: 0, kind: "upgrade", id: 9, level: 1 }],
+    samples: { every: S(100), frame: frames, players: [series(0, 5, [0, 100, 100, 1500, 1500]), series(1, 5, [0, 0, 400, 400, 0])] },
+    positions: null,
+  };
+  return {
+    map: "Ridge", timeline, winner: 0,
+    players: [
+      { index: 0, name: "Tara", race: 1, leftAt: null, build: [{ frame: S(5), kind: "train", id: SCV, count: 4 }, { frame: S(20), kind: "build", id: 111, count: 1 }, { frame: S(40), kind: "train", id: MARINE, count: 2 }] },
+      { index: 1, name: "Zed", race: 0, leftAt: S(390), build: [{ frame: S(30), kind: "build", id: 142, count: 1 }] },
+    ],
+    fights: [fight(S(300), S(320))],
+    bases: [{ player: 1, frame: S(120), x: 3000, y: 3000, line: 1, nth: 2 }],
+    names: { unit: (id) => NAMES[id] ?? `Unit ${id}`, upgrade: (id) => `Upgrade ${id}`, tech: (id) => `Tech ${id}`, place: (x) => (x > 2500 ? "4 o'clock" : "the middle") },
+  };
+}
+
+describe("the facts sent", () => {
+  it("counts each player's finished units at a moment, leaving buildings and what is still being made out", () => {
+    const at = unitsByType(game().timeline, S(250));
+    expect([...at.get(0)!]).toEqual([[SCV, 1], [MARINE, 2]]);
+    expect([...at.get(1)!]).toEqual([[MUTALISK, 2]]);
+  });
+
+  it("writes the opening, what changed, where things stand, what fell and how it came out", () => {
+    const g = game();
+    const input = castInput(g, highlightClips(g.fights, g.timeline.frames), " louder ");
+    expect(input.game).toEqual({ map: "Ridge", length: 400, players: [{ id: 0, name: "Tara", race: "Terran", result: "won" }, { id: 1, name: "Zed", race: "Zerg", result: "left" }] });
+    expect(input.wishes).toBe("louder");
+    const [m] = input.moments;
+    expect([m.from, m.to, m.title]).toEqual([260, 326, "A decisive fight at the middle"]);
+    expect(m.before).toContain("Tara's opening: 0:20 Unit 111, 0:40 Marine ×2");
+    expect(m.before).toContain("2:00 Zed takes a base at 4 o'clock (their second)");
+    expect(m.before).toContain("3:20 Zed makes their first Mutalisk");
+    expect(m.before).toContain("4:10 Tara finishes Upgrade 9");
+    expect(m.before).toContain("2:30 Zed starts their first Lair");
+    expect(m.before).toContain("Tara at 4:20: supply 40/50, 20 workers, army worth 100 (2 Marine), 200 minerals and 50 gas in the bank");
+    expect(m.before.at(-1)).toBe("Zed leads in army at 4:20: 400 against 100 for Tara");
+    expect(m.events).toEqual([
+      { at: 296, text: "Armies close at the middle: Tara with 10 fighting units against Zed with 12 fighting units" },
+      { at: 305, text: "Zed loses 2 Mutalisk" },
+      { at: 318, text: "Tara loses 1 Marine" },
+    ]);
+    expect(m.after).toContain("Zed lost 6 Zergling, 2 Mutalisk (600 worth, 40% of everything they had), with 12 fighting units there when it began");
+    expect(m.after).toContain("Tara came out ahead");
+    expect(m.after).toContain("Tara leads in army at 5:26: 1.5k against 400 for Zed");
+    expect(m.after.at(-1)).toBe("Tara wins; the game ends at 6:40");
+  });
+});
+
+describe("the schedule", () => {
+  const moments = [{ from: 100, to: 130 }, { from: 200, to: 220 }];
+  const line = (moment: number, at: number, priority: 1 | 2 | 3 = 2, speaker: "caster" | "analyst" = "caster"): CastLine => ({ moment, at, speaker, text: "x", priority });
+
+  it("says lines in turn, never over each other, and drops what would come too late for its priority", () => {
+    const lines = [line(0, 100, 1), line(0, 101, 3), line(0, 102, 2, "analyst"), line(0, 120, 3)];
+    const s = schedule(lines, [4, 2, 3, 2], moments);
+    expect(s.lines.map((l) => [l.clip, l.start])).toEqual([[0, 100], [2, 104.3], [3, 120]]);
+    expect(s.holds).toEqual([0, 0]);
+  });
+
+  it("holds a clip's last frame for a line that runs past it, and the last moment for its sign-off", () => {
+    const s = schedule([line(0, 128, 1), line(1, 222, 1)], [5, 6], moments);
+    expect(s.holds).toEqual([3, 8]);
+  });
+
+  it("leaves out a line of little weight that would hold a clip too long", () => {
+    const s = schedule([line(0, 129, 2)], [10], moments);
+    expect(s.lines).toEqual([]);
+  });
+
+  it("guesses a line's length from its words when it has no voice", () => {
+    expect(estimate("one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty twenty-one twenty-two twenty-three twenty-four twenty-five twenty-six twenty-seven")).toBe(10);
+    expect(estimate("Yes")).toBe(0.8);
+  });
+});
