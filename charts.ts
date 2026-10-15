@@ -300,8 +300,8 @@ export interface GanttBar {
   to: number;
   /** What the bar is, written on it where there is room. */
   label: string;
-  /** The game's icon, drawn at the bar's start; null while it loads or when there is none. */
-  icon: () => HTMLCanvasElement | null;
+  /** The game's icon (or a unit's picture), drawn at the bar's start; null while it loads or when there is none. */
+  icon: () => { image: HTMLCanvasElement; width: number; height: number } | null;
   /** A building is drawn quieter than research, so the research stands out and the path of buildings still reads. */
   quiet: boolean;
 }
@@ -379,7 +379,9 @@ export class GanttChart extends Chart {
         if (icon) {
           g.fillStyle = "#12151c";
           g.fillRect(x0, y0 + 1, ICON_W, ICON_H + 1);
-          g.drawImage(icon, x0, y0 + 1.5, ICON_W, ICON_H);
+          // An icon fills the box; a unit's picture is fitted in.
+          const k = Math.min(ICON_W / icon.width, ICON_H / icon.height);
+          g.drawImage(icon.image, x0 + (ICON_W - icon.width * k) / 2, y0 + 1.5 + (ICON_H - icon.height * k) / 2, icon.width * k, icon.height * k);
         }
         // The name, inside the bar after the icon, where it fits.
         const room = x1 - x0 - (icon ? ICON_W : 0) - 8;

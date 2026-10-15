@@ -4042,7 +4042,8 @@ var GanttChart = class extends Chart {
         if (icon) {
           g.fillStyle = "#12151c";
           g.fillRect(x0, y0 + 1, ICON_W, ICON_H + 1);
-          g.drawImage(icon, x0, y0 + 1.5, ICON_W, ICON_H);
+          const k = Math.min(ICON_W / icon.width, ICON_H / icon.height);
+          g.drawImage(icon.image, x0 + (ICON_W - icon.width * k) / 2, y0 + 1.5 + (ICON_H - icon.height * k) / 2, icon.width * k, icon.height * k);
         }
         const room = x1 - x0 - (icon ? ICON_W : 0) - 8;
         if (room > 24) {
@@ -4225,22 +4226,43 @@ function mountTech(body, cx) {
   const nameOf = (item) => item.kind === "building" ? api.names.unit(item.id) : item.kind === "tech" ? api.names.tech(item.id) : (data.upgrades?.maxRepeats[item.id] ?? item.level) > 1 ? `${api.names.upgrade(item.id)} ${item.level}` : api.names.upgrade(item.id);
   const swatch = (color) => el("span", { className: "afm-tip-swatch", style: `background:${color}` });
   const waiting = [];
-  const picture = (kind, id) => typeof api.graphics.icon === "function" ? api.graphics.icon(kind, id)?.image ?? null : null;
-  const fill = (slot, kind, id) => {
-    const pic = picture(kind, id);
-    if (!pic) return false;
-    const c = el("canvas", { width: pic.width, height: pic.height });
-    c.getContext("2d")?.drawImage(pic, 0, 0);
-    slot.replaceChildren(c);
-    slot.classList.remove("afm-gi-none");
-    return true;
+  const picture = (kind, id, owner) => {
+    const pic = typeof api.graphics.icon === "function" ? api.graphics.icon(kind, id) : null;
+    if (pic) return { ...pic, icon: true };
+    if (kind !== "unit" || isBuilding(id)) return null;
+    const unit = api.graphics.unitImage(id, { owner });
+    return unit ? { ...unit, icon: false } : null;
   };
-  const icon = (kind, id, title, small = false, wait = true) => {
-    const slot = el("span", { className: `afm-ti${small ? " afm-ti-sm" : ""} afm-gi-none` });
-    slot.dataset.name = title;
-    if (!fill(slot, kind, id) && wait) {
-      waiting.push({ slot, kind, id });
-      if (typeof api.graphics.requestIcons === "function") api.graphics.requestIcons();
+  const ask = (kind, id) => {
+    if (typeof api.graphics.requestIcons === "function") api.graphics.requestIcons();
+    if (kind === "unit" && !isBuilding(id)) api.graphics.requestUnit(id);
+  };
+  const fill = (slot, kind, id, owner) => {
+    const pic = picture(kind, id, owner);
+    if (!pic || slot.dataset.shown === (pic.icon ? "icon" : "unit")) return pic?.icon ?? false;
+    const w2 = 36, h = 34, k = Math.min(w2 / pic.width, h / pic.height, 1);
+    const c = el("canvas", { width: w2, height: h });
+    c.getContext("2d")?.drawImage(pic.image, (w2 - pic.width * k) / 2, (h - pic.height * k) / 2, pic.width * k, pic.height * k);
+    slot.replaceChildren(c);
+    slot.dataset.shown = pic.icon ? "icon" : "unit";
+    slot.classList.remove("afm-gi-none", "afm-ti-text", "afm-ti-empty");
+    return pic.icon;
+  };
+  const icon = (kind, id, options) => {
+    const slot = el("span", { className: `afm-ti${options.small ? " afm-ti-sm" : ""}` });
+    slot.dataset.name = options.title;
+    const owner = options.owner ?? 0;
+    if (!fill(slot, kind, id, owner)) {
+      if (!slot.dataset.shown) {
+        if (options.text) {
+          slot.classList.add("afm-ti-text");
+          slot.textContent = options.text;
+        } else slot.classList.add("afm-ti-empty");
+      }
+      if (options.wait ?? true) {
+        waiting.push({ slot, kind, id, owner });
+        ask(kind, id);
+      }
     }
     return slot;
   };
@@ -4260,7 +4282,7 @@ function mountTech(body, cx) {
       ),
       el("div", { className: "afm-dim afm-it-card-line" }, reached ? nameOf(reached.item) : "\xA0"),
       el("div", { className: "afm-it-card-line" }, t("{levels, plural, one {# upgrade level} other {# upgrade levels}}, {n, plural, one {# technology} other {# technologies}}", { levels, n: abilities })),
-      el("div", { className: "afm-ti-path" }, ...pt.buildings.map((b) => icon("unit", b.id, `${nameOf(b)} \xB7 ${formatTime(b.done)}`, true)))
+      el("div", { className: "afm-ti-path" }, ...pt.buildings.map((b) => icon("unit", b.id, { title: `${nameOf(b)} \xB7 ${formatTime(b.done)}`, text: short(nameOf(b)), small: true, owner: p.slot })))
     );
   }));
   cx.keep(cx.host.tooltip(cards, (at) => {
@@ -4273,7 +4295,7 @@ function mountTech(body, cx) {
   const groups = shown.map((p) => {
     const pt = of(p.slot);
     const bars = [...pt.buildings, ...pt.research].sort((a, b) => a.start - b.start).map((item) => {
-      const bar = { from: item.start, to: item.done, label: short(nameOf(item)), quiet: item.kind === "building", icon: () => picture(kindOf(item), item.id) };
+      const bar = { from: item.start, to: item.done, label: short(nameOf(item)), quiet: item.kind === "building", icon: () => picture(kindOf(item), item.id, p.slot) };
       items.set(bar, item);
       return bar;
     });
@@ -4287,7 +4309,7 @@ function mountTech(body, cx) {
       return el(
         "div",
         { className: "afm-gt" },
-        el("div", { className: "afm-gt-head" }, icon(kindOf(item), item.id, nameOf(item), false, false), el("b", {}, nameOf(item))),
+        el("div", { className: "afm-gt-head" }, icon(kindOf(item), item.id, { title: nameOf(item), wait: false, owner: item.player }), el("b", {}, nameOf(item))),
         el("div", { className: "afm-it-row" }, swatch(hit.group.color), el("span", { className: "afm-gt-name" }, hit.group.label)),
         el("div", {}, describe(item)),
         el("div", { className: "afm-gt-foot afm-dim" }, t("Press or drag to go there"))
@@ -4336,7 +4358,7 @@ function mountTech(body, cx) {
   chart.draw();
   if (typeof api.graphics.onImageLoaded === "function") {
     cx.keep(api.graphics.onImageLoaded(() => {
-      for (let i = waiting.length - 1; i >= 0; i--) if (fill(waiting[i].slot, waiting[i].kind, waiting[i].id)) waiting.splice(i, 1);
+      for (let i = waiting.length - 1; i >= 0; i--) if (fill(waiting[i].slot, waiting[i].kind, waiting[i].id, waiting[i].owner)) waiting.splice(i, 1);
       chart.draw();
     }));
   }
@@ -4382,7 +4404,7 @@ function armyGrid(cx, all, shown, icon) {
         "span",
         { className: "afm-it-sat-line" },
         el("span", { className: "afm-tip-swatch", style: `background:${p.color}` }),
-        icon("unit", row.type, api.names.unit(row.type), true),
+        icon("unit", row.type, { title: api.names.unit(row.type), small: true, owner: row.player }),
         el("span", { className: "afm-gt-name" }, short(api.names.unit(row.type)))
       ));
       row.perMinute.forEach((n, m) => {
@@ -4453,7 +4475,7 @@ function timingsTable(cx, all, shown, nameOf, icon, kindOf) {
         return el(
           "tr",
           {},
-          el("th", { scope: "row" }, el("span", { className: "afm-ti-name" }, icon(kindOf(row.item), row.item.id, nameOf(row.item), true), nameOf(row.item))),
+          el("th", { scope: "row" }, el("span", { className: "afm-ti-name" }, icon(kindOf(row.item), row.item.id, { title: nameOf(row.item), small: true, owner: row.item.player }), nameOf(row.item))),
           ...times.map((x) => {
             const td = el("td", { className: x !== null && x === best && times.filter((y) => y !== null).length > 1 ? "afm-ti-first" : "" }, x === null ? "\u2013" : formatTime(x));
             if (x !== null) {
@@ -4975,7 +4997,8 @@ var STYLE = `
 .afm-ti { display: inline-flex; flex: none; width: 24px; height: 23px; padding: 1px; box-sizing: content-box; background: #12151c; border: 1px solid rgba(255,255,255,0.08); border-radius: 3px; vertical-align: middle; }
 .afm-ti canvas { width: 100%; height: 100%; }
 .afm-ti-sm { width: 18px; height: 17px; }
-.afm-ti.afm-gi-none { background: rgba(255,255,255,0.04); }
+.afm-ti-text { width: auto; height: auto; padding: 2px 5px; font-size: 10px; line-height: 1.3; color: var(--text-dim, #99a2b3); background: rgba(255,255,255,0.04); white-space: nowrap; }
+.afm-ti-empty { display: none; }
 .afm-ti-path { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 8px; }
 .afm-ti-key { display: inline-flex; align-items: center; gap: 6px; }
 .afm-ti-key-bar { display: inline-block; width: 22px; height: 10px; border-radius: 3px; background: rgba(228,232,239,0.7); }

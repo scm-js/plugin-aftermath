@@ -7,6 +7,7 @@
 import type { PluginApi } from "@scm-js/plugin-api";
 import { formatTime, FRAMES_PER_MINUTE } from "./analysis";
 import { GanttChart, type ChartHost, type GanttBar } from "./charts";
+import { isBuilding } from "./played";
 import { tech, type ArmyRow, type Durations, type Tech, type TechItem } from "./tech";
 import type { ReplayTimeline } from "./vendor/scm-sim";
 
@@ -72,25 +73,50 @@ export function mountTech(body: HTMLElement, cx: TechContext): void {
     : (data.upgrades?.maxRepeats[item.id] ?? item.level) > 1 ? `${api.names.upgrade(item.id)} ${item.level}` : api.names.upgrade(item.id);
   const swatch = (color: string) => el("span", { className: "afm-tip-swatch", style: `background:${color}` });
 
-  // The game's icons load lazily: a slot for each, filled when the pictures arrive.
-  const waiting: { slot: HTMLElement; kind: "unit" | "upgrade" | "tech"; id: number }[] = [];
-  const picture = (kind: "unit" | "upgrade" | "tech", id: number) => (typeof api.graphics.icon === "function" ? api.graphics.icon(kind, id)?.image ?? null : null);
-  const fill = (slot: HTMLElement, kind: "unit" | "upgrade" | "tech", id: number): boolean => {
-    const pic = picture(kind, id);
-    if (!pic) return false;
-    const c = el("canvas", { width: pic.width, height: pic.height }) as HTMLCanvasElement;
-    c.getContext("2d")?.drawImage(pic, 0, 0);
-    slot.replaceChildren(c);
-    slot.classList.remove("afm-gi-none");
-    return true;
+  // The game's icons load lazily, and a copy of the game data installed before the editor kept them has none at all.
+  // A unit with no icon is shown by its picture on the map (not a building, which shrinks past reading); until either arrives, or for good when neither can, a slot
+  // shows the name instead (a card's path), or nothing where the name is beside it already.
+  type Kind = "unit" | "upgrade" | "tech";
+  const waiting: { slot: HTMLElement; kind: Kind; id: number; owner: number }[] = [];
+  const picture = (kind: Kind, id: number, owner: number): { image: HTMLCanvasElement; width: number; height: number; icon: boolean } | null => {
+    const pic = typeof api.graphics.icon === "function" ? api.graphics.icon(kind, id) : null;
+    if (pic) return { ...pic, icon: true };
+    // A building's art shrunk to an icon's size reads as a smudge: its name says more.
+    if (kind !== "unit" || isBuilding(id)) return null;
+    const unit = api.graphics.unitImage(id, { owner });
+    return unit ? { ...unit, icon: false } : null;
   };
-  /** An icon's slot; `wait`: fill it when the pictures arrive (not for a tooltip's, which is asked again anyway). */
-  const icon = (kind: "unit" | "upgrade" | "tech", id: number, title: string, small = false, wait = true) => {
-    const slot = el("span", { className: `afm-ti${small ? " afm-ti-sm" : ""} afm-gi-none` });
-    slot.dataset.name = title;
-    if (!fill(slot, kind, id) && wait) {
-      waiting.push({ slot, kind, id });
-      if (typeof api.graphics.requestIcons === "function") api.graphics.requestIcons();
+  const ask = (kind: Kind, id: number) => {
+    if (typeof api.graphics.requestIcons === "function") api.graphics.requestIcons();
+    if (kind === "unit" && !isBuilding(id)) api.graphics.requestUnit(id);
+  };
+  /** Put the best picture there is in `slot`; true once it is the icon, which nothing replaces. */
+  const fill = (slot: HTMLElement, kind: Kind, id: number, owner: number): boolean => {
+    const pic = picture(kind, id, owner);
+    if (!pic || slot.dataset.shown === (pic.icon ? "icon" : "unit")) return pic?.icon ?? false;
+    // Drawn into the icon sheet's size, a unit's picture fitted in, so the two line up.
+    const w = 36, h = 34, k = Math.min(w / pic.width, h / pic.height, 1);
+    const c = el("canvas", { width: w, height: h }) as HTMLCanvasElement;
+    c.getContext("2d")?.drawImage(pic.image, (w - pic.width * k) / 2, (h - pic.height * k) / 2, pic.width * k, pic.height * k);
+    slot.replaceChildren(c);
+    slot.dataset.shown = pic.icon ? "icon" : "unit";
+    slot.classList.remove("afm-gi-none", "afm-ti-text", "afm-ti-empty");
+    return pic.icon;
+  };
+  /**
+   * A slot for an icon. `text`: what it says until a picture comes (none: it takes no room meanwhile). `wait`: fill it
+   * when pictures arrive (not a tooltip's, which is asked again anyway). `owner`: whose colours a unit's picture takes.
+   */
+  const icon = (kind: Kind, id: number, options: { title: string; text?: string; small?: boolean; wait?: boolean; owner?: number }) => {
+    const slot = el("span", { className: `afm-ti${options.small ? " afm-ti-sm" : ""}` });
+    slot.dataset.name = options.title;
+    const owner = options.owner ?? 0;
+    if (!fill(slot, kind, id, owner)) {
+      if (!slot.dataset.shown) {
+        if (options.text) { slot.classList.add("afm-ti-text"); slot.textContent = options.text; }
+        else slot.classList.add("afm-ti-empty");
+      }
+      if (options.wait ?? true) { waiting.push({ slot, kind, id, owner }); ask(kind, id); }
     }
     return slot;
   };
@@ -106,7 +132,7 @@ export function mountTech(body: HTMLElement, cx: TechContext): void {
         el("span", { className: "afm-it-unit" }, reached ? (reached.tier === 3 ? t("third tier") : t("second tier")) : t("no second tier"))),
       el("div", { className: "afm-dim afm-it-card-line" }, reached ? nameOf(reached.item) : "\u00a0"),
       el("div", { className: "afm-it-card-line" }, t("{levels, plural, one {# upgrade level} other {# upgrade levels}}, {n, plural, one {# technology} other {# technologies}}", { levels, n: abilities })),
-      el("div", { className: "afm-ti-path" }, ...pt.buildings.map((b) => icon("unit", b.id, `${nameOf(b)} · ${formatTime(b.done)}`, true))),
+      el("div", { className: "afm-ti-path" }, ...pt.buildings.map((b) => icon("unit", b.id, { title: `${nameOf(b)} · ${formatTime(b.done)}`, text: short(nameOf(b)), small: true, owner: p.slot }))),
     );
   }));
   // The names on the cards' icons, in the editor's tooltip.
@@ -122,7 +148,7 @@ export function mountTech(body: HTMLElement, cx: TechContext): void {
   const groups = shown.map((p) => {
     const pt = of(p.slot);
     const bars = [...pt.buildings, ...pt.research].sort((a, b) => a.start - b.start).map((item) => {
-      const bar: GanttBar = { from: item.start, to: item.done, label: short(nameOf(item)), quiet: item.kind === "building", icon: () => picture(kindOf(item), item.id) };
+      const bar: GanttBar = { from: item.start, to: item.done, label: short(nameOf(item)), quiet: item.kind === "building", icon: () => picture(kindOf(item), item.id, p.slot) };
       items.set(bar, item);
       return bar;
     });
@@ -136,7 +162,7 @@ export function mountTech(body: HTMLElement, cx: TechContext): void {
     if (hit) {
       const item = items.get(hit.bar)!;
       return el("div", { className: "afm-gt" },
-        el("div", { className: "afm-gt-head" }, icon(kindOf(item), item.id, nameOf(item), false, false), el("b", {}, nameOf(item))),
+        el("div", { className: "afm-gt-head" }, icon(kindOf(item), item.id, { title: nameOf(item), wait: false, owner: item.player }), el("b", {}, nameOf(item))),
         el("div", { className: "afm-it-row" }, swatch(hit.group.color), el("span", { className: "afm-gt-name" }, hit.group.label)),
         el("div", {}, describe(item)),
         el("div", { className: "afm-gt-foot afm-dim" }, t("Press or drag to go there")));
@@ -171,7 +197,7 @@ export function mountTech(body: HTMLElement, cx: TechContext): void {
 
   if (typeof api.graphics.onImageLoaded === "function") {
     cx.keep(api.graphics.onImageLoaded(() => {
-      for (let i = waiting.length - 1; i >= 0; i--) if (fill(waiting[i].slot, waiting[i].kind, waiting[i].id)) waiting.splice(i, 1);
+      for (let i = waiting.length - 1; i >= 0; i--) if (fill(waiting[i].slot, waiting[i].kind, waiting[i].id, waiting[i].owner)) waiting.splice(i, 1);
       chart.draw();
     }));
   }
@@ -208,7 +234,7 @@ function sayTech(cx: TechContext, all: Tech, shown: TechContext["players"], race
 }
 
 /** Each player's army, unit type by unit type, at the end of every minute: shaded by how many against the most of that type. */
-function armyGrid(cx: TechContext, all: Tech, shown: TechContext["players"], icon: (kind: "unit", id: number, title: string, small?: boolean) => HTMLElement): HTMLElement {
+function armyGrid(cx: TechContext, all: Tech, shown: TechContext["players"], icon: (kind: "unit", id: number, options: { title: string; small?: boolean; owner?: number }) => HTMLElement): HTMLElement {
   const { api, t } = cx;
   const el = api.ui.el;
   const want = new Set(shown.map((p) => p.slot));
@@ -224,7 +250,7 @@ function armyGrid(cx: TechContext, all: Tech, shown: TechContext["players"], ico
     for (const row of rows.filter((r) => r.player === p.slot)) {
       kept.push(row);
       grid.append(el("span", { className: "afm-it-sat-line" }, el("span", { className: "afm-tip-swatch", style: `background:${p.color}` }),
-        icon("unit", row.type, api.names.unit(row.type), true), el("span", { className: "afm-gt-name" }, short(api.names.unit(row.type)))));
+        icon("unit", row.type, { title: api.names.unit(row.type), small: true, owner: row.player }), el("span", { className: "afm-gt-name" }, short(api.names.unit(row.type)))));
       row.perMinute.forEach((n, m) => {
         const a = n === 0 ? 0 : 0.15 + 0.7 * (n / Math.max(1, row.peak));
         const cell = el("span", { className: "afm-it-sat-cell", style: a ? `background: rgba(79,209,197,${a.toFixed(2)})` : "" });
@@ -259,7 +285,7 @@ function armyGrid(cx: TechContext, all: Tech, shown: TechContext["players"], ico
 
 /** Every tech building and research, a row each, and when each player had it done: the table the chart is drawn from. */
 function timingsTable(cx: TechContext, all: Tech, shown: TechContext["players"], nameOf: (i: TechItem) => string,
-  icon: (kind: "unit" | "upgrade" | "tech", id: number, title: string, small?: boolean) => HTMLElement, kindOf: (i: TechItem) => "unit" | "upgrade" | "tech"): HTMLElement {
+  icon: (kind: "unit" | "upgrade" | "tech", id: number, options: { title: string; small?: boolean; owner?: number }) => HTMLElement, kindOf: (i: TechItem) => "unit" | "upgrade" | "tech"): HTMLElement {
   const { api, t } = cx;
   const el = api.ui.el;
   const players = shown.map((p) => all.players.find((x) => x.slot === p.slot)!);
@@ -280,7 +306,7 @@ function timingsTable(cx: TechContext, all: Tech, shown: TechContext["players"],
         const times = shown.map((p) => row.done.get(p.slot)?.done ?? null);
         const best = Math.min(...times.filter((x) => x !== null));
         return el("tr", {},
-          el("th", { scope: "row" }, el("span", { className: "afm-ti-name" }, icon(kindOf(row.item), row.item.id, nameOf(row.item), true), nameOf(row.item))),
+          el("th", { scope: "row" }, el("span", { className: "afm-ti-name" }, icon(kindOf(row.item), row.item.id, { title: nameOf(row.item), small: true, owner: row.item.player }), nameOf(row.item))),
           ...times.map((x) => {
             const td = el("td", { className: x !== null && x === best && times.filter((y) => y !== null).length > 1 ? "afm-ti-first" : "" }, x === null ? "–" : formatTime(x));
             if (x !== null) { td.title = t("Go to the time"); td.addEventListener("click", () => cx.seek(x)); }
