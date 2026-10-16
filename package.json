@@ -1,6 +1,6 @@
 {
   "name": "scmjs-plugin-aftermath",
-  "version": "0.15.1",
+  "version": "0.16.0",
   "private": true,
   "description": "Aftermath — a plugin for the scmJS StarCraft map editor.",
   "author": "Jeany",
@@ -16,7 +16,7 @@
     "mopaq": "^1.5.0"
   },
   "devDependencies": {
-    "@scm-js/plugin-api": "^1.53.0",
+    "@scm-js/plugin-api": "^1.54.0",
     "esbuild": "^0.28.2",
     "typescript": "~5.9.2",
     "vitest": "^3.2.4"

@@ -497,6 +497,12 @@ export interface ViewHover {
   y: number;
 }
 
+/** The map pixel under the pointer over the view (`onPointer`). */
+export interface ViewPointer {
+  x: number;
+  y: number;
+}
+
 /** A key pressed while the view had the keyboard that it does not use itself (all but the arrows, which scroll). */
 export interface ViewKey {
   key: string;
@@ -562,6 +568,11 @@ export interface ScmSimView {
   onHover(listener: (hover: ViewHover | null) => void): Disposable;
   /** The wheel turned over the view (Ctrl and the wheel included: the page keeps it from the browser's own zoom). From scm-sim 0.9.0. */
   onWheel(listener: (wheel: ViewWheel) => void): Disposable;
+  /**
+   * The map pixel under the pointer, at most thirty times a second while it moves over the map, for a
+   * status bar's tile and position; null once it is off the map or the view. From scm-sim 0.10.0.
+   */
+  onPointer(listener: (pointer: ViewPointer | null) => void): Disposable;
   /**
    * A key the view handed back. It is also pressed again on the editor's window, so the
    * editor's hotkeys and every plugin's act on it as if it had been pressed there.
