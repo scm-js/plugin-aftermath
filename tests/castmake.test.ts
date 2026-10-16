@@ -17,11 +17,12 @@ describe("voicing in batches", () => {
 });
 
 describe("what a cast will likely cost", () => {
-  it("is about $0.45 of script and $1.60 of voice for ten minutes of a whole game at $0.30 a thousand characters", () => {
-    const e = estimate(600, { format: "game", banter: "light" }, 0.3);
-    expect(e.scriptUsd).toBeCloseTo(0.45, 2);
-    expect(e.voiceUsd).toBeCloseTo(1.62, 2);
-    expect(e.making).toEqual([2, 3]);
+  it("is about $0.98 of script and $3.50 of voice for a 26-minute game at normal speed, at $0.30 a thousand characters", () => {
+    const e = estimate(26 * 60, { format: "game", banter: "light" }, 0.3);
+    expect(e.scriptUsd).toBeCloseTo(0.978, 2);
+    expect(e.voiceUsd).toBeCloseTo(3.51, 2);
+    expect(e.making).toEqual([4, 8]);
+    expect(estimate(450, { format: "highlights", banter: "light" }, 0.3).making).toEqual([1, 2]);
     expect(estimate(600, { format: "game", banter: "light" }, null).voiceUsd).toBe(0);
   });
 

@@ -22,13 +22,11 @@ const LEAD_IN = frameOf(20);
 const FIRST_LEAD_IN = frameOf(40);
 const AFTER = frameOf(6);
 /**
- * A whole-game cast plays the quiet stretches fast: the opening to take about this long on screen (two minutes), at 2×
- * to 8×; a stretch between two fights about this long (forty seconds), at 4× to 16×; what is left after the last fight
- * about this long (fifteen seconds).
+ * A whole-game cast plays every minute at normal speed, as a broadcast does. Between the key fights the game is cut into
+ * quiet stretches about this long (two and a half minutes), each with its own facts: where things stand at its start
+ * and end, and what happens in it. (Playing the quiet parts at up to 16× left the talk minutes behind the game.)
  */
-const OPENING_SECONDS = 120;
-const BRIDGE_SECONDS = 40;
-const TAIL_SECONDS = 15;
+const QUIET_SECONDS = 150;
 /** Deaths this close together are one line of what fell (three seconds). */
 const LOSS_BUCKET = frameOf(3);
 /** In a key fight, what fell is said in steps this short (a second and a half), with what killed it. */
@@ -84,6 +82,8 @@ export interface CastMoment {
   /** How fast it plays (1: a key fight at normal speed), and so how long it is on screen, in seconds. */
   speed?: number;
   seconds?: number;
+  /** No key fight in it (a whole-game cast's opening and the stretches between fights): talked over less. */
+  quiet?: boolean;
   title: string;
   /** Where each player stands when the clip starts: economy, buildings, upgrades, the whole army. */
   state?: string[];
@@ -124,11 +124,11 @@ export interface CastCard {
  * A stretch of the game a cast shows, in frames, and the fights in it. `speed` is how fast it plays (1 for a key fight,
  * more through the quiet parts); a whole-game cast's stretches follow on from one another with no cut.
  */
-export interface Clip { from: number; to: number; fights: Fight[]; speed?: number }
+export interface Clip { from: number; to: number; fights: Fight[]; speed?: number; quiet?: boolean }
 
 /**
- * The whole game as one cast: the key fights at normal speed, and everything between them played fast — the opening,
- * the stretches between fights, what is left after the last — so the story runs on without a cut.
+ * The whole game as one cast, at normal speed: the key fights, and everything between them cut into quiet stretches —
+ * the opening, the stretches between fights, what is left after the last — so the story runs on without a cut.
  */
 export function castSegments(fights: readonly Fight[], frames: number): Clip[] {
   const live: Clip[] = [];
@@ -138,19 +138,21 @@ export function castSegments(fights: readonly Fight[], frames: number): Clip[] {
     if (last && from <= last.to) { last.to = Math.max(last.to, to); last.fights.push(f); continue; }
     live.push({ from, to, fights: [f], speed: 1 });
   }
-  const fast = (from: number, to: number, target: number, lo: number, hi: number): Clip =>
-    ({ from, to, fights: [], speed: Math.max(lo, Math.min(hi, Math.round(((to - from) * FRAME_SECONDS) / target))) });
-  if (!live.length) return [fast(0, frames, OPENING_SECONDS, 2, 16)];
+  const quiet = (from: number, to: number): Clip[] => {
+    const k = Math.max(1, Math.round(((to - from) * FRAME_SECONDS) / QUIET_SECONDS));
+    return Array.from({ length: k }, (_, j) => ({ from: Math.round(from + ((to - from) * j) / k), to: Math.round(from + ((to - from) * (j + 1)) / k), fights: [], speed: 1, quiet: true }));
+  };
+  if (!live.length) return quiet(0, frames);
   const out: Clip[] = [];
   let at = 0;
-  live.forEach((c, i) => {
-    if (c.from - at > frameOf(5)) out.push(fast(at, c.from, i ? BRIDGE_SECONDS : OPENING_SECONDS, i ? 4 : 2, i ? 16 : 8));
+  live.forEach((c) => {
+    if (c.from - at > frameOf(5)) out.push(...quiet(at, c.from));
     else if (out.length) out[out.length - 1].to = c.from;
     else c.from = 0;
     out.push(c);
     at = c.to;
   });
-  if (frames - at > frameOf(5)) out.push(fast(at, frames, TAIL_SECONDS, 2, 16));
+  if (frames - at > frameOf(5)) out.push(...quiet(at, frames));
   else if (out.length) out[out.length - 1].to = frames;
   return out;
 }
@@ -475,7 +477,8 @@ export function castInput(game: CastGame, clips: readonly Clip[], wishes?: strin
   };
 
   const moments: CastMoment[] = clips.map((c, i) => {
-    const speed = c.speed ?? 1, fast = speed > 1, last = i === clips.length - 1;
+    // (A quiet stretch is told the way the fast ones were: the orders, where things stand, what fell every few seconds.)
+    const speed = c.speed ?? 1, fast = speed > 1 || !!c.quiet, last = i === clips.length - 1;
     // Times in a stretch are seconds on screen from its start; each fact also says the game's clock.
     const at = (frame: number) => Math.round(((Math.max(c.from, frame) - c.from) * FRAME_SECONDS * 10) / speed) / 10;
     const since = i ? clips[i - 1].to : 0;
@@ -495,7 +498,7 @@ export function castInput(game: CastGame, clips: readonly Clip[], wishes?: strin
     for (const h of [...happened(c.from, c.to), ...blocks(c.from, c.to)]) news(h.frame, h.text);
     // A key fight at normal speed is told blow by blow; anything else, what fell every few seconds.
     if (!fast && c.fights.length) for (const x of blows(c.from, c.to, c.fights)) news(x.frame, x.text);
-    else for (const x of losses(c.from, c.to, fast ? LOSS_BUCKET * speed : LOSS_BUCKET)) news(x.frame, x.text);
+    else for (const x of losses(c.from, c.to, fast ? LOSS_BUCKET * Math.max(speed, 4) : LOSS_BUCKET)) news(x.frame, x.text);
     events.sort((a, b) => a.at - b.at);
 
     const after = c.fights.flatMap(fightFacts);
@@ -506,9 +509,9 @@ export function castInput(game: CastGame, clips: readonly Clip[], wishes?: strin
     const key = c.fights.find((f) => f.turning) ?? c.fights[0];
     const title = key
       ? `${key.turning ? "The turning point" : key.tier === "decisive" ? "A decisive fight" : key.tier === "major" ? "A major fight" : "A fight"} at ${n.place(key.x, key.y)}`
-      : i === 0 ? "The opening" : last ? "The end of the game" : "Between the fights";
+      : i === 0 ? "The opening" : last ? "The end of the game" : clips.slice(0, i).some((x) => x.fights.length) ? "Between the fights" : "The build-up";
     return {
-      from: seconds(c.from), to: seconds(c.to), speed, seconds: Math.round(((c.to - c.from) * FRAME_SECONDS * 10) / speed) / 10,
+      from: seconds(c.from), to: seconds(c.to), speed, seconds: Math.round(((c.to - c.from) * FRAME_SECONDS * 10) / speed) / 10, ...(c.quiet ? { quiet: true } : {}),
       title, state: state.slice(0, 20), before: before.slice(0, 40), events: events.slice(0, 160), after: after.slice(0, 24),
     };
   });
