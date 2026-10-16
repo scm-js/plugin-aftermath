@@ -1317,14 +1317,17 @@ var KO = {
   "Writing the script": "\uB300\uBCF8 \uC791\uC131 \uC911",
   "Voicing: {n} of {of} lines": "\uC74C\uC131 \uC0DD\uC131: {of}\uC904 \uC911 {n}\uC904",
   "Timing it": "\uD0C0\uC774\uBC0D \uB9DE\uCD94\uB294 \uC911",
+  "Fixing the script: {lines} of {of} lines": "\uB300\uBCF8 \uACE0\uCE58\uB294 \uC911: {of}\uC904 \uC911 {lines}\uC904",
+  "Write the script": "\uB300\uBCF8 \uC4F0\uAE30",
+  "Voice it": "\uC74C\uC131 \uC785\uD788\uAE30",
+  "Time it": "\uD0C0\uC774\uBC0D \uB9DE\uCD94\uAE30",
+  "Voice the rest": "\uB098\uBA38\uC9C0 \uC74C\uC131 \uB9CC\uB4E4\uAE30",
+  "Voicing stopped at {n} of {of} lines.": "\uC74C\uC131 \uC0DD\uC131\uC774 {of}\uC904 \uC911 {n}\uC904\uC5D0\uC11C \uBA48\uCDC4\uC2B5\uB2C8\uB2E4.",
+  "Timing the cast failed.": "\uC911\uACC4 \uD0C0\uC774\uBC0D\uC744 \uB9DE\uCD94\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.",
+  "Writing the script failed.": "\uB300\uBCF8\uC744 \uC4F0\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.",
+  "The script is kept, and the voices made so far: trying again only voices the lines still missing.": "\uB300\uBCF8\uACFC \uC9C0\uAE08\uAE4C\uC9C0 \uB9CC\uB4E0 \uC74C\uC131\uC740 \uB0A8\uC544 \uC788\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD558\uBA74 \uBE60\uC9C4 \uC904\uC758 \uC74C\uC131\uB9CC \uB9CC\uB4ED\uB2C8\uB2E4.",
   "Cast this game": "\uC774 \uAC8C\uC784 \uC911\uACC4\uD558\uAE30",
   "Read the game": "\uAC8C\uC784 \uC77D\uAE30",
-  "{n} parts, {cards} cards": "{n}\uBD80, \uCE74\uB4DC {cards}\uC7A5",
-  "{n} lines": "{n}\uC904",
-  "planning the story": "\uD750\uB984 \uAD6C\uC0C1 \uC911",
-  "part {n} of {of}, {lines} lines so far": "{of}\uBD80 \uC911 {n}\uBD80, \uC9C0\uAE08\uAE4C\uC9C0 {lines}\uC904",
-  "Voicing": "\uC74C\uC131 \uC0DD\uC131",
-  "{n} of {of} lines": "{of}\uC904 \uC911 {n}\uC904",
   "Back": "\uB4A4\uB85C",
   "Cancel": "\uCDE8\uC18C",
   "The cast could not be made": "\uC911\uACC4\uB97C \uB9CC\uB4E4\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4",
@@ -4956,6 +4959,11 @@ var STYLE = `
 .afm-cast-head .afm-dim { font-variant-numeric: tabular-nums; }
 .afm-cast-story { margin: 4px 0; padding: 8px 12px; border-left: 3px solid var(--accent, #4fd1c5); color: var(--text-dim, #99a2b3); font-style: italic; line-height: 1.45; max-height: 9em; overflow: auto; }
 .afm-cast-error { margin: 4px 0; color: var(--danger, #e05050); }
+.afm-cast-steps { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; }
+.afm-cast-step-todo { color: var(--text-dim, #99a2b3); opacity: 0.7; }
+.afm-cast-step-done { color: var(--text-dim, #99a2b3); }
+.afm-cast-step-now { font-weight: 600; }
+.afm-cast-step-error { color: var(--danger, #e05050); font-weight: 600; }
 .afm-cast-kept { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--border, rgba(255,255,255,0.08)); }
 .afm-cast-kept:last-child { border-bottom: none; }
 .afm-cast-kept > div:first-child { min-width: 0; }
@@ -5805,9 +5813,13 @@ function activate(api) {
       } else if (e.event === "delta" && typeof e.text === "string") {
         text += e.text;
         const again = [...text.matchAll(/\{\s*"storyline"/g)];
-        if (again.length > 1) text = text.slice(again[again.length - 1].index);
+        if (again.length > 1) {
+          m.revising ??= m.writing.lines;
+          text = text.slice(again[again.length - 1].index);
+        }
         m.stage = "writing";
-        m.writing = writingProgress(text);
+        const now = writingProgress(text);
+        m.writing = { ...now, storyline: now.storyline ?? m.writing.storyline };
         makingMoved();
       } else if (e.event === "result") {
         output = e.output;
@@ -5865,7 +5877,7 @@ function activate(api) {
     const plan = schedule(lines, voices.map((v, i) => v?.duration ?? estimate(lines[i].text)), input.moments);
     return { key, input, lines, voices, plan, cards: new Map(castCards(game2).map((c) => [c.id, c])) };
   }
-  async function makeCast(entry, options, voiced, notes) {
+  async function makeCast(entry, options, voiced, notes, after) {
     if (making || !entry.played) return;
     const replay = await replayOf(entry);
     const m = {
@@ -5879,48 +5891,75 @@ function activate(api) {
       stretches: 0,
       cards: 0,
       writing: { storyline: null, lines: 0, stretch: -1 },
+      revising: null,
       voicedLines: 0,
       lines: 0,
       abort: new AbortController(),
-      error: null
+      error: null,
+      script: after?.script ?? null,
+      clips: after?.clips ?? []
     };
+    if (m.script) {
+      m.writing.storyline = m.script.written.storyline;
+      m.stretches = after.stretches;
+      m.cards = after.cards;
+    }
     making = m;
     makingMoved();
     strip?.render();
     try {
-      const clips = clipsOf(entry, options.format);
-      if (!clips.length) throw new Error(t("This game has no key moments to cast."));
-      const game2 = await castGameOf(entry);
-      const input = castInput(game2, clips, notes.trim() || void 0, options);
-      input.seed = Math.floor(Math.random() * 2e9);
-      m.stretches = input.moments.length;
-      m.cards = castCards(game2).length;
-      makingMoved();
-      const written = await writeScript(input, m);
+      if (!m.script) {
+        const clips = clipsOf(entry, options.format);
+        if (!clips.length) throw new Error(t("This game has no key moments to cast."));
+        const game3 = await castGameOf(entry);
+        const input2 = castInput(game3, clips, notes.trim() || void 0, options);
+        input2.seed = Math.floor(Math.random() * 2e9);
+        m.stretches = input2.moments.length;
+        m.cards = castCards(game3).length;
+        makingMoved();
+        m.script = { input: input2, game: game3, written: await writeScript(input2, m) };
+      }
+      const { input, game: game2, written } = m.script;
       const lines = written.lines;
       m.lines = lines.length;
-      let clipFiles = lines.map(() => null);
+      if (m.clips.length !== lines.length) m.clips = lines.map(() => null);
       if (voiced) {
         m.stage = "voicing";
+        m.voicedLines = m.clips.filter(Boolean).length;
         makingMoved();
-        const parts = batches(lines);
+        const todo = lines.map((l, i) => ({ l, i })).filter(({ i }) => !m.clips[i]);
+        const parts = batches(todo);
+        const stop2 = new AbortController();
+        const onAbort = () => stop2.abort();
+        m.abort.signal.addEventListener("abort", onAbort, { once: true });
         let next = 0;
-        const lanes = Array.from({ length: Math.min(2, parts.length) }, async () => {
-          while (next < parts.length) {
-            const part = parts[next++];
-            const spoken2 = await call("/v1/speech", { lines: part.items.map((l) => ({ speaker: l.speaker, text: l.text })) }, m.abort.signal);
-            spoken2.clips.forEach((c, i) => {
-              clipFiles[part.from + i] = Uint8Array.from(atob(c.audio), (ch) => ch.charCodeAt(0)).buffer;
-            });
-            m.voicedLines += part.items.length;
-            makingMoved();
-          }
-        });
-        await Promise.all(lanes);
-        clipFiles = [...clipFiles];
+        try {
+          const lanes = Array.from({ length: Math.min(2, parts.length) }, async () => {
+            while (next < parts.length && !stop2.signal.aborted) {
+              const part = parts[next++];
+              try {
+                const spoken2 = await call("/v1/speech", { lines: part.items.map(({ l }) => ({ speaker: l.speaker, text: l.text })) }, stop2.signal);
+                spoken2.clips.forEach((c, k) => {
+                  m.clips[part.items[k].i] = Uint8Array.from(atob(c.audio), (ch) => ch.charCodeAt(0)).buffer;
+                });
+              } catch (err) {
+                stop2.abort();
+                throw err;
+              }
+              m.voicedLines += part.items.length;
+              makingMoved();
+            }
+          });
+          const results = await Promise.allSettled(lanes);
+          const failed = results.find((r) => r.status === "rejected" && r.reason?.name !== "AbortError") ?? results.find((r) => r.status === "rejected");
+          if (failed) throw failed.reason;
+        } finally {
+          m.abort.signal.removeEventListener("abort", onAbort);
+        }
       }
       m.stage = "timing";
       makingMoved();
+      const clipFiles = [...m.clips];
       const made = await ready_(m.key, input, lines, clipFiles, game2);
       casts.set(m.key, made);
       await store.put({ key: m.key, replay, options, voiced, notes, made: Date.now(), input, lines, storyline: written.storyline, interests: written.interests ?? null, clips: clipFiles });
@@ -5931,7 +5970,7 @@ function activate(api) {
       makingMoved();
       strip?.render();
     } catch (err) {
-      if (err?.name === "AbortError") {
+      if (m.abort.signal.aborted) {
         if (making === m) making = null;
       } else m.error = err instanceof Error ? err.message : String(err);
       makingMoved();
@@ -6007,7 +6046,7 @@ function activate(api) {
       case "planning":
         return t("Planning the story");
       case "writing":
-        return m.writing.stretch >= 0 ? t("Writing the script: part {n} of {of}, {lines} lines so far", { n: m.writing.stretch + 1, of: m.stretches, lines: m.writing.lines }) : t("Writing the script");
+        return m.revising !== null ? t("Fixing the script: {lines} of {of} lines", { lines: m.writing.lines, of: m.revising }) : m.writing.stretch >= 0 ? t("Writing the script: part {n} of {of}, {lines} lines so far", { n: m.writing.stretch + 1, of: m.stretches, lines: m.writing.lines }) : t("Writing the script");
       case "voicing":
         return t("Voicing: {n} of {of} lines", { n: m.voicedLines, of: m.lines });
       case "timing":
@@ -6024,10 +6063,22 @@ function activate(api) {
       buttons: [],
       mount: (body, dialog) => {
         let timer = 0;
+        let shown = null;
         const draw2 = async () => {
           if (!dialog.isOpen()) return;
           const m = making && making.entry === entry ? making : null;
-          body.replaceChildren(m ? progressView(m) : await optionsView());
+          if (m && shown?.m === m && shown.error === !!m.error) {
+            shown.update();
+            return;
+          }
+          if (m) {
+            const view = progressView(m);
+            shown = { m, error: !!m.error, update: view.update };
+            body.replaceChildren(view.el);
+          } else {
+            shown = null;
+            body.replaceChildren(await optionsView());
+          }
         };
         const watcher = () => {
           void draw2();
@@ -6036,27 +6087,46 @@ function activate(api) {
         timer = window.setInterval(() => {
           if (making?.entry === entry && !making.error) void draw2();
         }, 1e3);
+        const fraction = (m) => {
+          const writeEnd = m.voiced ? 0.6 : 0.95;
+          switch (m.stage) {
+            case "reading":
+              return 0.02;
+            case "planning":
+              return null;
+            case "writing": {
+              if (m.revising !== null) return writeEnd - 0.06 + 0.06 * Math.min(1, m.writing.lines / Math.max(1, m.revising));
+              const done = m.stretches ? Math.min(1, (m.writing.stretch + 0.5) / m.stretches) : 0;
+              return 0.08 + (writeEnd - 0.14) * Math.max(0, done);
+            }
+            case "voicing":
+              return 0.6 + 0.37 * (m.lines ? m.voicedLines / m.lines : 0);
+            case "timing":
+              return 0.98;
+          }
+        };
         const progressView = (m) => {
-          const elapsed = Math.floor((Date.now() - m.started) / 1e3);
-          const step2 = (label2, state2, detail) => {
-            const line = w.statusLine();
-            const text = detail ? `${label2} \u2014 ${detail}` : label2;
-            if (state2 === "busy") line.busy(text);
-            else line.set(state2 === "todo" ? el2("span", { className: "afm-dim" }, text) : text, state2 === "done" ? "ok" : state2 === "error" ? "error" : void 0);
-            return line;
+          const order = ["reading", "writing", "voicing", "timing"];
+          const names = { reading: t("Read the game"), writing: t("Write the script"), voicing: t("Voice it"), timing: t("Time it") };
+          const shownSteps = order.filter((k) => k !== "voicing" || m.voiced);
+          const clock2 = el2("span", { className: "afm-dim" });
+          const stepsRow = el2("div", { className: "afm-cast-steps" });
+          const bar = m.error ? null : w.progressBar({ value: fraction(m), label: makingLine(m) });
+          const story2 = el2("blockquote", { className: "afm-cast-story" });
+          const update = () => {
+            clock2.textContent = formatTime(Math.floor((Date.now() - m.started) / 1e3) * 1e3 / FRAME_MS);
+            const at = order.indexOf(m.stage === "planning" ? "writing" : m.stage);
+            stepsRow.replaceChildren(...shownSteps.map((k) => {
+              const i = order.indexOf(k);
+              const state = m.error && i === at ? "error" : i < at ? "done" : i === at ? "now" : "todo";
+              return el2("span", { className: `afm-cast-step afm-cast-step-${state}` }, state === "done" ? `\u2713 ${names[k]}` : state === "error" ? `\u2715 ${names[k]}` : names[k]);
+            }));
+            bar?.set(fraction(m), makingLine(m));
+            const opening2 = m.writing.storyline ? /^.*?[.!?](?=\s|$)/.exec(m.writing.storyline.trim())?.[0] ?? null : null;
+            story2.textContent = opening2 ?? "";
+            story2.hidden = !opening2;
           };
-          const order = ["reading", "planning", "writing", "voicing", "timing"];
-          const at = order.indexOf(m.stage);
-          const state = (i) => m.error && i === at ? "error" : i < at ? "done" : i === at ? "busy" : "todo";
-          const writingAt = Math.max(order.indexOf("planning"), Math.min(at, order.indexOf("writing")));
-          const rows = [
-            step2(t("Read the game"), at > 0 ? "done" : state(0), m.stretches ? t("{n} parts, {cards} cards", { n: m.stretches, cards: m.cards }) : void 0),
-            step2(t("Writing the script"), at > 2 ? "done" : state(writingAt), at > 2 ? t("{n} lines", { n: m.lines }) : m.stage === "planning" ? t("planning the story") : m.writing.stretch >= 0 ? t("part {n} of {of}, {lines} lines so far", { n: m.writing.stretch + 1, of: m.stretches, lines: m.writing.lines }) : void 0),
-            ...m.voiced ? [step2(t("Voicing"), at > 3 ? "done" : state(3), at >= 3 ? t("{n} of {of} lines", { n: m.voicedLines, of: m.lines }) : void 0)] : [],
-            step2(t("Timing it"), state(4))
-          ];
-          const opening2 = m.writing.storyline ? /^.*?[.!?](?=\s|$)/.exec(m.writing.storyline.trim())?.[0] ?? null : null;
-          const story2 = opening2 ? el2("blockquote", { className: "afm-cast-story" }, opening2) : null;
+          update();
           const cancel = w.button(m.error ? t("Back") : t("Cancel"), { onClick: () => {
             m.abort.abort();
             if (making === m) making = null;
@@ -6064,17 +6134,23 @@ function activate(api) {
             strip?.render();
             void draw2();
           } });
-          const again = m.error ? w.button(t("Try again"), { primary: true, onClick: () => {
+          const resumes = !!m.script;
+          const again = m.error ? w.button(resumes && m.voiced ? t("Voice the rest") : t("Try again"), { primary: true, onClick: () => {
             if (making === m) making = null;
-            void makeCast(entry, m.options, m.voiced, m.notes);
+            void makeCast(entry, m.options, m.voiced, m.notes, m);
           } }) : null;
-          return w.column(
-            el2("div", { className: "afm-cast-head" }, el2("b", {}, m.error ? t("The cast could not be made") : t("Making the cast")), el2("span", { className: "afm-dim" }, formatTime(elapsed * 1e3 / FRAME_MS))),
-            ...rows,
-            ...story2 ? [story2] : [],
-            ...m.error ? [el2("p", { className: "afm-cast-error" }, m.error)] : [w.hint(t("You can close this window and keep watching the replay; the timeline says when the cast is ready."))],
+          const failedAt = m.stage === "voicing" ? t("Voicing stopped at {n} of {of} lines.", { n: m.voicedLines, of: m.lines }) : m.stage === "timing" ? t("Timing the cast failed.") : t("Writing the script failed.");
+          const el_ = w.column(
+            el2("div", { className: "afm-cast-head" }, el2("b", {}, m.error ? t("The cast could not be made") : t("Making the cast")), clock2),
+            stepsRow,
+            ...bar ? [bar] : [],
+            ...m.error ? [
+              el2("p", { className: "afm-cast-error" }, `${failedAt} ${m.error}`),
+              ...resumes && m.voiced ? [w.hint(t("The script is kept, and the voices made so far: trying again only voices the lines still missing."))] : []
+            ] : [story2, w.hint(t("You can close this window and keep watching the replay; the timeline says when the cast is ready."))],
             w.row(cancel, ...again ? [again] : [])
           );
+          return { el: el_, update };
         };
         const optionsView = async () => {
           const replay = await replayOf(entry);
