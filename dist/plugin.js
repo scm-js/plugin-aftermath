@@ -2436,6 +2436,7 @@ var GameView = class {
         this.busyLine = line;
       },
       onShow: (look) => this.lookAt(look),
+      onZoom: (look) => this.zoomTo(look),
       minimap: {
         draw: (ctx, m) => this.drawUnits(ctx, m),
         press: (x, y) => {
@@ -2451,6 +2452,21 @@ var GameView = class {
       this.redrawOver();
       if (!on) this.hooks.hover(null);
     });
+  }
+  /**
+   * The editor's zoom while the game is shown: look at `look`'s scale (the viewer keeps to what the game allows, and
+   * says what it took on its camera). It lets go of a camera track, so the hook makes one for the new scale at once —
+   * in the same moment, so Spectate goes on without a jump; until the viewer says, the size asked stands for it.
+   */
+  zoomTo(look) {
+    if (!this.view || !this.loaded) {
+      this.look = look;
+      return;
+    }
+    this.view.camera(look.x, look.y, look.height);
+    this.sent = null;
+    this.shows = { width: look.width, height: look.height };
+    this.hooks.zoomed?.();
   }
   /** A replay is loaded in the viewer and no other is on its way. */
   get loaded() {
@@ -2666,6 +2682,9 @@ var GameView = class {
       })
     ];
     if (typeof view.onHover === "function") this.subs.push(view.onHover((h) => this.hooks.hover(this.loaded && this.shown ? h : null)));
+    if (typeof view.onWheel === "function") this.subs.push(view.onWheel((w) => {
+      if (this.loaded && this.shown && typeof this.handle.wheel === "function") this.handle.wheel(w);
+    }));
     if (typeof view.onUnits === "function") this.subs.push(view.onUnits((u) => {
       if (!this.loaded) return;
       this.units = u;
@@ -5290,6 +5309,7 @@ function activate(api) {
       showBusy();
     },
     movedByUser: () => letGo(),
+    zoomed: () => follow(),
     units: () => {
       if (cinema.on && settings.cinemaMinimap) game.redrawOver();
     },
