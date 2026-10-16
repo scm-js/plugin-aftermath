@@ -22,6 +22,9 @@ import type { Disposable, MapView, MapViewCamera, MapViewHandle, MinimapView, Pl
 import type { ScmSimService, ScmSimView, ViewFrame, ViewHover, ViewTrack, ViewUnits } from "./vendor/scm-sim";
 import { FRAME_MS } from "./replay";
 
+/** A seek the viewer says is over but that has shown no frame near where it went is settled after this long. */
+const SEEK_GIVE_UP_MS = 2500;
+
 /** The editor's minimap follows the game's camera at most this often (each move redraws it). */
 const MINIMAP_MS = 66;
 /** A game that has not said it looks where it was sent is shown anyway after this long (a look the game cannot take). */
@@ -72,7 +75,9 @@ export class GameView {
    * A seek asked for and not yet arrived: until the viewer shows a frame there, what it says it shows is the moment
    * it is leaving (it reports the frame on screen while it runs ahead), which is not the clock any more.
    */
-  private aiming: { frame: number; sawSeeking: boolean; from: number | null; at: number | null } | null = null;
+  private aiming: { frame: number; sawSeeking: boolean; from: number | null; at: number | null; sent: number; timer: number } | null = null;
+  /** The viewer's last word on the frame, and when (performance.now): what a seek that never arrives settles for. */
+  private heard: { f: ViewFrame; at: number } | null = null;
   /**
    * Where the game is to look once it holds the replay (the map's place when the switch came), in pixels. A height of
    * 0 is the map's own scale: as much of the map top to bottom as the frame is tall.
@@ -286,6 +291,7 @@ export class GameView {
     this.subs = [
       view.onFrame((f) => {
         if (this.holding === null || this.wanted !== null) return;
+        this.heard = { f, at: performance.now() };
         const a = this.aiming;
         if (a) {
           // (On its way the viewer says how far the engine has run: `seeking` is that frame.)
@@ -296,7 +302,7 @@ export class GameView {
           const near = Math.abs(f.frame - a.frame) <= 48;
           const ended = a.sawSeeking && a.at !== null && f.frame >= a.at && f.frame <= a.frame + 48;
           if (!near && !ended) return;
-          this.aiming = null;
+          this.arrived();
         }
         this.said = { frame: f.frame, at: performance.now(), playing: f.playing };
         this.hooks.frame(this.holding, f);
@@ -471,8 +477,26 @@ export class GameView {
   speed(multiplier: number): void { this.view?.speed(multiplier); }
   seek(frame: number): void {
     if (!this.view) return;
-    this.aiming = { frame: Math.round(frame), sawSeeking: false, from: null, at: null };
+    this.arrived();
+    const a = { frame: Math.round(frame), sawSeeking: false, from: null, at: null, sent: performance.now(), timer: 0 };
+    // A seek the viewer says is over without ever showing a frame near where it was sent — a play page from before
+    // 2026-10-16 showed an old frame for a seek that took no step (to 0:00, or to where the game stood), and paused,
+    // nothing came after — is taken as over at the frame it shows, rather than waited on for good.
+    a.timer = window.setInterval(() => {
+      const h = this.heard, now = performance.now();
+      if (this.aiming !== a || !h || h.at < a.sent || h.f.seeking !== null) return;
+      if (now - a.sent < SEEK_GIVE_UP_MS || now - h.at < 1000) return;
+      this.arrived();
+      this.said = { frame: h.f.frame, at: now, playing: h.f.playing };
+      if (this.holding !== null && this.wanted === null) this.hooks.frame(this.holding, h.f);
+    }, 500);
+    this.aiming = a;
     this.view.seek(Math.round(frame));
+  }
+  /** The seek in hand is over (or another replaces it). */
+  private arrived(): void {
+    if (this.aiming) clearInterval(this.aiming.timer);
+    this.aiming = null;
   }
   /** A seek is on its way: the clock is where it was sent, not where the game still shows. */
   get seeking(): boolean { return this.aiming !== null; }
@@ -519,6 +543,7 @@ export class GameView {
   }
 
   dispose(): void {
+    this.arrived();
     if (this.busyTimer) clearTimeout(this.busyTimer);
     if (this.telling) clearTimeout(this.telling);
     this.settle(false);
