@@ -1357,6 +1357,9 @@ var KO = {
   "Making the cast: {what} \xB7 {time}": "\uC911\uACC4 \uB9CC\uB4DC\uB294 \uC911: {what} \xB7 {time}",
   "The cast is ready.": "\uC911\uACC4\uAC00 \uC900\uBE44\uB418\uC5C8\uC2B5\uB2C8\uB2E4.",
   "The browser would not go full screen.": "\uBE0C\uB77C\uC6B0\uC800\uAC00 \uC804\uCCB4 \uD654\uBA74\uC73C\uB85C \uC804\uD658\uD558\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4.",
+  "The cast plays the game at its own speed": "\uC911\uACC4\uAC00 \uAC8C\uC784 \uC18D\uB3C4\uB97C \uC815\uD569\uB2C8\uB2E4",
+  "Follow": "\uB530\uB77C\uAC00\uAE30",
+  "Minimap": "\uBBF8\uB2C8\uB9F5",
   "Leave the cinematic view": "\uC2DC\uB124\uB9C8\uD2F1 \uBCF4\uAE30 \uB05D\uB0B4\uAE30",
   "Supply {used}/{max}": "\uC778\uAD6C {used}/{max}",
   "army {value}": "\uBCD1\uB825 {value}",
@@ -2333,6 +2336,7 @@ function hardestHit(f) {
 }
 
 // gameview.ts
+var SEEK_GIVE_UP_MS = 2500;
 var MINIMAP_MS = 66;
 var SETTLE_MS = 600;
 var GameView = class {
@@ -2356,6 +2360,8 @@ var GameView = class {
    * it is leaving (it reports the frame on screen while it runs ahead), which is not the clock any more.
    */
   aiming = null;
+  /** The viewer's last word on the frame, and when (performance.now): what a seek that never arrives settles for. */
+  heard = null;
   /**
    * Where the game is to look once it holds the replay (the map's place when the switch came), in pixels. A height of
    * 0 is the map's own scale: as much of the map top to bottom as the frame is tall.
@@ -2523,6 +2529,44 @@ var GameView = class {
       ctx.fillRect(m.x(boxes[i * 4]) - w / 2, m.y(boxes[i * 4 + 1]) - h / 2, w, h);
     }
   }
+  /**
+   * The game's minimap in a square of `ctx` (CSS pixels, from `x`, `y`, `size` a side), for the cinematic view: the
+   * ground given (the map's picture), the game's fog and squares over it, and a box where the game looks. `map` is the
+   * map's size in pixels. The map is centred in the square, as the editor's minimap has it.
+   */
+  drawMinimap(ctx, at, map, ground) {
+    const scale = at.size / Math.max(map.width, map.height, 1);
+    const ox = at.x + (at.size - map.width * scale) / 2, oy = at.y + (at.size - map.height * scale) / 2;
+    const m = { scale, size: at.size, x: (px) => ox + px * scale, y: (py) => oy + py * scale };
+    ctx.save();
+    ctx.fillStyle = "rgba(6,8,12,0.9)";
+    ctx.fillRect(at.x - 3, at.y - 3, at.size + 6, at.size + 6);
+    ctx.beginPath();
+    ctx.rect(ox, oy, map.width * scale, map.height * scale);
+    ctx.clip();
+    if (ground) {
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(ground, ox, oy, map.width * scale, map.height * scale);
+    }
+    this.drawUnits(ctx, m);
+    const look = this.looking;
+    if (look && this.loaded) {
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(Math.round(m.x(look.x - look.width / 2)) + 0.5, Math.round(m.y(look.y - look.height / 2)) + 0.5, look.width * scale, look.height * scale);
+    }
+    ctx.restore();
+    ctx.strokeStyle = "rgba(255,255,255,0.25)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(at.x - 3.5, at.y - 3.5, at.size + 7, at.size + 7);
+  }
+  /** The map pixel under a point of a minimap drawn by `drawMinimap` with the same square and map, or null outside it. */
+  static minimapAt(px, py, at, map) {
+    const scale = at.size / Math.max(map.width, map.height, 1);
+    const ox = at.x + (at.size - map.width * scale) / 2, oy = at.y + (at.size - map.height * scale) / 2;
+    const x = (px - ox) / scale, y = (py - oy) / scale;
+    return x >= 0 && y >= 0 && x <= map.width && y <= map.height ? { x, y } : null;
+  }
   /** The fog of these squares as a picture a pixel a tile; null when there is none (the fog off, or an older game page). */
   fogOf(u) {
     if (!u.fog || !u.wide) return null;
@@ -2587,6 +2631,7 @@ var GameView = class {
     this.subs = [
       view.onFrame((f) => {
         if (this.holding === null || this.wanted !== null) return;
+        this.heard = { f, at: performance.now() };
         const a = this.aiming;
         if (a) {
           if (f.seeking !== null) {
@@ -2599,7 +2644,7 @@ var GameView = class {
           const near = Math.abs(f.frame - a.frame) <= 48;
           const ended = a.sawSeeking && a.at !== null && f.frame >= a.at && f.frame <= a.frame + 48;
           if (!near && !ended) return;
-          this.aiming = null;
+          this.arrived();
         }
         this.said = { frame: f.frame, at: performance.now(), playing: f.playing };
         this.hooks.frame(this.holding, f);
@@ -2625,6 +2670,7 @@ var GameView = class {
       if (!this.loaded) return;
       this.units = u;
       this.handle.redrawMinimap?.();
+      this.hooks.units?.();
     }));
     return view;
   }
@@ -2783,8 +2829,23 @@ var GameView = class {
   }
   seek(frame) {
     if (!this.view) return;
-    this.aiming = { frame: Math.round(frame), sawSeeking: false, from: null, at: null };
+    this.arrived();
+    const a = { frame: Math.round(frame), sawSeeking: false, from: null, at: null, sent: performance.now(), timer: 0 };
+    a.timer = window.setInterval(() => {
+      const h = this.heard, now = performance.now();
+      if (this.aiming !== a || !h || h.at < a.sent || h.f.seeking !== null) return;
+      if (now - a.sent < SEEK_GIVE_UP_MS || now - h.at < 1e3) return;
+      this.arrived();
+      this.said = { frame: h.f.frame, at: now, playing: h.f.playing };
+      if (this.holding !== null && this.wanted === null) this.hooks.frame(this.holding, h.f);
+    }, 500);
+    this.aiming = a;
     this.view.seek(Math.round(frame));
+  }
+  /** The seek in hand is over (or another replaces it). */
+  arrived() {
+    if (this.aiming) clearInterval(this.aiming.timer);
+    this.aiming = null;
   }
   /** A seek is on its way: the clock is where it was sent, not where the game still shows. */
   get seeking() {
@@ -2845,6 +2906,7 @@ var GameView = class {
     else this.telling = setTimeout(tell, wait);
   }
   dispose() {
+    this.arrived();
     if (this.busyTimer) clearTimeout(this.busyTimer);
     if (this.telling) clearTimeout(this.telling);
     this.settle(false);
@@ -2972,9 +3034,7 @@ var frameOf = (s) => Math.round(s / FRAME_SECONDS);
 var LEAD_IN = frameOf(20);
 var FIRST_LEAD_IN = frameOf(40);
 var AFTER = frameOf(6);
-var OPENING_SECONDS = 120;
-var BRIDGE_SECONDS = 40;
-var TAIL_SECONDS = 15;
+var QUIET_SECONDS = 150;
 var LOSS_BUCKET = frameOf(3);
 var FIGHT_BUCKET = Math.round(frameOf(1.5));
 var PEAK_WINDOW = frameOf(5);
@@ -2999,18 +3059,21 @@ function castSegments(fights2, frames) {
     }
     live.push({ from, to, fights: [f], speed: 1 });
   }
-  const fast = (from, to, target, lo, hi) => ({ from, to, fights: [], speed: Math.max(lo, Math.min(hi, Math.round((to - from) * FRAME_SECONDS / target))) });
-  if (!live.length) return [fast(0, frames, OPENING_SECONDS, 2, 16)];
+  const quiet = (from, to) => {
+    const k = Math.max(1, Math.round((to - from) * FRAME_SECONDS / QUIET_SECONDS));
+    return Array.from({ length: k }, (_, j) => ({ from: Math.round(from + (to - from) * j / k), to: Math.round(from + (to - from) * (j + 1) / k), fights: [], speed: 1, quiet: true }));
+  };
+  if (!live.length) return quiet(0, frames);
   const out = [];
   let at = 0;
-  live.forEach((c, i) => {
-    if (c.from - at > frameOf(5)) out.push(fast(at, c.from, i ? BRIDGE_SECONDS : OPENING_SECONDS, i ? 4 : 2, i ? 16 : 8));
+  live.forEach((c) => {
+    if (c.from - at > frameOf(5)) out.push(...quiet(at, c.from));
     else if (out.length) out[out.length - 1].to = c.from;
     else c.from = 0;
     out.push(c);
     at = c.to;
   });
-  if (frames - at > frameOf(5)) out.push(fast(at, frames, TAIL_SECONDS, 2, 16));
+  if (frames - at > frameOf(5)) out.push(...quiet(at, frames));
   else if (out.length) out[out.length - 1].to = frames;
   return out;
 }
@@ -3281,7 +3344,7 @@ function castInput(game, clips, wishes, options) {
     return out;
   };
   const moments = clips.map((c, i) => {
-    const speed = c.speed ?? 1, fast = speed > 1, last = i === clips.length - 1;
+    const speed = c.speed ?? 1, fast = speed > 1 || !!c.quiet, last = i === clips.length - 1;
     const at = (frame) => Math.round((Math.max(c.from, frame) - c.from) * FRAME_SECONDS * 10 / speed) / 10;
     const since = i ? clips[i - 1].to : 0;
     const before = [];
@@ -3298,7 +3361,7 @@ function castInput(game, clips, wishes, options) {
     if (fast) for (const o of orders(c.from, c.to)) news(o.frame, o.text);
     for (const h of [...happened(c.from, c.to), ...blocks(c.from, c.to)]) news(h.frame, h.text);
     if (!fast && c.fights.length) for (const x of blows(c.from, c.to, c.fights)) news(x.frame, x.text);
-    else for (const x of losses2(c.from, c.to, fast ? LOSS_BUCKET * speed : LOSS_BUCKET)) news(x.frame, x.text);
+    else for (const x of losses2(c.from, c.to, fast ? LOSS_BUCKET * Math.max(speed, 4) : LOSS_BUCKET)) news(x.frame, x.text);
     events.sort((a, b) => a.at - b.at);
     const after = c.fights.flatMap(fightFacts);
     if (fast && !last) after.push(...standing(c.to));
@@ -3306,12 +3369,13 @@ function castInput(game, clips, wishes, options) {
     if (la) after.push(la);
     if (last) after.push(game.winner === null ? `The game ends at ${clock(t.frames)}` : `${nameOf(game.winner)} wins; the game ends at ${clock(t.frames)}`);
     const key = c.fights.find((f) => f.turning) ?? c.fights[0];
-    const title = key ? `${key.turning ? "The turning point" : key.tier === "decisive" ? "A decisive fight" : key.tier === "major" ? "A major fight" : "A fight"} at ${n.place(key.x, key.y)}` : i === 0 ? "The opening" : last ? "The end of the game" : "Between the fights";
+    const title = key ? `${key.turning ? "The turning point" : key.tier === "decisive" ? "A decisive fight" : key.tier === "major" ? "A major fight" : "A fight"} at ${n.place(key.x, key.y)}` : i === 0 ? "The opening" : last ? "The end of the game" : clips.slice(0, i).some((x) => x.fights.length) ? "Between the fights" : "The build-up";
     return {
       from: seconds(c.from),
       to: seconds(c.to),
       speed,
       seconds: Math.round((c.to - c.from) * FRAME_SECONDS * 10 / speed) / 10,
+      ...c.quiet ? { quiet: true } : {},
       title,
       state: state.slice(0, 20),
       before: before.slice(0, 40),
@@ -3667,13 +3731,13 @@ function batches(items, size = VOICE_BATCH) {
 function estimate2(seconds2, options, usdPer1kChars) {
   const minutes = seconds2 / 60;
   const banter = options.banter === "lots" ? 1.1 : options.banter === "off" ? 0.9 : 1;
-  const chars = minutes * 540 * banter;
+  const chars = minutes * (options.format === "game" ? 450 : 540) * banter;
   const scriptUsd = 0.12 + minutes * 0.033;
   return {
     scriptUsd,
     voiceUsd: usdPer1kChars === null ? 0 : chars / 1e3 * usdPer1kChars,
     minutes,
-    making: options.format === "game" ? [2, 3] : [1, 2]
+    making: [Math.max(1, Math.round(minutes * 0.15)), Math.max(2, Math.round(minutes * 0.3))]
   };
 }
 var KEEP_CASTS = 30;
@@ -4881,7 +4945,7 @@ function nearestSample(frames, frame) {
 }
 
 // plugin.ts
-var DEFAULTS = { orders: false, legend: true, heat: "losses", speed: 8, workers: false, chart: "lead", tab: "summary", insightTab: "economy", resource: "both", insightMetric: "income", castFormat: "game", castBanter: "light", castCards: true, castVoiced: true, castNotes: "", version: 5 };
+var DEFAULTS = { orders: false, legend: true, heat: "losses", speed: 8, workers: false, chart: "lead", tab: "summary", insightTab: "economy", resource: "both", insightMetric: "income", castFormat: "game", castBanter: "light", castCards: true, castVoiced: true, castNotes: "", cinemaMinimap: true, version: 5 };
 var FRONT_FRAMES = 120;
 var FIGHT_LEAD = 48;
 var TWINS = /* @__PURE__ */ new Set([37, 47]);
@@ -4953,7 +5017,10 @@ var STYLE = `
 .afm-cinema-layer.afm-awake { cursor: default; }
 .afm-cinema-controls { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; gap: 8px; opacity: 0; transition: opacity 0.25s; }
 .afm-cinema-layer.afm-awake .afm-cinema-controls { opacity: 1; }
-.afm-cinema-controls button { font: 600 13px system-ui, sans-serif; padding: 7px 14px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.25); background: rgba(10,12,16,0.8); color: #f0f3f8; cursor: pointer; }
+.afm-cinema-controls button, .afm-cinema-controls select { font: 600 13px system-ui, sans-serif; padding: 7px 14px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.25); background: rgba(10,12,16,0.8); color: #f0f3f8; cursor: pointer; }
+.afm-cinema-controls button[aria-pressed="true"] { border-color: #4fd1c5; background: rgba(79,209,197,0.22); }
+.afm-cinema-controls select { padding: 7px 8px; }
+.afm-cinema-controls select:disabled { opacity: 0.6; cursor: default; }
 @media (prefers-reduced-motion: reduce) { .afm-cinema-controls { transition: none; } }
 .afm-cast-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 14px; }
 .afm-cast-head .afm-dim { font-variant-numeric: tabular-nums; }
@@ -5223,6 +5290,9 @@ function activate(api) {
       showBusy();
     },
     movedByUser: () => letGo(),
+    units: () => {
+      if (cinema.on && settings.cinemaMinimap) game.redrawOver();
+    },
     shown: (on) => handOver(on),
     state: (text) => {
       gameState = text;
@@ -5648,6 +5718,7 @@ function activate(api) {
     if (on) follow();
     redraw();
     strip?.update();
+    cinema.refresh?.();
   }
   function captionOf(entry, shot) {
     const map = entry.played.timeline.map;
@@ -5676,6 +5747,7 @@ function activate(api) {
     if (lensOf() === "map") showStats(false);
     if (current.frame >= current.report.frames) current.frame = 0;
     playing3 = true;
+    cinema.refresh?.();
     if (gameClock()) {
       game.play(true);
       strip?.update();
@@ -5703,6 +5775,7 @@ function activate(api) {
     cancelAnimationFrame(raf);
     game.play(false);
     strip?.update();
+    cinema.refresh?.();
   }
   let keys = [];
   function bindKeys(on) {
@@ -5999,7 +6072,7 @@ function activate(api) {
     casting.error = null;
     casting.speed = settings.speed;
     casting.made = made;
-    cinema.castStarted = performance.now();
+    cinema.titleAt = performance.now();
     cinema.lastMoment = -1;
     cinema.banner = null;
     setFollowing(true);
@@ -6022,6 +6095,7 @@ function activate(api) {
     }, made.input.moments, made.plan, made.voices, made.voices.some(Boolean) ? ctx : (void ctx?.close(), null));
     casting.reel.start();
     strip?.render();
+    cinema.refresh?.();
   }
   function endCast() {
     if (!casting.entry) return;
@@ -6029,7 +6103,6 @@ function activate(api) {
     casting.reel = null;
     casting.made = null;
     casting.entry = null;
-    void setCinema(false);
     if (reel) {
       reel.stop();
       settings.speed = casting.speed;
@@ -6038,6 +6111,7 @@ function activate(api) {
     }
     redraw();
     strip?.render();
+    cinema.refresh?.();
   }
   function makingLine(m) {
     switch (m.stage) {
@@ -6258,7 +6332,33 @@ function activate(api) {
     });
   }
   const UNDER_VOICE = 0.35;
-  const cinema = { on: false, controls: null, idle: 0, castStarted: 0, lastMoment: -1, banner: null };
+  const cinema = {
+    on: false,
+    controls: null,
+    idle: 0,
+    lastMoment: -1,
+    banner: null,
+    /** When the title card was put up: on going full screen, and when a cast starts. */
+    titleAt: 0,
+    /** Draws the controls again (what plays, the speed, the cast) when something they show has changed. */
+    refresh: null
+  };
+  const grounds = /* @__PURE__ */ new WeakMap();
+  function groundOf(entry) {
+    const have = grounds.get(entry);
+    if (have !== void 0) return have === "asking" ? null : have;
+    grounds.set(entry, "asking");
+    void api.document.renderImage({ pixelsPerTile: 2, units: false, sprites: true, locations: false, locationNames: false, startLocations: false, fog: false, grid: 0 }).then((png) => png ? createImageBitmap(png) : null).catch(() => null).then((bmp) => {
+      grounds.set(entry, bmp);
+      if (cinema.on) game.redrawOver();
+    });
+    return null;
+  }
+  const minimapBox = (H) => {
+    const size = Math.round(Math.max(120, Math.min(240, H * 0.26)));
+    return { x: 18, y: H - size - 18, size };
+  };
+  const mapPixels = (entry) => ({ width: entry.map.width * 32, height: entry.map.height * 32 });
   const cinemaPossible = () => !!current && game.shown && game.holds(current.id) && typeof game.root?.requestFullscreen === "function";
   async function setCinema(on) {
     if (on) {
@@ -6283,26 +6383,97 @@ function activate(api) {
     game.music(on && current ? musicRace(current) : null);
     cinema.controls?.remove();
     cinema.controls = null;
+    cinema.refresh = null;
     if (on && root) {
+      cinema.titleAt = performance.now();
       const layer = el("div", { className: "afm-cinema-layer" });
-      const pause = el("button", { type: "button" }, playing3 ? t("Pause") : t("Play"));
-      const exit = el("button", { type: "button" }, t("Leave the cinematic view"));
-      pause.addEventListener("click", (e) => {
-        e.stopPropagation();
-        if (playing3) stop();
-        else play();
-        pause.textContent = playing3 ? t("Pause") : t("Play");
-      });
-      exit.addEventListener("click", (e) => {
-        e.stopPropagation();
-        void setCinema(false);
-      });
-      const bar = el("div", { className: "afm-cinema-controls" }, pause, exit);
+      const bar = el("div", { className: "afm-cinema-controls" });
+      const button = (label2, onClick, pressed) => {
+        const b = el("button", { type: "button" }, label2);
+        if (pressed !== void 0) {
+          b.setAttribute("aria-pressed", String(pressed));
+          b.classList.toggle("afm-on", pressed);
+        }
+        b.addEventListener("click", (e) => {
+          e.stopPropagation();
+          onClick();
+          render();
+        });
+        return b;
+      };
+      const render = () => {
+        const entry = current;
+        const casts2 = !!entry && casting.entry === entry;
+        const speed = el("select", { title: casts2 ? t("The cast plays the game at its own speed") : t("Playback speed") });
+        for (const n of [1, 2, 4, 8, 16]) speed.append(el("option", { value: String(n) }, `${n}\xD7`));
+        speed.value = String(settings.speed);
+        speed.disabled = casts2;
+        speed.addEventListener("click", (e) => e.stopPropagation());
+        speed.addEventListener("change", () => {
+          settings.speed = Number(speed.value);
+          save();
+          if (gameClock()) game.speed(settings.speed);
+          strip?.render();
+          speed.blur();
+        });
+        const watchKey = entry ? ready.get(entry.id) ?? keptFor.get(entry.id) : void 0;
+        const cast = !entry ? null : casts2 ? button(t("Stop cast"), () => endCast()) : watchKey ? button(t("Watch cast"), () => {
+          const ctx = new AudioContext();
+          void madeOf(entry, watchKey).then((made) => {
+            if (made) void watchCast(made, ctx);
+            else void ctx.close();
+          });
+        }) : null;
+        bar.replaceChildren(
+          button(playing3 ? t("Pause") : t("Play"), () => {
+            if (playing3) stop();
+            else play();
+          }),
+          speed,
+          button(t("Follow"), () => setFollowing(!cam.following), cam.following),
+          button(t("Minimap"), () => {
+            settings.cinemaMinimap = !settings.cinemaMinimap;
+            save();
+            game.redrawOver();
+          }, settings.cinemaMinimap),
+          ...cast ? [cast] : [],
+          button(t("Leave the cinematic view"), () => {
+            void setCinema(false);
+          })
+        );
+      };
+      render();
+      cinema.refresh = render;
       layer.append(bar);
-      layer.addEventListener("pointermove", () => {
+      const wake = () => {
+        if (!layer.classList.contains("afm-awake")) render();
         layer.classList.add("afm-awake");
         clearTimeout(cinema.idle);
         cinema.idle = window.setTimeout(() => layer.classList.remove("afm-awake"), 2500);
+      };
+      let dragging = false;
+      const lookFrom = (e) => {
+        const entry = current;
+        if (!entry || !settings.cinemaMinimap) return false;
+        const r = layer.getBoundingClientRect();
+        const at = GameView.minimapAt(e.clientX - r.left, e.clientY - r.top, minimapBox(r.height), mapPixels(entry));
+        if (!at) return false;
+        if (cam.following) setFollowing(false);
+        game.camera(at.x, at.y);
+        return true;
+      };
+      layer.addEventListener("pointerdown", (e) => {
+        if (lookFrom(e)) {
+          dragging = true;
+          layer.setPointerCapture(e.pointerId);
+        }
+      });
+      layer.addEventListener("pointermove", (e) => {
+        wake();
+        if (dragging) lookFrom(e);
+      });
+      layer.addEventListener("pointerup", () => {
+        dragging = false;
       });
       root.append(layer);
       cinema.controls = layer;
@@ -6374,26 +6545,29 @@ function activate(api) {
   function cinemaDress(ctx, entry) {
     const frame = (gameClock() ? game.frameNow(settings.speed) : null) ?? entry.frame;
     broadcastBar(ctx, entry, frame);
-    const reel = casting.reel, made = casting.made;
-    if (!reel || !made || casting.entry !== entry) return;
+    const dpr = window.devicePixelRatio || 1;
+    if (settings.cinemaMinimap) game.drawMinimap(ctx, minimapBox(ctx.canvas.height / dpr), mapPixels(entry), groundOf(entry));
     const now = performance.now();
-    const players = entry.report.players.filter((p) => made.input.game.players.some((q) => q.id === p.player.index));
-    const since = (now - cinema.castStarted) / 1e3;
+    const tl = entry.played?.timeline;
+    const players = entry.report.players.filter((p) => !tl || tl.samples.players.some((q) => q.slot === p.player.index));
+    const since = (now - cinema.titleAt) / 1e3;
     if (since < 6 && players.length >= 2) {
       centreCard(ctx, [
         { text: `${players[0].player.name}  vs  ${players[1].player.name}`, font: "800 34px system-ui, sans-serif", colour: "#f4f6fa" },
         { text: mapTitle(entry), font: "600 16px system-ui, sans-serif", colour: "#9aa3b2" }
       ], since < 5 ? 1 : 6 - since);
     }
+    const reel = casting.reel, made = casting.made;
+    if (!reel || !made || casting.entry !== entry) return;
     const at = reel.progress().moment;
     if (at !== cinema.lastMoment) {
       cinema.lastMoment = at;
       const m = made.input.moments[at];
-      if (m && (m.speed ?? 1) === 1 && m.title) cinema.banner = { text: m.title, at: now };
+      if (m && (m.speed ?? 1) === 1 && !m.quiet && m.title) cinema.banner = { text: m.title, at: now };
     }
     const b = cinema.banner;
     if (b && now - b.at < 6e3) {
-      const dpr = window.devicePixelRatio || 1, W = ctx.canvas.width / dpr;
+      const dpr2 = window.devicePixelRatio || 1, W = ctx.canvas.width / dpr2;
       ctx.save();
       ctx.globalAlpha = Math.min(1, (6e3 - (now - b.at)) / 600);
       ctx.font = "800 15px system-ui, sans-serif";
@@ -6470,7 +6644,8 @@ function activate(api) {
     const who = said.speaker === "caster" ? t("Caster") : t("Analyst");
     const big = cinema.on, size = big ? 22 : 15;
     ctx.font = `500 ${size}px system-ui, sans-serif`;
-    const maxW = Math.min(big ? 1e3 : 720, viewW - 40);
+    const clear = big && settings.cinemaMinimap ? minimapBox(viewH).size + 40 : 20;
+    const maxW = Math.max(240, Math.min(big ? 1e3 : 720, viewW - 2 * clear - 28));
     const words = said.text.split(" "), rows = [];
     let row = "";
     for (const word of words) {
@@ -7873,7 +8048,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
         }
       }) : null;
       const castMore = castButton && castState === "ready" ? w.button(t("Cast\u2026"), { className: "sm", title: t("Make a new cast, or watch another kept in this browser"), onClick: () => openCastWindow() }) : null;
-      const cinemaButton = castButton && castState === "playing" && cinemaPossible() ? w.button(t("Cinematic"), { className: "sm", title: t("The game full screen, dressed as a broadcast, without the editor around it. Esc leaves."), onClick: () => {
+      const cinemaButton = cinemaPossible() ? w.button(t("Cinematic"), { className: "sm", title: t("The game full screen, dressed as a broadcast, without the editor around it. Esc leaves."), onClick: () => {
         void setCinema(true);
       } }) : null;
       const castCardsButton = castButton && castState === "playing" ? toggle(t("Cards"), () => {
