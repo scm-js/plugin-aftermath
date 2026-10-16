@@ -47,6 +47,8 @@ export interface GameViewHooks {
   units?(): void;
   /** The person moved the game's camera (the arrows, or the editor's minimap). */
   movedByUser(): void;
+  /** The person zoomed the game (the editor's zoom, or the wheel over it): a track made for the old scale is to be made again. */
+  zoomed?(): void;
   /** The tab in front changed between the map and the game. */
   shown(shown: boolean): void;
   /** A replay is being loaded into the viewer, or failed to (null when neither). */
@@ -155,12 +157,26 @@ export class GameView {
         this.busyLine = line;
       },
       onShow: (look) => this.lookAt(look),
+      onZoom: (look) => this.zoomTo(look),
       minimap: {
         draw: (ctx, m) => this.drawUnits(ctx, m),
         press: (x, y) => { if (this.view && this.loaded) { this.view.camera(x, y); hooks.movedByUser(); } },
       },
     });
     this.changed = this.handle.onChange((on) => { hooks.shown(on); this.redrawOver(); if (!on) this.hooks.hover(null); });
+  }
+
+  /**
+   * The editor's zoom while the game is shown: look at `look`'s scale (the viewer keeps to what the game allows, and
+   * says what it took on its camera). It lets go of a camera track, so the hook makes one for the new scale at once —
+   * in the same moment, so Spectate goes on without a jump; until the viewer says, the size asked stands for it.
+   */
+  private zoomTo(look: MapViewCamera): void {
+    if (!this.view || !this.loaded) { this.look = look; return; }
+    this.view.camera(look.x, look.y, look.height);
+    this.sent = null;
+    this.shows = { width: look.width, height: look.height };
+    this.hooks.zoomed?.();
   }
 
   /** A replay is loaded in the viewer and no other is on its way. */
@@ -359,6 +375,8 @@ export class GameView {
     // (scm-sim before 0.6.0 sends no squares: the editor's minimap then shows the ground alone.)
     // (scm-sim before 0.6.0 says nothing of the pointer: there is no tooltip.)
     if (typeof view.onHover === "function") this.subs.push(view.onHover((h) => this.hooks.hover(this.loaded && this.shown ? h : null)));
+    // (scm-sim before 0.9.0 keeps the wheel; an editor before map views zoomed has no wheel to hand it to.)
+    if (typeof view.onWheel === "function") this.subs.push(view.onWheel((w) => { if (this.loaded && this.shown && typeof this.handle.wheel === "function") this.handle.wheel(w); }));
     if (typeof view.onUnits === "function") this.subs.push(view.onUnits((u) => { if (!this.loaded) return; this.units = u; this.handle.redrawMinimap?.(); this.hooks.units?.(); }));
     return view;
   }

@@ -161,6 +161,192 @@ export interface ScmSimStatus {
   reason: string | null;
   /** The `ReplayTimeline.version` the engine writes, or null when it could not be asked. */
   timeline: number | null;
+  /**
+   * The `PathingResult.version` the engine answers `pathing` with; null when it could not be
+   * asked or its page is from before `pathing` (scm-sim 0.7.0).
+   */
+  pathing: number | null;
+  /**
+   * The `MeasureResult.version` the engine answers `measure` with; null when it could not be
+   * asked or its page is from before `measure` (scm-sim 0.8.0).
+   */
+  measure: number | null;
+}
+
+/* ── A map's measures (`ScmSimService.measure`) ── */
+
+/** A group trial: `count` (1 to 12, one selection) of `unit` walked from `from` to `to`. `id` comes back with the result. */
+export interface MeasureGroup { id?: number; unit: number; count: number; from: PathingPoint; to: PathingPoint }
+/** A base to mine at: its hall's centre, as a start location gives it. */
+export interface MeasureBase { id?: number; hall: PathingPoint }
+
+export interface MeasureGroupResult {
+  /** The id asked with, else the group's place in `groups`. */
+  id?: number;
+  unit: number;
+  count: number;
+  from: PathingPoint;
+  to: PathingPoint;
+  /** How many of the group the game made (fewer when there was not room). */
+  made: number;
+  /**
+   * Frames from the order until the one of the group nearest `to`, walking alone, is through:
+   * two tiles past the middle of the way from `from` to `to` (for a choke's two ends, past the
+   * choke). Timed there and not at `to`, where a group jostles for the one point long after it
+   * is through. Null when it did not get through. 24 frames is a second at Fastest.
+   */
+  alone: number | null;
+  /** The same for the first and the last of the whole group, walking together; null when none got through. The last less `alone` is the time spent queueing. */
+  first: number | null;
+  last: number | null;
+  /**
+   * The frames of each of the group that got through, soonest first. A group in a narrow place
+   * often gets most of the way through quickly and leaves a few stragglers that went round or
+   * waited; the time for most of it (say ten of twelve) says more of the choke than `last`.
+   */
+  times: number[];
+  /** How many of the group got through, and how many stood still ten seconds still meaning to move. */
+  through: number;
+  stuck: number;
+}
+
+export interface MeasureBaseRate {
+  workers: number;
+  /** Minerals taken from the base's own fields in the frames measured, and that per game minute at Fastest. */
+  mined: number;
+  perMinute: number;
+}
+
+export interface MeasureBaseResult {
+  /** The id asked with; a start location's player slot for `starts`. */
+  id?: number;
+  hall: PathingPoint;
+  /** False when the game would not take a Nexus on the spot (then there are no rates). */
+  hallMade: boolean;
+  /** The base's mineral fields (within ten tiles of the hall, nearer it than any other hall measured) and the minerals in them. */
+  fields: number;
+  minerals: number;
+  rates: MeasureBaseRate[];
+}
+
+export interface MeasureResult {
+  version: number;
+  /** Tiles. */
+  map: { width: number; height: number };
+  groups: MeasureGroupResult[];
+  bases: MeasureBaseResult[];
+}
+
+/** `starting`: the engine and the first game; `measuring`: `done` of `total` trials. */
+export interface MeasureProgress { stage: "starting" | "measuring"; done: number; total: number }
+
+export interface MeasureOptions {
+  /** Groups to walk, each against one of them alone, timed as they get through the middle of the way. Groups near each other are run in different games. */
+  groups?: MeasureGroup[];
+  /** Bases to mine at, and `starts` for the base at every start location. */
+  bases?: MeasureBase[];
+  starts?: boolean;
+  /** Worker counts to mine with (default 8, 16, 24; at most 24). */
+  workers?: number[];
+  /** Frames before the minerals are counted (default 600) and the frames they are counted over (default 2,858, two game minutes). */
+  warmup?: number;
+  frames?: number;
+  /** Frames a group trial may take (default 3,000). */
+  limit?: number;
+  signal?: AbortSignal;
+  onProgress?: (progress: MeasureProgress) => void;
+}
+
+/* ── A map's pathing (`ScmSimService.pathing`) ── */
+
+export interface PathingPoint { x: number; y: number }
+/** A start location of the map: its player slot and where it is, in pixels. */
+export interface PathingStart extends PathingPoint { owner: number }
+
+/**
+ * The game's regions for the map, a minitile (8 px) at a time. `grid` holds a region id for
+ * every minitile, row by row, `width × height` of them (the map's size in tiles × 4). The
+ * other arrays are a column per region, by id.
+ */
+export interface PathingRegions {
+  width: number;
+  height: number;
+  grid: Uint16Array;
+  count: number;
+  /** 1 walkable, 0 not. */
+  walkable: Uint8Array;
+  /** Regions of one group are joined by ground; units cannot walk between two groups. */
+  group: Uint16Array;
+  /** The region's centre as the game keeps it, pixels. */
+  x: Int32Array;
+  y: Int32Array;
+  /** Tiles in the region (a tile split between two regions counts for one of them). */
+  tiles: Uint16Array;
+  /** Neighbours of region r: `neighbours[neighbourAt[r]]` up to `neighbourAt[r + 1]`, walkable ones first. */
+  neighbourAt: Uint32Array;
+  neighbours: Uint16Array;
+}
+
+/**
+ * `arrived`: it stopped within reach of where it was sent. `stopped`: it stopped short (the
+ * game found no way all the way there, or gave up looking on a long route). `stuck`: it stood
+ * still for ten seconds with its order still to move. `limit`: still walking when `limit` ran
+ * out. `apart`: not walked, the two places being on ground that does not join. `unmoved`: the
+ * order never took.
+ */
+export type PathingWalkOutcome = "arrived" | "stopped" | "stuck" | "limit" | "apart" | "unmoved";
+
+export interface PathingWalk {
+  /** units.dat id. */
+  unit: number;
+  from: PathingPoint;
+  to: PathingPoint;
+  /** The start locations (their player slots) walked between, when the walk was between two. */
+  fromStart?: number;
+  toStart?: number;
+  outcome: PathingWalkOutcome;
+  /** From the frame the unit took its order to the frame it stopped. 24 frames is a second at Fastest. */
+  frames: number;
+  /** Pixels walked, and how far from `to` it ended. */
+  travelled: number;
+  distance: number;
+  /** Regions it stood in on the way. */
+  regions: number;
+  /** Where it was every `every` frames from the order on, ending where it stopped. */
+  every: number;
+  x: Int16Array;
+  y: Int16Array;
+}
+
+export interface PathingResult {
+  version: number;
+  /** Tiles. */
+  map: { width: number; height: number };
+  starts: PathingStart[];
+  /** Null when `regions: false` was asked. */
+  regions: PathingRegions | null;
+  walks: PathingWalk[];
+}
+
+/** `starting`: the engine and the first game; `walking`: `done` of `total` walks. */
+export interface PathingProgress { stage: "starting" | "walking"; done: number; total: number }
+
+export interface PathingOptions {
+  /** units.dat ids of the ground units to walk; default Probe, Zergling, Dragoon, Siege Tank, Ultralisk. Air units and buildings are left out. */
+  units?: number[];
+  /** Walk both ways between two start locations (default: each pair once, from the lower slot). */
+  directed?: boolean;
+  /** Walk from this point to each of `to` in place of the start locations. */
+  from?: PathingPoint;
+  to?: PathingPoint[];
+  /** Leave the regions out of the answer (default: in). */
+  regions?: boolean;
+  /** Frames a walk may take before it is given up (default 10,000). */
+  limit?: number;
+  /** Keep a walk's position every this many frames (default 8). */
+  every?: number;
+  signal?: AbortSignal;
+  onProgress?: (progress: PathingProgress) => void;
 }
 
 export interface Disposable { dispose(): void }
@@ -322,6 +508,23 @@ export interface ViewKey {
 }
 
 /**
+ * A wheel turned over the view, which does nothing with it itself: as the browser's `WheelEvent`
+ * has it, and `x`, `y` the map pixel under the pointer — enough for the editor's map view to zoom
+ * by its own rule (`MapViewHandle.wheel`).
+ */
+export interface ViewWheel {
+  deltaX: number;
+  deltaY: number;
+  deltaMode: number;
+  ctrlKey: boolean;
+  metaKey: boolean;
+  shiftKey: boolean;
+  altKey: boolean;
+  x: number;
+  y: number;
+}
+
+/**
  * The game itself, drawn by the play page inside an element of yours (`ScmSimService.view`):
  * the replay played out with the game's own graphics, Remastered's where the person's copy
  * has them, and its console. You drive it; it says what it shows.
@@ -338,7 +541,7 @@ export interface ScmSimView {
   seek(frame: number): void;
   /**
    * Looks at this point of the map (pixels: the middle of the view). With `height`, shows that
-   * much of the map top to bottom (pixels, 240 to 960; the game's own 480 at first), so the view
+   * much of the map top to bottom (pixels, 240 to 1920 — to 960 before scm-sim 0.9.0; the game's own 480 at first), so the view
    * can match another's scale — without the console only.
    */
   camera(x: number, y: number, height?: number): void;
@@ -357,6 +560,8 @@ export interface ScmSimView {
   onUnits(listener: (units: ViewUnits) => void): Disposable;
   /** The unit under the pointer, for a tooltip; null once the pointer is on nothing (and when it leaves the view). From scm-sim 0.6.0. */
   onHover(listener: (hover: ViewHover | null) => void): Disposable;
+  /** The wheel turned over the view (Ctrl and the wheel included: the page keeps it from the browser's own zoom). From scm-sim 0.9.0. */
+  onWheel(listener: (wheel: ViewWheel) => void): Disposable;
   /**
    * A key the view handed back. It is also pressed again on the editor's window, so the
    * editor's hotkeys and every plugin's act on it as if it had been pressed there.
@@ -398,4 +603,26 @@ export interface ScmSimService {
    * function is there before calling it.
    */
   view?(element: HTMLElement): ScmSimView;
+  /**
+   * The game's own pathing for a map: the regions the game builds when it loads it, and units
+   * walked by the game between its start locations (or from one point to others), with how
+   * long each walk took and the way it went. `scenario` is the bare scenario (`.chk` bytes);
+   * left out, the open map. Nothing is shown and nobody plays. Each start location walked
+   * from is a game of its own, a few seconds each: a 4-player map with the five default units
+   * takes about eight seconds. One request runs at a time, replays included. Rejects with an
+   * `Error` worded for the person. Added in 0.7.0, and needs a play page that answers it
+   * (`status().pathing`): check both before offering it.
+   */
+  pathing?(scenario?: Uint8Array, options?: PathingOptions): Promise<PathingResult>;
+  /**
+   * Measures of a map taken by the game itself: groups of units through chokes against one
+   * unit alone (the time a group spends queueing), and each base's mining per game minute
+   * at several worker counts, read from what goes from its own mineral fields. Gas is not
+   * measured. `scenario` is the bare scenario (`.chk` bytes); left out, the open map.
+   * Nobody plays and the map is not changed. A game for the bases and one for each set of
+   * groups far enough apart, a few seconds each; one request runs at a time. Rejects with an
+   * `Error` worded for the person. Added in 0.8.0, and needs a play page that answers it
+   * (`status().measure`): check both before offering it.
+   */
+  measure?(scenario?: Uint8Array, options?: MeasureOptions): Promise<MeasureResult>;
 }
