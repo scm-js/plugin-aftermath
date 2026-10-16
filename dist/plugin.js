@@ -2340,6 +2340,7 @@ var SEEK_GIVE_UP_MS = 2500;
 var SEEK_STALL_MS = 4e3;
 var MINIMAP_MS = 66;
 var SETTLE_MS = 600;
+var GAME_ROWS = 480;
 var GameView = class {
   api;
   hooks;
@@ -2438,6 +2439,9 @@ var GameView = class {
       },
       onShow: (look) => this.lookAt(look),
       onZoom: (look) => this.zoomTo(look),
+      // The editor's grid, locations and the other plugins' overlays, over the game (`redrawOver`).
+      onRepaint: () => this.redrawOver(),
+      onFog: (on) => hooks.fog?.(on),
       minimap: {
         draw: (ctx, m) => this.drawUnits(ctx, m),
         press: (x, y) => {
@@ -2451,7 +2455,10 @@ var GameView = class {
     this.changed = this.handle.onChange((on) => {
       hooks.shown(on);
       this.redrawOver();
-      if (!on) this.hooks.hover(null);
+      if (!on) {
+        this.hooks.hover(null);
+        this.handle.setPointer?.(null);
+      }
     });
   }
   /**
@@ -2617,14 +2624,14 @@ var GameView = class {
     return this.asking;
   }
   /**
-   * Offer the Game view on a replay's tab, and show it there when `show`: looking at `start` (map pixels) at the map's
-   * own scale, rather than where the editor's view stood when the tab came in.
+   * Offer the Game view on a replay's tab, and show it there when `show`: looking at `start` (map pixels) at the game's
+   * own scale (`GAME_ROWS` across the frame's height), rather than where the editor's view stood when the tab came in.
    */
   async offer(entry, show, start) {
     if (entry.docId === null || !await this.available()) return false;
     this.handle.offer(true, entry.docId);
     if (show) this.handle.show(true, entry.docId);
-    if (show && start && !this.holds(entry.id)) this.look = { x: start.x, y: start.y, width: 0, height: 0 };
+    if (show && start && !this.holds(entry.id)) this.look = { x: start.x, y: start.y, width: 0, height: GAME_ROWS };
     return true;
   }
   /** The tab in front shows the game. */
@@ -2684,6 +2691,7 @@ var GameView = class {
       })
     ];
     if (typeof view.onHover === "function") this.subs.push(view.onHover((h) => this.hooks.hover(this.loaded && this.shown ? h : null)));
+    if (typeof view.onPointer === "function") this.subs.push(view.onPointer((p) => this.handle.setPointer?.(this.loaded && this.shown ? p : null)));
     if (typeof view.onWheel === "function") this.subs.push(view.onWheel((w) => {
       if (this.loaded && this.shown && typeof this.handle.wheel === "function") this.handle.wheel(w);
     }));
@@ -2757,6 +2765,7 @@ var GameView = class {
   }
   /** See the game through a player's eyes, with the fog of war (their slot), or everyone's with none (null). */
   eyes(slot) {
+    this.handle.setFog?.(slot !== null);
     const view = this.view;
     if (!view || !this.loaded || slot === this.eyesTold) return;
     this.eyesTold = slot;
@@ -2825,7 +2834,7 @@ var GameView = class {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, cw, ch);
     const at = this.looking;
-    if (!this.drawOver || !at || !this.loaded || !this.shown) return;
+    if (!at || !this.loaded || !this.shown) return;
     const w = el.clientWidth, h = el.clientHeight, kx = w / at.width, ky = h / at.height;
     const x0 = at.x - at.width / 2, y0 = at.y - at.height / 2;
     const view = {
@@ -2836,7 +2845,13 @@ var GameView = class {
       visible: { x0: Math.floor(x0 / 32), y0: Math.floor(y0 / 32), x1: Math.ceil((x0 + at.width) / 32), y1: Math.ceil((y0 + at.height) / 32) }
     };
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    this.drawOver(ctx, view);
+    const cinematic = typeof document !== "undefined" && document.fullscreenElement === el;
+    if (!cinematic && typeof this.handle.paintOver === "function") {
+      ctx.save();
+      this.handle.paintOver(ctx, view);
+      ctx.restore();
+    }
+    this.drawOver?.(ctx, view);
   }
   play(on) {
     this.view?.play(on);
@@ -5327,11 +5342,26 @@ function activate(api) {
       strip?.update();
       showBusy();
     },
-    hover: (h) => showHover(h)
+    hover: (h) => showHover(h),
+    fog: (on) => fogFromEditor(on)
   }, "Replay", {
     loading: (name) => t("Loading {name}\u2026", { name }),
     failed: (message) => t("The game could not be shown: {message}", { message })
   });
+  const lastEyes = /* @__PURE__ */ new Map();
+  function fogFromEditor(on) {
+    const entry = current;
+    if (!entry || !game.holds(entry.id) || on === (entry.eyes !== null)) return;
+    if (on) entry.eyes = lastEyes.get(entry.id) ?? entry.report.players[0]?.player.slot ?? null;
+    else {
+      if (entry.eyes !== null) lastEyes.set(entry.id, entry.eyes);
+      entry.eyes = null;
+    }
+    game.eyes(entry.eyes);
+    follow();
+    redraw();
+    strip?.render();
+  }
   let lastHover = null;
   function showHover(h) {
     lastHover = h;
@@ -8093,6 +8123,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
       ], { value: entry.eyes ?? -1, title: t("Whose eyes the game is seen through: one player's shows only what they could see, with the fog of war"), onChange: (v) => {
         const slot = Number(v);
         entry.eyes = slot < 0 ? null : slot;
+        if (entry.eyes !== null) lastEyes.set(entry.id, entry.eyes);
         if (game.holds(entry.id)) game.eyes(entry.eyes);
         follow();
         redraw();
