@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MapViewCamera, MapViewSpec, PluginApi } from "@scm-js/plugin-api";
 import { GameView } from "../gameview";
-import type { ScmSimService, ScmSimView, ViewCamera, ViewWheel } from "../vendor/scm-sim";
+import type { ScmSimService, ScmSimView, ViewCamera, ViewFrame, ViewWheel } from "../vendor/scm-sim";
 
 /** Just enough of an element for the Game view's mount and its hiding class. */
 function fakeElement(): HTMLElement {
@@ -22,23 +22,27 @@ describe("the Game view opening a replay", () => {
   let wheels: ((w: ViewWheel) => void)[];
   let handed: ViewWheel[];
   let zooms: number;
+  let frames: ((f: ViewFrame) => void)[];
+  let told: ViewFrame[];
 
   beforeEach(() => {
     vi.useFakeTimers();
-    Object.assign(globalThis, { document: { createElement: () => fakeElement() }, window: { devicePixelRatio: 1 } });
+    Object.assign(globalThis, { document: { createElement: () => fakeElement() }, window: { devicePixelRatio: 1, setInterval, clearInterval } });
     element = fakeElement();
     cameras = [];
     sent = [];
     wheels = [];
     handed = [];
     zooms = 0;
+    frames = [];
+    told = [];
     const none = { dispose() {} };
     const view = {
       load: () => new Promise((resolve) => { finishLoad = () => resolve({ name: "", frames: 100, players: [], map: { width: 128, height: 128 }, rewinds: false, looks: {}, follows: false }); }),
       camera: (x: number, y: number, height?: number) => { sent.push({ x, y, height }); },
       play() {}, speed() {}, seek() {}, player() {}, follow() {},
       options: () => Promise.resolve({}),
-      onFrame: () => none, onKey: () => none, onUnits: () => none,
+      onFrame: (l: (f: ViewFrame) => void) => { frames.push(l); return none; }, onKey: () => none, onUnits: () => none,
       onCamera: (l: (c: ViewCamera) => void) => { cameras.push(l); return none; },
       onWheel: (l: (w: ViewWheel) => void) => { wheels.push(l); return none; },
     } as unknown as ScmSimView;
@@ -59,7 +63,7 @@ describe("the Game view opening a replay", () => {
         },
       },
     } as unknown as PluginApi;
-    game = new GameView(api, { frame() {}, movedByUser() {}, zoomed: () => { zooms++; }, shown() {}, state() {}, seeking() {}, hover() {} }, "Replay", { loading: (n) => n, failed: (m) => m });
+    game = new GameView(api, { frame: (_id, f) => { told.push(f); }, movedByUser() {}, zoomed: () => { zooms++; }, shown() {}, state() {}, seeking() {}, hover() {} }, "Replay", { loading: (n) => n, failed: (m) => m });
     game.setService(sim);
   });
   afterEach(() => { vi.useRealTimers(); delete (globalThis as { document?: unknown }).document; delete (globalThis as { window?: unknown }).window; });
@@ -115,5 +119,62 @@ describe("the Game view opening a replay", () => {
     expect(element.classList.contains("afm-settling")).toBe(true);
     vi.advanceTimersByTime(600);
     expect(element.classList.contains("afm-settling")).toBe(false);
+  });
+
+  describe("seeking", () => {
+    const say = (f: ViewFrame) => { for (const l of frames) l(f); };
+    const loaded = async () => {
+      await game.offer(entry, true, { x: 336, y: 1840 });
+      const held = game.hold(entry, 0, false, 1);
+      finishLoad();
+      await held;
+    };
+
+    it("is over when the game shows the frame it was sent to", async () => {
+      await loaded();
+      game.seek(5000);
+      say({ frame: 1000, playing: false, seeking: 1000 });
+      expect(game.seeking).toBe(true);
+      say({ frame: 5000, playing: false, seeking: null });
+      expect(game.seeking).toBe(false);
+      expect(told.at(-1)?.frame).toBe(5000);
+    });
+
+    it("is over where the game stopped when it ends short of the frame and the viewer never says so", async () => {
+      await loaded();
+      game.seek(20000);
+      say({ frame: 1000, playing: false, seeking: 1000 });
+      vi.advanceTimersByTime(300);
+      say({ frame: 1400, playing: false, seeking: 1400 });
+      vi.advanceTimersByTime(300);
+      say({ frame: 1612, playing: false, seeking: 1612 });
+      vi.advanceTimersByTime(3500);
+      expect(game.seeking).toBe(true);
+      vi.advanceTimersByTime(1000);
+      expect(game.seeking).toBe(false);
+      expect(told.at(-1)).toEqual({ frame: 1612, playing: false, seeking: null });
+    });
+
+    it("waits on a long seek as long as it moves", async () => {
+      await loaded();
+      game.seek(40000);
+      for (let at = 0; at < 20; at++) {
+        say({ frame: at * 400, playing: false, seeking: at * 400 });
+        vi.advanceTimersByTime(1000);
+      }
+      expect(game.seeking).toBe(true);
+    });
+
+    it("is over when, playing, it lands and plays on past the frame before the viewer says so", async () => {
+      await loaded();
+      game.seek(5000);
+      say({ frame: 1000, playing: true, seeking: 1000 });
+      for (let i = 0; i < 30; i++) {
+        say({ frame: 5200 + i * 24, playing: true, seeking: null });
+        vi.advanceTimersByTime(100);
+      }
+      expect(game.seeking).toBe(false);
+      expect(told.at(-1)?.seeking).toBe(null);
+    });
   });
 });
