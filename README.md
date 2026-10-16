@@ -297,7 +297,12 @@ and their keys zoom the replay while it is shown, and so does Ctrl with the mous
 it (or the wheel alone, if the editor's preferences say the wheel zooms). Spectate's camera
 keeps following at the new scale. The replay can show from half to four times as much of the
 map as the game itself does (twice, on a play page from before scm-sim 0.9.0), so it stops
-short of a map zoomed further in or out, and opens at the nearest it can.
+short of a map zoomed further in or out, and opens at the nearest it can. The editor's grid,
+locations and other plugins' overlays are drawn over the game as over the map, under
+Aftermath's own marks, and View ▸ Grid and Locations turn them on and off. View ▸ Fog of War
+is the game's fog: on, the game is seen through a player's eyes (the one last chosen in the
+Vision menu, the first player at first); off, through everyone's. The status bar's tile and
+position follow the pointer over the game.
 Map stats shows on the map, so opening it switches to the
 map, and closing it goes back to the game. One game is shown at a time: switching to
 another replay's tab starts that one.

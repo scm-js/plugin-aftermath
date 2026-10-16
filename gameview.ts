@@ -61,6 +61,8 @@ export interface GameViewHooks {
   seeking(): void;
   /** What the pointer is on over the game (null: nothing, or the game is not shown), for `tip`. */
   hover(hover: ViewHover | null): void;
+  /** View ▸ Fog of War over the game: see it through a player's eyes (`eyes`), or everyone's. */
+  fog?(on: boolean): void;
 }
 
 export class GameView {
@@ -162,12 +164,15 @@ export class GameView {
       },
       onShow: (look) => this.lookAt(look),
       onZoom: (look) => this.zoomTo(look),
+      // The editor's grid, locations and the other plugins' overlays, over the game (`redrawOver`).
+      onRepaint: () => this.redrawOver(),
+      onFog: (on) => hooks.fog?.(on),
       minimap: {
         draw: (ctx, m) => this.drawUnits(ctx, m),
         press: (x, y) => { if (this.view && this.loaded) { this.view.camera(x, y); hooks.movedByUser(); } },
       },
     });
-    this.changed = this.handle.onChange((on) => { hooks.shown(on); this.redrawOver(); if (!on) this.hooks.hover(null); });
+    this.changed = this.handle.onChange((on) => { hooks.shown(on); this.redrawOver(); if (!on) { this.hooks.hover(null); this.handle.setPointer?.(null); } });
   }
 
   /**
@@ -379,6 +384,8 @@ export class GameView {
     // (scm-sim before 0.6.0 sends no squares: the editor's minimap then shows the ground alone.)
     // (scm-sim before 0.6.0 says nothing of the pointer: there is no tooltip.)
     if (typeof view.onHover === "function") this.subs.push(view.onHover((h) => this.hooks.hover(this.loaded && this.shown ? h : null)));
+    // (scm-sim before 0.10.0 says the pointer only over a unit, and an editor before 1.54 has no status bar to give it to.)
+    if (typeof view.onPointer === "function") this.subs.push(view.onPointer((p) => this.handle.setPointer?.(this.loaded && this.shown ? p : null)));
     // (scm-sim before 0.9.0 keeps the wheel; an editor before map views zoomed has no wheel to hand it to.)
     if (typeof view.onWheel === "function") this.subs.push(view.onWheel((w) => { if (this.loaded && this.shown && typeof this.handle.wheel === "function") this.handle.wheel(w); }));
     if (typeof view.onUnits === "function") this.subs.push(view.onUnits((u) => { if (!this.loaded) return; this.units = u; this.handle.redrawMinimap?.(); this.hooks.units?.(); }));
@@ -450,6 +457,8 @@ export class GameView {
 
   /** See the game through a player's eyes, with the fog of war (their slot), or everyone's with none (null). */
   eyes(slot: number | null): void {
+    // (The editor's Fog of War toggle shows the game's fog: on through a player's eyes.)
+    this.handle.setFog?.(slot !== null);
     const view = this.view;
     if (!view || !this.loaded || slot === this.eyesTold) return;
     this.eyesTold = slot;
@@ -513,7 +522,7 @@ export class GameView {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, cw, ch);
     const at = this.looking;
-    if (!this.drawOver || !at || !this.loaded || !this.shown) return;
+    if (!at || !this.loaded || !this.shown) return;
     // (The game fills its frame: what it shows of the map, left to right and top to bottom, is the frame's width and height.)
     const w = el.clientWidth, h = el.clientHeight, kx = w / at.width, ky = h / at.height;
     const x0 = at.x - at.width / 2, y0 = at.y - at.height / 2;
@@ -525,7 +534,12 @@ export class GameView {
       visible: { x0: Math.floor(x0 / 32), y0: Math.floor(y0 / 32), x1: Math.ceil((x0 + at.width) / 32), y1: Math.ceil((y0 + at.height) / 32) },
     };
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    this.drawOver(ctx, view);
+    // The editor's grid, locations and the other plugins' overlays on the game, under Aftermath's own marks; not in the
+    // cinematic view, which is the game full screen without the editor. (An editor from before map views drew them has
+    // no paintOver.)
+    const cinematic = typeof document !== "undefined" && document.fullscreenElement === el;
+    if (!cinematic && typeof this.handle.paintOver === "function") { ctx.save(); this.handle.paintOver(ctx, view); ctx.restore(); }
+    this.drawOver?.(ctx, view);
   }
 
   play(on: boolean): void { this.view?.play(on); }

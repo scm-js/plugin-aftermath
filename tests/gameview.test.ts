@@ -8,7 +8,9 @@ function fakeElement(): HTMLElement {
   const classes = new Set<string>();
   return {
     className: "", hidden: false, style: {}, clientWidth: 1200, clientHeight: 700,
-    append() {}, setAttribute() {}, getContext: () => null,
+    append() {}, setAttribute() {},
+    // (A canvas's context that draws nothing: what is asked to be drawn is the handle's to keep.)
+    getContext: () => ({ setTransform() {}, clearRect() {}, save() {}, restore() {} }),
     classList: { contains: (c: string) => classes.has(c), toggle: (c: string, on: boolean) => { if (on) classes.add(c); else classes.delete(c); return on; } },
   } as unknown as HTMLElement;
 }
@@ -24,6 +26,11 @@ describe("the Game view opening a replay", () => {
   let zooms: number;
   let frames: ((f: ViewFrame) => void)[];
   let told: ViewFrame[];
+  let fogs: (boolean | null)[];
+  let pointers: ({ x: number; y: number } | null)[];
+  let painted: number;
+  let pointerListeners: ((p: { x: number; y: number } | null) => void)[];
+  let fogAsked: boolean[];
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -36,6 +43,11 @@ describe("the Game view opening a replay", () => {
     zooms = 0;
     frames = [];
     told = [];
+    fogs = [];
+    pointers = [];
+    painted = 0;
+    pointerListeners = [];
+    fogAsked = [];
     const none = { dispose() {} };
     const view = {
       load: () => new Promise((resolve) => { finishLoad = () => resolve({ name: "", frames: 100, players: [], map: { width: 128, height: 128 }, rewinds: false, looks: {}, follows: false }); }),
@@ -45,6 +57,7 @@ describe("the Game view opening a replay", () => {
       onFrame: (l: (f: ViewFrame) => void) => { frames.push(l); return none; }, onKey: () => none, onUnits: () => none,
       onCamera: (l: (c: ViewCamera) => void) => { cameras.push(l); return none; },
       onWheel: (l: (w: ViewWheel) => void) => { wheels.push(l); return none; },
+      onPointer: (l: (p: { x: number; y: number } | null) => void) => { pointerListeners.push(l); return none; },
     } as unknown as ScmSimView;
     const sim = { present: true, view: () => view, status: () => Promise.resolve({ available: true }) } as unknown as ScmSimService;
     let shown = false;
@@ -57,13 +70,16 @@ describe("the Game view opening a replay", () => {
           return {
             offer() {}, onChange: () => none, isShown: () => shown, dispose() {}, setCamera() {}, redrawMinimap() {},
             wheel: (w: ViewWheel) => { handed.push(w); return true; },
+            setFog: (on: boolean | null) => { fogs.push(on); },
+            setPointer: (p: { x: number; y: number } | null) => { pointers.push(p); },
+            paintOver: () => { painted++; },
             // The editor tells the view where its map was looking as it is shown: here, a stale place far out.
             show: (on: boolean) => { shown = on; if (on) spec.onShow?.({ x: 4000, y: 4000, width: 4000, height: 3000 } satisfies MapViewCamera); },
           };
         },
       },
     } as unknown as PluginApi;
-    game = new GameView(api, { frame: (_id, f) => { told.push(f); }, movedByUser() {}, zoomed: () => { zooms++; }, shown() {}, state() {}, seeking() {}, hover() {} }, "Replay", { loading: (n) => n, failed: (m) => m });
+    game = new GameView(api, { frame: (_id, f) => { told.push(f); }, movedByUser() {}, zoomed: () => { zooms++; }, shown() {}, state() {}, seeking() {}, hover() {}, fog: (on) => { fogAsked.push(on); } }, "Replay", { loading: (n) => n, failed: (m) => m });
     game.setService(sim);
   });
   afterEach(() => { vi.useRealTimers(); delete (globalThis as { document?: unknown }).document; delete (globalThis as { window?: unknown }).window; });
@@ -109,6 +125,28 @@ describe("the Game view opening a replay", () => {
     const w: ViewWheel = { deltaX: 0, deltaY: -100, deltaMode: 0, ctrlKey: true, metaKey: false, shiftKey: false, altKey: false, x: 500, y: 600 };
     for (const l of wheels) l(w);
     expect(handed).toEqual([w]);
+  });
+
+  it("carries the editor's grid and overlays, its fog toggle and the pointer over to the game", async () => {
+    await game.offer(entry, true, { x: 336, y: 1840 });
+    const held = game.hold(entry, 0, false, 1);
+    finishLoad();
+    await held;
+    // Everyone's eyes: the editor's Fog of War shows off, and a press on it is Aftermath's to answer.
+    expect(fogs).toEqual([false]);
+    spec.onFog?.(true);
+    expect(fogAsked).toEqual([true]);
+    game.eyes(2);
+    expect(fogs).toEqual([false, true]);
+    // What the editor draws over a map is drawn under Aftermath's marks each time the game moves, and when asked.
+    report(480);
+    expect(painted).toBe(1);
+    spec.onRepaint?.();
+    expect(painted).toBe(2);
+    // The pointer's map pixel goes to the status bar while the game is shown.
+    for (const l of pointerListeners) l({ x: 100, y: 200 });
+    for (const l of pointerListeners) l(null);
+    expect(pointers).toEqual([{ x: 100, y: 200 }, null]);
   });
 
   it("shows the game anyway when it never says it got there", async () => {

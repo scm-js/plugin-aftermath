@@ -508,10 +508,28 @@ export function activate(api: PluginApi) {
     state: (text) => { gameState = text; strip?.update(); showBusy(); },
     seeking: () => { strip?.update(); showBusy(); },
     hover: (h) => showHover(h),
+    fog: (on) => fogFromEditor(on),
   }, "Replay", {
     loading: (name) => t("Loading {name}…", { name }),
     failed: (message) => t("The game could not be shown: {message}", { message }),
   });
+  /** Whose eyes each replay was last seen through, for View ▸ Fog of War turned on again. */
+  const lastEyes = new Map<number, number>();
+  /**
+   * View ▸ Fog of War (and its button) over the game: the fog is a player's eyes', so on is through the eyes last
+   * chosen for this replay (the first player's at first) and off is everyone's, as the Vision menu has them.
+   */
+  function fogFromEditor(on: boolean): void {
+    const entry = current;
+    if (!entry || !game.holds(entry.id) || on === (entry.eyes !== null)) return;
+    if (on) entry.eyes = lastEyes.get(entry.id) ?? entry.report.players[0]?.player.slot ?? null;
+    else { if (entry.eyes !== null) lastEyes.set(entry.id, entry.eyes); entry.eyes = null; }
+    game.eyes(entry.eyes);
+    follow();
+    redraw();
+    strip?.render();
+  }
+
   /* ── The tooltip over the game: what the console would have said of the unit under the pointer ── */
 
   let lastHover: ViewHover | null = null;
@@ -3212,6 +3230,7 @@ export function activate(api: PluginApi) {
       ], { value: entry.eyes ?? -1, title: t("Whose eyes the game is seen through: one player's shows only what they could see, with the fog of war"), onChange: (v) => {
         const slot = Number(v);
         entry.eyes = slot < 0 ? null : slot;
+        if (entry.eyes !== null) lastEyes.set(entry.id, entry.eyes);
         if (game.holds(entry.id)) game.eyes(entry.eyes);
         // (Spectate follows the player whose eyes these are.)
         follow();
