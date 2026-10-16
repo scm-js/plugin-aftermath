@@ -125,15 +125,16 @@ describe("the cards on screen", () => {
 });
 
 describe("the whole game as one cast", () => {
-  it("plays the quiet stretches fast between the key fights, with no gap and no cut", () => {
+  it("plays every minute at normal speed, the quiet parts cut into stretches of about two and a half minutes, with no gap and no cut", () => {
     const segs = castSegments([fight(S(300), S(320)), fight(S(600), S(630))], S(900));
-    expect(segs.map((c) => [Math.round(c.from * 0.042), Math.round(c.to * 0.042), c.speed, c.fights.length])).toEqual([
-      [0, 280, 2, 0], [280, 326, 1, 1], [326, 580, 6, 0], [580, 636, 1, 1], [636, 900, 16, 0],
+    expect(segs.map((c) => [Math.round(c.from * 0.042), Math.round(c.to * 0.042), c.speed, c.fights.length, !!c.quiet])).toEqual([
+      [0, 140, 1, 0, true], [140, 280, 1, 0, true], [280, 326, 1, 1, false], [326, 453, 1, 0, true], [453, 580, 1, 0, true],
+      [580, 636, 1, 1, false], [636, 768, 1, 0, true], [768, 900, 1, 0, true],
     ]);
   });
 
-  it("is played fast from end to end when nothing was key", () => {
-    expect(castSegments([], S(600)).map((c) => c.speed)).toEqual([5]);
+  it("is quiet stretches from end to end when nothing was key", () => {
+    expect(castSegments([], S(600)).map((c) => [c.speed, c.quiet])).toEqual([[1, true], [1, true], [1, true], [1, true]]);
   });
 });
 

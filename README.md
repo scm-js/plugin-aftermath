@@ -151,8 +151,9 @@ they do not see micro or spells, and say nothing about the players beyond their 
 
 **Cast…** opens a window with the choices:
 
-- **Format**: the whole game, played fast through the quiet parts and at normal speed for
-  the key fights with no cuts (about half the length of the game), or the key moments only.
+- **Format**: the whole game at normal speed with no cuts, as long as the game itself, or
+  the key moments only: each key fight from a little before it to a little after, also at
+  normal speed, with cuts between them (about a third of the length, and of the price).
 - **Banter**: none, some or lots — what the two talk about when little is happening. Each
   cast gives them a new pair of odd interests to bring up.
 - **Voices** or **captions only**, and **cards**: when the commentators talk about an
@@ -171,12 +172,24 @@ ones watched longest ago are let go. Casts are kept per browser and site: anothe
 or the desktop app has its own.
 
 While a cast plays, pausing pauses the voices and going somewhere else on the timeline ends
-it. Where the game itself is shown (the Game view), **Cinematic** takes it full screen
-without the editor: a broadcast bar with each player's numbers and the clock, a title card,
-a banner when a key fight begins, the winner at the end, and larger captions. It also plays
-the game's music for one of the races in the game, picked each time, the way the game would.
-While a caster talks, the game's sounds and music go quieter, and come back up between
-lines. Esc leaves.
+it. While a caster talks, the game's sounds and music go quieter, and come back up between
+lines.
+
+### Cinematic view
+
+Where the game itself is shown (the Game view), **Cinematic** on the timeline takes it full
+screen without the editor, for any replay: a broadcast bar with each player's supply,
+workers and army and the clock, a title card, and the minimap in the bottom left (press or
+drag on it to look there). Moving the pointer shows the controls: play and pause, the speed,
+**Follow** (the camera on the action, as Spectate has it, or left where you put it),
+**Minimap**, and the cast. It asks the game for music of one of the races in the game,
+picked each time; the music comes from the game's own files, so a game page without them
+plays none. Esc leaves.
+
+With a cast made for the replay, **Watch cast** starts it from inside the view, and the cast
+takes over at its own settings: normal speed and the camera following the action. It adds
+the captions, larger, a banner when a key fight begins, the cards and the winner at the end.
+**Stop cast** gives the speed back and stays in the view.
 
 ### Map stats: many replays of one map
 

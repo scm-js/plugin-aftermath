@@ -71,21 +71,23 @@ export interface Estimate {
 }
 
 /**
- * A cast's likely cost and time, from what the first casts measured (a whole game of twenty minutes: about $0.45 of
- * script and 5,400 characters of voice, ten minutes on screen, two to three minutes to make; its key moments about
- * half of each). `seconds` is how long it will be on screen; `usdPer1kChars` the server's price for voicing, or null
+ * A cast's likely cost and time, from what the casts measured. Fast-forwarded (before 0.14), nine minutes on screen of a
+ * 26-minute game took about $0.41 of script, 5,500 characters of voice ($1.66) and two minutes to make; a whole game at
+ * normal speed talks less of the time (about two thirds between the fights) and is written at about the same pace per
+ * minute on screen. `seconds` is how long it will be on screen; `usdPer1kChars` the server's price for voicing, or null
  * for captions only.
  */
 export function estimate(seconds: number, options: CastOptions, usdPer1kChars: number | null): Estimate {
   const minutes = seconds / 60;
   const banter = options.banter === "lots" ? 1.1 : options.banter === "off" ? 0.9 : 1;
-  const chars = minutes * 540 * banter;
+  // (Key moments are fights, talked over more; a whole game is mostly quiet stretches.)
+  const chars = minutes * (options.format === "game" ? 450 : 540) * banter;
   const scriptUsd = 0.12 + minutes * 0.033;
   return {
     scriptUsd,
     voiceUsd: usdPer1kChars === null ? 0 : (chars / 1000) * usdPer1kChars,
     minutes,
-    making: options.format === "game" ? [2, 3] : [1, 2],
+    making: [Math.max(1, Math.round(minutes * 0.15)), Math.max(2, Math.round(minutes * 0.3))],
   };
 }
 

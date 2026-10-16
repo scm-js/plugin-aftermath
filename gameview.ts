@@ -43,6 +43,8 @@ export interface Held {
 export interface GameViewHooks {
   /** The frame the viewer shows, for the replay it holds. */
   frame(id: number, f: ViewFrame): void;
+  /** New squares for the minimap came (the cinematic view draws its own). */
+  units?(): void;
   /** The person moved the game's camera (the arrows, or the editor's minimap). */
   movedByUser(): void;
   /** The tab in front changed between the map and the game. */
@@ -230,6 +232,39 @@ export class GameView {
     }
   }
 
+  /**
+   * The game's minimap in a square of `ctx` (CSS pixels, from `x`, `y`, `size` a side), for the cinematic view: the
+   * ground given (the map's picture), the game's fog and squares over it, and a box where the game looks. `map` is the
+   * map's size in pixels. The map is centred in the square, as the editor's minimap has it.
+   */
+  drawMinimap(ctx: CanvasRenderingContext2D, at: { x: number; y: number; size: number }, map: { width: number; height: number }, ground: CanvasImageSource | null): void {
+    const scale = at.size / Math.max(map.width, map.height, 1);
+    const ox = at.x + (at.size - map.width * scale) / 2, oy = at.y + (at.size - map.height * scale) / 2;
+    const m: MinimapView = { scale, size: at.size, x: (px) => ox + px * scale, y: (py) => oy + py * scale };
+    ctx.save();
+    ctx.fillStyle = "rgba(6,8,12,0.9)";
+    ctx.fillRect(at.x - 3, at.y - 3, at.size + 6, at.size + 6);
+    ctx.beginPath(); ctx.rect(ox, oy, map.width * scale, map.height * scale); ctx.clip();
+    if (ground) { ctx.imageSmoothingEnabled = true; ctx.drawImage(ground, ox, oy, map.width * scale, map.height * scale); }
+    this.drawUnits(ctx, m);
+    const look = this.looking;
+    if (look && this.loaded) {
+      ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1;
+      ctx.strokeRect(Math.round(m.x(look.x - look.width / 2)) + 0.5, Math.round(m.y(look.y - look.height / 2)) + 0.5, look.width * scale, look.height * scale);
+    }
+    ctx.restore();
+    ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 1;
+    ctx.strokeRect(at.x - 3.5, at.y - 3.5, at.size + 7, at.size + 7);
+  }
+
+  /** The map pixel under a point of a minimap drawn by `drawMinimap` with the same square and map, or null outside it. */
+  static minimapAt(px: number, py: number, at: { x: number; y: number; size: number }, map: { width: number; height: number }): { x: number; y: number } | null {
+    const scale = at.size / Math.max(map.width, map.height, 1);
+    const ox = at.x + (at.size - map.width * scale) / 2, oy = at.y + (at.size - map.height * scale) / 2;
+    const x = (px - ox) / scale, y = (py - oy) / scale;
+    return x >= 0 && y >= 0 && x <= map.width && y <= map.height ? { x, y } : null;
+  }
+
   /** The fog of these squares as a picture a pixel a tile; null when there is none (the fog off, or an older game page). */
   private fogOf(u: ViewUnits): HTMLCanvasElement | null {
     if (!u.fog || !u.wide) return null;
@@ -324,7 +359,7 @@ export class GameView {
     // (scm-sim before 0.6.0 sends no squares: the editor's minimap then shows the ground alone.)
     // (scm-sim before 0.6.0 says nothing of the pointer: there is no tooltip.)
     if (typeof view.onHover === "function") this.subs.push(view.onHover((h) => this.hooks.hover(this.loaded && this.shown ? h : null)));
-    if (typeof view.onUnits === "function") this.subs.push(view.onUnits((u) => { if (!this.loaded) return; this.units = u; this.handle.redrawMinimap?.(); }));
+    if (typeof view.onUnits === "function") this.subs.push(view.onUnits((u) => { if (!this.loaded) return; this.units = u; this.handle.redrawMinimap?.(); this.hooks.units?.(); }));
     return view;
   }
 

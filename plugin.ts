@@ -86,6 +86,8 @@ interface Settings {
   /** The next cast voiced or in captions only, and the notes for its commentators. */
   castVoiced: boolean;
   castNotes: string;
+  /** The cinematic view's minimap, bottom left. */
+  cinemaMinimap: boolean;
   /**
    * 2 from 0.8, when the army lead and the summary came; 3 when the map's marks went into views; 4 when the views became
    * switches; 5 when Map stats came, its heat counting the same games as its marks, always whole.
@@ -93,7 +95,7 @@ interface Settings {
   version: number;
 }
 
-const DEFAULTS: Settings = { orders: false, legend: true, heat: "losses", speed: 8, workers: false, chart: "lead", tab: "summary", insightTab: "economy", resource: "both", insightMetric: "income", castFormat: "game", castBanter: "light", castCards: true, castVoiced: true, castNotes: "", version: 5 };
+const DEFAULTS: Settings = { orders: false, legend: true, heat: "losses", speed: 8, workers: false, chart: "lead", tab: "summary", insightTab: "economy", resource: "both", insightMetric: "income", castFormat: "game", castBanter: "light", castCards: true, castVoiced: true, castNotes: "", cinemaMinimap: true, version: 5 };
 
 interface Loaded {
   id: number;
@@ -223,7 +225,10 @@ const STYLE = `
 .afm-cinema-layer.afm-awake { cursor: default; }
 .afm-cinema-controls { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; gap: 8px; opacity: 0; transition: opacity 0.25s; }
 .afm-cinema-layer.afm-awake .afm-cinema-controls { opacity: 1; }
-.afm-cinema-controls button { font: 600 13px system-ui, sans-serif; padding: 7px 14px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.25); background: rgba(10,12,16,0.8); color: #f0f3f8; cursor: pointer; }
+.afm-cinema-controls button, .afm-cinema-controls select { font: 600 13px system-ui, sans-serif; padding: 7px 14px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.25); background: rgba(10,12,16,0.8); color: #f0f3f8; cursor: pointer; }
+.afm-cinema-controls button[aria-pressed="true"] { border-color: #4fd1c5; background: rgba(79,209,197,0.22); }
+.afm-cinema-controls select { padding: 7px 8px; }
+.afm-cinema-controls select:disabled { opacity: 0.6; cursor: default; }
 @media (prefers-reduced-motion: reduce) { .afm-cinema-controls { transition: none; } }
 .afm-cast-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 14px; }
 .afm-cast-head .afm-dim { font-variant-numeric: tabular-nums; }
@@ -497,6 +502,7 @@ export function activate(api: PluginApi) {
       showBusy();
     },
     movedByUser: () => letGo(),
+    units: () => { if (cinema.on && settings.cinemaMinimap) game.redrawOver(); },
     shown: (on) => handOver(on),
     state: (text) => { gameState = text; strip?.update(); showBusy(); },
     seeking: () => { strip?.update(); showBusy(); },
@@ -949,6 +955,7 @@ export function activate(api: PluginApi) {
     if (on) follow();
     redraw();
     strip?.update();
+    cinema.refresh?.();
   }
 
   /** What the camera shows, in words, for the line at the top of the map. */
@@ -983,6 +990,7 @@ export function activate(api: PluginApi) {
     if (lensOf() === "map") showStats(false);
     if (current.frame >= current.report.frames) current.frame = 0;
     playing = true;
+    cinema.refresh?.();
     if (gameClock()) { game.play(true); strip?.update(); return; }
     runClock();
     strip?.update();
@@ -1009,6 +1017,7 @@ export function activate(api: PluginApi) {
     cancelAnimationFrame(raf);
     game.play(false);
     strip?.update();
+    cinema.refresh?.();
   }
 
   /** The player's keys, taken only while a replay's tab is in front: elsewhere they are the editor's. */
@@ -1323,7 +1332,7 @@ export function activate(api: PluginApi) {
     casting.error = null;
     casting.speed = settings.speed;
     casting.made = made;
-    cinema.castStarted = performance.now();
+    cinema.titleAt = performance.now();
     cinema.lastMoment = -1;
     cinema.banner = null;
     setFollowing(true);
@@ -1342,6 +1351,7 @@ export function activate(api: PluginApi) {
     }, made.input.moments, made.plan, made.voices, made.voices.some(Boolean) ? ctx : (void ctx?.close(), null));
     casting.reel.start();
     strip?.render();
+    cinema.refresh?.();
   }
 
   /** Stop the cast playing, and give the replay its speed back. */
@@ -1351,7 +1361,7 @@ export function activate(api: PluginApi) {
     casting.reel = null;
     casting.made = null;
     casting.entry = null;
-    void setCinema(false);
+    // (The cinematic view stays: it is the game's, a cast only dresses it more.)
     if (reel) {
       reel.stop();
       settings.speed = casting.speed;
@@ -1360,6 +1370,7 @@ export function activate(api: PluginApi) {
     }
     redraw();
     strip?.render();
+    cinema.refresh?.();
   }
 
   /** What the making is at, in a few words, for the strip and the window. */
@@ -1537,7 +1548,29 @@ export function activate(api: PluginApi) {
    */
   /** The game's sounds and music while a caster talks: this fraction of their loudness. */
   const UNDER_VOICE = 0.35;
-  const cinema = { on: false, controls: null as HTMLElement | null, idle: 0, castStarted: 0, lastMoment: -1, banner: null as { text: string; at: number } | null };
+  const cinema = {
+    on: false, controls: null as HTMLElement | null, idle: 0, lastMoment: -1, banner: null as { text: string; at: number } | null,
+    /** When the title card was put up: on going full screen, and when a cast starts. */
+    titleAt: 0,
+    /** Draws the controls again (what plays, the speed, the cast) when something they show has changed. */
+    refresh: null as (() => void) | null,
+  };
+  /** Each replay's map as a picture, for the cinematic view's minimap: asked for once, null when it could not be made. */
+  const grounds = new WeakMap<Loaded, ImageBitmap | null | "asking">();
+  function groundOf(entry: Loaded): ImageBitmap | null {
+    const have = grounds.get(entry);
+    if (have !== undefined) return have === "asking" ? null : have;
+    grounds.set(entry, "asking");
+    // (The replay's map is the one in front while its game is shown.)
+    void api.document.renderImage({ pixelsPerTile: 2, units: false, sprites: true, locations: false, locationNames: false, startLocations: false, fog: false, grid: 0 })
+      .then((png) => (png ? createImageBitmap(png) : null))
+      .catch(() => null)
+      .then((bmp) => { grounds.set(entry, bmp); if (cinema.on) game.redrawOver(); });
+    return null;
+  }
+  /** Where the cinematic view's minimap goes: the bottom left, a square of up to a quarter of the screen's height. */
+  const minimapBox = (H: number) => { const size = Math.round(Math.max(120, Math.min(240, H * 0.26))); return { x: 18, y: H - size - 18, size }; };
+  const mapPixels = (entry: Loaded) => ({ width: entry.map.width * 32, height: entry.map.height * 32 });
   /** The cinematic view needs the Game view: the game drawn by its engine, in an element of Aftermath's own. */
   const cinemaPossible = () => !!current && game.shown && game.holds(current.id) && typeof game.root?.requestFullscreen === "function";
 
@@ -1562,20 +1595,71 @@ export function activate(api: PluginApi) {
     game.music(on && current ? musicRace(current) : null);
     cinema.controls?.remove();
     cinema.controls = null;
+    cinema.refresh = null;
     if (on && root) {
-      // Over the game, a layer that hears the pointer (the game's own page would take it): moving shows the controls.
+      cinema.titleAt = performance.now();
+      // Over the game, a layer that hears the pointer (the game's own page would take it): moving shows the controls, and
+      // a press on the minimap looks there.
       const layer = el("div", { className: "afm-cinema-layer" });
-      const pause = el("button", { type: "button" }, playing ? t("Pause") : t("Play")) as HTMLButtonElement;
-      const exit = el("button", { type: "button" }, t("Leave the cinematic view")) as HTMLButtonElement;
-      pause.addEventListener("click", (e) => { e.stopPropagation(); if (playing) stop(); else play(); pause.textContent = playing ? t("Pause") : t("Play"); });
-      exit.addEventListener("click", (e) => { e.stopPropagation(); void setCinema(false); });
-      const bar = el("div", { className: "afm-cinema-controls" }, pause, exit);
+      const bar = el("div", { className: "afm-cinema-controls" });
+      const button = (label: string, onClick: () => void, pressed?: boolean) => {
+        const b = el("button", { type: "button" }, label) as HTMLButtonElement;
+        if (pressed !== undefined) { b.setAttribute("aria-pressed", String(pressed)); b.classList.toggle("afm-on", pressed); }
+        b.addEventListener("click", (e) => { e.stopPropagation(); onClick(); render(); });
+        return b;
+      };
+      // What the controls offer: play or pause, the speed (the cast's own while one plays: it takes the game at 1×), the
+      // camera following the action or left where it is put, the minimap, and the cast — watch the one made, or stop it.
+      const render = () => {
+        const entry = current;
+        const casts = !!entry && casting.entry === entry;
+        const speed = el("select", { title: casts ? t("The cast plays the game at its own speed") : t("Playback speed") }) as HTMLSelectElement;
+        for (const n of [1, 2, 4, 8, 16]) speed.append(el("option", { value: String(n) }, `${n}×`));
+        speed.value = String(settings.speed);
+        speed.disabled = casts;
+        speed.addEventListener("click", (e) => e.stopPropagation());
+        speed.addEventListener("change", () => { settings.speed = Number(speed.value); save(); if (gameClock()) game.speed(settings.speed); strip?.render(); speed.blur(); });
+        const watchKey = entry ? ready.get(entry.id) ?? keptFor.get(entry.id) : undefined;
+        const cast = !entry ? null
+          : casts ? button(t("Stop cast"), () => endCast())
+          : watchKey ? button(t("Watch cast"), () => {
+            const ctx = new AudioContext();
+            void madeOf(entry, watchKey).then((made) => { if (made) void watchCast(made, ctx); else void ctx.close(); });
+          })
+          : null;
+        bar.replaceChildren(
+          button(playing ? t("Pause") : t("Play"), () => { if (playing) stop(); else play(); }),
+          speed,
+          button(t("Follow"), () => setFollowing(!cam.following), cam.following),
+          button(t("Minimap"), () => { settings.cinemaMinimap = !settings.cinemaMinimap; save(); game.redrawOver(); }, settings.cinemaMinimap),
+          ...(cast ? [cast] : []),
+          button(t("Leave the cinematic view"), () => { void setCinema(false); }),
+        );
+      };
+      render();
+      cinema.refresh = render;
       layer.append(bar);
-      layer.addEventListener("pointermove", () => {
+      const wake = () => {
+        if (!layer.classList.contains("afm-awake")) render();
         layer.classList.add("afm-awake");
         clearTimeout(cinema.idle);
         cinema.idle = window.setTimeout(() => layer.classList.remove("afm-awake"), 2500);
-      });
+      };
+      // The minimap: a press, and a drag from it, moves the camera there (and the camera stops following).
+      let dragging = false;
+      const lookFrom = (e: PointerEvent): boolean => {
+        const entry = current;
+        if (!entry || !settings.cinemaMinimap) return false;
+        const r = layer.getBoundingClientRect();
+        const at = GameView.minimapAt(e.clientX - r.left, e.clientY - r.top, minimapBox(r.height), mapPixels(entry));
+        if (!at) return false;
+        if (cam.following) setFollowing(false);
+        game.camera(at.x, at.y);
+        return true;
+      };
+      layer.addEventListener("pointerdown", (e) => { if (lookFrom(e)) { dragging = true; layer.setPointerCapture(e.pointerId); } });
+      layer.addEventListener("pointermove", (e) => { wake(); if (dragging) lookFrom(e); });
+      layer.addEventListener("pointerup", () => { dragging = false; });
       root.append(layer);
       cinema.controls = layer;
     }
@@ -1641,28 +1725,34 @@ export function activate(api: PluginApi) {
     ctx.restore();
   }
 
-  /** The broadcast's dress over the game, in the cinematic view: the bar, the title, a key fight's banner, the result. */
+  /**
+   * The broadcast's dress over the game, in the cinematic view: the bar, the minimap, the title; and with a cast, a key
+   * fight's banner and the result.
+   */
   function cinemaDress(ctx: CanvasRenderingContext2D, entry: Loaded): void {
     const frame = (gameClock() ? game.frameNow(settings.speed) : null) ?? entry.frame;
     broadcastBar(ctx, entry, frame);
-    const reel = casting.reel, made = casting.made;
-    if (!reel || !made || casting.entry !== entry) return;
+    const dpr = window.devicePixelRatio || 1;
+    if (settings.cinemaMinimap) game.drawMinimap(ctx, minimapBox(ctx.canvas.height / dpr), mapPixels(entry), groundOf(entry));
     const now = performance.now();
-    const players = entry.report.players.filter((p) => made.input.game.players.some((q) => q.id === p.player.index));
+    const tl = entry.played?.timeline;
+    const players = entry.report.players.filter((p) => !tl || tl.samples.players.some((q) => q.slot === p.player.index));
     // The title, for the first seconds.
-    const since = (now - cinema.castStarted) / 1000;
+    const since = (now - cinema.titleAt) / 1000;
     if (since < 6 && players.length >= 2) {
       centreCard(ctx, [
         { text: `${players[0].player.name}  vs  ${players[1].player.name}`, font: "800 34px system-ui, sans-serif", colour: "#f4f6fa" },
         { text: mapTitle(entry), font: "600 16px system-ui, sans-serif", colour: "#9aa3b2" },
       ], since < 5 ? 1 : 6 - since);
     }
+    const reel = casting.reel, made = casting.made;
+    if (!reel || !made || casting.entry !== entry) return;
     // A banner when a key fight begins.
     const at = reel.progress().moment;
     if (at !== cinema.lastMoment) {
       cinema.lastMoment = at;
       const m = made.input.moments[at];
-      if (m && (m.speed ?? 1) === 1 && m.title) cinema.banner = { text: m.title, at: now };
+      if (m && (m.speed ?? 1) === 1 && !m.quiet && m.title) cinema.banner = { text: m.title, at: now };
     }
     const b = cinema.banner;
     if (b && now - b.at < 6000) {
@@ -1738,7 +1828,9 @@ export function activate(api: PluginApi) {
     const who = said.speaker === "caster" ? t("Caster") : t("Analyst");
     const big = cinema.on, size = big ? 22 : 15;
     ctx.font = `500 ${size}px system-ui, sans-serif`;
-    const maxW = Math.min(big ? 1000 : 720, viewW - 40);
+    // (Clear of the cinematic view's minimap, bottom left: the box stays centred, so it keeps that far from either side.)
+    const clear = big && settings.cinemaMinimap ? minimapBox(viewH).size + 40 : 20;
+    const maxW = Math.max(240, Math.min(big ? 1000 : 720, viewW - 2 * clear - 28));
     const words = said.text.split(" "), rows: string[] = [];
     let row = "";
     for (const word of words) {
@@ -3106,7 +3198,7 @@ export function activate(api: PluginApi) {
         : null;
       // (With a cast to watch, the window — a new cast, the others kept — is a button of its own.)
       const castMore = castButton && castState === "ready" ? w.button(t("Cast…"), { className: "sm", title: t("Make a new cast, or watch another kept in this browser"), onClick: () => openCastWindow() }) : null;
-      const cinemaButton = castButton && castState === "playing" && cinemaPossible()
+      const cinemaButton = cinemaPossible()
         ? w.button(t("Cinematic"), { className: "sm", title: t("The game full screen, dressed as a broadcast, without the editor around it. Esc leaves."), onClick: () => { void setCinema(true); } })
         : null;
       const castCardsButton = castButton && castState === "playing" ? toggle(t("Cards"), () => { settings.castCards = !settings.castCards; save(); redraw(); this.render(); }) : null;
