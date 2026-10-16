@@ -31,6 +31,8 @@ const SEEK_STALL_MS = 4000;
 const MINIMAP_MS = 66;
 /** A game that has not said it looks where it was sent is shown anyway after this long (a look the game cannot take). */
 const SETTLE_MS = 600;
+/** The rows of the map the game shows top to bottom (its 640 by 480 screen): the scale a replay opens at. */
+const GAME_ROWS = 480;
 
 /** What the Game view needs of a replay. */
 export interface Held {
@@ -316,15 +318,15 @@ export class GameView {
   }
 
   /**
-   * Offer the Game view on a replay's tab, and show it there when `show`: looking at `start` (map pixels) at the map's
-   * own scale, rather than where the editor's view stood when the tab came in.
+   * Offer the Game view on a replay's tab, and show it there when `show`: looking at `start` (map pixels) at the game's
+   * own scale (`GAME_ROWS` across the frame's height), rather than where the editor's view stood when the tab came in.
    */
   async offer(entry: Held, show: boolean, start?: { x: number; y: number }): Promise<boolean> {
     if (entry.docId === null || !(await this.available())) return false;
     this.handle.offer(true, entry.docId);
     if (show) this.handle.show(true, entry.docId);
     // (After the show: the editor's `onShow` comes in during it.)
-    if (show && start && !this.holds(entry.id)) this.look = { x: start.x, y: start.y, width: 0, height: 0 };
+    if (show && start && !this.holds(entry.id)) this.look = { x: start.x, y: start.y, width: 0, height: GAME_ROWS };
     return true;
   }
 

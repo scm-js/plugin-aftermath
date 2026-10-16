@@ -72,18 +72,18 @@ describe("the Game view opening a replay", () => {
   const entry = { id: 1, fileName: "a.rep", bytes: new Uint8Array(1), docId: 7, eyes: null };
   const report = (height: number) => { for (const l of cameras) l({ x: 0, y: 0, width: height * 1.7, height, byUser: false }); };
 
-  it("looks at the start at the map's scale, not where the editor stood, and hides the game until it does", async () => {
+  it("looks at the start at the game's own scale, not where the editor stood, and hides the game until it does", async () => {
     await game.offer(entry, true, { x: 336, y: 1840 });
     const held = game.hold(entry, 0, false, 1);
     expect(element.classList.contains("afm-settling")).toBe(true);
     finishLoad();
     await held;
-    // The frame is 700 pixels tall: 700 map pixels at the map's own scale.
-    expect(sent).toEqual([{ x: 336, y: 1840, height: 700 }]);
-    // Where the game opens on its own (480 rows) is not shown.
-    report(480);
-    expect(element.classList.contains("afm-settling")).toBe(true);
+    // The game's 480 rows, whatever the frame's height (700 here, which would be the map's own scale).
+    expect(sent).toEqual([{ x: 336, y: 1840, height: 480 }]);
+    // Until the game says it looks at that scale, it stays hidden.
     report(700);
+    expect(element.classList.contains("afm-settling")).toBe(true);
+    report(480);
     expect(element.classList.contains("afm-settling")).toBe(false);
   });
 
@@ -92,7 +92,7 @@ describe("the Game view opening a replay", () => {
     const held = game.hold(entry, 0, false, 1);
     finishLoad();
     await held;
-    report(700);
+    report(480);
     sent.length = 0;
     spec.onZoom?.({ x: 1000, y: 900, width: 2400, height: 1400 });
     expect(sent).toEqual([{ x: 1000, y: 900, height: 1400 }]);

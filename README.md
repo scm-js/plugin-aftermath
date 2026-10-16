@@ -291,7 +291,8 @@ the other keys stay Aftermath's. The game is shown without its console: the edit
 minimap shows the game's units as the game's own minimap would, its box is where the game
 looks, and a press or a drag on it moves the game's camera there. Switching between the
 replay and the map keeps your place: each opens where the other was looking, at the same
-scale. View ▸ Zoom In and Zoom Out, the zoom levels, Zoom to Fit, the toolbar's magnifiers
+scale. A replay first opens at the game's own scale, showing as much of the map top to
+bottom as the game's screen does, on the first player's start. View ▸ Zoom In and Zoom Out, the zoom levels, Zoom to Fit, the toolbar's magnifiers
 and their keys zoom the replay while it is shown, and so does Ctrl with the mouse wheel over
 it (or the wheel alone, if the editor's preferences say the wheel zooms). Spectate's camera
 keeps following at the new scale. The replay can show from half to four times as much of the
