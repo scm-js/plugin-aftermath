@@ -2337,6 +2337,7 @@ function hardestHit(f) {
 
 // gameview.ts
 var SEEK_GIVE_UP_MS = 2500;
+var SEEK_STALL_MS = 4e3;
 var MINIMAP_MS = 66;
 var SETTLE_MS = 600;
 var GameView = class {
@@ -2651,6 +2652,7 @@ var GameView = class {
         const a = this.aiming;
         if (a) {
           if (f.seeking !== null) {
+            if (f.seeking !== a.at) a.moved = performance.now();
             a.sawSeeking = true;
             a.from ??= f.seeking;
             a.at = f.seeking;
@@ -2849,14 +2851,16 @@ var GameView = class {
   seek(frame) {
     if (!this.view) return;
     this.arrived();
-    const a = { frame: Math.round(frame), sawSeeking: false, from: null, at: null, sent: performance.now(), timer: 0 };
+    const sent = performance.now();
+    const a = { frame: Math.round(frame), sawSeeking: false, from: null, at: null, sent, moved: sent, timer: 0 };
     a.timer = window.setInterval(() => {
       const h = this.heard, now = performance.now();
-      if (this.aiming !== a || !h || h.at < a.sent || h.f.seeking !== null) return;
-      if (now - a.sent < SEEK_GIVE_UP_MS || now - h.at < 1e3) return;
+      if (this.aiming !== a || !h || h.at < a.sent || now - a.sent < SEEK_GIVE_UP_MS) return;
+      if (h.f.seeking !== null ? now - a.moved < SEEK_STALL_MS : !h.f.playing && now - h.at < 1e3) return;
       this.arrived();
-      this.said = { frame: h.f.frame, at: now, playing: h.f.playing };
-      if (this.holding !== null && this.wanted === null) this.hooks.frame(this.holding, h.f);
+      const f = { ...h.f, seeking: null };
+      this.said = { frame: f.frame, at: now, playing: f.playing };
+      if (this.holding !== null && this.wanted === null) this.hooks.frame(this.holding, f);
     }, 500);
     this.aiming = a;
     this.view.seek(Math.round(frame));
