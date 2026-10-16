@@ -24,6 +24,8 @@ import { FRAME_MS } from "./replay";
 
 /** A seek the viewer says is over but that has shown no frame near where it went is settled after this long. */
 const SEEK_GIVE_UP_MS = 2500;
+/** A seek whose progress has not moved for this long is taken as over where it stopped (a game that ended short of it). */
+const SEEK_STALL_MS = 4000;
 
 /** The editor's minimap follows the game's camera at most this often (each move redraws it). */
 const MINIMAP_MS = 66;
@@ -79,7 +81,7 @@ export class GameView {
    * A seek asked for and not yet arrived: until the viewer shows a frame there, what it says it shows is the moment
    * it is leaving (it reports the frame on screen while it runs ahead), which is not the clock any more.
    */
-  private aiming: { frame: number; sawSeeking: boolean; from: number | null; at: number | null; sent: number; timer: number } | null = null;
+  private aiming: { frame: number; sawSeeking: boolean; from: number | null; at: number | null; sent: number; moved: number; timer: number } | null = null;
   /** The viewer's last word on the frame, and when (performance.now): what a seek that never arrives settles for. */
   private heard: { f: ViewFrame; at: number } | null = null;
   /**
@@ -346,7 +348,7 @@ export class GameView {
         const a = this.aiming;
         if (a) {
           // (On its way the viewer says how far the engine has run: `seeking` is that frame.)
-          if (f.seeking !== null) { a.sawSeeking = true; a.from ??= f.seeking; a.at = f.seeking; this.hooks.seeking(); return; }
+          if (f.seeking !== null) { if (f.seeking !== a.at) a.moved = performance.now(); a.sawSeeking = true; a.from ??= f.seeking; a.at = f.seeking; this.hooks.seeking(); return; }
           // There (within two seconds: the game moves on while the answer comes), or a seek that ended elsewhere: past
           // the end, short of where it was sent and no nearer the start than the engine had run. A frame that says the
           // seek is over while it still shows where the seek began is not the end of it.
@@ -531,17 +533,24 @@ export class GameView {
   seek(frame: number): void {
     if (!this.view) return;
     this.arrived();
-    const a = { frame: Math.round(frame), sawSeeking: false, from: null, at: null, sent: performance.now(), timer: 0 };
-    // A seek the viewer says is over without ever showing a frame near where it was sent — a play page from before
-    // 2026-10-16 showed an old frame for a seek that took no step (to 0:00, or to where the game stood), and paused,
-    // nothing came after — is taken as over at the frame it shows, rather than waited on for good.
+    const sent = performance.now();
+    const a = { frame: Math.round(frame), sawSeeking: false, from: null, at: null, sent, moved: sent, timer: 0 };
+    // A seek is never waited on for good. Taken as over at the frame the game shows:
+    // - one the viewer says is over without showing a frame near where it was sent: a play page from before
+    //   2026-10-16 showed an old frame for a seek that took no step (to 0:00, or to where the game stood), and paused,
+    //   nothing came after. Playing, the frames keep coming, so the latest is taken once the seek has had its time
+    //   (one that lands and plays on past the mark before the viewer says so);
+    // - one still said to be on its way whose progress has stopped: the game ended short of where it was sent (the
+    //   engine stops where the replay goes wrong for it), and a play page from before 2026-10-17 never said that seek
+    //   was over.
     a.timer = window.setInterval(() => {
       const h = this.heard, now = performance.now();
-      if (this.aiming !== a || !h || h.at < a.sent || h.f.seeking !== null) return;
-      if (now - a.sent < SEEK_GIVE_UP_MS || now - h.at < 1000) return;
+      if (this.aiming !== a || !h || h.at < a.sent || now - a.sent < SEEK_GIVE_UP_MS) return;
+      if (h.f.seeking !== null ? now - a.moved < SEEK_STALL_MS : !h.f.playing && now - h.at < 1000) return;
       this.arrived();
-      this.said = { frame: h.f.frame, at: now, playing: h.f.playing };
-      if (this.holding !== null && this.wanted === null) this.hooks.frame(this.holding, h.f);
+      const f = { ...h.f, seeking: null };
+      this.said = { frame: f.frame, at: now, playing: f.playing };
+      if (this.holding !== null && this.wanted === null) this.hooks.frame(this.holding, f);
     }, 500);
     this.aiming = a;
     this.view.seek(Math.round(frame));
