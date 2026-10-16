@@ -26,8 +26,8 @@ Aftermath reads the orders without re-running the game, so it shows what players
 
 In the editor at scmjs.dev, Aftermath does more: every replay you open is analysed. The
 site's game engine plays the whole game through in the background, out of sight, to see
-what happened. You can watch the replay while it does. It needs your own copy of StarCraft
-given to the site (the Game Data page), and takes about fifteen seconds for a twenty-minute
+what happened. You can watch the replay while it does. It needs the game's files installed
+on the Game Data page (Blizzard's free map editor download is enough), and takes about fifteen seconds for a twenty-minute
 game. Several replays are analysed one after another; the timeline says how far it has got.
 The replay stays in your browser.
 
@@ -277,8 +277,8 @@ change). Switching tabs switches replays, each keeping its own place on the time
 closing the tab closes the replay. With an ordinary map in front, Aftermath's panels go
 away; **View ▸ Aftermath** opens the panel anyway, to drop replays on.
 
-**The replay, or the map.** In the editor at scmjs.dev, with your copy of StarCraft given to
-the site, a replay's tab opens on the **Replay**: the replay played out by the game's own code
+**The replay, or the map.** In the editor at scmjs.dev, with the game's files installed (Blizzard's
+map editor download is enough), a replay's tab opens on the **Replay**: the replay played out by the game's own code
 in the map's place, with its own graphics: Remastered's when your copy is Remastered and **View ▸ Remastered Graphics** is ticked, the classic ones otherwise. The switch in the top-left corner goes between it and the **Map**, the
 overhead view with Aftermath's marks, heat maps and Map stats. The timeline drives
 whichever is shown: Play, the speed, a press on the timeline, the keys and Spectate's
@@ -398,7 +398,8 @@ where units were sent, where buildings went, or the ground never entered, over e
 counted. The **Map stats** switch, **Spectate**, **Play**, a press on the timeline, or going
 to a fight brings the game back, on the tab you had open.
 
-The overlay is listed under **View ▸ Overlays** and switches off there like any other.
+The overlay has its own tick in the **View** menu and a row in the Layers panel, and switches
+off there like any other.
 Aftermath never changes a map.
 
 An editor from before view-only maps opens the replay's map as an ordinary tab, and an
