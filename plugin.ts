@@ -229,6 +229,11 @@ const STYLE = `
 .afm-cast-head .afm-dim { font-variant-numeric: tabular-nums; }
 .afm-cast-story { margin: 4px 0; padding: 8px 12px; border-left: 3px solid var(--accent, #4fd1c5); color: var(--text-dim, #99a2b3); font-style: italic; line-height: 1.45; max-height: 9em; overflow: auto; }
 .afm-cast-error { margin: 4px 0; color: var(--danger, #e05050); }
+.afm-cast-steps { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; }
+.afm-cast-step-todo { color: var(--text-dim, #99a2b3); opacity: 0.7; }
+.afm-cast-step-done { color: var(--text-dim, #99a2b3); }
+.afm-cast-step-now { font-weight: 600; }
+.afm-cast-step-error { color: var(--danger, #e05050); font-weight: 600; }
 .afm-cast-kept { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--border, rgba(255,255,255,0.08)); }
 .afm-cast-kept:last-child { border-bottom: none; }
 .afm-cast-kept > div:first-child { min-width: 0; }
@@ -1064,11 +1069,17 @@ export function activate(api: PluginApi) {
     stretches: number;
     cards: number;
     writing: Writing;
+    /** The server asked for the script again (its first answer did not fit); the lines the first one had. */
+    revising: number | null;
     voicedLines: number;
     lines: number;
     abort: AbortController;
     error: string | null;
+    /** What a failed making had done already, so Try again starts where it stopped: the script, and the voices made. */
+    script: { input: CastInput; game: CastGame; written: Written } | null;
+    clips: (ArrayBuffer | null)[];
   }
+  type Written = { lines: CastLine[]; storyline: string; interests?: { caster: string; analyst: string } };
   let making: Making | null = null;
   /** The cast just made for a replay (its key), until it is watched: the strip offers it. */
   const ready = new Map<number, string>();
@@ -1116,7 +1127,7 @@ export function activate(api: PluginApi) {
   }
 
   /** The script, streamed: how far it has got is told as it is written, and the storyline as soon as it is there. */
-  async function writeScript(input: CastInput, m: Making): Promise<{ lines: CastLine[]; storyline: string; interests?: { caster: string; analyst: string } }> {
+  async function writeScript(input: CastInput, m: Making): Promise<Written> {
     const a = account;
     if (!a) throw new Error(t("Sign in to scmjs.dev to make a cast."));
     const res = await fetch(`${a.serverUrl()}/v1/recipes/cast`, {
@@ -1127,16 +1138,18 @@ export function activate(api: PluginApi) {
       const json = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
       throw new Error(json?.error?.message ?? t("The server answered {status}.", { status: res.status }));
     }
-    let text = "", output: { lines: CastLine[]; storyline: string; interests?: { caster: string; analyst: string } } | null = null, failed: string | null = null;
+    let text = "", output: Written | null = null, failed: string | null = null;
     await readStream(res.body, (e: { event: string; [key: string]: unknown }) => {
       if (e.event === "thinking" && m.stage === "reading") { m.stage = "planning"; makingMoved(); }
       else if (e.event === "delta" && typeof e.text === "string") {
         text += e.text;
         // (A second answer — the server asking again — starts over.)
         const again = [...text.matchAll(/\{\s*"storyline"/g)];
-        if (again.length > 1) text = text.slice(again[again.length - 1].index);
+        if (again.length > 1) { m.revising ??= m.writing.lines; text = text.slice(again[again.length - 1].index); }
         m.stage = "writing";
-        m.writing = writingProgress(text);
+        // (The storyline stays shown while a second answer is written, until that one has its own.)
+        const now = writingProgress(text);
+        m.writing = { ...now, storyline: now.storyline ?? m.writing.storyline };
         makingMoved();
       } else if (e.event === "result") {
         output = e.output as typeof output;
@@ -1200,49 +1213,77 @@ export function activate(api: PluginApi) {
     return { key, input, lines, voices, plan, cards: new Map(castCards(game).map((c) => [c.id, c])) };
   }
 
-  /** Make a cast of a replay: write it (streamed), voice it in batches, time it, keep it. */
-  async function makeCast(entry: Loaded, options: CastOptions, voiced: boolean, notes: string): Promise<void> {
+  /**
+   * Make a cast of a replay: write it (streamed), voice it in batches, time it, keep it. `after` is a making that failed:
+   * what it had done is kept (the script, the voices made) and only the rest is done again.
+   */
+  async function makeCast(entry: Loaded, options: CastOptions, voiced: boolean, notes: string, after?: Making): Promise<void> {
     if (making || !entry.played) return;
     const replay = await replayOf(entry);
     const m: Making = {
       entry, key: castKey(replay, options, voiced, notes), options, voiced, notes, started: Date.now(), stage: "reading", stretches: 0, cards: 0,
-      writing: { storyline: null, lines: 0, stretch: -1 }, voicedLines: 0, lines: 0, abort: new AbortController(), error: null,
+      writing: { storyline: null, lines: 0, stretch: -1 }, revising: null, voicedLines: 0, lines: 0, abort: new AbortController(), error: null,
+      script: after?.script ?? null, clips: after?.clips ?? [],
     };
+    if (m.script) { m.writing.storyline = m.script.written.storyline; m.stretches = after!.stretches; m.cards = after!.cards; }
     making = m;
     makingMoved();
     strip?.render();
     try {
-      const clips = clipsOf(entry, options.format);
-      if (!clips.length) throw new Error(t("This game has no key moments to cast."));
-      const game = await castGameOf(entry);
-      const input = castInput(game, clips, notes.trim() || undefined, options);
-      input.seed = Math.floor(Math.random() * 2_000_000_000);
-      m.stretches = input.moments.length;
-      m.cards = castCards(game).length;
-      makingMoved();
-      const written = await writeScript(input, m);
+      if (!m.script) {
+        const clips = clipsOf(entry, options.format);
+        if (!clips.length) throw new Error(t("This game has no key moments to cast."));
+        const game = await castGameOf(entry);
+        const input = castInput(game, clips, notes.trim() || undefined, options);
+        input.seed = Math.floor(Math.random() * 2_000_000_000);
+        m.stretches = input.moments.length;
+        m.cards = castCards(game).length;
+        makingMoved();
+        m.script = { input, game, written: await writeScript(input, m) };
+      }
+      const { input, game, written } = m.script;
       const lines = written.lines;
       m.lines = lines.length;
-      let clipFiles: (ArrayBuffer | null)[] = lines.map(() => null);
+      if (m.clips.length !== lines.length) m.clips = lines.map(() => null);
       if (voiced) {
         m.stage = "voicing";
+        m.voicedLines = m.clips.filter(Boolean).length;
         makingMoved();
-        const parts = batches(lines);
+        // Only the lines not voiced yet, in batches, two at a time. When one batch fails the other stops too: what
+        // it would voice after that is paid for and then thrown away.
+        const todo = lines.map((l, i) => ({ l, i })).filter(({ i }) => !m.clips[i]);
+        const parts = batches(todo);
+        const stop = new AbortController();
+        const onAbort = () => stop.abort();
+        m.abort.signal.addEventListener("abort", onAbort, { once: true });
         let next = 0;
-        const lanes = Array.from({ length: Math.min(2, parts.length) }, async () => {
-          while (next < parts.length) {
-            const part = parts[next++];
-            const spoken = await call<{ clips: { audio: string }[] }>("/v1/speech", { lines: part.items.map((l: CastLine) => ({ speaker: l.speaker, text: l.text })) }, m.abort.signal);
-            spoken.clips.forEach((c, i) => { clipFiles[part.from + i] = Uint8Array.from(atob(c.audio), (ch) => ch.charCodeAt(0)).buffer; });
-            m.voicedLines += part.items.length;
-            makingMoved();
-          }
-        });
-        await Promise.all(lanes);
-        clipFiles = [...clipFiles];
+        try {
+          const lanes = Array.from({ length: Math.min(2, parts.length) }, async () => {
+            while (next < parts.length && !stop.signal.aborted) {
+              const part = parts[next++];
+              try {
+                const spoken = await call<{ clips: { audio: string }[] }>("/v1/speech", { lines: part.items.map(({ l }) => ({ speaker: l.speaker, text: l.text })) }, stop.signal);
+                spoken.clips.forEach((c, k) => { m.clips[part.items[k].i] = Uint8Array.from(atob(c.audio), (ch) => ch.charCodeAt(0)).buffer; });
+              } catch (err) {
+                stop.abort();
+                throw err;
+              }
+              m.voicedLines += part.items.length;
+              makingMoved();
+            }
+          });
+          // (The first failure is the one to tell; the other lane's is only its being stopped.)
+          const results = await Promise.allSettled(lanes);
+          const failed = results.find((r): r is PromiseRejectedResult => r.status === "rejected" && (r.reason as Error)?.name !== "AbortError")
+            ?? results.find((r): r is PromiseRejectedResult => r.status === "rejected");
+          if (failed) throw failed.reason;
+        } finally {
+          m.abort.signal.removeEventListener("abort", onAbort);
+        }
       }
       m.stage = "timing";
       makingMoved();
+      const clipFiles = [...m.clips];
       const made = await ready_(m.key, input, lines, clipFiles, game);
       casts.set(m.key, made);
       await store.put({ key: m.key, replay, options, voiced, notes, made: Date.now(), input, lines, storyline: written.storyline, interests: written.interests ?? null, clips: clipFiles });
@@ -1253,7 +1294,7 @@ export function activate(api: PluginApi) {
       makingMoved();
       strip?.render();
     } catch (err) {
-      if ((err as Error)?.name === "AbortError") { if (making === m) making = null; }
+      if (m.abort.signal.aborted) { if (making === m) making = null; }
       else m.error = err instanceof Error ? err.message : String(err);
       makingMoved();
       strip?.render();
@@ -1326,7 +1367,9 @@ export function activate(api: PluginApi) {
     switch (m.stage) {
       case "reading": return t("Reading the game");
       case "planning": return t("Planning the story");
-      case "writing": return m.writing.stretch >= 0
+      case "writing": return m.revising !== null
+        ? t("Fixing the script: {lines} of {of} lines", { lines: m.writing.lines, of: m.revising })
+        : m.writing.stretch >= 0
         ? t("Writing the script: part {n} of {of}, {lines} lines so far", { n: m.writing.stretch + 1, of: m.stretches, lines: m.writing.lines })
         : t("Writing the script");
       case "voicing": return t("Voicing: {n} of {of} lines", { n: m.voicedLines, of: m.lines });
@@ -1345,47 +1388,84 @@ export function activate(api: PluginApi) {
       buttons: [],
       mount: (body, dialog) => {
         let timer = 0;
+        // The progress is built once for a making and then only told what changed: built again every second (and on
+        // every bit of the script as it streams), its spinner restarted each time and jerked.
+        let shown: { m: Making; error: boolean; update: () => void } | null = null;
         const draw = async () => {
           if (!dialog.isOpen()) return;
           const m = making && making.entry === entry ? making : null;
-          body.replaceChildren(m ? progressView(m) : await optionsView());
+          if (m && shown?.m === m && shown.error === !!m.error) { shown.update(); return; }
+          if (m) {
+            const view = progressView(m);
+            shown = { m, error: !!m.error, update: view.update };
+            body.replaceChildren(view.el);
+          } else {
+            shown = null;
+            body.replaceChildren(await optionsView());
+          }
         };
         // While a cast is being made, the window follows it (and its clock moves every second).
         const watcher = () => { void draw(); };
         makingWatchers.add(watcher);
         timer = window.setInterval(() => { if (making?.entry === entry && !making.error) void draw(); }, 1000);
 
-        const progressView = (m: Making): HTMLElement => {
-          const elapsed = Math.floor((Date.now() - m.started) / 1000);
-          const step = (label: string, state: "done" | "busy" | "todo" | "error", detail?: string) => {
-            const line = w.statusLine();
-            const text = detail ? `${label} — ${detail}` : label;
-            if (state === "busy") line.busy(text);
-            else line.set(state === "todo" ? el("span", { className: "afm-dim" }, text) : text, state === "done" ? "ok" : state === "error" ? "error" : undefined);
-            return line;
+        /** How far along the whole making is, 0…1, or null while the model plans (no telling how long that takes). */
+        const fraction = (m: Making): number | null => {
+          const writeEnd = m.voiced ? 0.6 : 0.95;
+          switch (m.stage) {
+            case "reading": return 0.02;
+            case "planning": return null;
+            case "writing": {
+              // (A second answer is the last stretch of the writing, not a start again: the bar does not go back.)
+              if (m.revising !== null) return writeEnd - 0.06 + 0.06 * Math.min(1, m.writing.lines / Math.max(1, m.revising));
+              const done = m.stretches ? Math.min(1, (m.writing.stretch + 0.5) / m.stretches) : 0;
+              return 0.08 + (writeEnd - 0.14) * Math.max(0, done);
+            }
+            case "voicing": return 0.6 + 0.37 * (m.lines ? m.voicedLines / m.lines : 0);
+            case "timing": return 0.98;
+          }
+        };
+
+        const progressView = (m: Making): { el: HTMLElement; update: () => void } => {
+          const order = ["reading", "writing", "voicing", "timing"] as const;
+          const names: Record<(typeof order)[number], string> = { reading: t("Read the game"), writing: t("Write the script"), voicing: t("Voice it"), timing: t("Time it") };
+          const shownSteps = order.filter((k) => k !== "voicing" || m.voiced);
+          const clock = el("span", { className: "afm-dim" });
+          const stepsRow = el("div", { className: "afm-cast-steps" });
+          const bar = m.error ? null : w.progressBar({ value: fraction(m), label: makingLine(m) });
+          const story = el("blockquote", { className: "afm-cast-story" });
+          const update = () => {
+            clock.textContent = formatTime((Math.floor((Date.now() - m.started) / 1000) * 1000) / FRAME_MS);
+            const at = order.indexOf(m.stage === "planning" ? "writing" : m.stage);
+            stepsRow.replaceChildren(...shownSteps.map((k) => {
+              const i = order.indexOf(k);
+              const state = m.error && i === at ? "error" : i < at ? "done" : i === at ? "now" : "todo";
+              return el("span", { className: `afm-cast-step afm-cast-step-${state}` }, state === "done" ? `✓ ${names[k]}` : state === "error" ? `✕ ${names[k]}` : names[k]);
+            }));
+            bar?.set(fraction(m), makingLine(m));
+            // (Only the storyline's first sentence, about the openings: the rest tells how the game ends.)
+            const opening = m.writing.storyline ? /^.*?[.!?](?=\s|$)/.exec(m.writing.storyline.trim())?.[0] ?? null : null;
+            story.textContent = opening ?? "";
+            story.hidden = !opening;
           };
-          const order = ["reading", "planning", "writing", "voicing", "timing"] as const;
-          const at = order.indexOf(m.stage);
-          const state = (i: number) => (m.error && i === at ? "error" : i < at ? "done" : i === at ? "busy" : "todo");
-          const writingAt = Math.max(order.indexOf("planning"), Math.min(at, order.indexOf("writing")));
-          const rows = [
-            step(t("Read the game"), at > 0 ? "done" : state(0), m.stretches ? t("{n} parts, {cards} cards", { n: m.stretches, cards: m.cards }) : undefined),
-            step(t("Writing the script"), at > 2 ? "done" : state(writingAt), at > 2 ? t("{n} lines", { n: m.lines }) : m.stage === "planning" ? t("planning the story") : m.writing.stretch >= 0 ? t("part {n} of {of}, {lines} lines so far", { n: m.writing.stretch + 1, of: m.stretches, lines: m.writing.lines }) : undefined),
-            ...(m.voiced ? [step(t("Voicing"), at > 3 ? "done" : state(3), at >= 3 ? t("{n} of {of} lines", { n: m.voicedLines, of: m.lines }) : undefined)] : []),
-            step(t("Timing it"), state(4)),
-          ];
-          // (Only the storyline's first sentence, about the openings: the rest tells how the game ends.)
-          const opening = m.writing.storyline ? /^.*?[.!?](?=\s|$)/.exec(m.writing.storyline.trim())?.[0] ?? null : null;
-          const story = opening ? el("blockquote", { className: "afm-cast-story" }, opening) : null;
+          update();
           const cancel = w.button(m.error ? t("Back") : t("Cancel"), { onClick: () => { m.abort.abort(); if (making === m) making = null; makingMoved(); strip?.render(); void draw(); } });
-          const again = m.error ? w.button(t("Try again"), { primary: true, onClick: () => { if (making === m) making = null; void makeCast(entry, m.options, m.voiced, m.notes); } }) : null;
-          return w.column(
-            el("div", { className: "afm-cast-head" }, el("b", {}, m.error ? t("The cast could not be made") : t("Making the cast")), el("span", { className: "afm-dim" }, formatTime((elapsed * 1000) / FRAME_MS))),
-            ...rows,
-            ...(story ? [story] : []),
-            ...(m.error ? [el("p", { className: "afm-cast-error" }, m.error)] : [w.hint(t("You can close this window and keep watching the replay; the timeline says when the cast is ready."))]),
+          // Try again picks up where it stopped: a written script is not written (or paid for) again, voices made are kept.
+          const resumes = !!m.script;
+          const again = m.error ? w.button(resumes && m.voiced ? t("Voice the rest") : t("Try again"), { primary: true, onClick: () => { if (making === m) making = null; void makeCast(entry, m.options, m.voiced, m.notes, m); } }) : null;
+          const failedAt = m.stage === "voicing" ? t("Voicing stopped at {n} of {of} lines.", { n: m.voicedLines, of: m.lines })
+            : m.stage === "timing" ? t("Timing the cast failed.") : t("Writing the script failed.");
+          const el_ = w.column(
+            el("div", { className: "afm-cast-head" }, el("b", {}, m.error ? t("The cast could not be made") : t("Making the cast")), clock),
+            stepsRow,
+            ...(bar ? [bar] : []),
+            ...(m.error ? [
+              el("p", { className: "afm-cast-error" }, `${failedAt} ${m.error}`),
+              ...(resumes && m.voiced ? [w.hint(t("The script is kept, and the voices made so far: trying again only voices the lines still missing."))] : []),
+            ] : [story, w.hint(t("You can close this window and keep watching the replay; the timeline says when the cast is ready."))]),
             w.row(cancel, ...(again ? [again] : [])),
           );
+          return { el: el_, update };
         };
 
         const optionsView = async (): Promise<HTMLElement> => {
