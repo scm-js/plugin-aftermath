@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MapViewCamera, MapViewSpec, PluginApi } from "@scm-js/plugin-api";
 import { GameView } from "../gameview";
-import type { ScmSimService, ScmSimView, ViewCamera } from "../vendor/scm-sim";
+import type { ScmSimService, ScmSimView, ViewCamera, ViewWheel } from "../vendor/scm-sim";
 
 /** Just enough of an element for the Game view's mount and its hiding class. */
 function fakeElement(): HTMLElement {
@@ -19,6 +19,9 @@ describe("the Game view opening a replay", () => {
   let cameras: ((c: ViewCamera) => void)[];
   let sent: { x: number; y: number; height?: number }[];
   let finishLoad: () => void;
+  let wheels: ((w: ViewWheel) => void)[];
+  let handed: ViewWheel[];
+  let zooms: number;
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -26,6 +29,9 @@ describe("the Game view opening a replay", () => {
     element = fakeElement();
     cameras = [];
     sent = [];
+    wheels = [];
+    handed = [];
+    zooms = 0;
     const none = { dispose() {} };
     const view = {
       load: () => new Promise((resolve) => { finishLoad = () => resolve({ name: "", frames: 100, players: [], map: { width: 128, height: 128 }, rewinds: false, looks: {}, follows: false }); }),
@@ -34,6 +40,7 @@ describe("the Game view opening a replay", () => {
       options: () => Promise.resolve({}),
       onFrame: () => none, onKey: () => none, onUnits: () => none,
       onCamera: (l: (c: ViewCamera) => void) => { cameras.push(l); return none; },
+      onWheel: (l: (w: ViewWheel) => void) => { wheels.push(l); return none; },
     } as unknown as ScmSimView;
     const sim = { present: true, view: () => view, status: () => Promise.resolve({ available: true }) } as unknown as ScmSimService;
     let shown = false;
@@ -45,13 +52,14 @@ describe("the Game view opening a replay", () => {
           s.mount(element);
           return {
             offer() {}, onChange: () => none, isShown: () => shown, dispose() {}, setCamera() {}, redrawMinimap() {},
+            wheel: (w: ViewWheel) => { handed.push(w); return true; },
             // The editor tells the view where its map was looking as it is shown: here, a stale place far out.
             show: (on: boolean) => { shown = on; if (on) spec.onShow?.({ x: 4000, y: 4000, width: 4000, height: 3000 } satisfies MapViewCamera); },
           };
         },
       },
     } as unknown as PluginApi;
-    game = new GameView(api, { frame() {}, movedByUser() {}, shown() {}, state() {}, seeking() {}, hover() {} }, "Replay", { loading: (n) => n, failed: (m) => m });
+    game = new GameView(api, { frame() {}, movedByUser() {}, zoomed: () => { zooms++; }, shown() {}, state() {}, seeking() {}, hover() {} }, "Replay", { loading: (n) => n, failed: (m) => m });
     game.setService(sim);
   });
   afterEach(() => { vi.useRealTimers(); delete (globalThis as { document?: unknown }).document; delete (globalThis as { window?: unknown }).window; });
@@ -73,6 +81,30 @@ describe("the Game view opening a replay", () => {
     expect(element.classList.contains("afm-settling")).toBe(true);
     report(700);
     expect(element.classList.contains("afm-settling")).toBe(false);
+  });
+
+  it("zooms the game where the editor asks, and has the camera track made again for the new scale at once", async () => {
+    await game.offer(entry, true, { x: 336, y: 1840 });
+    const held = game.hold(entry, 0, false, 1);
+    finishLoad();
+    await held;
+    report(700);
+    sent.length = 0;
+    spec.onZoom?.({ x: 1000, y: 900, width: 2400, height: 1400 });
+    expect(sent).toEqual([{ x: 1000, y: 900, height: 1400 }]);
+    // Until the game says what it took, the size asked is what a new track is made for.
+    expect(game.viewSize).toEqual({ width: 2400, height: 1400 });
+    expect(zooms).toBe(1);
+  });
+
+  it("hands the wheel over the game to the editor while it is shown", async () => {
+    await game.offer(entry, true, { x: 336, y: 1840 });
+    const held = game.hold(entry, 0, false, 1);
+    finishLoad();
+    await held;
+    const w: ViewWheel = { deltaX: 0, deltaY: -100, deltaMode: 0, ctrlKey: true, metaKey: false, shiftKey: false, altKey: false, x: 500, y: 600 };
+    for (const l of wheels) l(w);
+    expect(handed).toEqual([w]);
   });
 
   it("shows the game anyway when it never says it got there", async () => {

@@ -502,6 +502,7 @@ export function activate(api: PluginApi) {
       showBusy();
     },
     movedByUser: () => letGo(),
+    zoomed: () => follow(),
     units: () => { if (cinema.on && settings.cinemaMinimap) game.redrawOver(); },
     shown: (on) => handOver(on),
     state: (text) => { gameState = text; strip?.update(); showBusy(); },
