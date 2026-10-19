@@ -76,6 +76,23 @@ Afterwards Aftermath shows what happened instead of what was ordered:
   moment and the place, or press **N** and **Shift+N** for the next and the previous key
   moment. While a fight goes on, a dashed box on the map follows where things are falling.
   Two High or Dark Templar merging into an Archon are not counted as a loss.
+
+  **Each key moment played again.** Once every open replay has been analysed, the engine
+  plays each game's key moments again, from just before the losses start. It does each
+  one twice: once as it was played, and once with both sides only attack-moving to where
+  the fight happened, with nobody giving any other order anywhere. Production already
+  queued still finishes and walks to its rally point, but nothing new is started. Under
+  each key moment, *As played → attack-move only* gives each side's losses in both
+  versions, by cost, counting the units that took part. Those are every unit that came into
+  the fight at any time as it was played, wherever it stood at the start. Hover a line for
+  how many units took part and what they were worth.
+
+  The game plays only the busiest 45 seconds of a fight, with a stray loss at either end
+  left out. A fight found as one can run for minutes, and an attack-move over all of that
+  would be a different game, not the same fight fought another way. Losing more as played
+  than with attack-move is not a mistake in itself: pulling back, or giving up units to buy
+  time, costs units too. The second number is what the game itself does when nobody
+  micros. It is not a guess at what a better player would have done.
 - **Most kills**: the units that killed the most. Click one to go to its first kill.
 - On the map, a thin line runs for a moment from a unit to what it just killed.
 
@@ -134,6 +151,45 @@ game's data. Without the game's data, research shows only when it was done.
 The icons need a copy of the game data installed since October 15 2026; with an older one,
 the cards name the buildings instead and the army shows each unit's picture, until the
 game data is installed again (Help ▸ Game Data).
+
+The third tab is **Scouting**: what each player knew of their opponents. The game decides
+it, so a unit is seen when it was in the player's sight. A unit under the player's fog is
+not seen, and a cloaked or burrowed unit is not seen unless the player detected it. A unit
+at the edge of the screen counts the same as one in the middle.
+
+- A card for each player: how much of the opponents' army they had in sight on average, by
+  cost; when they first saw a building of the opponents'; and how many of the opponents'
+  buildings they never saw. Under the cards, a sentence saying who saw more of the other's
+  army.
+- One chart: that share over the game, taken over the half minute around each moment. Point
+  at it for the exact share at that moment.
+- **Seen and answered**: for the cloaked units (Dark Templar, Lurkers, Arbiters) and the air
+  units the opponents had, three times. First, when the opponents first had one or the
+  building that makes them. Then, when the player first saw one, and how long after the
+  first was made. Last, the first answer the player started after that: detection against
+  cloaked units (a Missile Turret, Comsat Station, Science Vessel, Photon Cannon,
+  Observatory, Observer or Spore Colony), and anti-air against air units. Each answer says
+  whether it was started before or after seeing the threat. An answer started before
+  seeing was guessed at, or scouted some other way. One the player already had before the
+  opponents had the threat at all, such as an opening cannon, is shown as *already had*,
+  not as an answer.
+- **Scouts and what they found**: each of the opponents' units and buildings a player ever
+  saw, counted to the player's unit that saw it first. A unit's **worth** is what all it
+  showed them first cost, so an SCV that walks into the main and sees a Gateway, a
+  Cybernetics Core and an Assimilator is worth 425. For each player, the six units worth
+  the most: what they were, when they found it, their worth, and the new kinds among it
+  (the kinds the player had never seen before). Buildings are left out: a cannon that sees
+  what comes at it is defending, not scouting. The best scout is also on the player's
+  card. The game does not record which unit sees what. A sighting is counted to the
+  player's unit that was nearest to having the thing in its sight, judged by the unit's
+  sight range and upgrades and the size of what it saw. That is the likeliest one, not the
+  game's own record.
+- **Unseen the longest**, folded: the opponents' town halls, production and tech buildings
+  that stood the longest before each player saw them, from when they were started. Supply,
+  gas and static defence are left out. A hidden expansion shows up here.
+
+Press a time in either table to go there. Opponents are the players on another team. The
+tab needs a game engine that records who saw what, from October 2026.
 
 The window needs a version of scmJS newer than 0.7.3.
 
@@ -314,6 +370,22 @@ player could see, with the fog of war over the rest, on the editor's minimap too
 player chosen, Spectate follows that player's game: their fights, their army, their new
 bases, and an enemy army about to meet theirs seen from their side.
 
+**The map as a player knew it.** On the editor's map, once the game has been analysed,
+choosing a player in the **Vision** menu draws their opponents as that player knew them at
+the moment on the timeline. Their own side is drawn as usual.
+
+- What the player could see then is drawn as usual.
+- A building they saw earlier is drawn faint, with a short-dashed edge, where it was and
+  as it was when they last saw it (a Hatchery they saw before it became a Lair is still a
+  Hatchery). It stays until they see it go, even if it is gone by then.
+- A unit they saw in the last half minute is a ring where they last saw it, fading as the
+  sight gets older.
+- What was there that they did not know of is drawn very faintly: a dotted outline for a
+  building, a small pale dot for a unit. That is the truth beside what they knew.
+
+A line at the top of the map says whose map it is, and **Legend** keys the marks. Choose
+*everyone* to see the game as it was.
+
 Point at a unit or a building in the replay and a tooltip says what the game's console
 would: its name and owner, its hit points, shields and energy, and what it is doing. For a
 building that is training, researching, upgrading or still going up, that is a progress bar,
@@ -334,7 +406,8 @@ While a replay's tab is in front:
   below), **Orders** (the recent orders over the units drawn faintly, or over the game in
   the Replay view), **Map stats** (every replay of the map together, see above) and
   **Legend** (a key to the marks in the map's bottom-left corner).
-- In the Replay view, the **Vision** menu: everyone, or one player's eyes (see above).
+- The **Vision** menu: everyone, or one player's eyes. In the Replay view, see above. On
+  the map, see *The map as a player knew it* below.
 - How the analysis is going, or that it is done.
 - The graph's menu: actions per minute, or, once the game is analysed, the army lead (in a
   game of two), army value, army size, workers, supply, minerals or gas in the bank, or

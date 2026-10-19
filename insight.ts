@@ -11,6 +11,7 @@ import { GanttChart, LaneChart, LineChart, type ChartHost, type LineSeries } fro
 import { economy, type Economy, type LineSaturation } from "./economy";
 import type { MineralLines, UnitIndex } from "./played";
 import { mountTech } from "./techview";
+import { mountScouting } from "./scoutview";
 import type { ReplayTimeline } from "./vendor/scm-sim";
 
 /** One played game, as the window reads it. */
@@ -19,7 +20,7 @@ export interface InsightGame {
   lines: MineralLines;
   index: UnitIndex;
   /** The players by slot, observers among them (the economy leaves those out). */
-  players: { slot: number; name: string; color: string; leftAt: number | null; hidden: boolean }[];
+  players: { slot: number; name: string; color: string; leftAt: number | null; hidden: boolean; team: number }[];
   map: { width: number; height: number };
 }
 
@@ -32,6 +33,8 @@ export interface InsightDeps {
   /** Where on the map, in words ("5 o'clock"). */
   placeOf(x: number, y: number, map: { width: number; height: number }): string;
   tooltip: ChartHost["tooltip"];
+  /** A unit's cost by units.dat id (0 without the game's data). */
+  cost(type: number): number;
   /** The settings the window keeps (the tab, the resource shown). */
   settings: { tab: string; resource: Resource; metric: Metric };
   save(): void;
@@ -99,6 +102,7 @@ export class InsightView implements ChartHost {
     const tabs = w.tabs([
       { value: "economy", label: t("Economy"), mount: (body) => this.economy(body) },
       { value: "tech", label: t("Tech"), mount: (body) => this.tech(body) },
+      { value: "scouting", label: t("Scouting"), mount: (body) => this.scouting(body) },
     ], { value: settings.tab, onChange: (tab) => { settings.tab = tab; this.deps.save(); } });
     tabs.classList.add("afm-insight-tabs");
     this.root.append(tabs);
@@ -115,6 +119,24 @@ export class InsightView implements ChartHost {
       seek: (f) => this.deps.seek(f),
       chart: (c) => { this.charts.push(c); c.setNow(this.deps.frame()); },
       keep: (d) => { this.tips.push(d); },
+    });
+  }
+
+  /* ── Scouting ── */
+
+  private scouting(body: HTMLElement): void {
+    const game = this.game!;
+    mountScouting(body, {
+      api: this.deps.api, t: this.deps.t, host: this, timeline: game.timeline,
+      players: game.players.filter((p) => !p.hidden),
+      // Opponents: the players on another team (a team of 0 is nobody's side).
+      opponents: (slot) => {
+        const me = game.players.find((p) => p.slot === slot);
+        return new Set(game.players.filter((p) => p.slot !== slot && (!me || me.team === 0 || p.team !== me.team)).map((p) => p.slot));
+      },
+      cost: (type) => this.deps.cost(type),
+      seek: (f) => this.deps.seek(f),
+      chart: (c) => { this.charts.push(c); c.setNow(this.deps.frame()); },
     });
   }
 

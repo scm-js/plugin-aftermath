@@ -36,12 +36,13 @@ import { likeness, plainText, readChk, type ChkInfo } from "./chk";
 import { FRAME_MS, parseReplay, ReplayError } from "./replay";
 import { KO } from "./ko";
 import { buildings as standingBuildings, isBuilding, losses, lossPoints, madeRows, mineralLines, presencePoints, sampleAt, series, unitIndex, unitsAt, WORKERS, type Metric, type Point, type Standing, type UnitIndex } from "./played";
-import { fights as findFights, kills as findKills, topKillers, type Fight, type FightKind, type Kill, type Killer } from "./fights";
+import { knowledge, knownAt, placedBuildings, REMEMBER_FRAMES, trails, type Knowledge, type Trail } from "./knew";
+import { engagement, fights as findFights, kills as findKills, topKillers, type Fight, type FightKind, type Kill, type Killer } from "./fights";
 import { clockOf, mapReport, winnerOf, type MapReport } from "./report";
 import { direct, lookAt, shotAt, type Shot } from "./director";
 import { cameraTrack, trackAt, type CameraTrack } from "./camera";
 import { advantage, bases as takenBases, hardestHit, leads, story, totals, type Advantage, type Base, type PlayerTotals } from "./story";
-import type { ReplayTimeline, ScmSimService, ViewHover, ViewHoverUnit } from "./vendor/scm-sim";
+import type { FightResult, ReplayTimeline, ScmSimService, ViewHover, ViewHoverUnit } from "./vendor/scm-sim";
 import { GameView } from "./gameview";
 import { castCards, castInput, castSegments, estimate, highlightClips, schedule, type CastCard, type CastGame, type CastInput, type CastLine, type CastOptions, type Schedule } from "./cast";
 import type { Durations } from "./tech";
@@ -120,6 +121,19 @@ interface Loaded {
   failed: string | null;
   /** In the Replay view, whose eyes the game is seen through (a player's slot, with the fog of war); null: everyone's. */
   eyes: number | null;
+  /** The key fights played again by the game (`ScmSimService.fights`), once asked for. */
+  again: Again | null;
+}
+
+/** A game's key fights played again by the game: as played, and with both sides only attack-moving. */
+interface Again {
+  /** By fight; a fight missing has no answer (yet, or the replay ended before it). */
+  results: Map<Fight, FightResult>;
+  /** Why it could not be done, in words; null when it was or is under way. */
+  failed: string | null;
+  done: boolean;
+  /** How far the engine is in playing the replay to the last fight, 0 to 1; −1 while it starts. */
+  fraction: number;
 }
 
 interface Played {
@@ -303,6 +317,12 @@ const STYLE = `
 .afm-it-card-line { margin-top: 3px; }
 .afm-it-card-line:nth-of-type(3) { margin-bottom: 8px; }
 .afm-it-verdict { margin: 12px 0 0; font-size: 13px; color: var(--text, #e4e8ef); }
+.afm-sc-h { margin: 0 0 4px; font-size: 13px; font-weight: 600; }
+.afm-sc-table th, .afm-sc-table td { text-align: left; }
+.afm-sc-table td.afm-sc-go { cursor: pointer; }
+.afm-sc-table td.afm-sc-worth { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.afm-sc-table td.afm-sc-kinds { white-space: normal; max-width: 420px; }
+.afm-sc-table td.afm-sc-go:hover { text-decoration: underline; }
 .afm-it-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin-bottom: 8px; }
 .afm-it-controls .seg + .seg { padding-left: 12px; border-left: 1px solid var(--border, rgba(255,255,255,0.12)); }
 .afm-it-about { font-size: 11px; }
@@ -376,6 +396,8 @@ const STYLE = `
 .afm .afm-step.afm-hall { font-weight: 600; }
 .afm .afm-fight { padding-top: 3px; padding-bottom: 3px; }
 .afm .afm-fight .afm-sides, .afm .afm-fold .afm-step { font-size: 11px; color: var(--text-dim, #99a2b3); }
+.afm .afm-again { margin-top: 2px; font-size: 11px; font-variant-numeric: tabular-nums; }
+.afm .afm-again .afm-again-head { color: var(--text-dim, #99a2b3); }
 .afm .afm-result { font-size: 13px; font-weight: 600; }
 .afm .afm-result .afm-end { font-weight: 400; }
 .afm .afm-leadbar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: rgba(128,128,128,0.25); margin: 2px 0 4px; }
@@ -681,7 +703,7 @@ export function activate(api: PluginApi) {
         const replay = await parseReplay(bytes);
         const id = nextId++, map = readChk(replay.chk);
         const group = [...loaded, ...batch].find((l) => likeness(map, l.map) >= SAME_MAP)?.group ?? id;
-        batch.push({ id, fileName: file.name, report: analyse(replay), map, bytes, docId: null, group, excluded: false, frame: 0, hidden: new Set(), played: null, failed: null, eyes: null });
+        batch.push({ id, fileName: file.name, report: analyse(replay), map, bytes, docId: null, group, excluded: false, frame: 0, hidden: new Set(), played: null, failed: null, eyes: null, again: null });
       } catch (err) {
         const detail = err instanceof ReplayError ? translate(err.message) : String(err);
         api.ui.toast({ kind: "error", title: t("Could not read {name}", { name: file.name }), detail });
@@ -778,6 +800,7 @@ export function activate(api: PluginApi) {
     const at = loaded.indexOf(entry);
     if (at < 0) return;
     if (running?.entry === entry) running.controller.abort();
+    if (againRunning?.entry === entry) againRunning.controller.abort();
     const q = queue.indexOf(entry);
     if (q >= 0) queue.splice(q, 1);
     loaded.splice(at, 1);
@@ -1879,13 +1902,55 @@ export function activate(api: PluginApi) {
   /** Replays waiting their turn: every one opened, in the order they were. */
   const queue: Loaded[] = [];
 
-  /** Start the next replay waiting, if the engine is here and free: the one in front first, then the others with a tab. */
+  /** The key fights being played again by the game, one game at a time, after every replay waiting has been analysed. */
+  let againRunning: { entry: Loaded; controller: AbortController } | null = null;
+
+  /**
+   * Start the next replay waiting, if the engine is here and free: the one in front first, then the others with a tab.
+   * With none waiting, the key fights of an analysed replay with a tab are played again, the one in front first.
+   */
   function pump(): void {
-    if (running || !sim?.present || !queue.length) return;
-    let i = queue.findIndex((l) => l === current);
-    if (i < 0) i = queue.findIndex((l) => l.docId !== null);
-    const [next] = queue.splice(Math.max(0, i), 1);
-    void playThrough(next).then(pump);
+    if (running || againRunning || !sim?.present) return;
+    if (queue.length) {
+      let i = queue.findIndex((l) => l === current);
+      if (i < 0) i = queue.findIndex((l) => l.docId !== null);
+      const [next] = queue.splice(Math.max(0, i), 1);
+      void playThrough(next).then(pump);
+      return;
+    }
+    const next = [current, ...loaded].find((l) => l && l.played && l.docId !== null && !l.again);
+    if (next) void playAgain(next).then(pump);
+  }
+
+  /** A replay's key fights played again by the game from just before each (their first engagement, `engagement`). */
+  async function playAgain(entry: Loaded): Promise<void> {
+    if (!sim?.present || againRunning || !entry.played || entry.again) return;
+    const again: Again = { results: new Map(), failed: null, done: false, fraction: -1 };
+    entry.again = again;
+    const key = entry.played.fights.filter((f) => f.key);
+    const show = () => { if (entry === current) side?.render(); };
+    if (!key.length || !sim.fights) { again.done = true; return; }
+    const run = { entry, controller: new AbortController() };
+    againRunning = run;
+    show();
+    try {
+      const state = await sim.status();
+      if (!state.available || !state.fights) { again.failed = state.reason ?? t("The game engine on this site cannot play a fight again yet."); return; }
+      const asked = key.map(engagement);
+      const result = await sim.fights(entry.bytes, asked, {
+        signal: run.controller.signal,
+        onProgress: (p) => { again.fraction = p.stage === "playing" && p.frames > 0 ? p.frame / p.frames : -1; if (entry === current) side?.update(); },
+      });
+      key.forEach((f, i) => { const r = result.fights[i]; if (r) again.results.set(f, r); });
+      again.done = true;
+    } catch (err) {
+      if ((err as Error)?.name === "AbortError") { entry.again = null; return; }
+      again.failed = err instanceof Error ? err.message : String(err);
+      api.log("Aftermath: fights played again,", entry.fileName, err);
+    } finally {
+      if (againRunning === run) againRunning = null;
+      show();
+    }
   }
 
   /** Map stats has been seen to be worth a look, once a map: when a second of its games is counted. */
@@ -2055,6 +2120,26 @@ export function activate(api: PluginApi) {
 
   /* ── Overlay ── */
 
+  /** What the timeline's sightings say, read once a timeline: for the map through one player's eyes. */
+  const knowings = new WeakMap<ReplayTimeline, { k: Knowledge; where: Map<number, Trail>; placed: Map<number, { x: number; y: number }> }>();
+  /**
+   * The map through a player's eyes (Vision on the editor's map): whose (their command id, name and colour) and their
+   * opponents, the players on another team. Null for everyone's, or without sightings.
+   */
+  function knowingOf(entry: Loaded): { viewer: number; them: Set<number>; name: string; color: string } | null {
+    const tl = entry.played?.timeline;
+    if (!tl?.sight || entry.eyes === null) return null;
+    const me = entry.report.players.find((p) => p.player.slot === entry.eyes);
+    if (!me) return null;
+    const them = new Set(entry.report.players.filter((p) => p !== me && (me.player.team === 0 || p.player.team !== me.player.team)).map((p) => p.player.index));
+    return { viewer: me.player.index, them, name: me.player.name, color: me.player.color };
+  }
+  function knowingData(tl: ReplayTimeline) {
+    let d = knowings.get(tl);
+    if (!d) { d = { k: knowledge(tl), where: trails(tl), placed: placedBuildings(tl) }; knowings.set(tl, d); }
+    return d;
+  }
+
   function draw(ctx: CanvasRenderingContext2D, v: MapView): void {
     if (!current || current.docId === null || api.document.id() !== current.docId) return;
     const cur = current;
@@ -2102,10 +2187,12 @@ export function activate(api: PluginApi) {
       return;
     }
 
+    // Through one player's eyes, their opponents are drawn as that player knew them (below), not as they were.
+    const knowing = done ? knowingOf(cur) : null;
     // Watch and Orders: the game at this moment. The buildings first, as they stood (or as ordered, before the analysis).
     if (done) {
       for (const b of done.standing) {
-        if (b.from > frame || (b.to !== null && b.to <= frame)) continue;
+        if (b.from > frame || (b.to !== null && b.to <= frame) || knowing?.them.has(b.owner)) continue;
         const p = byIndex.get(b.owner);
         if (!p) continue;
         const size = api.palette.unitSize(b.type);
@@ -2130,9 +2217,27 @@ export function activate(api: PluginApi) {
       unitsAt(done.timeline, frame, (unit, ux, uy) => {
         const type = done.index.type[unit];
         const p = byIndex.get(done.index.owner[unit]);
-        if (!p || type < 0 || isBuilding(type)) return;
+        if (!p || type < 0 || isBuilding(type) || knowing?.them.has(done.index.owner[unit])) return;
         markUnit(ctx, v.x(ux), v.y(uy), r, p.player.color, WORKERS.has(type));
       });
+      if (knowing) {
+        const { k, where, placed } = knowingData(done.timeline);
+        for (const it of knownAt(k, where, placed, knowing.viewer, knowing.them, frame)) {
+          const p = byIndex.get(it.owner);
+          if (!p) continue;
+          const colour = p.player.color;
+          if (it.building) {
+            const size = api.palette.unitSize(it.type);
+            const w = size.width * s, h = size.height * s, x = v.x(it.x) - w / 2, y = v.y(it.y) - h / 2;
+            const img = s >= 0.4 ? api.graphics.unitImage(it.type, { owner: p.player.index }) : null;
+            if (it.known === "seen") markBuilding(ctx, x, y, w, h, colour, it.done ? "built" : "site", img, s);
+            else if (it.known === "remembered") markRemembered(ctx, x, y, w, h, colour, img, s);
+            else markUnknown(ctx, x, y, w, h, colour);
+          } else if (it.known === "seen") markUnit(ctx, v.x(it.x), v.y(it.y), r, colour, WORKERS.has(it.type));
+          else if (it.known === "remembered") markGhost(ctx, v.x(it.x), v.y(it.y), r, colour, 1 - it.age / REMEMBER_FRAMES);
+          else markUnknownUnit(ctx, v.x(it.x), v.y(it.y), r, colour);
+        }
+      }
       ctx.globalAlpha = 1;
     }
 
@@ -2173,8 +2278,9 @@ export function activate(api: PluginApi) {
     // The orders of the last few seconds: in Orders, and in Watch until the game is analysed (they are all there is then).
     if (lens === "orders" || !done) drawOrders(ctx, v, players, frame);
     // (A cast is a broadcast: no legend under its captions.)
-    if (settings.legend && !casting.reel) legend(ctx, lens, done !== null);
+    if (settings.legend && !casting.reel) legend(ctx, lens, done !== null, false, knowing?.name ?? null);
     caption(ctx, cur);
+    if (knowing) pill(ctx, t("What {name} knew", { name: knowing.name }), [knowing.color], cam.following && shotsOf(cur).length ? 40 : 10);
     subtitle(ctx);
     castCard(ctx);
   }
@@ -2222,11 +2328,11 @@ export function activate(api: PluginApi) {
   }
 
   /** A line at the top middle of the map, after a swatch for each colour given. */
-  function pill(ctx: CanvasRenderingContext2D, text: string, colours: string[]): void {
+  function pill(ctx: CanvasRenderingContext2D, text: string, colours: string[], top = 10): void {
     const viewW = ctx.canvas.width / (window.devicePixelRatio || 1);
     ctx.font = "600 12px system-ui, sans-serif";
     const tw = ctx.measureText(text).width, sw = colours.length * 12, w = tw + sw + 20, h = 24;
-    const x0 = Math.round(viewW / 2 - w / 2), y0 = 10;
+    const x0 = Math.round(viewW / 2 - w / 2), y0 = top;
     ctx.fillStyle = "rgba(14,16,22,0.82)";
     ctx.fillRect(x0, y0, w, h);
     colours.forEach((colour, n) => {
@@ -2240,7 +2346,7 @@ export function activate(api: PluginApi) {
   }
 
   /** A key to what the view draws, in the map's bottom-left corner, made with the same marks. */
-  function legend(ctx: CanvasRenderingContext2D, lens: Lens, analysed: boolean, inGame = false): void {
+  function legend(ctx: CanvasRenderingContext2D, lens: Lens, analysed: boolean, inGame = false, who: string | null = null): void {
     const grey = "#c8cdd7";
     type Item = [(x: number, y: number) => void, string];
     const items: Item[] = [];
@@ -2256,6 +2362,13 @@ export function activate(api: PluginApi) {
       // (Over the Replay view the game draws the units and buildings itself: only the orders are keyed there.)
       if (!inGame) items.push([(x, y) => markBuilding(ctx, x - 6, y - 4, 12, 8, grey, "built", null, 1), analysed ? t("A building; dashed while it goes up") : t("A building ordered")]);
       if (analysed && !inGame) items.push([(x, y) => { markUnit(ctx, x - 3, y, 3.5, grey, false); markUnit(ctx, x + 4, y, 3.5, grey, true); }, t("A unit, and a worker")]);
+      if (who !== null) {
+        items.push(
+          [(x, y) => markRemembered(ctx, x - 6, y - 4, 12, 8, grey, null, 1), t("A building as {name} last saw it", { name: who })],
+          [(x, y) => markGhost(ctx, x, y, 3.5, grey, 1), t("A unit where {name} last saw it", { name: who })],
+          [(x, y) => { markUnknown(ctx, x - 9, y - 4, 10, 8, grey); markUnknownUnit(ctx, x + 6, y, 3.5, grey); }, t("There, and {name} did not know", { name: who })],
+        );
+      }
       if (lens === "watch" && analysed && !inGame) {
         items.push(
           [(x, y) => markKill(ctx, x - 7, y + 3, x + 7, y - 3, grey), t("A kill, from the killer")],
@@ -2580,7 +2693,7 @@ export function activate(api: PluginApi) {
         lines: insightLines(tl),
         index: entry.played.index,
         map: tl.map,
-        players: entry.report.players.map((p) => ({ slot: p.player.index, name: p.player.name, color: p.player.color, leftAt: p.leftAt, hidden: entry.hidden.has(p.player.id) })),
+        players: entry.report.players.map((p) => ({ slot: p.player.index, name: p.player.name, color: p.player.color, leftAt: p.leftAt, hidden: entry.hidden.has(p.player.id), team: p.player.team })),
       },
     };
   }
@@ -2614,6 +2727,7 @@ export function activate(api: PluginApi) {
           seek: (f) => seek(f),
           placeOf: (x, y, map) => placeOf(x, y, map),
           tooltip: (target, content) => tooltip(target, content),
+          cost: (type) => { const units = api.data.units(); return units ? ((units.mineralCost[type] ?? 0) + (units.vespeneCost[type] ?? 0)) / (TWINS.has(type) ? 2 : 1) : 0; },
           settings: { get tab() { return settings.insightTab; }, set tab(v) { settings.insightTab = v; }, get resource() { return settings.resource; }, set resource(v) { settings.resource = v; }, get metric() { return settings.insightMetric; }, set metric(v) { settings.insightMetric = v; } },
           save,
         });
@@ -2670,6 +2784,8 @@ export function activate(api: PluginApi) {
     private buildPlayer = -1;
     /** Map stats' line for the game the engine is playing, refreshed with its progress. */
     private running: { el: HTMLElement; entry: Loaded } | null = null;
+    /** The Fights tab's lines for key moments still being played again, refreshed with the engine's progress. */
+    private againing: HTMLElement[] = [];
 
     constructor(body: HTMLElement) {
       this.root = el("div", { className: "afm" });
@@ -2697,6 +2813,7 @@ export function activate(api: PluginApi) {
       this.live = [];
       this.steps = [];
       this.running = null;
+      this.againing = [];
       const entry = current;
       if (!entry) { this.renderEmpty(); return; }
       const rep = entry.report.replay;
@@ -2951,6 +3068,35 @@ export function activate(api: PluginApi) {
       body.append(w.group(t("How it went"), list));
     }
 
+    /** A key moment played again by the game: what each side lost as played and with attack-move only, or that it is under way. */
+    private again(entry: Loaded, f: Fight): HTMLElement | null {
+      const again = entry.again;
+      if (!again) return null;
+      const r = again.results.get(f);
+      if (!r) {
+        if (again.done || again.failed) return null;
+        const line = el("div", { className: "afm-again afm-dim" }, this.againText(entry));
+        this.againing.push(line);
+        return line;
+      }
+      const played = r.versions.find((v) => v.version === "played"), plain = r.versions.find((v) => v.version === "attackMove");
+      if (!played || !plain) return null;
+      const byIndex = new Map(entry.report.players.map((p) => [p.player.index, p.player] as const));
+      const rows = played.sides.filter((sd) => byIndex.has(sd.player) && sd.units > 0).map((sd) => {
+        const other = plain.sides.find((x) => x.player === sd.player);
+        const player = byIndex.get(sd.player)!;
+        return el("div", { title: t("{name}: {units} units worth {value} took part. Played as it was, they lost {played}; with both sides only attack-moving, {attackMove}.", { name: player.name, units: sd.units, value: sd.value, played: sd.lostValue, attackMove: other?.lostValue ?? 0 }) },
+          el("span", { className: "afm-swatch", style: `background:${player.color}` }), ` ${sd.lostValue} → ${other?.lostValue ?? 0}`);
+      });
+      if (!rows.length) return null;
+      return el("div", { className: "afm-again" }, el("div", { className: "afm-again-head" }, t("As played → attack-move only")), ...rows);
+    }
+
+    private againText(entry: Loaded): string {
+      const fraction = entry.again?.fraction ?? -1;
+      return againRunning?.entry === entry && fraction >= 0 ? t("Being played again by the game… {percent}%", { percent: Math.floor(fraction * 100) }) : t("Being played again by the game…");
+    }
+
     private renderFights(body: HTMLElement, entry: Loaded): void {
       if (!entry.played) {
         body.append(w.hint(running?.entry === entry ? t("The fights show once the game has been analysed, which is under way.") : t("The fights show once the game has been analysed.")));
@@ -2969,6 +3115,8 @@ export function activate(api: PluginApi) {
             el("div", { className: "afm-sides" }, ...sidesOf(f)),
           ),
         );
+        const again = f.key ? this.again(entry, f) : null;
+        if (again) line.children[1].append(again);
         line.addEventListener("click", () => goToFight(f));
         this.steps.push({ el: line, frame: f.from });
         return line;
@@ -2990,6 +3138,8 @@ export function activate(api: PluginApi) {
         body.append(fold);
       }
       if (fights.length) body.append(w.hint(t("Each fight is weighed against everything the players had at the time, armies and workers. The key moments are the ones that mattered most; the side that came out ahead is in bold. N and Shift+N go to the next and the previous.")));
+      if (entry.again?.results.size) body.append(w.hint(t("Under each key moment, the game played it again from just before its first loss: once as it was played, and once with both sides only attack-moving to where it was fought and nobody giving any other order. The numbers are what each side lost, by cost, of the units that took part, as played and then with attack-move. Losing more as played is not a mistake in itself: pulling back, or trading units for time, costs units too.")));
+      else if (entry.again?.failed) body.append(w.hint(t("The key moments could not be played again: {why}", { why: entry.again.failed })));
 
       if (entry.played.killers.length) {
         const top = el("div");
@@ -3131,6 +3281,7 @@ export function activate(api: PluginApi) {
     update(): void {
       const entry = current;
       if (!entry) return;
+      for (const line of this.againing) if (line.isConnected) line.textContent = this.againText(entry);
       const frame = entry.frame;
       const tl = entry.played?.timeline ?? null;
       const at = tl ? sampleIndex(tl.samples.frame, frame) : -1;
@@ -3227,7 +3378,7 @@ export function activate(api: PluginApi) {
       const eyes = w.select([
         { value: -1, label: t("Vision: everyone") },
         ...entry.report.players.map((p) => ({ value: p.player.slot, label: t("Vision: {name}", { name: p.player.name }) })),
-      ], { value: entry.eyes ?? -1, title: t("Whose eyes the game is seen through: one player's shows only what they could see, with the fog of war"), onChange: (v) => {
+      ], { value: entry.eyes ?? -1, title: t("Whose eyes the game is seen through. In the Replay view, one player's shows only what they could see, with the fog of war; on the map, their opponents as that player knew them: what they saw, where they last saw it, and faintly what they did not know."), onChange: (v) => {
         const slot = Number(v);
         entry.eyes = slot < 0 ? null : slot;
         if (entry.eyes !== null) lastEyes.set(entry.id, entry.eyes);
@@ -3327,7 +3478,8 @@ export function activate(api: PluginApi) {
       const keyless = game.shown && !onMap && !settings.orders;
       this.legendButton!.disabled = keyless;
       this.legendButton!.title = keyless ? t("Over the game the legend keys the orders: turn Orders on to see it") : t("A key to the marks, in the map's corner");
-      this.eyesSelect!.hidden = !game.shown || onMap;
+      // (On the map, a player's eyes need the game's sightings, which come with the analysis.)
+      this.eyesSelect!.hidden = onMap || (!game.shown && !entry.played?.timeline.sight);
       const games = mapGames(entry).length;
       this.statsButton!.textContent = games > 1 ? t("Map stats · {n}", { n: games }) : t("Map stats");
       this.statsButton!.classList.toggle("afm-on", onMap);
@@ -3561,6 +3713,7 @@ export function activate(api: PluginApi) {
     cancelAnimationFrame(cam.raf);
     bindKeys(false);
     running?.controller.abort();
+    againRunning?.controller.abort();
     game.dispose();
     simWatch.dispose();
     endCast();
@@ -3590,6 +3743,49 @@ function markBuilding(ctx: CanvasRenderingContext2D, x: number, y: number, w: nu
   if (state === "site") ctx.setLineDash([4, 3]);
   ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
   ctx.setLineDash([]);
+}
+
+/** A building as a player last saw it: faint, its edge dashed short. */
+function markRemembered(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, colour: string, img: PluginImage | null, scale: number): void {
+  ctx.fillStyle = withAlpha(colour, 0.08);
+  ctx.fillRect(x, y, w, h);
+  if (img) {
+    const a = ctx.globalAlpha;
+    ctx.globalAlpha = a * 0.35;
+    ctx.drawImage(img.image, x + w / 2 - (img.width * scale) / 2, y + h / 2 - (img.height * scale) / 2, img.width * scale, img.height * scale);
+    ctx.globalAlpha = a;
+  }
+  ctx.strokeStyle = withAlpha(colour, 0.85);
+  ctx.lineWidth = 1;
+  ctx.setLineDash([2, 3]);
+  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  ctx.setLineDash([]);
+}
+
+/** A building there that a player did not know of: an edge of dots, nothing inside. */
+function markUnknown(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, colour: string): void {
+  ctx.strokeStyle = withAlpha(colour, 0.4);
+  ctx.lineWidth = 1;
+  ctx.setLineDash([1, 4]);
+  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  ctx.setLineDash([]);
+}
+
+/** A unit where a player last saw it: a ring, fading as the sight gets older (`k` 1 to 0). */
+function markGhost(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, colour: string, k: number): void {
+  ctx.strokeStyle = withAlpha(colour, Math.max(0.15, 0.9 * k));
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+/** A unit there that a player did not know of: a small faint dot. */
+function markUnknownUnit(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, colour: string): void {
+  ctx.fillStyle = withAlpha(colour, 0.25);
+  ctx.beginPath();
+  ctx.arc(x, y, r * 0.6, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 /** A unit: a dot; a worker a smaller, fainter one. */
