@@ -316,6 +316,10 @@ const STYLE = `
 .afm-it-card-line { margin-top: 3px; }
 .afm-it-card-line:nth-of-type(3) { margin-bottom: 8px; }
 .afm-it-verdict { margin: 12px 0 0; font-size: 13px; color: var(--text, #e4e8ef); }
+.afm-sc-h { margin: 0 0 4px; font-size: 13px; font-weight: 600; }
+.afm-sc-table th, .afm-sc-table td { text-align: left; }
+.afm-sc-table td.afm-sc-go { cursor: pointer; }
+.afm-sc-table td.afm-sc-go:hover { text-decoration: underline; }
 .afm-it-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin-bottom: 8px; }
 .afm-it-controls .seg + .seg { padding-left: 12px; border-left: 1px solid var(--border, rgba(255,255,255,0.12)); }
 .afm-it-about { font-size: 11px; }
@@ -2638,7 +2642,7 @@ export function activate(api: PluginApi) {
         lines: insightLines(tl),
         index: entry.played.index,
         map: tl.map,
-        players: entry.report.players.map((p) => ({ slot: p.player.index, name: p.player.name, color: p.player.color, leftAt: p.leftAt, hidden: entry.hidden.has(p.player.id) })),
+        players: entry.report.players.map((p) => ({ slot: p.player.index, name: p.player.name, color: p.player.color, leftAt: p.leftAt, hidden: entry.hidden.has(p.player.id), team: p.player.team })),
       },
     };
   }
@@ -2672,6 +2676,7 @@ export function activate(api: PluginApi) {
           seek: (f) => seek(f),
           placeOf: (x, y, map) => placeOf(x, y, map),
           tooltip: (target, content) => tooltip(target, content),
+          cost: (type) => { const units = api.data.units(); return units ? ((units.mineralCost[type] ?? 0) + (units.vespeneCost[type] ?? 0)) / (TWINS.has(type) ? 2 : 1) : 0; },
           settings: { get tab() { return settings.insightTab; }, set tab(v) { settings.insightTab = v; }, get resource() { return settings.resource; }, set resource(v) { settings.resource = v; }, get metric() { return settings.insightMetric; }, set metric(v) { settings.insightMetric = v; } },
           save,
         });

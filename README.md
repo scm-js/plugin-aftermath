@@ -152,6 +152,34 @@ The icons need a copy of the game data installed since October 15 2026; with an 
 the cards name the buildings instead and the army shows each unit's picture, until the
 game data is installed again (Help ▸ Game Data).
 
+The third tab is **Scouting**: what each player knew of their opponents. The game decides
+it, so a unit is seen when it was in the player's sight. A unit under the player's fog is
+not seen, and a cloaked or burrowed unit is not seen unless the player detected it. A unit
+at the edge of the screen counts the same as one in the middle.
+
+- A card for each player: how much of the opponents' army they had in sight on average, by
+  cost; when they first saw a building of the opponents'; and how many of the opponents'
+  buildings they never saw. Under the cards, a sentence saying who saw more of the other's
+  army.
+- One chart: that share over the game, taken over the half minute around each moment. Point
+  at it for the exact share at that moment.
+- **Seen and answered**: for the cloaked units (Dark Templar, Lurkers, Arbiters) and the air
+  units the opponents had, three times. First, when the opponents first had one or the
+  building that makes them. Then, when the player first saw one, and how long after the
+  first was made. Last, the first answer the player started after that: detection against
+  cloaked units (a Missile Turret, Comsat Station, Science Vessel, Photon Cannon,
+  Observatory, Observer or Spore Colony), and anti-air against air units. Each answer says
+  whether it was started before or after seeing the threat. An answer started before
+  seeing was guessed at, or scouted some other way. One the player already had before the
+  opponents had the threat at all, such as an opening cannon, is shown as *already had*,
+  not as an answer.
+- **Unseen the longest**, folded: the opponents' town halls, production and tech buildings
+  that stood the longest before each player saw them, from when they were started. Supply,
+  gas and static defence are left out. A hidden expansion shows up here.
+
+Press a time in either table to go there. Opponents are the players on another team. The
+tab needs a game engine that records who saw what, from October 2026.
+
 The window needs a version of scmJS newer than 0.7.3.
 
 ### Cast: the game with commentary

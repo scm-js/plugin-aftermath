@@ -108,8 +108,23 @@ export interface ReplayCheck {
   parted: number | null;
 }
 
+/**
+ * When each player could see each unit of the others', as the game decides it: a unit under a player's fog is not
+ * seen by them, and a cloaked or burrowed one only by the players who detect it. A row is one stretch: `unit` (the
+ * timeline's number) seen by `player` from frame `from` up to `to`. Looked at every `every` frames (8); a unit
+ * unseen for less than a second stays in the same stretch. Units in a transport or a bunker are not looked at, nor
+ * the neutral players' units.
+ */
+export interface Sightings {
+  every: number;
+  unit: Uint32Array;
+  player: Uint8Array;
+  from: Uint32Array;
+  to: Uint32Array;
+}
+
 export interface ReplayTimeline {
-  /** 1: as first written. 2: a `died` event says who killed the unit. 3: `check`. 4: what each player gathered. */
+  /** 1: as first written. 2: a `died` event says who killed the unit. 3: `check`. 4: what each player gathered. 5: `sight`. */
   version: number;
   /** Frames played, and the replay's length. */
   frames: number;
@@ -127,6 +142,8 @@ export interface ReplayTimeline {
   positions: Positions | null;
   /** From timeline version 3; absent in a timeline of an engine before that. */
   check?: ReplayCheck | null;
+  /** Who saw what, when; from timeline version 5, absent before. */
+  sight?: Sightings | null;
 }
 
 export interface AnalyseProgress {
