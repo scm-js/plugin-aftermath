@@ -7,7 +7,8 @@
 import type { PluginApi } from "@scm-js/plugin-api";
 import { formatTime } from "./analysis";
 import { LineChart, nearest, type ChartHost } from "./charts";
-import { armyInSight, firstLooks, knowledge, threats, unseen, type Knowledge, type Threat } from "./knew";
+import { armyInSight, firstLooks, knowledge, scouts, threats, unseen, type Knowledge, type Scout, type Threat } from "./knew";
+import { isBuilding } from "./played";
 import type { ReplayTimeline } from "./vendor/scm-sim";
 
 export interface ScoutContext {
@@ -28,6 +29,8 @@ export interface ScoutContext {
 
 /** The span the chart's share is taken over: half a minute. */
 const SMOOTH_FRAMES = 720;
+/** The scouts a player is shown. */
+const SCOUTS_SHOWN = 6;
 /** The buildings a player is shown as unseen the longest. */
 const UNSEEN_SHOWN = 8;
 
@@ -54,6 +57,9 @@ export function mountScouting(body: HTMLElement, cx: ScoutContext): void {
   const sights = new Map(shown.map((p) => [p.slot, armyInSight(k0, tl, p.slot, cx.opponents(p.slot), cx.cost)]));
   const looks = new Map(shown.map((p) => [p.slot, firstLooks(k0, p.slot, cx.opponents(p.slot))]));
   const hidden = new Map(shown.map((p) => [p.slot, unseen(k0, tl, p.slot, cx.opponents(p.slot))]));
+  // Scouts are what moves: a building that sees what comes at it is defending, not scouting.
+  const found = new Map(shown.map((p) => [p.slot, scouts(k0, p.slot, cx.opponents(p.slot), cx.cost).filter((sc) => !isBuilding(sc.type))]));
+  const number = (n: number) => Math.round(n).toLocaleString();
 
   // The cards: how much of the others' army each had in sight, their first look, what of theirs they never saw.
   const cards = el("div", { className: "afm-it-cards" }, ...shown.map((p) => {
@@ -66,8 +72,15 @@ export function mountScouting(body: HTMLElement, cx: ScoutContext): void {
         ? [el("b", {}, formatTime(look.building.frame)), " ", el("span", { className: "afm-dim" }, t("first saw a building of theirs"))]
         : [el("span", { className: "afm-dim" }, t("never saw a building of theirs"))])),
       el("div", { className: "afm-it-card-line" }, el("b", {}, String(never)), " ", el("span", { className: "afm-dim" }, t("{n, plural, one {building of theirs never seen} other {buildings of theirs never seen}}", { n: never }))),
+      ...bestScout(p.slot),
     );
   }));
+
+  // A card's line for the player's best scout: the unit that showed them the most.
+  function bestScout(slot: number): HTMLElement[] {
+    const best = found.get(slot)![0];
+    return best ? [el("div", { className: "afm-it-card-line" }, el("b", {}, number(best.worth)), " ", el("span", { className: "afm-dim" }, t("found by their best scout: {unit}, {time}", { unit: unit(best.type), time: formatTime(best.from) })))] : [];
+  }
 
   // A sentence for a game of two: who saw more of the other.
   let verdict: HTMLElement | null = null;
@@ -140,6 +153,29 @@ export function mountScouting(body: HTMLElement, cx: ScoutContext): void {
       el("thead", {}, el("tr", {}, el("th", {}), el("th", { scope: "col" }, t("They had it")), el("th", { scope: "col" }, t("First seen")), el("th", { scope: "col" }, t("First answer")))),
       el("tbody", {}, ...threatRows))) : null;
 
+  // What each unit was the first to show its player, the most first.
+  const scoutRow = (sc: Scout) => {
+    const kinds = sc.kinds.map(unit);
+    const row = el("tr", {},
+      el("th", { scope: "row" }, unit(sc.type)),
+      go(el("td", {}, sc.from === sc.to ? formatTime(sc.from) : `${formatTime(sc.from)}–${formatTime(sc.to)}`), sc.from),
+      el("td", { className: "afm-sc-worth" }, number(sc.worth)),
+      el("td", { className: "afm-dim afm-sc-kinds" }, kinds.length ? t("new: {kinds}", { kinds: kinds.join(", ") }) : t("nothing new")));
+    row.title = t("{n, plural, one {# unit or building} other {# units and buildings}} of theirs this {unit} was the first to show them, worth {worth}", { n: sc.revealed.length, unit: unit(sc.type), worth: number(sc.worth) });
+    return row;
+  };
+  const scoutRows = shown.flatMap((p) => {
+    const list = found.get(p.slot)!.slice(0, SCOUTS_SHOWN);
+    if (!list.length) return [];
+    return [el("tr", {}, el("th", { scope: "rowgroup", className: "afm-ti-group", colSpan: 4 }, el("span", { className: "afm-it-player" }, swatch(p.color), p.name))), ...list.map(scoutRow)];
+  });
+  const scoutSection = scoutRows.length ? el("section", { className: "afm-it-section" },
+    el("h3", { className: "afm-sc-h" }, t("Scouts and what they found")),
+    el("p", { className: "afm-dim afm-it-note" }, t("Each of the opponents' units and buildings a player ever saw, counted to the player's unit that saw it first; a unit's worth is what all it showed them first cost. The game does not record which unit sees what: it is the unit nearest to having the thing in its sight, the likeliest one. Buildings are left out, and new kinds are the ones the player had never seen before.")),
+    el("table", { className: "afm-it-table afm-ti-table afm-sc-table" },
+      el("thead", {}, el("tr", {}, el("th", {}), el("th", { scope: "col" }, t("When")), el("th", { scope: "col" }, t("Worth")), el("th", { scope: "col" }, t("What it found")))),
+      el("tbody", {}, ...scoutRows))) : null;
+
   // The others' buildings that stood the longest before each player saw them.
   const unseenFold = w.fold({ text: t("Unseen the longest"), open: false });
   unseenFold.body.append(el("p", { className: "afm-dim afm-it-note" }, t("The opponents' town halls, production and tech buildings that stood the longest before each player saw them, from when they were started. Supply, gas and static defence are left out, and so is what stood from the start.")),
@@ -155,6 +191,6 @@ export function mountScouting(body: HTMLElement, cx: ScoutContext): void {
       ];
     }))));
 
-  body.append(cards, ...(verdict ? [verdict] : []), chartSection, ...(threatSection ? [threatSection] : []), unseenFold);
+  body.append(cards, ...(verdict ? [verdict] : []), chartSection, ...(scoutSection ? [scoutSection] : []), ...(threatSection ? [threatSection] : []), unseenFold);
   chart.draw();
 }

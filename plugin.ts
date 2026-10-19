@@ -36,6 +36,7 @@ import { likeness, plainText, readChk, type ChkInfo } from "./chk";
 import { FRAME_MS, parseReplay, ReplayError } from "./replay";
 import { KO } from "./ko";
 import { buildings as standingBuildings, isBuilding, losses, lossPoints, madeRows, mineralLines, presencePoints, sampleAt, series, unitIndex, unitsAt, WORKERS, type Metric, type Point, type Standing, type UnitIndex } from "./played";
+import { knowledge, knownAt, placedBuildings, REMEMBER_FRAMES, trails, type Knowledge, type Trail } from "./knew";
 import { engagement, fights as findFights, kills as findKills, topKillers, type Fight, type FightKind, type Kill, type Killer } from "./fights";
 import { clockOf, mapReport, winnerOf, type MapReport } from "./report";
 import { direct, lookAt, shotAt, type Shot } from "./director";
@@ -319,6 +320,8 @@ const STYLE = `
 .afm-sc-h { margin: 0 0 4px; font-size: 13px; font-weight: 600; }
 .afm-sc-table th, .afm-sc-table td { text-align: left; }
 .afm-sc-table td.afm-sc-go { cursor: pointer; }
+.afm-sc-table td.afm-sc-worth { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.afm-sc-table td.afm-sc-kinds { white-space: normal; max-width: 420px; }
 .afm-sc-table td.afm-sc-go:hover { text-decoration: underline; }
 .afm-it-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin-bottom: 8px; }
 .afm-it-controls .seg + .seg { padding-left: 12px; border-left: 1px solid var(--border, rgba(255,255,255,0.12)); }
@@ -2117,6 +2120,26 @@ export function activate(api: PluginApi) {
 
   /* ── Overlay ── */
 
+  /** What the timeline's sightings say, read once a timeline: for the map through one player's eyes. */
+  const knowings = new WeakMap<ReplayTimeline, { k: Knowledge; where: Map<number, Trail>; placed: Map<number, { x: number; y: number }> }>();
+  /**
+   * The map through a player's eyes (Vision on the editor's map): whose (their command id, name and colour) and their
+   * opponents, the players on another team. Null for everyone's, or without sightings.
+   */
+  function knowingOf(entry: Loaded): { viewer: number; them: Set<number>; name: string; color: string } | null {
+    const tl = entry.played?.timeline;
+    if (!tl?.sight || entry.eyes === null) return null;
+    const me = entry.report.players.find((p) => p.player.slot === entry.eyes);
+    if (!me) return null;
+    const them = new Set(entry.report.players.filter((p) => p !== me && (me.player.team === 0 || p.player.team !== me.player.team)).map((p) => p.player.index));
+    return { viewer: me.player.index, them, name: me.player.name, color: me.player.color };
+  }
+  function knowingData(tl: ReplayTimeline) {
+    let d = knowings.get(tl);
+    if (!d) { d = { k: knowledge(tl), where: trails(tl), placed: placedBuildings(tl) }; knowings.set(tl, d); }
+    return d;
+  }
+
   function draw(ctx: CanvasRenderingContext2D, v: MapView): void {
     if (!current || current.docId === null || api.document.id() !== current.docId) return;
     const cur = current;
@@ -2164,10 +2187,12 @@ export function activate(api: PluginApi) {
       return;
     }
 
+    // Through one player's eyes, their opponents are drawn as that player knew them (below), not as they were.
+    const knowing = done ? knowingOf(cur) : null;
     // Watch and Orders: the game at this moment. The buildings first, as they stood (or as ordered, before the analysis).
     if (done) {
       for (const b of done.standing) {
-        if (b.from > frame || (b.to !== null && b.to <= frame)) continue;
+        if (b.from > frame || (b.to !== null && b.to <= frame) || knowing?.them.has(b.owner)) continue;
         const p = byIndex.get(b.owner);
         if (!p) continue;
         const size = api.palette.unitSize(b.type);
@@ -2192,9 +2217,27 @@ export function activate(api: PluginApi) {
       unitsAt(done.timeline, frame, (unit, ux, uy) => {
         const type = done.index.type[unit];
         const p = byIndex.get(done.index.owner[unit]);
-        if (!p || type < 0 || isBuilding(type)) return;
+        if (!p || type < 0 || isBuilding(type) || knowing?.them.has(done.index.owner[unit])) return;
         markUnit(ctx, v.x(ux), v.y(uy), r, p.player.color, WORKERS.has(type));
       });
+      if (knowing) {
+        const { k, where, placed } = knowingData(done.timeline);
+        for (const it of knownAt(k, where, placed, knowing.viewer, knowing.them, frame)) {
+          const p = byIndex.get(it.owner);
+          if (!p) continue;
+          const colour = p.player.color;
+          if (it.building) {
+            const size = api.palette.unitSize(it.type);
+            const w = size.width * s, h = size.height * s, x = v.x(it.x) - w / 2, y = v.y(it.y) - h / 2;
+            const img = s >= 0.4 ? api.graphics.unitImage(it.type, { owner: p.player.index }) : null;
+            if (it.known === "seen") markBuilding(ctx, x, y, w, h, colour, it.done ? "built" : "site", img, s);
+            else if (it.known === "remembered") markRemembered(ctx, x, y, w, h, colour, img, s);
+            else markUnknown(ctx, x, y, w, h, colour);
+          } else if (it.known === "seen") markUnit(ctx, v.x(it.x), v.y(it.y), r, colour, WORKERS.has(it.type));
+          else if (it.known === "remembered") markGhost(ctx, v.x(it.x), v.y(it.y), r, colour, 1 - it.age / REMEMBER_FRAMES);
+          else markUnknownUnit(ctx, v.x(it.x), v.y(it.y), r, colour);
+        }
+      }
       ctx.globalAlpha = 1;
     }
 
@@ -2235,8 +2278,9 @@ export function activate(api: PluginApi) {
     // The orders of the last few seconds: in Orders, and in Watch until the game is analysed (they are all there is then).
     if (lens === "orders" || !done) drawOrders(ctx, v, players, frame);
     // (A cast is a broadcast: no legend under its captions.)
-    if (settings.legend && !casting.reel) legend(ctx, lens, done !== null);
+    if (settings.legend && !casting.reel) legend(ctx, lens, done !== null, false, knowing?.name ?? null);
     caption(ctx, cur);
+    if (knowing) pill(ctx, t("What {name} knew", { name: knowing.name }), [knowing.color], cam.following && shotsOf(cur).length ? 40 : 10);
     subtitle(ctx);
     castCard(ctx);
   }
@@ -2284,11 +2328,11 @@ export function activate(api: PluginApi) {
   }
 
   /** A line at the top middle of the map, after a swatch for each colour given. */
-  function pill(ctx: CanvasRenderingContext2D, text: string, colours: string[]): void {
+  function pill(ctx: CanvasRenderingContext2D, text: string, colours: string[], top = 10): void {
     const viewW = ctx.canvas.width / (window.devicePixelRatio || 1);
     ctx.font = "600 12px system-ui, sans-serif";
     const tw = ctx.measureText(text).width, sw = colours.length * 12, w = tw + sw + 20, h = 24;
-    const x0 = Math.round(viewW / 2 - w / 2), y0 = 10;
+    const x0 = Math.round(viewW / 2 - w / 2), y0 = top;
     ctx.fillStyle = "rgba(14,16,22,0.82)";
     ctx.fillRect(x0, y0, w, h);
     colours.forEach((colour, n) => {
@@ -2302,7 +2346,7 @@ export function activate(api: PluginApi) {
   }
 
   /** A key to what the view draws, in the map's bottom-left corner, made with the same marks. */
-  function legend(ctx: CanvasRenderingContext2D, lens: Lens, analysed: boolean, inGame = false): void {
+  function legend(ctx: CanvasRenderingContext2D, lens: Lens, analysed: boolean, inGame = false, who: string | null = null): void {
     const grey = "#c8cdd7";
     type Item = [(x: number, y: number) => void, string];
     const items: Item[] = [];
@@ -2318,6 +2362,13 @@ export function activate(api: PluginApi) {
       // (Over the Replay view the game draws the units and buildings itself: only the orders are keyed there.)
       if (!inGame) items.push([(x, y) => markBuilding(ctx, x - 6, y - 4, 12, 8, grey, "built", null, 1), analysed ? t("A building; dashed while it goes up") : t("A building ordered")]);
       if (analysed && !inGame) items.push([(x, y) => { markUnit(ctx, x - 3, y, 3.5, grey, false); markUnit(ctx, x + 4, y, 3.5, grey, true); }, t("A unit, and a worker")]);
+      if (who !== null) {
+        items.push(
+          [(x, y) => markRemembered(ctx, x - 6, y - 4, 12, 8, grey, null, 1), t("A building as {name} last saw it", { name: who })],
+          [(x, y) => markGhost(ctx, x, y, 3.5, grey, 1), t("A unit where {name} last saw it", { name: who })],
+          [(x, y) => { markUnknown(ctx, x - 9, y - 4, 10, 8, grey); markUnknownUnit(ctx, x + 6, y, 3.5, grey); }, t("There, and {name} did not know", { name: who })],
+        );
+      }
       if (lens === "watch" && analysed && !inGame) {
         items.push(
           [(x, y) => markKill(ctx, x - 7, y + 3, x + 7, y - 3, grey), t("A kill, from the killer")],
@@ -3327,7 +3378,7 @@ export function activate(api: PluginApi) {
       const eyes = w.select([
         { value: -1, label: t("Vision: everyone") },
         ...entry.report.players.map((p) => ({ value: p.player.slot, label: t("Vision: {name}", { name: p.player.name }) })),
-      ], { value: entry.eyes ?? -1, title: t("Whose eyes the game is seen through: one player's shows only what they could see, with the fog of war"), onChange: (v) => {
+      ], { value: entry.eyes ?? -1, title: t("Whose eyes the game is seen through. In the Replay view, one player's shows only what they could see, with the fog of war; on the map, their opponents as that player knew them: what they saw, where they last saw it, and faintly what they did not know."), onChange: (v) => {
         const slot = Number(v);
         entry.eyes = slot < 0 ? null : slot;
         if (entry.eyes !== null) lastEyes.set(entry.id, entry.eyes);
@@ -3427,7 +3478,8 @@ export function activate(api: PluginApi) {
       const keyless = game.shown && !onMap && !settings.orders;
       this.legendButton!.disabled = keyless;
       this.legendButton!.title = keyless ? t("Over the game the legend keys the orders: turn Orders on to see it") : t("A key to the marks, in the map's corner");
-      this.eyesSelect!.hidden = !game.shown || onMap;
+      // (On the map, a player's eyes need the game's sightings, which come with the analysis.)
+      this.eyesSelect!.hidden = onMap || (!game.shown && !entry.played?.timeline.sight);
       const games = mapGames(entry).length;
       this.statsButton!.textContent = games > 1 ? t("Map stats · {n}", { n: games }) : t("Map stats");
       this.statsButton!.classList.toggle("afm-on", onMap);
@@ -3691,6 +3743,49 @@ function markBuilding(ctx: CanvasRenderingContext2D, x: number, y: number, w: nu
   if (state === "site") ctx.setLineDash([4, 3]);
   ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
   ctx.setLineDash([]);
+}
+
+/** A building as a player last saw it: faint, its edge dashed short. */
+function markRemembered(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, colour: string, img: PluginImage | null, scale: number): void {
+  ctx.fillStyle = withAlpha(colour, 0.08);
+  ctx.fillRect(x, y, w, h);
+  if (img) {
+    const a = ctx.globalAlpha;
+    ctx.globalAlpha = a * 0.35;
+    ctx.drawImage(img.image, x + w / 2 - (img.width * scale) / 2, y + h / 2 - (img.height * scale) / 2, img.width * scale, img.height * scale);
+    ctx.globalAlpha = a;
+  }
+  ctx.strokeStyle = withAlpha(colour, 0.85);
+  ctx.lineWidth = 1;
+  ctx.setLineDash([2, 3]);
+  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  ctx.setLineDash([]);
+}
+
+/** A building there that a player did not know of: an edge of dots, nothing inside. */
+function markUnknown(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, colour: string): void {
+  ctx.strokeStyle = withAlpha(colour, 0.4);
+  ctx.lineWidth = 1;
+  ctx.setLineDash([1, 4]);
+  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  ctx.setLineDash([]);
+}
+
+/** A unit where a player last saw it: a ring, fading as the sight gets older (`k` 1 to 0). */
+function markGhost(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, colour: string, k: number): void {
+  ctx.strokeStyle = withAlpha(colour, Math.max(0.15, 0.9 * k));
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+/** A unit there that a player did not know of: a small faint dot. */
+function markUnknownUnit(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, colour: string): void {
+  ctx.fillStyle = withAlpha(colour, 0.25);
+  ctx.beginPath();
+  ctx.arc(x, y, r * 0.6, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 /** A unit: a dot; a worker a smaller, fainter one. */

@@ -114,6 +114,10 @@ export interface ReplayCheck {
  * timeline's number) seen by `player` from frame `from` up to `to`. Looked at every `every` frames (8); a unit
  * unseen for less than a second stays in the same stretch. Units in a transport or a bunker are not looked at, nor
  * the neutral players' units.
+ *
+ * `by`: the player's own unit (the timeline's number) that saw it when the stretch began, or 0xFFFFFFFF for none
+ * found. The game keeps no such record: it is the player's unit nearest to having the seen unit in sight (its range,
+ * with the sight upgrades, and the seen unit's size), within 8 tiles of that. The likeliest seer, not the game's word.
  */
 export interface Sightings {
   every: number;
@@ -121,6 +125,7 @@ export interface Sightings {
   player: Uint8Array;
   from: Uint32Array;
   to: Uint32Array;
+  by: Uint32Array;
 }
 
 export interface ReplayTimeline {

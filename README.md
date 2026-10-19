@@ -173,6 +173,17 @@ at the edge of the screen counts the same as one in the middle.
   seeing was guessed at, or scouted some other way. One the player already had before the
   opponents had the threat at all, such as an opening cannon, is shown as *already had*,
   not as an answer.
+- **Scouts and what they found**: each of the opponents' units and buildings a player ever
+  saw, counted to the player's unit that saw it first. A unit's **worth** is what all it
+  showed them first cost, so an SCV that walks into the main and sees a Gateway, a
+  Cybernetics Core and an Assimilator is worth 425. For each player, the six units worth
+  the most: what they were, when they found it, their worth, and the new kinds among it
+  (the kinds the player had never seen before). Buildings are left out: a cannon that sees
+  what comes at it is defending, not scouting. The best scout is also on the player's
+  card. The game does not record which unit sees what. A sighting is counted to the
+  player's unit that was nearest to having the thing in its sight, judged by the unit's
+  sight range and upgrades and the size of what it saw. That is the likeliest one, not the
+  game's own record.
 - **Unseen the longest**, folded: the opponents' town halls, production and tech buildings
   that stood the longest before each player saw them, from when they were started. Supply,
   gas and static defence are left out. A hidden expansion shows up here.
@@ -359,6 +370,22 @@ player could see, with the fog of war over the rest, on the editor's minimap too
 player chosen, Spectate follows that player's game: their fights, their army, their new
 bases, and an enemy army about to meet theirs seen from their side.
 
+**The map as a player knew it.** On the editor's map, once the game has been analysed,
+choosing a player in the **Vision** menu draws their opponents as that player knew them at
+the moment on the timeline. Their own side is drawn as usual.
+
+- What the player could see then is drawn as usual.
+- A building they saw earlier is drawn faint, with a short-dashed edge, where it was and
+  as it was when they last saw it (a Hatchery they saw before it became a Lair is still a
+  Hatchery). It stays until they see it go, even if it is gone by then.
+- A unit they saw in the last half minute is a ring where they last saw it, fading as the
+  sight gets older.
+- What was there that they did not know of is drawn very faintly: a dotted outline for a
+  building, a small pale dot for a unit. That is the truth beside what they knew.
+
+A line at the top of the map says whose map it is, and **Legend** keys the marks. Choose
+*everyone* to see the game as it was.
+
 Point at a unit or a building in the replay and a tooltip says what the game's console
 would: its name and owner, its hit points, shields and energy, and what it is doing. For a
 building that is training, researching, upgrading or still going up, that is a progress bar,
@@ -379,7 +406,8 @@ While a replay's tab is in front:
   below), **Orders** (the recent orders over the units drawn faintly, or over the game in
   the Replay view), **Map stats** (every replay of the map together, see above) and
   **Legend** (a key to the marks in the map's bottom-left corner).
-- In the Replay view, the **Vision** menu: everyone, or one player's eyes (see above).
+- The **Vision** menu: everyone, or one player's eyes. In the Replay view, see above. On
+  the map, see *The map as a player knew it* below.
 - How the analysis is going, or that it is done.
 - The graph's menu: actions per minute, or, once the game is analysed, the army lead (in a
   game of two), army value, army size, workers, supply, minerals or gas in the bank, or

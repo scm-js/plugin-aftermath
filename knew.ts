@@ -12,8 +12,8 @@
 import { isBuilding } from "./played";
 import type { ReplayTimeline } from "./vendor/scm-sim";
 
-/** One stretch of a player seeing a unit, frames from–to. */
-export interface Stretch { player: number; from: number; to: number }
+/** One stretch of a player seeing a unit, frames from–to; `by`, the player's unit that saw it first (null: none found). */
+export interface Stretch { player: number; from: number; to: number; by: number | null }
 
 /** A unit's life as the timeline tells it: who owned it, and its state (type, finished) from each frame on. */
 export interface Life {
@@ -50,6 +50,9 @@ export function stateAt(l: Life, frame: number): { type: number; done: boolean }
   return { type: s[1], done: s[2] };
 }
 
+/** `Sightings.by` for no seer found. */
+const NOBODY = 0xffffffff;
+
 /** The sightings by unit; empty for a timeline without them. */
 export function sightsOf(t: ReplayTimeline): Map<number, Stretch[]> {
   const out = new Map<number, Stretch[]>();
@@ -57,7 +60,8 @@ export function sightsOf(t: ReplayTimeline): Map<number, Stretch[]> {
   if (!s) return out;
   for (let i = 0; i < s.unit.length; i++) {
     const list = out.get(s.unit[i]) ?? [];
-    list.push({ player: s.player[i], from: s.from[i], to: s.to[i] });
+    const by = s.by ? s.by[i] : NOBODY;
+    list.push({ player: s.player[i], from: s.from[i], to: s.to[i], by: by === NOBODY ? null : by });
     out.set(s.unit[i], list);
   }
   for (const list of out.values()) list.sort((a, b) => a.from - b.from);
@@ -96,10 +100,12 @@ export interface Knowledge {
   /** Whether the timeline has sightings at all (an engine from before them gives none). */
   has: boolean;
   end: number;
+  /** Frames between the engine's looks at who sees what. */
+  sightEvery: number;
 }
 
 export function knowledge(t: ReplayTimeline): Knowledge {
-  return { lives: lives(t), sights: sightsOf(t), has: !!t.sight, end: t.frames };
+  return { lives: lives(t), sights: sightsOf(t), has: !!t.sight, end: t.frames, sightEvery: t.sight?.every ?? 8 };
 }
 
 /* ── First looks ── */
@@ -264,4 +270,151 @@ export function armyInSight(k: Knowledge, t: ReplayTimeline, player: number, the
   }
   const all = total.reduce((a, b) => a + b, 0);
   return { frames, total, seen, share: all > 0 ? seen.reduce((a, b) => a + b, 0) / all : null };
+}
+
+/* ── The map as a player knew it ── */
+
+/** Where each unit (not a building) stood at each sample of the timeline's positions. */
+export interface Trail { f: number[]; x: number[]; y: number[] }
+
+export function trails(t: ReplayTimeline): Map<number, Trail> {
+  const out = new Map<number, Trail>();
+  const p = t.positions;
+  if (!p) return out;
+  for (let i = 0; i < p.frame.length; i++) {
+    for (let r = p.start[i]; r < p.start[i + 1]; r++) {
+      let tr = out.get(p.unit[r]);
+      if (!tr) { tr = { f: [], x: [], y: [] }; out.set(p.unit[r], tr); }
+      tr.f.push(p.frame[i]); tr.x.push(p.x[r]); tr.y.push(p.y[r]);
+    }
+  }
+  return out;
+}
+
+/** Where a unit was at `frame`: the last sample at or before it, or null before the first. */
+export function whereAt(tr: Trail | undefined, frame: number): { x: number; y: number } | null {
+  if (!tr || !tr.f.length || tr.f[0] > frame) return null;
+  let lo = 0, hi = tr.f.length - 1;
+  while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (tr.f[mid] <= frame) lo = mid; else hi = mid - 1; }
+  return { x: tr.x[lo], y: tr.y[lo] };
+}
+
+/** How long a unit last seen is kept on a player's map (half a minute); a building is kept until it is seen gone. */
+export const REMEMBER_FRAMES = 720;
+
+/**
+ * `seen`: in the player's sight now. `remembered`: not now, drawn where and as it was when they last saw it (a
+ * building they never saw go stays, though it may be gone). `unseen`: there now, and nothing of it on the player's map.
+ */
+export type Known = "seen" | "remembered" | "unseen";
+
+export interface KnownThing {
+  unit: number;
+  owner: number;
+  /** As the player knows it: what it is (or was when last seen), whether it was finished, where. */
+  type: number;
+  done: boolean;
+  x: number;
+  y: number;
+  building: boolean;
+  known: Known;
+  /** Frames since the player last saw it (0 while seen). */
+  age: number;
+}
+
+/**
+ * The opponents' units and buildings at `frame` as `player` knew them: what they see, what they remember, and what is
+ * there that they do not know of. `where`: `trails(t)`; `placed`: where each building stands (its unit → x, y).
+ */
+export function knownAt(k: Knowledge, where: Map<number, Trail>, placed: Map<number, { x: number; y: number }>, player: number, them: ReadonlySet<number>, frame: number): KnownThing[] {
+  const out: KnownThing[] = [];
+  for (const [unit, l] of k.lives) {
+    if (!them.has(l.owner) || l.born > frame) continue;
+    const now = stateAt(l, frame);
+    let covering: Stretch | null = null, last: Stretch | null = null;
+    for (const s of k.sights.get(unit) ?? []) {
+      if (s.player !== player || s.from > frame) continue;
+      if (frame < s.to) { covering = s; break; }
+      if (!last || s.to > last.to) last = s;
+    }
+    const pos = (f: number, type: number) => (isBuilding(type) ? placed.get(unit) : undefined) ?? whereAt(where.get(unit), f);
+    if (covering && now) {
+      const p = pos(frame, now.type);
+      if (p) out.push({ unit, owner: l.owner, type: now.type, done: now.done, x: p.x, y: p.y, building: isBuilding(now.type), known: "seen", age: 0 });
+      continue;
+    }
+    if (last) {
+      // Seen gone: the player watched it die (it died while they could see it, or as their sight of it ended).
+      const sawItGo = l.died !== null && l.died <= last.to + (k.sightEvery ?? 8);
+      const then = stateAt(l, Math.max(l.born, last.to - 1));
+      const age = frame - last.to;
+      if (!sawItGo && then && (isBuilding(then.type) || age <= REMEMBER_FRAMES)) {
+        const p = pos(last.to - 1, then.type);
+        if (p) { out.push({ unit, owner: l.owner, type: then.type, done: then.done, x: p.x, y: p.y, building: isBuilding(then.type), known: "remembered", age }); continue; }
+      }
+    }
+    if (now) {
+      const p = pos(frame, now.type);
+      if (p) out.push({ unit, owner: l.owner, type: now.type, done: now.done, x: p.x, y: p.y, building: isBuilding(now.type), known: "unseen", age: 0 });
+    }
+  }
+  return out;
+}
+
+/** Where each building stands: the place it was first a building at (its site, or the drone that became it). */
+export function placedBuildings(t: ReplayTimeline): Map<number, { x: number; y: number }> {
+  const out = new Map<number, { x: number; y: number }>();
+  for (const e of t.events) if ((e.kind === "born" || e.kind === "morph") && isBuilding(e.type) && !out.has(e.unit)) out.set(e.unit, { x: e.x, y: e.y });
+  return out;
+}
+
+/* ── A scout's worth ── */
+
+export interface Scout {
+  /** The player's unit (the timeline's number), its type, and when it was made. */
+  unit: number;
+  type: number;
+  /** The opponents' units and buildings it was the first to show the player: which, what, when. */
+  revealed: { unit: number; type: number; frame: number }[];
+  /** Their cost (minerals and gas): the scout's worth. */
+  worth: number;
+  /** Kinds the player had never seen before it showed them, in the order shown. */
+  kinds: number[];
+  /** The first and the last of what it revealed. */
+  from: number;
+  to: number;
+}
+
+/**
+ * Each of `player`'s units by what it was the first to show them: of everything of the opponents' the player ever saw,
+ * the unit that saw it first (`Sightings.by`). Its worth is what that cost; `kinds` are the new kinds among it. Most
+ * worth first. What was shown by no unit found (an ally's sight) is nobody's.
+ */
+export function scouts(k: Knowledge, player: number, them: ReadonlySet<number>, cost: (type: number) => number): Scout[] {
+  const firsts: { unit: number; type: number; frame: number; by: number }[] = [];
+  for (const [unit, list] of k.sights) {
+    const l = k.lives.get(unit);
+    if (!l || !them.has(l.owner)) continue;
+    const first = list.find((s) => s.player === player);
+    if (!first || first.by === null) continue;
+    const st = stateAt(l, first.from);
+    if (st) firsts.push({ unit, type: st.type, frame: first.from, by: first.by });
+  }
+  firsts.sort((a, b) => a.frame - b.frame);
+  const known = new Set<number>(), out = new Map<number, Scout>();
+  for (const f of firsts) {
+    let sc = out.get(f.by);
+    if (!sc) {
+      const own = k.lives.get(f.by);
+      sc = { unit: f.by, type: own ? own.states[0][1] : -1, revealed: [], worth: 0, kinds: [], from: f.frame, to: f.frame };
+      out.set(f.by, sc);
+    }
+    sc.revealed.push({ unit: f.unit, type: f.type, frame: f.frame });
+    sc.worth += cost(f.type);
+    sc.to = f.frame;
+    if (!known.has(f.type)) { known.add(f.type); sc.kinds.push(f.type); }
+  }
+  // A scout's type is the one it was when it scouted (a drone before it became a building).
+  for (const sc of out.values()) { const own = k.lives.get(sc.unit); const st = own ? stateAt(own, sc.from) : null; if (st) sc.type = st.type; }
+  return [...out.values()].sort((a, b) => b.worth - a.worth || a.from - b.from);
 }
