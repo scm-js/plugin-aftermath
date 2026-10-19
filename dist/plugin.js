@@ -1207,7 +1207,7 @@ var KO = {
   "Energy": "\uC5D0\uB108\uC9C0",
   "{n} left": "{n} \uB0A8\uC74C",
   "Vision: {name}": "\uC2DC\uC57C: {name}",
-  "Whose eyes the game is seen through: one player's shows only what they could see, with the fog of war": "\uB204\uAD6C\uC758 \uC2DC\uC57C\uB85C \uAC8C\uC784\uC744 \uBCFC\uC9C0. \uD55C \uD50C\uB808\uC774\uC5B4\uB97C \uACE0\uB974\uBA74 \uADF8 \uD50C\uB808\uC774\uC5B4\uAC00 \uBCFC \uC218 \uC788\uB358 \uAC83\uB9CC \uC804\uC7A5\uC758 \uC548\uAC1C\uC640 \uD568\uAED8 \uBCF4\uC785\uB2C8\uB2E4",
+  "Whose eyes the game is seen through. In the Replay view, one player's shows only what they could see, with the fog of war; on the map, their opponents as that player knew them: what they saw, where they last saw it, and faintly what they did not know.": "\uB204\uAD6C\uC758 \uC2DC\uC57C\uB85C \uAC8C\uC784\uC744 \uBCFC\uC9C0 \uACE0\uB985\uB2C8\uB2E4. \uB9AC\uD50C\uB808\uC774 \uD654\uBA74\uC5D0\uC11C\uB294 \uD55C \uC120\uC218\uB97C \uACE0\uB974\uBA74 \uADF8 \uC120\uC218\uAC00 \uBCFC \uC218 \uC788\uB358 \uAC83\uB9CC \uC804\uC7A5\uC758 \uC548\uAC1C\uC640 \uD568\uAED8 \uBCF4\uC785\uB2C8\uB2E4. \uB9F5\uC5D0\uC11C\uB294 \uC0C1\uB300\uB97C \uADF8 \uC120\uC218\uAC00 \uC54C\uB358 \uB300\uB85C \uBCF4\uC5EC \uC90D\uB2C8\uB2E4: \uBCF8 \uAC83, \uB9C8\uC9C0\uB9C9\uC73C\uB85C \uBCF8 \uC790\uB9AC, \uADF8\uB9AC\uACE0 \uBAB0\uB790\uB358 \uAC83\uC740 \uD750\uB9AC\uAC8C.",
   "Open a replay to analyse it.": "\uBD84\uC11D\uD560 \uB9AC\uD50C\uB808\uC774\uB97C \uC5EC\uC138\uC694.",
   "The game could not be analysed: {message}": "\uAC8C\uC784\uC744 \uBD84\uC11D\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4: {message}",
   "The game is being analysed. The charts appear when it is done.": "\uAC8C\uC784\uC744 \uBD84\uC11D\uD558\uB294 \uC911\uC785\uB2C8\uB2E4. \uB05D\uB098\uBA74 \uCC28\uD2B8\uAC00 \uB098\uD0C0\uB0A9\uB2C8\uB2E4.",
@@ -1368,7 +1368,58 @@ var KO = {
   "Cinematic": "\uC2DC\uB124\uB9C8\uD2F1",
   "The game full screen, dressed as a broadcast, without the editor around it. Esc leaves.": "\uD3B8\uC9D1\uAE30 \uC5C6\uC774 \uAC8C\uC784\uC744 \uBC29\uC1A1\uCC98\uB7FC \uC804\uCCB4 \uD654\uBA74\uC73C\uB85C \uBD05\uB2C8\uB2E4. Esc\uB85C \uB098\uAC11\uB2C8\uB2E4.",
   "Make a new cast, or watch another kept in this browser": "\uC0C8 \uC911\uACC4\uB97C \uB9CC\uB4E4\uAC70\uB098, \uC774 \uBE0C\uB77C\uC6B0\uC800\uC5D0 \uBCF4\uAD00\uB41C \uB2E4\uB978 \uC911\uACC4\uB97C \uBD05\uB2C8\uB2E4",
-  "Kept in this browser: {n, plural, one {# cast} other {# casts}}, {mb} MB. Past {max} casts or {maxMb} MB, the ones watched longest ago go.": "\uC774 \uBE0C\uB77C\uC6B0\uC800\uC5D0 \uBCF4\uAD00: \uC911\uACC4 {n}\uAC1C, {mb} MB. {max}\uAC1C \uB610\uB294 {maxMb} MB\uB97C \uB118\uC73C\uBA74 \uAC00\uC7A5 \uC624\uB798\uC804\uC5D0 \uBCF8 \uAC83\uBD80\uD130 \uC9C0\uC6C1\uB2C8\uB2E4."
+  "Kept in this browser: {n, plural, one {# cast} other {# casts}}, {mb} MB. Past {max} casts or {maxMb} MB, the ones watched longest ago go.": "\uC774 \uBE0C\uB77C\uC6B0\uC800\uC5D0 \uBCF4\uAD00: \uC911\uACC4 {n}\uAC1C, {mb} MB. {max}\uAC1C \uB610\uB294 {maxMb} MB\uB97C \uB118\uC73C\uBA74 \uAC00\uC7A5 \uC624\uB798\uC804\uC5D0 \uBCF8 \uAC83\uBD80\uD130 \uC9C0\uC6C1\uB2C8\uB2E4.",
+  "The game engine on this site cannot play a fight again yet.": "\uC774 \uC0AC\uC774\uD2B8\uC758 \uAC8C\uC784 \uC5D4\uC9C4\uC740 \uC544\uC9C1 \uC804\uD22C\uB97C \uB2E4\uC2DC \uC7AC\uC0DD\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.",
+  "{name}: {units} units worth {value} took part. Played as it was, they lost {played}; with both sides only attack-moving, {attackMove}.": "{name}: \uC720\uB2DB {units}\uAE30(\uAC00\uCE58 {value})\uAC00 \uCC38\uC5EC\uD588\uC2B5\uB2C8\uB2E4. \uC2E4\uC81C\uB85C \uD50C\uB808\uC774\uB41C \uB300\uB85C\uB294 {played}\uB97C \uC783\uC5C8\uACE0, \uC591\uCABD \uBAA8\uB450 \uC5B4\uD0DD \uB545\uB9CC \uD588\uC744 \uB54C\uB294 {attackMove}\uB97C \uC783\uC5C8\uC2B5\uB2C8\uB2E4.",
+  "As played \u2192 attack-move only": "\uC2E4\uC81C \u2192 \uC5B4\uD0DD \uB545\uB9CC",
+  "Being played again by the game\u2026 {percent}%": "\uAC8C\uC784\uC774 \uB2E4\uC2DC \uC7AC\uC0DD\uD558\uB294 \uC911\u2026 {percent}%",
+  "Being played again by the game\u2026": "\uAC8C\uC784\uC774 \uB2E4\uC2DC \uC7AC\uC0DD\uD558\uB294 \uC911\u2026",
+  "Under each key moment, the game played it again from just before its first loss: once as it was played, and once with both sides only attack-moving to where it was fought and nobody giving any other order. The numbers are what each side lost, by cost, of the units that took part, as played and then with attack-move. Losing more as played is not a mistake in itself: pulling back, or trading units for time, costs units too.": "\uAC01 \uC8FC\uC694 \uC7A5\uBA74 \uC544\uB798\uC758 \uC22B\uC790\uB294 \uAC8C\uC784\uC774 \uCCAB \uC190\uC2E4 \uC9C1\uC804\uBD80\uD130 \uADF8 \uC7A5\uBA74\uC744 \uB2E4\uC2DC \uC7AC\uC0DD\uD55C \uACB0\uACFC\uC785\uB2C8\uB2E4. \uD55C \uBC88\uC740 \uC2E4\uC81C\uB85C \uD50C\uB808\uC774\uB41C \uB300\uB85C, \uD55C \uBC88\uC740 \uC591\uCABD \uBAA8\uB450 \uC2F8\uC6C0\uC774 \uBC8C\uC5B4\uC9C4 \uACF3\uC73C\uB85C \uC5B4\uD0DD \uB545\uB9CC \uD558\uACE0 \uB2E4\uB978 \uBA85\uB839\uC740 \uC544\uBB34\uB3C4 \uB0B4\uB9AC\uC9C0 \uC54A\uC740 \uCC44\uB85C \uC7AC\uC0DD\uD569\uB2C8\uB2E4. \uC22B\uC790\uB294 \uCC38\uC5EC\uD55C \uC720\uB2DB \uC911 \uAC01 \uCABD\uC774 \uC783\uC740 \uAC00\uCE58\uC774\uBA70, \uC2E4\uC81C \uACB0\uACFC \uB2E4\uC74C\uC5D0 \uC5B4\uD0DD \uB545 \uACB0\uACFC\uAC00 \uC635\uB2C8\uB2E4. \uC2E4\uC81C\uB85C \uB354 \uB9CE\uC774 \uC783\uC5C8\uB2E4\uACE0 \uD574\uC11C \uADF8 \uC790\uCCB4\uAC00 \uC2E4\uC218\uB294 \uC544\uB2D9\uB2C8\uB2E4. \uD6C4\uD1F4\uD558\uAC70\uB098 \uC2DC\uAC04\uC744 \uBC8C\uB824\uACE0 \uC720\uB2DB\uC744 \uB0B4\uC8FC\uB294 \uAC83\uB3C4 \uC720\uB2DB\uC744 \uC783\uB294 \uC77C\uC785\uB2C8\uB2E4.",
+  "The key moments could not be played again: {why}": "\uC8FC\uC694 \uC7A5\uBA74\uC744 \uB2E4\uC2DC \uC7AC\uC0DD\uD560 \uC218 \uC5C6\uC5C8\uC2B5\uB2C8\uB2E4: {why}",
+  "Scouting": "\uC815\uCC30",
+  "The game engine on this site does not say who saw what yet, so there is nothing to show here.": "\uC774 \uC0AC\uC774\uD2B8\uC758 \uAC8C\uC784 \uC5D4\uC9C4\uC740 \uC544\uC9C1 \uB204\uAC00 \uBB34\uC5C7\uC744 \uBD24\uB294\uC9C0 \uC54C\uB824 \uC8FC\uC9C0 \uC54A\uC544\uC11C \uC5EC\uAE30\uC5D0 \uBCF4\uC5EC \uC904 \uAC83\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.",
+  "of their army": "\uC0C1\uB300 \uBCD1\uB825 \uC911",
+  "in sight, on average": "\uD3C9\uADE0\uC801\uC73C\uB85C \uC2DC\uC57C\uC5D0 \uC788\uC5C8\uC74C",
+  "first saw a building of theirs": "\uC0C1\uB300 \uAC74\uBB3C\uC744 \uCC98\uC74C \uBCF8 \uB54C",
+  "never saw a building of theirs": "\uC0C1\uB300 \uAC74\uBB3C\uC744 \uD55C \uBC88\uB3C4 \uBCF4\uC9C0 \uBABB\uD568",
+  "{n, plural, one {building of theirs never seen} other {buildings of theirs never seen}}": "\uC0C1\uB300 \uAC74\uBB3C\uC744 \uD55C \uBC88\uB3C4 \uBCF4\uC9C0 \uBABB\uD55C \uC218",
+  "Both had about as much of the other's army in sight.": "\uB450 \uC120\uC218 \uBAA8\uB450 \uC0C1\uB300 \uBCD1\uB825\uC744 \uBE44\uC2B7\uD55C \uB9CC\uD07C \uC2DC\uC57C\uC5D0 \uB450\uC5C8\uC2B5\uB2C8\uB2E4.",
+  "{name} had more of {other}'s army in sight: {more} against {less}.": "{name}\uC774(\uAC00) {other}\uC758 \uBCD1\uB825\uC744 \uB354 \uB9CE\uC774 \uC2DC\uC57C\uC5D0 \uB450\uC5C8\uC2B5\uB2C8\uB2E4: {more} \uB300 {less}.",
+  "Their army in sight": "\uC2DC\uC57C\uC5D0 \uB4E4\uC5B4\uC628 \uC0C1\uB300 \uBCD1\uB825",
+  "{seen} of {total}": "{total} \uC911 {seen}",
+  "no army": "\uBCD1\uB825 \uC5C6\uC74C",
+  "How much of the opponents' army, by cost, each player could see, over the half minute around each moment. Units under the fog, and cloaked or burrowed units not detected, are not seen.": "\uAC01 \uC120\uC218\uAC00 \uC0C1\uB300 \uBCD1\uB825\uC744 \uAC00\uCE58 \uAE30\uC900\uC73C\uB85C \uC5BC\uB9C8\uB098 \uBCFC \uC218 \uC788\uC5C8\uB294\uC9C0\uB97C, \uAC01 \uC2DC\uC810 \uC55E\uB4A4 30\uCD08\uC5D0 \uAC78\uCCD0 \uBCF4\uC5EC \uC90D\uB2C8\uB2E4. \uC548\uAC1C \uC18D\uC758 \uC720\uB2DB\uACFC, \uD0D0\uC9C0\uB418\uC9C0 \uC54A\uC740 \uD074\uB85C\uD0B9\xB7\uBC84\uB85C\uC6B0 \uC720\uB2DB\uC740 \uBCF8 \uAC83\uC73C\uB85C \uCE58\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
+  "Cloaked units": "\uD074\uB85C\uD0B9 \uC720\uB2DB",
+  "Air units": "\uACF5\uC911 \uC720\uB2DB",
+  "{time} later": "{time} \uB4A4",
+  "already had: {name}, {time}": "\uC774\uBBF8 \uC788\uC74C: {name}, {time}",
+  "none": "\uC5C6\uC74C",
+  "{time} before seeing": "\uBCF4\uAE30 {time} \uC804",
+  "{time} after seeing": "\uBCF8 \uC9C0 {time} \uB4A4",
+  "Seen and answered": "\uBC1C\uACAC\uACFC \uB300\uC751",
+  "For the cloaked and the air units the opponents had: when they first had one (or the building that makes them), when the player first saw one, and the first answer the player started after that: detection against cloaked units, anti-air against air units. An answer started before seeing was guessed at, or scouted some other way. One the player had before the opponents had the threat at all is shown as already had.": "\uC0C1\uB300\uAC00 \uAC00\uC9C4 \uD074\uB85C\uD0B9 \uC720\uB2DB\uACFC \uACF5\uC911 \uC720\uB2DB\uC5D0 \uB300\uD574, \uC0C1\uB300\uAC00 \uCC98\uC74C \uADF8\uAC83(\uB610\uB294 \uADF8\uAC83\uC744 \uB9CC\uB4DC\uB294 \uAC74\uBB3C)\uC744 \uAC00\uC9C4 \uB54C, \uC120\uC218\uAC00 \uCC98\uC74C \uBCF8 \uB54C, \uADF8 \uB4A4 \uC120\uC218\uAC00 \uCC98\uC74C \uC2DC\uC791\uD55C \uB300\uC751\uC744 \uBCF4\uC5EC \uC90D\uB2C8\uB2E4. \uD074\uB85C\uD0B9 \uC720\uB2DB\uC5D0\uB294 \uD0D0\uC9C0, \uACF5\uC911 \uC720\uB2DB\uC5D0\uB294 \uB300\uACF5\uC785\uB2C8\uB2E4. \uBCF4\uAE30 \uC804\uC5D0 \uC2DC\uC791\uD55C \uB300\uC751\uC740 \uC9D0\uC791\uD588\uAC70\uB098 \uB2E4\uB978 \uBC29\uBC95\uC73C\uB85C \uC815\uCC30\uD55C \uAC83\uC785\uB2C8\uB2E4. \uC0C1\uB300\uAC00 \uADF8 \uC704\uD611\uC744 \uAC16\uAE30\uB3C4 \uC804\uC5D0 \uC774\uBBF8 \uC788\uB358 \uAC83\uC740 \u201C\uC774\uBBF8 \uC788\uC74C\u201D\uC73C\uB85C \uD45C\uC2DC\uD569\uB2C8\uB2E4.",
+  "They had it": "\uC0C1\uB300 \uBCF4\uC720",
+  "First seen": "\uCC98\uC74C \uBCF8 \uB54C",
+  "First answer": "\uCCAB \uB300\uC751",
+  "Unseen the longest": "\uAC00\uC7A5 \uC624\uB798 \uBCF4\uC9C0 \uBABB\uD55C \uAC74\uBB3C",
+  "The opponents' town halls, production and tech buildings that stood the longest before each player saw them, from when they were started. Supply, gas and static defence are left out, and so is what stood from the start.": "\uC0C1\uB300\uC758 \uBCF8\uC9C4 \uAC74\uBB3C, \uC0DD\uC0B0 \uAC74\uBB3C, \uD14C\uD06C \uAC74\uBB3C \uC911 \uAC01 \uC120\uC218\uAC00 \uBCF4\uAE30 \uC804\uAE4C\uC9C0 \uAC00\uC7A5 \uC624\uB798 \uC11C \uC788\uB358 \uAC83\uB4E4\uB85C, \uAC74\uC124\uC744 \uC2DC\uC791\uD55C \uB54C\uBD80\uD130 \uC7BD\uB2C8\uB2E4. \uBCF4\uAE09, \uAC00\uC2A4, \uBC29\uC5B4 \uAC74\uBB3C\uACFC \uCC98\uC74C\uBD80\uD130 \uC788\uB358 \uAC74\uBB3C\uC740 \uBE8D\uB2C8\uB2E4.",
+  "started {time}": "{time} \uC2DC\uC791",
+  "never seen": "\uBCF4\uC9C0 \uBABB\uD568",
+  "seen {time}": "{time}\uC5D0 \uBD04",
+  "{time} unseen": "{time} \uB3D9\uC548 \uBABB \uBD04",
+  "What {name} knew": "{name}\uC774(\uAC00) \uC54C\uB358 \uAC83",
+  "A building as {name} last saw it": "{name}\uC774(\uAC00) \uB9C8\uC9C0\uB9C9\uC73C\uB85C \uBCF8 \uAC74\uBB3C",
+  "A unit where {name} last saw it": "{name}\uC774(\uAC00) \uB9C8\uC9C0\uB9C9\uC73C\uB85C \uBCF8 \uC790\uB9AC\uC758 \uC720\uB2DB",
+  "There, and {name} did not know": "\uC788\uC5C8\uC9C0\uB9CC {name}\uC740(\uB294) \uBAB0\uB790\uC74C",
+  "found by their best scout: {unit}, {time}": "\uAC00\uC7A5 \uC798\uD55C \uC815\uCC30\uC774 \uCC3E\uC740 \uAC00\uCE58: {unit}, {time}",
+  "new: {kinds}": "\uC0C8\uB85C \uBD04: {kinds}",
+  "nothing new": "\uC0C8\uB85C\uC6B4 \uAC83 \uC5C6\uC74C",
+  "{n, plural, one {# unit or building} other {# units and buildings}} of theirs this {unit} was the first to show them, worth {worth}": "\uC774 {unit}\uC774(\uAC00) \uCC98\uC74C\uC73C\uB85C \uBCF4\uC5EC \uC900 \uC0C1\uB300 \uC720\uB2DB\uACFC \uAC74\uBB3C {n}\uAC1C, \uAC00\uCE58 {worth}",
+  "Scouts and what they found": "\uC815\uCC30\uACFC \uCC3E\uC544\uB0B8 \uAC83",
+  "Each of the opponents' units and buildings a player ever saw, counted to the player's unit that saw it first; a unit's worth is what all it showed them first cost. The game does not record which unit sees what: it is the unit nearest to having the thing in its sight, the likeliest one. Buildings are left out, and new kinds are the ones the player had never seen before.": "\uC120\uC218\uAC00 \uBCF8 \uC0C1\uB300\uC758 \uC720\uB2DB\uACFC \uAC74\uBB3C \uD558\uB098\uD558\uB098\uB97C, \uADF8\uAC83\uC744 \uCC98\uC74C \uBCF8 \uADF8 \uC120\uC218\uC758 \uC720\uB2DB\uC5D0\uAC8C \uC149\uB2C8\uB2E4. \uC720\uB2DB\uC758 \uAC00\uCE58\uB294 \uADF8 \uC720\uB2DB\uC774 \uCC98\uC74C \uBCF4\uC5EC \uC900 \uAC83\uB4E4\uC758 \uAC00\uACA9 \uD569\uC785\uB2C8\uB2E4. \uAC8C\uC784\uC740 \uC5B4\uB290 \uC720\uB2DB\uC774 \uBB34\uC5C7\uC744 \uBCF4\uB294\uC9C0 \uAE30\uB85D\uD558\uC9C0 \uC54A\uC73C\uBBC0\uB85C, \uADF8\uAC83\uC744 \uC2DC\uC57C\uC5D0 \uB450\uAE30\uC5D0 \uAC00\uC7A5 \uAC00\uAE4C\uC6E0\uB358 \uC720\uB2DB, \uC989 \uAC00\uC7A5 \uADF8\uB7F4\uB4EF\uD55C \uC720\uB2DB\uC73C\uB85C \uC149\uB2C8\uB2E4. \uAC74\uBB3C\uC740 \uBE7C\uBA70, \uC0C8\uB85C \uBCF8 \uC885\uB958\uB294 \uC120\uC218\uAC00 \uADF8\uB54C\uAE4C\uC9C0 \uD55C \uBC88\uB3C4 \uBCF4\uC9C0 \uBABB\uD55C \uAC83\uC785\uB2C8\uB2E4.",
+  "When": "\uB54C",
+  "Worth": "\uAC00\uCE58",
+  "What it found": "\uCC3E\uC544\uB0B8 \uAC83"
 };
 
 // played.ts
@@ -1581,6 +1632,269 @@ function unitsAt(t, frame, each) {
 }
 function series(t, player, metric) {
   return t.samples.players.find((p) => p.slot === player)?.[metric] ?? null;
+}
+
+// knew.ts
+function lives(t) {
+  const out = /* @__PURE__ */ new Map();
+  for (const e of t.events) {
+    let l = out.get(e.unit);
+    if (e.kind === "born") {
+      if (e.hallucination) continue;
+      out.set(e.unit, { owner: e.owner, born: e.frame, died: null, states: [[e.frame, e.type, false]] });
+      continue;
+    }
+    if (!l) continue;
+    if (e.kind === "done") l.states.push([e.frame, e.type, true]);
+    else if (e.kind === "morph") l.states.push([e.frame, e.type, false]);
+    else if (e.kind === "given") l.owner = e.owner;
+    else if (e.kind === "died") l.died = e.frame;
+  }
+  return out;
+}
+function stateAt(l, frame) {
+  if (frame < l.born || l.died !== null && frame >= l.died) return null;
+  let s = l.states[0];
+  for (const x of l.states) {
+    if (x[0] > frame) break;
+    s = x;
+  }
+  return { type: s[1], done: s[2] };
+}
+var NOBODY = 4294967295;
+function sightsOf(t) {
+  const out = /* @__PURE__ */ new Map();
+  const s = t.sight;
+  if (!s) return out;
+  for (let i = 0; i < s.unit.length; i++) {
+    const list = out.get(s.unit[i]) ?? [];
+    const by = s.by ? s.by[i] : NOBODY;
+    list.push({ player: s.player[i], from: s.from[i], to: s.to[i], by: by === NOBODY ? null : by });
+    out.set(s.unit[i], list);
+  }
+  for (const list of out.values()) list.sort((a, b) => a.from - b.from);
+  return out;
+}
+var seenAt = (stretches, player, frame) => !!stretches?.some((s) => s.player === player && s.from <= frame && frame < s.to);
+function firstSeen(stretches, player, from, until = Infinity) {
+  let best = null;
+  for (const s of stretches ?? []) {
+    if (s.player !== player || s.to <= from || s.from >= until) continue;
+    const at = Math.max(s.from, from);
+    if (best === null || at < best) best = at;
+  }
+  return best;
+}
+function stages(l, end) {
+  const out = [];
+  for (const [frame, type] of l.states) {
+    const last = out[out.length - 1];
+    if (last && last.type === type) continue;
+    if (last) last.to = frame;
+    out.push({ type, from: frame, to: l.died ?? end });
+  }
+  return out;
+}
+function knowledge(t) {
+  return { lives: lives(t), sights: sightsOf(t), has: !!t.sight, end: t.frames, sightEvery: t.sight?.every ?? 8 };
+}
+function firstLooks(k, player, them) {
+  const out = { any: null, building: null };
+  for (const [unit, list] of k.sights) {
+    const l = k.lives.get(unit);
+    if (!l || !them.has(l.owner)) continue;
+    for (const s of list) {
+      if (s.player !== player) continue;
+      const st = stateAt(l, s.from);
+      if (!st) continue;
+      if (!out.any || s.from < out.any.frame) out.any = { frame: s.from, type: st.type };
+      if (isBuilding(st.type) && (!out.building || s.from < out.building.frame)) out.building = { frame: s.from, type: st.type };
+    }
+  }
+  return out;
+}
+var THREATS = {
+  // Dark Templar, Lurker and its egg, Arbiter; Templar Archives (Dark Templar), none for the Lurker (a Hydralisk Den is not one).
+  cloaked: { units: [61, 103, 97, 71], buildings: [165, 170] },
+  // Mutalisk, Guardian, Devourer, Wraith, Battlecruiser, Carrier, Scout, Arbiter; Spire, Greater Spire, Stargate, Fleet Beacon, Physics Lab.
+  air: { units: [43, 44, 62, 8, 12, 72, 70, 71], buildings: [141, 137, 167, 169, 118] }
+};
+var ANSWERS = {
+  // Spore Colony; Missile Turret, Comsat Station, Science Vessel; Photon Cannon, Observatory, Observer.
+  cloaked: { 0: [144], 1: [124, 107, 9], 2: [162, 159, 84] },
+  // Spore Colony, Hydralisk Den, Hydralisk, Scourge, Spire, Mutalisk; Missile Turret, Armory, Goliath, Valkyrie, Wraith;
+  // Photon Cannon, Stargate, Corsair, Scout, Archon.
+  air: { 0: [144, 135, 38, 47, 141, 43], 1: [124, 123, 3, 58, 8], 2: [162, 167, 60, 70, 68] }
+};
+function threats(k, player, race, them) {
+  const out = [];
+  for (const kind of ["cloaked", "air"]) {
+    const tells = /* @__PURE__ */ new Set([...THREATS[kind].units, ...THREATS[kind].buildings]);
+    const answers = new Set(ANSWERS[kind][race] ?? []);
+    let made = null, seen = null;
+    const mine = [];
+    for (const [unit, l] of k.lives) {
+      const theirs = them.has(l.owner);
+      for (const st of stages(l, k.end)) {
+        if (theirs && tells.has(st.type)) {
+          if (!made || st.from < made.frame) made = { frame: st.from, type: st.type };
+          const s = firstSeen(k.sights.get(unit), player, st.from, st.to);
+          if (s !== null && (!seen || s < seen.frame)) seen = { frame: s, type: st.type };
+        }
+        if (l.owner === player && answers.has(st.type) && st.from > 0) mine.push({ frame: st.from, type: st.type });
+      }
+    }
+    if (!made) continue;
+    mine.sort((a, b) => a.frame - b.frame);
+    const from = made.frame;
+    out.push({ kind, made, seen, answer: mine.find((a) => a.frame >= from) ?? null, already: mine.find((a) => a.frame < from) ?? null });
+  }
+  return out;
+}
+var QUIET_BUILDINGS = /* @__PURE__ */ new Set([156, 109, 110, 149, 157, 143, 124, 125, 162, 146, 144]);
+function unseen(k, t, player, them) {
+  const where = /* @__PURE__ */ new Map();
+  for (const e of t.events) if ((e.kind === "born" || e.kind === "morph") && isBuilding(e.type)) where.set(e.unit, { x: e.x, y: e.y });
+  const out = [];
+  for (const [unit, l] of k.lives) {
+    if (!them.has(l.owner) || l.born === 0) continue;
+    for (const st of stages(l, k.end)) {
+      if (!isBuilding(st.type) || QUIET_BUILDINGS.has(st.type)) continue;
+      const seen = firstSeen(k.sights.get(unit), player, st.from, st.to);
+      const p = where.get(unit) ?? { x: 0, y: 0 };
+      out.push({ unit, type: st.type, owner: l.owner, from: st.from, seen, unseenFor: (seen ?? st.to) - st.from, x: p.x, y: p.y });
+    }
+  }
+  return out.sort((a, b) => b.unseenFor - a.unseenFor || a.from - b.from);
+}
+var NOT_ARMY = /* @__PURE__ */ new Set([13, 14, 33, 35, 36, 42, 59, 73, 85, 97, 101, 105, 202]);
+var WORKER = /* @__PURE__ */ new Set([7, 41, 64]);
+function armyInSight(k, t, player, them, cost) {
+  const frames = t.samples.frame;
+  const total = frames.map(() => 0), seen = frames.map(() => 0);
+  for (const [unit, l] of k.lives) {
+    if (!them.has(l.owner)) continue;
+    const list = k.sights.get(unit);
+    for (let i = 0; i < frames.length; i++) {
+      const f = frames[i];
+      if (f < l.born) continue;
+      if (l.died !== null && f >= l.died) break;
+      const st = stateAt(l, f);
+      if (!st || !st.done || NOT_ARMY.has(st.type) || WORKER.has(st.type) || isBuilding(st.type)) continue;
+      const c = cost(st.type);
+      total[i] += c;
+      if (seenAt(list, player, f)) seen[i] += c;
+    }
+  }
+  const all = total.reduce((a, b) => a + b, 0);
+  return { frames, total, seen, share: all > 0 ? seen.reduce((a, b) => a + b, 0) / all : null };
+}
+function trails(t) {
+  const out = /* @__PURE__ */ new Map();
+  const p = t.positions;
+  if (!p) return out;
+  for (let i = 0; i < p.frame.length; i++) {
+    for (let r = p.start[i]; r < p.start[i + 1]; r++) {
+      let tr = out.get(p.unit[r]);
+      if (!tr) {
+        tr = { f: [], x: [], y: [] };
+        out.set(p.unit[r], tr);
+      }
+      tr.f.push(p.frame[i]);
+      tr.x.push(p.x[r]);
+      tr.y.push(p.y[r]);
+    }
+  }
+  return out;
+}
+function whereAt(tr, frame) {
+  if (!tr || !tr.f.length || tr.f[0] > frame) return null;
+  let lo = 0, hi = tr.f.length - 1;
+  while (lo < hi) {
+    const mid = lo + hi + 1 >> 1;
+    if (tr.f[mid] <= frame) lo = mid;
+    else hi = mid - 1;
+  }
+  return { x: tr.x[lo], y: tr.y[lo] };
+}
+var REMEMBER_FRAMES = 720;
+function knownAt(k, where, placed, player, them, frame) {
+  const out = [];
+  for (const [unit, l] of k.lives) {
+    if (!them.has(l.owner) || l.born > frame) continue;
+    const now = stateAt(l, frame);
+    let covering = null, last = null;
+    for (const s of k.sights.get(unit) ?? []) {
+      if (s.player !== player || s.from > frame) continue;
+      if (frame < s.to) {
+        covering = s;
+        break;
+      }
+      if (!last || s.to > last.to) last = s;
+    }
+    const pos = (f, type) => (isBuilding(type) ? placed.get(unit) : void 0) ?? whereAt(where.get(unit), f);
+    if (covering && now) {
+      const p = pos(frame, now.type);
+      if (p) out.push({ unit, owner: l.owner, type: now.type, done: now.done, x: p.x, y: p.y, building: isBuilding(now.type), known: "seen", age: 0 });
+      continue;
+    }
+    if (last) {
+      const sawItGo = l.died !== null && l.died <= last.to + (k.sightEvery ?? 8);
+      const then = stateAt(l, Math.max(l.born, last.to - 1));
+      const age = frame - last.to;
+      if (!sawItGo && then && (isBuilding(then.type) || age <= REMEMBER_FRAMES)) {
+        const p = pos(last.to - 1, then.type);
+        if (p) {
+          out.push({ unit, owner: l.owner, type: then.type, done: then.done, x: p.x, y: p.y, building: isBuilding(then.type), known: "remembered", age });
+          continue;
+        }
+      }
+    }
+    if (now) {
+      const p = pos(frame, now.type);
+      if (p) out.push({ unit, owner: l.owner, type: now.type, done: now.done, x: p.x, y: p.y, building: isBuilding(now.type), known: "unseen", age: 0 });
+    }
+  }
+  return out;
+}
+function placedBuildings(t) {
+  const out = /* @__PURE__ */ new Map();
+  for (const e of t.events) if ((e.kind === "born" || e.kind === "morph") && isBuilding(e.type) && !out.has(e.unit)) out.set(e.unit, { x: e.x, y: e.y });
+  return out;
+}
+function scouts(k, player, them, cost) {
+  const firsts = [];
+  for (const [unit, list] of k.sights) {
+    const l = k.lives.get(unit);
+    if (!l || !them.has(l.owner)) continue;
+    const first = list.find((s) => s.player === player);
+    if (!first || first.by === null) continue;
+    const st = stateAt(l, first.from);
+    if (st) firsts.push({ unit, type: st.type, frame: first.from, by: first.by });
+  }
+  firsts.sort((a, b) => a.frame - b.frame);
+  const known2 = /* @__PURE__ */ new Set(), out = /* @__PURE__ */ new Map();
+  for (const f of firsts) {
+    let sc = out.get(f.by);
+    if (!sc) {
+      const own = k.lives.get(f.by);
+      sc = { unit: f.by, type: own ? own.states[0][1] : -1, revealed: [], worth: 0, kinds: [], from: f.frame, to: f.frame };
+      out.set(f.by, sc);
+    }
+    sc.revealed.push({ unit: f.unit, type: f.type, frame: f.frame });
+    sc.worth += cost(f.type);
+    sc.to = f.frame;
+    if (!known2.has(f.type)) {
+      known2.add(f.type);
+      sc.kinds.push(f.type);
+    }
+  }
+  for (const sc of out.values()) {
+    const own = k.lives.get(sc.unit);
+    const st = own ? stateAt(own, sc.from) : null;
+    if (st) sc.type = st.type;
+  }
+  return [...out.values()].sort((a, b) => b.worth - a.worth || a.from - b.from);
 }
 
 // fights.ts
@@ -1800,6 +2114,31 @@ function topKillers(t, cost, limit = 8) {
     k.type = e.byType ?? k.type;
   }
   return [...by.values()].sort((a, b) => b.value - a.value || b.kills - a.kills || a.frame - b.frame).slice(0, limit);
+}
+var ENGAGEMENT_MOST = 1080;
+var ENGAGEMENT_LULL = 120;
+function engagement(f) {
+  const points = f.points.length ? f.points : [{ frame: f.from, x: f.x, y: f.y }];
+  let best = 0, most = 0;
+  for (let i = 0, j = 0; i < points.length; i++) {
+    while (j < points.length && points[j].frame - points[i].frame <= ENGAGEMENT_MOST) j++;
+    if (j - i > most) {
+      most = j - i;
+      best = i;
+    }
+  }
+  const kept = points.slice(best, best + most);
+  while (kept.length > 1 && kept[1].frame - kept[0].frame > ENGAGEMENT_LULL) kept.shift();
+  while (kept.length > 1 && kept[kept.length - 1].frame - kept[kept.length - 2].frame > ENGAGEMENT_LULL) kept.pop();
+  return {
+    from: kept[0].frame,
+    to: kept[kept.length - 1].frame,
+    x0: Math.min(...kept.map((p) => p.x)),
+    y0: Math.min(...kept.map((p) => p.y)),
+    x1: Math.max(...kept.map((p) => p.x)),
+    y1: Math.max(...kept.map((p) => p.y)),
+    players: f.sides.map((s) => s.player)
+  };
 }
 
 // report.ts
@@ -4257,7 +4596,7 @@ var TECH_BUILDINGS = {
 };
 var TECH = new Set(Object.values(TECH_BUILDINGS).flat());
 var isTechBuilding = (type) => TECH.has(type);
-var NOT_ARMY = /* @__PURE__ */ new Set([42]);
+var NOT_ARMY2 = /* @__PURE__ */ new Set([42]);
 var SAME_AS = /* @__PURE__ */ new Map([[30, 5]]);
 function techBuildings(t, players, time) {
   const out = new Map(players.map((p) => [p, []]));
@@ -4284,7 +4623,7 @@ function researchItems(t, players, time) {
   for (const list of out.values()) list.sort((a, b) => a.done - b.done);
   return out;
 }
-var isArmy = (type) => counted(type) && !isBuilding(type) && !WORKERS2.has(type) && !NOT_ARMY.has(type);
+var isArmy = (type) => counted(type) && !isBuilding(type) && !WORKERS2.has(type) && !NOT_ARMY2.has(type);
 function armyRows(t, players) {
   const minutes = Math.max(1, Math.ceil(t.frames / FRAMES_PER_MINUTE));
   const want = new Set(players);
@@ -4657,6 +4996,196 @@ function timingsTable(cx, all, shown, nameOf, icon, kindOf) {
   );
 }
 
+// scoutview.ts
+var SMOOTH_FRAMES = 720;
+var SCOUTS_SHOWN = 6;
+var UNSEEN_SHOWN = 8;
+var known = /* @__PURE__ */ new WeakMap();
+function mountScouting(body, cx) {
+  const { api, t, timeline: tl } = cx;
+  const el = api.ui.el, w = api.ui.widgets;
+  let k = known.get(tl);
+  if (!k) {
+    k = knowledge(tl);
+    known.set(tl, k);
+  }
+  if (!k.has) {
+    body.append(el("p", { className: "afm-dim afm-it-note" }, t("The game engine on this site does not say who saw what yet, so there is nothing to show here.")));
+    return;
+  }
+  const playing3 = new Set(tl.samples.players.filter((s) => s.supplyMax.some((n) => n > 0)).map((s) => s.slot));
+  const shown = cx.players.filter((p) => playing3.has(p.slot));
+  const raceOf = (slot) => tl.players.find((p) => p.slot === slot)?.race ?? -1;
+  const unit = (type) => api.names.unit(type).replace(/^(Terran|Zerg|Protoss) (?=\S)/, "");
+  const swatch = (color) => el("span", { className: "afm-tip-swatch", style: `background:${color}` });
+  const percent = (share) => share === null ? "\u2013" : `${Math.round(share * 100)}%`;
+  const go = (node, frame) => {
+    node.title = t("Go to the time");
+    node.classList.add("afm-sc-go");
+    node.addEventListener("click", () => cx.seek(frame));
+    return node;
+  };
+  const k0 = k;
+  const sights = new Map(shown.map((p) => [p.slot, armyInSight(k0, tl, p.slot, cx.opponents(p.slot), cx.cost)]));
+  const looks = new Map(shown.map((p) => [p.slot, firstLooks(k0, p.slot, cx.opponents(p.slot))]));
+  const hidden = new Map(shown.map((p) => [p.slot, unseen(k0, tl, p.slot, cx.opponents(p.slot))]));
+  const found = new Map(shown.map((p) => [p.slot, scouts(k0, p.slot, cx.opponents(p.slot), cx.cost).filter((sc) => !isBuilding(sc.type))]));
+  const number = (n) => Math.round(n).toLocaleString();
+  const cards = el("div", { className: "afm-it-cards" }, ...shown.map((p) => {
+    const look = looks.get(p.slot), never = hidden.get(p.slot).filter((u) => u.seen === null).length;
+    return el(
+      "div",
+      { className: "afm-it-card", style: `border-top-color:${p.color}` },
+      el("div", { className: "afm-it-card-name" }, swatch(p.color), el("span", { className: "afm-gt-name" }, p.name)),
+      el("div", { className: "afm-it-hero" }, percent(sights.get(p.slot).share), el("span", { className: "afm-it-unit" }, t("of their army"))),
+      el("div", { className: "afm-dim afm-it-card-line" }, t("in sight, on average")),
+      el("div", { className: "afm-it-card-line" }, ...look.building ? [el("b", {}, formatTime(look.building.frame)), " ", el("span", { className: "afm-dim" }, t("first saw a building of theirs"))] : [el("span", { className: "afm-dim" }, t("never saw a building of theirs"))]),
+      el("div", { className: "afm-it-card-line" }, el("b", {}, String(never)), " ", el("span", { className: "afm-dim" }, t("{n, plural, one {building of theirs never seen} other {buildings of theirs never seen}}", { n: never }))),
+      ...bestScout(p.slot)
+    );
+  }));
+  function bestScout(slot) {
+    const best = found.get(slot)[0];
+    return best ? [el("div", { className: "afm-it-card-line" }, el("b", {}, number(best.worth)), " ", el("span", { className: "afm-dim" }, t("found by their best scout: {unit}, {time}", { unit: unit(best.type), time: formatTime(best.from) })))] : [];
+  }
+  let verdict = null;
+  if (shown.length === 2) {
+    const [a, b] = shown, sa = sights.get(a.slot).share, sb = sights.get(b.slot).share;
+    if (sa !== null && sb !== null) {
+      const [more, less, hi, lo] = sa >= sb ? [a, b, sa, sb] : [b, a, sb, sa];
+      verdict = el("p", { className: "afm-it-verdict" }, hi - lo < 0.05 ? t("Both had about as much of the other's army in sight.") : t("{name} had more of {other}'s army in sight: {more} against {less}.", { name: more.name, other: less.name, more: percent(hi), less: percent(lo) }));
+    }
+  }
+  const frames = tl.samples.frame;
+  const reach = Math.max(1, Math.round(SMOOTH_FRAMES / 2 / Math.max(1, tl.samples.every)));
+  const shareAt = (slot, i) => {
+    const s = sights.get(slot);
+    let seen = 0, total = 0;
+    for (let j = Math.max(0, i - reach); j <= Math.min(frames.length - 1, i + reach); j++) {
+      seen += s.seen[j];
+      total += s.total[j];
+    }
+    return total > 0 ? seen / total * 100 : 0;
+  };
+  const chart = new LineChart(cx.host, 180, (f) => {
+    const i = Math.max(0, nearest2(frames, f));
+    return el(
+      "div",
+      { className: "afm-gt" },
+      el("div", { className: "afm-gt-head" }, el("b", {}, formatTime(frames[i])), el("span", { className: "afm-dim" }, t("Their army in sight"))),
+      ...shown.map((p) => {
+        const s = sights.get(p.slot);
+        return el(
+          "div",
+          { className: "afm-it-row" },
+          swatch(p.color),
+          el("span", { className: "afm-gt-name" }, p.name),
+          el("b", { className: "afm-gt-num" }, s.total[i] > 0 ? `${Math.round(s.seen[i] / s.total[i] * 100)}%` : "\u2013"),
+          el("span", { className: "afm-dim" }, s.total[i] > 0 ? t("{seen} of {total}", { seen: Math.round(s.seen[i]), total: Math.round(s.total[i]) }) : t("no army"))
+        );
+      }),
+      el("div", { className: "afm-gt-foot afm-dim" }, t("Press or drag to go there"))
+    );
+  }, t("Their army in sight"));
+  chart.set(shown.map((p) => ({ label: p.name, color: p.color, x: frames, y: frames.map((_, i) => shareAt(p.slot, i)) })), tl.frames, (v) => `${Math.round(v)}%`);
+  cx.chart(chart);
+  const chartSection = el(
+    "section",
+    { className: "afm-it-section" },
+    el("div", { className: "afm-it-controls afm-dim afm-it-about" }, t("How much of the opponents' army, by cost, each player could see, over the half minute around each moment. Units under the fog, and cloaked or burrowed units not detected, are not seen.")),
+    el("div", { className: "afm-it-chart" }, chart.element)
+  );
+  const kindName = (th) => th.kind === "cloaked" ? t("Cloaked units") : t("Air units");
+  const seenCell = (th) => {
+    if (!th.seen) return el("td", { className: "afm-dim" }, t("never"));
+    const late = th.seen.frame - th.made.frame;
+    return go(el("td", {}, `${formatTime(th.seen.frame)} \xB7 ${unit(th.seen.type)}`, el("span", { className: "afm-dim" }, ` \xB7 ${t("{time} later", { time: formatTime(late) })}`)), th.seen.frame);
+  };
+  const answerCell = (th) => {
+    const already = th.already ? el("div", { className: "afm-dim" }, t("already had: {name}, {time}", { name: unit(th.already.type), time: formatTime(th.already.frame) })) : null;
+    if (!th.answer) return el("td", {}, already ?? el("span", { className: "afm-dim" }, t("none")));
+    const when = !th.seen ? "" : th.answer.frame <= th.seen.frame ? t("{time} before seeing", { time: formatTime(th.seen.frame - th.answer.frame) }) : t("{time} after seeing", { time: formatTime(th.answer.frame - th.seen.frame) });
+    return go(el("td", {}, el("div", {}, `${formatTime(th.answer.frame)} \xB7 ${unit(th.answer.type)}`, when ? el("span", { className: "afm-dim" }, ` \xB7 ${when}`) : null), already), th.answer.frame);
+  };
+  const threatRows = shown.flatMap((p) => {
+    const list = threats(k0, p.slot, raceOf(p.slot), cx.opponents(p.slot));
+    if (!list.length) return [];
+    return [
+      el("tr", {}, el("th", { scope: "rowgroup", className: "afm-ti-group", colSpan: 4 }, el("span", { className: "afm-it-player" }, swatch(p.color), p.name))),
+      ...list.map((th) => el(
+        "tr",
+        {},
+        el("th", { scope: "row" }, kindName(th)),
+        go(el("td", {}, `${formatTime(th.made.frame)} \xB7 ${unit(th.made.type)}`), th.made.frame),
+        seenCell(th),
+        answerCell(th)
+      ))
+    ];
+  });
+  const threatSection = threatRows.length ? el(
+    "section",
+    { className: "afm-it-section" },
+    el("h3", { className: "afm-sc-h" }, t("Seen and answered")),
+    el("p", { className: "afm-dim afm-it-note" }, t("For the cloaked and the air units the opponents had: when they first had one (or the building that makes them), when the player first saw one, and the first answer the player started after that: detection against cloaked units, anti-air against air units. An answer started before seeing was guessed at, or scouted some other way. One the player had before the opponents had the threat at all is shown as already had.")),
+    el(
+      "table",
+      { className: "afm-it-table afm-ti-table afm-sc-table" },
+      el("thead", {}, el("tr", {}, el("th", {}), el("th", { scope: "col" }, t("They had it")), el("th", { scope: "col" }, t("First seen")), el("th", { scope: "col" }, t("First answer")))),
+      el("tbody", {}, ...threatRows)
+    )
+  ) : null;
+  const scoutRow = (sc) => {
+    const kinds = sc.kinds.map(unit);
+    const row = el(
+      "tr",
+      {},
+      el("th", { scope: "row" }, unit(sc.type)),
+      go(el("td", {}, sc.from === sc.to ? formatTime(sc.from) : `${formatTime(sc.from)}\u2013${formatTime(sc.to)}`), sc.from),
+      el("td", { className: "afm-sc-worth" }, number(sc.worth)),
+      el("td", { className: "afm-dim afm-sc-kinds" }, kinds.length ? t("new: {kinds}", { kinds: kinds.join(", ") }) : t("nothing new"))
+    );
+    row.title = t("{n, plural, one {# unit or building} other {# units and buildings}} of theirs this {unit} was the first to show them, worth {worth}", { n: sc.revealed.length, unit: unit(sc.type), worth: number(sc.worth) });
+    return row;
+  };
+  const scoutRows = shown.flatMap((p) => {
+    const list = found.get(p.slot).slice(0, SCOUTS_SHOWN);
+    if (!list.length) return [];
+    return [el("tr", {}, el("th", { scope: "rowgroup", className: "afm-ti-group", colSpan: 4 }, el("span", { className: "afm-it-player" }, swatch(p.color), p.name))), ...list.map(scoutRow)];
+  });
+  const scoutSection = scoutRows.length ? el(
+    "section",
+    { className: "afm-it-section" },
+    el("h3", { className: "afm-sc-h" }, t("Scouts and what they found")),
+    el("p", { className: "afm-dim afm-it-note" }, t("Each of the opponents' units and buildings a player ever saw, counted to the player's unit that saw it first; a unit's worth is what all it showed them first cost. The game does not record which unit sees what: it is the unit nearest to having the thing in its sight, the likeliest one. Buildings are left out, and new kinds are the ones the player had never seen before.")),
+    el(
+      "table",
+      { className: "afm-it-table afm-ti-table afm-sc-table" },
+      el("thead", {}, el("tr", {}, el("th", {}), el("th", { scope: "col" }, t("When")), el("th", { scope: "col" }, t("Worth")), el("th", { scope: "col" }, t("What it found")))),
+      el("tbody", {}, ...scoutRows)
+    )
+  ) : null;
+  const unseenFold = w.fold({ text: t("Unseen the longest"), open: false });
+  unseenFold.body.append(
+    el("p", { className: "afm-dim afm-it-note" }, t("The opponents' town halls, production and tech buildings that stood the longest before each player saw them, from when they were started. Supply, gas and static defence are left out, and so is what stood from the start.")),
+    el("table", { className: "afm-it-table afm-ti-table afm-sc-table" }, el("tbody", {}, ...shown.flatMap((p) => {
+      const list = hidden.get(p.slot).slice(0, UNSEEN_SHOWN);
+      if (!list.length) return [];
+      return [
+        el("tr", {}, el("th", { scope: "rowgroup", className: "afm-ti-group", colSpan: 3 }, el("span", { className: "afm-it-player" }, swatch(p.color), p.name))),
+        ...list.map((u) => el(
+          "tr",
+          {},
+          el("th", { scope: "row" }, unit(u.type)),
+          go(el("td", {}, t("started {time}", { time: formatTime(u.from) })), u.from),
+          u.seen === null ? el("td", { className: "afm-dim" }, t("never seen")) : go(el("td", {}, t("seen {time}", { time: formatTime(u.seen) }), el("span", { className: "afm-dim" }, ` \xB7 ${t("{time} unseen", { time: formatTime(u.unseenFor) })}`)), u.seen)
+        ))
+      ];
+    })))
+  );
+  body.append(cards, ...verdict ? [verdict] : [], chartSection, ...scoutSection ? [scoutSection] : [], ...threatSection ? [threatSection] : [], unseenFold);
+  chart.draw();
+}
+
 // insight.ts
 var economies = /* @__PURE__ */ new WeakMap();
 var InsightView = class {
@@ -4714,7 +5243,8 @@ var InsightView = class {
     }
     const tabs = w.tabs([
       { value: "economy", label: t("Economy"), mount: (body) => this.economy(body) },
-      { value: "tech", label: t("Tech"), mount: (body) => this.tech(body) }
+      { value: "tech", label: t("Tech"), mount: (body) => this.tech(body) },
+      { value: "scouting", label: t("Scouting"), mount: (body) => this.scouting(body) }
     ], { value: settings.tab, onChange: (tab) => {
       settings.tab = tab;
       this.deps.save();
@@ -4739,6 +5269,28 @@ var InsightView = class {
       },
       keep: (d) => {
         this.tips.push(d);
+      }
+    });
+  }
+  /* ── Scouting ── */
+  scouting(body) {
+    const game = this.game;
+    mountScouting(body, {
+      api: this.deps.api,
+      t: this.deps.t,
+      host: this,
+      timeline: game.timeline,
+      players: game.players.filter((p) => !p.hidden),
+      // Opponents: the players on another team (a team of 0 is nobody's side).
+      opponents: (slot) => {
+        const me = game.players.find((p) => p.slot === slot);
+        return new Set(game.players.filter((p) => p.slot !== slot && (!me || me.team === 0 || p.team !== me.team)).map((p) => p.slot));
+      },
+      cost: (type) => this.deps.cost(type),
+      seek: (f) => this.deps.seek(f),
+      chart: (c) => {
+        this.charts.push(c);
+        c.setNow(this.deps.frame());
       }
     });
   }
@@ -5133,6 +5685,12 @@ var STYLE = `
 .afm-it-card-line { margin-top: 3px; }
 .afm-it-card-line:nth-of-type(3) { margin-bottom: 8px; }
 .afm-it-verdict { margin: 12px 0 0; font-size: 13px; color: var(--text, #e4e8ef); }
+.afm-sc-h { margin: 0 0 4px; font-size: 13px; font-weight: 600; }
+.afm-sc-table th, .afm-sc-table td { text-align: left; }
+.afm-sc-table td.afm-sc-go { cursor: pointer; }
+.afm-sc-table td.afm-sc-worth { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.afm-sc-table td.afm-sc-kinds { white-space: normal; max-width: 420px; }
+.afm-sc-table td.afm-sc-go:hover { text-decoration: underline; }
 .afm-it-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin-bottom: 8px; }
 .afm-it-controls .seg + .seg { padding-left: 12px; border-left: 1px solid var(--border, rgba(255,255,255,0.12)); }
 .afm-it-about { font-size: 11px; }
@@ -5206,6 +5764,8 @@ var STYLE = `
 .afm .afm-step.afm-hall { font-weight: 600; }
 .afm .afm-fight { padding-top: 3px; padding-bottom: 3px; }
 .afm .afm-fight .afm-sides, .afm .afm-fold .afm-step { font-size: 11px; color: var(--text-dim, #99a2b3); }
+.afm .afm-again { margin-top: 2px; font-size: 11px; font-variant-numeric: tabular-nums; }
+.afm .afm-again .afm-again-head { color: var(--text-dim, #99a2b3); }
 .afm .afm-result { font-size: 13px; font-weight: 600; }
 .afm .afm-result .afm-end { font-weight: 400; }
 .afm .afm-leadbar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: rgba(128,128,128,0.25); margin: 2px 0 4px; }
@@ -5513,7 +6073,7 @@ function activate(api) {
         const replay = await parseReplay(bytes);
         const id = nextId++, map = readChk(replay.chk);
         const group = [...loaded, ...batch].find((l) => likeness(map, l.map) >= SAME_MAP)?.group ?? id;
-        batch.push({ id, fileName: file.name, report: analyse(replay), map, bytes, docId: null, group, excluded: false, frame: 0, hidden: /* @__PURE__ */ new Set(), played: null, failed: null, eyes: null });
+        batch.push({ id, fileName: file.name, report: analyse(replay), map, bytes, docId: null, group, excluded: false, frame: 0, hidden: /* @__PURE__ */ new Set(), played: null, failed: null, eyes: null, again: null });
       } catch (err) {
         const detail = err instanceof ReplayError ? translate(err.message) : String(err);
         api.ui.toast({ kind: "error", title: t("Could not read {name}", { name: file.name }), detail });
@@ -5603,6 +6163,7 @@ function activate(api) {
     const at = loaded.indexOf(entry);
     if (at < 0) return;
     if (running?.entry === entry) running.controller.abort();
+    if (againRunning?.entry === entry) againRunning.controller.abort();
     const q = queue.indexOf(entry);
     if (q >= 0) queue.splice(q, 1);
     loaded.splice(at, 1);
@@ -6728,12 +7289,64 @@ function activate(api) {
   let sim = null;
   let running = null;
   const queue = [];
+  let againRunning = null;
   function pump() {
-    if (running || !sim?.present || !queue.length) return;
-    let i = queue.findIndex((l) => l === current);
-    if (i < 0) i = queue.findIndex((l) => l.docId !== null);
-    const [next] = queue.splice(Math.max(0, i), 1);
-    void playThrough(next).then(pump);
+    if (running || againRunning || !sim?.present) return;
+    if (queue.length) {
+      let i = queue.findIndex((l) => l === current);
+      if (i < 0) i = queue.findIndex((l) => l.docId !== null);
+      const [next2] = queue.splice(Math.max(0, i), 1);
+      void playThrough(next2).then(pump);
+      return;
+    }
+    const next = [current, ...loaded].find((l) => l && l.played && l.docId !== null && !l.again);
+    if (next) void playAgain(next).then(pump);
+  }
+  async function playAgain(entry) {
+    if (!sim?.present || againRunning || !entry.played || entry.again) return;
+    const again = { results: /* @__PURE__ */ new Map(), failed: null, done: false, fraction: -1 };
+    entry.again = again;
+    const key = entry.played.fights.filter((f) => f.key);
+    const show = () => {
+      if (entry === current) side?.render();
+    };
+    if (!key.length || !sim.fights) {
+      again.done = true;
+      return;
+    }
+    const run = { entry, controller: new AbortController() };
+    againRunning = run;
+    show();
+    try {
+      const state = await sim.status();
+      if (!state.available || !state.fights) {
+        again.failed = state.reason ?? t("The game engine on this site cannot play a fight again yet.");
+        return;
+      }
+      const asked = key.map(engagement);
+      const result = await sim.fights(entry.bytes, asked, {
+        signal: run.controller.signal,
+        onProgress: (p) => {
+          again.fraction = p.stage === "playing" && p.frames > 0 ? p.frame / p.frames : -1;
+          if (entry === current) side?.update();
+        }
+      });
+      key.forEach((f, i) => {
+        const r = result.fights[i];
+        if (r) again.results.set(f, r);
+      });
+      again.done = true;
+    } catch (err) {
+      if (err?.name === "AbortError") {
+        entry.again = null;
+        return;
+      }
+      again.failed = err instanceof Error ? err.message : String(err);
+      api.log("Aftermath: fights played again,", entry.fileName, err);
+    } finally {
+      if (againRunning === run) againRunning = null;
+      show();
+    }
   }
   const announced = /* @__PURE__ */ new Set();
   async function playThrough(entry) {
@@ -6900,6 +7513,23 @@ function activate(api) {
     heatCache = { key, grid, canvas };
     return canvas;
   }
+  const knowings = /* @__PURE__ */ new WeakMap();
+  function knowingOf(entry) {
+    const tl = entry.played?.timeline;
+    if (!tl?.sight || entry.eyes === null) return null;
+    const me = entry.report.players.find((p) => p.player.slot === entry.eyes);
+    if (!me) return null;
+    const them = new Set(entry.report.players.filter((p) => p !== me && (me.player.team === 0 || p.player.team !== me.player.team)).map((p) => p.player.index));
+    return { viewer: me.player.index, them, name: me.player.name, color: me.player.color };
+  }
+  function knowingData(tl) {
+    let d = knowings.get(tl);
+    if (!d) {
+      d = { k: knowledge(tl), where: trails(tl), placed: placedBuildings(tl) };
+      knowings.set(tl, d);
+    }
+    return d;
+  }
   function draw(ctx, v) {
     if (!current || current.docId === null || api.document.id() !== current.docId) return;
     const cur = current;
@@ -6942,9 +7572,10 @@ function activate(api) {
       ].filter(Boolean).join(" \xB7 "), []);
       return;
     }
+    const knowing = done ? knowingOf(cur) : null;
     if (done) {
       for (const b of done.standing) {
-        if (b.from > frame || b.to !== null && b.to <= frame) continue;
+        if (b.from > frame || b.to !== null && b.to <= frame || knowing?.them.has(b.owner)) continue;
         const p = byIndex.get(b.owner);
         if (!p) continue;
         const size = api.palette.unitSize(b.type);
@@ -6968,9 +7599,27 @@ function activate(api) {
       unitsAt(done.timeline, frame, (unit, ux, uy) => {
         const type = done.index.type[unit];
         const p = byIndex.get(done.index.owner[unit]);
-        if (!p || type < 0 || isBuilding(type)) return;
+        if (!p || type < 0 || isBuilding(type) || knowing?.them.has(done.index.owner[unit])) return;
         markUnit(ctx, v.x(ux), v.y(uy), r, p.player.color, WORKERS2.has(type));
       });
+      if (knowing) {
+        const { k, where, placed } = knowingData(done.timeline);
+        for (const it of knownAt(k, where, placed, knowing.viewer, knowing.them, frame)) {
+          const p = byIndex.get(it.owner);
+          if (!p) continue;
+          const colour = p.player.color;
+          if (it.building) {
+            const size = api.palette.unitSize(it.type);
+            const w2 = size.width * s, h = size.height * s, x = v.x(it.x) - w2 / 2, y = v.y(it.y) - h / 2;
+            const img = s >= 0.4 ? api.graphics.unitImage(it.type, { owner: p.player.index }) : null;
+            if (it.known === "seen") markBuilding(ctx, x, y, w2, h, colour, it.done ? "built" : "site", img, s);
+            else if (it.known === "remembered") markRemembered(ctx, x, y, w2, h, colour, img, s);
+            else markUnknown(ctx, x, y, w2, h, colour);
+          } else if (it.known === "seen") markUnit(ctx, v.x(it.x), v.y(it.y), r, colour, WORKERS2.has(it.type));
+          else if (it.known === "remembered") markGhost(ctx, v.x(it.x), v.y(it.y), r, colour, 1 - it.age / REMEMBER_FRAMES);
+          else markUnknownUnit(ctx, v.x(it.x), v.y(it.y), r, colour);
+        }
+      }
       ctx.globalAlpha = 1;
     }
     if (lens === "watch" && done) {
@@ -7007,8 +7656,9 @@ function activate(api) {
       }
     }
     if (lens === "orders" || !done) drawOrders(ctx, v, players, frame);
-    if (settings.legend && !casting.reel) legend(ctx, lens, done !== null);
+    if (settings.legend && !casting.reel) legend(ctx, lens, done !== null, false, knowing?.name ?? null);
     caption(ctx, cur);
+    if (knowing) pill(ctx, t("What {name} knew", { name: knowing.name }), [knowing.color], cam.following && shotsOf(cur).length ? 40 : 10);
     subtitle(ctx);
     castCard(ctx);
   }
@@ -7049,11 +7699,11 @@ function activate(api) {
     if (i < 0) return;
     pill(ctx, captionOf(entry, shots[i]), shots[i].players.map((pl) => entry.report.players.find((p) => p.player.index === pl)?.player.color ?? "#888"));
   }
-  function pill(ctx, text, colours) {
+  function pill(ctx, text, colours, top = 10) {
     const viewW = ctx.canvas.width / (window.devicePixelRatio || 1);
     ctx.font = "600 12px system-ui, sans-serif";
     const tw = ctx.measureText(text).width, sw = colours.length * 12, w2 = tw + sw + 20, h = 24;
-    const x0 = Math.round(viewW / 2 - w2 / 2), y0 = 10;
+    const x0 = Math.round(viewW / 2 - w2 / 2), y0 = top;
     ctx.fillStyle = "rgba(14,16,22,0.82)";
     ctx.fillRect(x0, y0, w2, h);
     colours.forEach((colour, n) => {
@@ -7067,7 +7717,7 @@ function activate(api) {
     ctx.textAlign = "start";
     ctx.textBaseline = "alphabetic";
   }
-  function legend(ctx, lens, analysed, inGame = false) {
+  function legend(ctx, lens, analysed, inGame = false, who = null) {
     const grey = "#c8cdd7";
     const items = [];
     if (lens === "map") {
@@ -7091,6 +7741,16 @@ function activate(api) {
         markUnit(ctx, x - 3, y, 3.5, grey, false);
         markUnit(ctx, x + 4, y, 3.5, grey, true);
       }, t("A unit, and a worker")]);
+      if (who !== null) {
+        items.push(
+          [(x, y) => markRemembered(ctx, x - 6, y - 4, 12, 8, grey, null, 1), t("A building as {name} last saw it", { name: who })],
+          [(x, y) => markGhost(ctx, x, y, 3.5, grey, 1), t("A unit where {name} last saw it", { name: who })],
+          [(x, y) => {
+            markUnknown(ctx, x - 9, y - 4, 10, 8, grey);
+            markUnknownUnit(ctx, x + 6, y, 3.5, grey);
+          }, t("There, and {name} did not know", { name: who })]
+        );
+      }
       if (lens === "watch" && analysed && !inGame) {
         items.push(
           [(x, y) => markKill(ctx, x - 7, y + 3, x + 7, y - 3, grey), t("A kill, from the killer")],
@@ -7400,7 +8060,7 @@ function activate(api) {
         lines: insightLines(tl),
         index: entry.played.index,
         map: tl.map,
-        players: entry.report.players.map((p) => ({ slot: p.player.index, name: p.player.name, color: p.player.color, leftAt: p.leftAt, hidden: entry.hidden.has(p.player.id) }))
+        players: entry.report.players.map((p) => ({ slot: p.player.index, name: p.player.name, color: p.player.color, leftAt: p.leftAt, hidden: entry.hidden.has(p.player.id), team: p.player.team }))
       }
     };
   }
@@ -7435,6 +8095,10 @@ function activate(api) {
           seek: (f) => seek(f),
           placeOf: (x, y, map) => placeOf(x, y, map),
           tooltip: (target, content) => tooltip(target, content),
+          cost: (type) => {
+            const units = api.data.units();
+            return units ? ((units.mineralCost[type] ?? 0) + (units.vespeneCost[type] ?? 0)) / (TWINS.has(type) ? 2 : 1) : 0;
+          },
           settings: { get tab() {
             return settings.insightTab;
           }, set tab(v) {
@@ -7509,6 +8173,8 @@ function activate(api) {
     buildPlayer = -1;
     /** Map stats' line for the game the engine is playing, refreshed with its progress. */
     running = null;
+    /** The Fights tab's lines for key moments still being played again, refreshed with the engine's progress. */
+    againing = [];
     constructor(body) {
       this.root = el("div", { className: "afm" });
       body.append(this.root);
@@ -7532,6 +8198,7 @@ function activate(api) {
       this.live = [];
       this.steps = [];
       this.running = null;
+      this.againing = [];
       const entry = current;
       if (!entry) {
         this.renderEmpty();
@@ -7808,6 +8475,37 @@ function activate(api) {
       }
       body.append(w.group(t("How it went"), list));
     }
+    /** A key moment played again by the game: what each side lost as played and with attack-move only, or that it is under way. */
+    again(entry, f) {
+      const again = entry.again;
+      if (!again) return null;
+      const r = again.results.get(f);
+      if (!r) {
+        if (again.done || again.failed) return null;
+        const line = el("div", { className: "afm-again afm-dim" }, this.againText(entry));
+        this.againing.push(line);
+        return line;
+      }
+      const played = r.versions.find((v) => v.version === "played"), plain = r.versions.find((v) => v.version === "attackMove");
+      if (!played || !plain) return null;
+      const byIndex = new Map(entry.report.players.map((p) => [p.player.index, p.player]));
+      const rows = played.sides.filter((sd) => byIndex.has(sd.player) && sd.units > 0).map((sd) => {
+        const other = plain.sides.find((x) => x.player === sd.player);
+        const player = byIndex.get(sd.player);
+        return el(
+          "div",
+          { title: t("{name}: {units} units worth {value} took part. Played as it was, they lost {played}; with both sides only attack-moving, {attackMove}.", { name: player.name, units: sd.units, value: sd.value, played: sd.lostValue, attackMove: other?.lostValue ?? 0 }) },
+          el("span", { className: "afm-swatch", style: `background:${player.color}` }),
+          ` ${sd.lostValue} \u2192 ${other?.lostValue ?? 0}`
+        );
+      });
+      if (!rows.length) return null;
+      return el("div", { className: "afm-again" }, el("div", { className: "afm-again-head" }, t("As played \u2192 attack-move only")), ...rows);
+    }
+    againText(entry) {
+      const fraction = entry.again?.fraction ?? -1;
+      return againRunning?.entry === entry && fraction >= 0 ? t("Being played again by the game\u2026 {percent}%", { percent: Math.floor(fraction * 100) }) : t("Being played again by the game\u2026");
+    }
     renderFights(body, entry) {
       if (!entry.played) {
         body.append(w.hint(running?.entry === entry ? t("The fights show once the game has been analysed, which is under way.") : t("The fights show once the game has been analysed.")));
@@ -7830,6 +8528,8 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
             el("div", { className: "afm-sides" }, ...sidesOf(f))
           )
         );
+        const again = f.key ? this.again(entry, f) : null;
+        if (again) line.children[1].append(again);
         line.addEventListener("click", () => goToFight(f));
         this.steps.push({ el: line, frame: f.from });
         return line;
@@ -7850,6 +8550,8 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
         body.append(fold);
       }
       if (fights2.length) body.append(w.hint(t("Each fight is weighed against everything the players had at the time, armies and workers. The key moments are the ones that mattered most; the side that came out ahead is in bold. N and Shift+N go to the next and the previous.")));
+      if (entry.again?.results.size) body.append(w.hint(t("Under each key moment, the game played it again from just before its first loss: once as it was played, and once with both sides only attack-moving to where it was fought and nobody giving any other order. The numbers are what each side lost, by cost, of the units that took part, as played and then with attack-move. Losing more as played is not a mistake in itself: pulling back, or trading units for time, costs units too.")));
+      else if (entry.again?.failed) body.append(w.hint(t("The key moments could not be played again: {why}", { why: entry.again.failed })));
       if (entry.played.killers.length) {
         const top = el("div");
         for (const k of entry.played.killers) {
@@ -8009,6 +8711,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
     update() {
       const entry = current;
       if (!entry) return;
+      for (const line of this.againing) if (line.isConnected) line.textContent = this.againText(entry);
       const frame = entry.frame;
       const tl = entry.played?.timeline ?? null;
       const at = tl ? sampleIndex(tl.samples.frame, frame) : -1;
@@ -8120,7 +8823,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
       const eyes = w.select([
         { value: -1, label: t("Vision: everyone") },
         ...entry.report.players.map((p) => ({ value: p.player.slot, label: t("Vision: {name}", { name: p.player.name }) }))
-      ], { value: entry.eyes ?? -1, title: t("Whose eyes the game is seen through: one player's shows only what they could see, with the fog of war"), onChange: (v) => {
+      ], { value: entry.eyes ?? -1, title: t("Whose eyes the game is seen through. In the Replay view, one player's shows only what they could see, with the fog of war; on the map, their opponents as that player knew them: what they saw, where they last saw it, and faintly what they did not know."), onChange: (v) => {
         const slot = Number(v);
         entry.eyes = slot < 0 ? null : slot;
         if (entry.eyes !== null) lastEyes.set(entry.id, entry.eyes);
@@ -8229,7 +8932,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
       const keyless = game.shown && !onMap && !settings.orders;
       this.legendButton.disabled = keyless;
       this.legendButton.title = keyless ? t("Over the game the legend keys the orders: turn Orders on to see it") : t("A key to the marks, in the map's corner");
-      this.eyesSelect.hidden = !game.shown || onMap;
+      this.eyesSelect.hidden = onMap || !game.shown && !entry.played?.timeline.sight;
       const games = mapGames(entry).length;
       this.statsButton.textContent = games > 1 ? t("Map stats \xB7 {n}", { n: games }) : t("Map stats");
       this.statsButton.classList.toggle("afm-on", onMap);
@@ -8480,6 +9183,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
     cancelAnimationFrame(cam.raf);
     bindKeys(false);
     running?.controller.abort();
+    againRunning?.controller.abort();
     game.dispose();
     simWatch.dispose();
     endCast();
@@ -8505,6 +9209,41 @@ function markBuilding(ctx, x, y, w, h, colour, state, img, scale) {
   if (state === "site") ctx.setLineDash([4, 3]);
   ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
   ctx.setLineDash([]);
+}
+function markRemembered(ctx, x, y, w, h, colour, img, scale) {
+  ctx.fillStyle = withAlpha(colour, 0.08);
+  ctx.fillRect(x, y, w, h);
+  if (img) {
+    const a = ctx.globalAlpha;
+    ctx.globalAlpha = a * 0.35;
+    ctx.drawImage(img.image, x + w / 2 - img.width * scale / 2, y + h / 2 - img.height * scale / 2, img.width * scale, img.height * scale);
+    ctx.globalAlpha = a;
+  }
+  ctx.strokeStyle = withAlpha(colour, 0.85);
+  ctx.lineWidth = 1;
+  ctx.setLineDash([2, 3]);
+  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  ctx.setLineDash([]);
+}
+function markUnknown(ctx, x, y, w, h, colour) {
+  ctx.strokeStyle = withAlpha(colour, 0.4);
+  ctx.lineWidth = 1;
+  ctx.setLineDash([1, 4]);
+  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  ctx.setLineDash([]);
+}
+function markGhost(ctx, x, y, r, colour, k) {
+  ctx.strokeStyle = withAlpha(colour, Math.max(0.15, 0.9 * k));
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.stroke();
+}
+function markUnknownUnit(ctx, x, y, r, colour) {
+  ctx.fillStyle = withAlpha(colour, 0.25);
+  ctx.beginPath();
+  ctx.arc(x, y, r * 0.6, 0, Math.PI * 2);
+  ctx.fill();
 }
 function markUnit(ctx, x, y, r, colour, worker) {
   const a = ctx.globalAlpha;
