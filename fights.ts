@@ -284,3 +284,34 @@ export function topKillers(t: ReplayTimeline, cost: (type: number) => number, li
   }
   return [...by.values()].sort((a, b) => b.value - a.value || b.kills - a.kills || a.frame - b.frame).slice(0, limit);
 }
+
+/** The most of a fight the game plays again (45 seconds), and the quiet that leaves a loss at its edge out (five seconds). */
+export const ENGAGEMENT_MOST = 1080;
+export const ENGAGEMENT_LULL = 120;
+
+/** The heart of a fight, as the game is asked to play it again: its frames, the box around what fell, its sides. */
+export interface Engagement { from: number; to: number; x0: number; y0: number; x1: number; y1: number; players: number[] }
+
+/**
+ * The heart of a fight: the 45 seconds of it with the most losses (the earliest, when two have as many), from the first
+ * loss in them to the last, less a loss at either edge five seconds or more from the rest. A fight as found here can join skirmishes over minutes, and the game playing all of that
+ * again with other rules would be another game, not the same engagement fought another way; and a stray loss before
+ * the armies meet (a scout, a lone unit picked off) must not decide where it starts.
+ */
+export function engagement(f: Fight): Engagement {
+  const points = f.points.length ? f.points : [{ frame: f.from, x: f.x, y: f.y }];
+  let best = 0, most = 0;
+  for (let i = 0, j = 0; i < points.length; i++) {
+    while (j < points.length && points[j].frame - points[i].frame <= ENGAGEMENT_MOST) j++;
+    if (j - i > most) { most = j - i; best = i; }
+  }
+  const kept = points.slice(best, best + most);
+  while (kept.length > 1 && kept[1].frame - kept[0].frame > ENGAGEMENT_LULL) kept.shift();
+  while (kept.length > 1 && kept[kept.length - 1].frame - kept[kept.length - 2].frame > ENGAGEMENT_LULL) kept.pop();
+  return {
+    from: kept[0].frame, to: kept[kept.length - 1].frame,
+    x0: Math.min(...kept.map((p) => p.x)), y0: Math.min(...kept.map((p) => p.y)),
+    x1: Math.max(...kept.map((p) => p.x)), y1: Math.max(...kept.map((p) => p.y)),
+    players: f.sides.map((s) => s.player),
+  };
+}

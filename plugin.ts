@@ -36,12 +36,12 @@ import { likeness, plainText, readChk, type ChkInfo } from "./chk";
 import { FRAME_MS, parseReplay, ReplayError } from "./replay";
 import { KO } from "./ko";
 import { buildings as standingBuildings, isBuilding, losses, lossPoints, madeRows, mineralLines, presencePoints, sampleAt, series, unitIndex, unitsAt, WORKERS, type Metric, type Point, type Standing, type UnitIndex } from "./played";
-import { fights as findFights, kills as findKills, topKillers, type Fight, type FightKind, type Kill, type Killer } from "./fights";
+import { engagement, fights as findFights, kills as findKills, topKillers, type Fight, type FightKind, type Kill, type Killer } from "./fights";
 import { clockOf, mapReport, winnerOf, type MapReport } from "./report";
 import { direct, lookAt, shotAt, type Shot } from "./director";
 import { cameraTrack, trackAt, type CameraTrack } from "./camera";
 import { advantage, bases as takenBases, hardestHit, leads, story, totals, type Advantage, type Base, type PlayerTotals } from "./story";
-import type { ReplayTimeline, ScmSimService, ViewHover, ViewHoverUnit } from "./vendor/scm-sim";
+import type { FightResult, ReplayTimeline, ScmSimService, ViewHover, ViewHoverUnit } from "./vendor/scm-sim";
 import { GameView } from "./gameview";
 import { castCards, castInput, castSegments, estimate, highlightClips, schedule, type CastCard, type CastGame, type CastInput, type CastLine, type CastOptions, type Schedule } from "./cast";
 import type { Durations } from "./tech";
@@ -120,6 +120,19 @@ interface Loaded {
   failed: string | null;
   /** In the Replay view, whose eyes the game is seen through (a player's slot, with the fog of war); null: everyone's. */
   eyes: number | null;
+  /** The key fights played again by the game (`ScmSimService.fights`), once asked for. */
+  again: Again | null;
+}
+
+/** A game's key fights played again by the game: as played, and with both sides only attack-moving. */
+interface Again {
+  /** By fight; a fight missing has no answer (yet, or the replay ended before it). */
+  results: Map<Fight, FightResult>;
+  /** Why it could not be done, in words; null when it was or is under way. */
+  failed: string | null;
+  done: boolean;
+  /** How far the engine is in playing the replay to the last fight, 0 to 1; −1 while it starts. */
+  fraction: number;
 }
 
 interface Played {
@@ -376,6 +389,8 @@ const STYLE = `
 .afm .afm-step.afm-hall { font-weight: 600; }
 .afm .afm-fight { padding-top: 3px; padding-bottom: 3px; }
 .afm .afm-fight .afm-sides, .afm .afm-fold .afm-step { font-size: 11px; color: var(--text-dim, #99a2b3); }
+.afm .afm-again { margin-top: 2px; font-size: 11px; font-variant-numeric: tabular-nums; }
+.afm .afm-again .afm-again-head { color: var(--text-dim, #99a2b3); }
 .afm .afm-result { font-size: 13px; font-weight: 600; }
 .afm .afm-result .afm-end { font-weight: 400; }
 .afm .afm-leadbar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: rgba(128,128,128,0.25); margin: 2px 0 4px; }
@@ -681,7 +696,7 @@ export function activate(api: PluginApi) {
         const replay = await parseReplay(bytes);
         const id = nextId++, map = readChk(replay.chk);
         const group = [...loaded, ...batch].find((l) => likeness(map, l.map) >= SAME_MAP)?.group ?? id;
-        batch.push({ id, fileName: file.name, report: analyse(replay), map, bytes, docId: null, group, excluded: false, frame: 0, hidden: new Set(), played: null, failed: null, eyes: null });
+        batch.push({ id, fileName: file.name, report: analyse(replay), map, bytes, docId: null, group, excluded: false, frame: 0, hidden: new Set(), played: null, failed: null, eyes: null, again: null });
       } catch (err) {
         const detail = err instanceof ReplayError ? translate(err.message) : String(err);
         api.ui.toast({ kind: "error", title: t("Could not read {name}", { name: file.name }), detail });
@@ -778,6 +793,7 @@ export function activate(api: PluginApi) {
     const at = loaded.indexOf(entry);
     if (at < 0) return;
     if (running?.entry === entry) running.controller.abort();
+    if (againRunning?.entry === entry) againRunning.controller.abort();
     const q = queue.indexOf(entry);
     if (q >= 0) queue.splice(q, 1);
     loaded.splice(at, 1);
@@ -1879,13 +1895,55 @@ export function activate(api: PluginApi) {
   /** Replays waiting their turn: every one opened, in the order they were. */
   const queue: Loaded[] = [];
 
-  /** Start the next replay waiting, if the engine is here and free: the one in front first, then the others with a tab. */
+  /** The key fights being played again by the game, one game at a time, after every replay waiting has been analysed. */
+  let againRunning: { entry: Loaded; controller: AbortController } | null = null;
+
+  /**
+   * Start the next replay waiting, if the engine is here and free: the one in front first, then the others with a tab.
+   * With none waiting, the key fights of an analysed replay with a tab are played again, the one in front first.
+   */
   function pump(): void {
-    if (running || !sim?.present || !queue.length) return;
-    let i = queue.findIndex((l) => l === current);
-    if (i < 0) i = queue.findIndex((l) => l.docId !== null);
-    const [next] = queue.splice(Math.max(0, i), 1);
-    void playThrough(next).then(pump);
+    if (running || againRunning || !sim?.present) return;
+    if (queue.length) {
+      let i = queue.findIndex((l) => l === current);
+      if (i < 0) i = queue.findIndex((l) => l.docId !== null);
+      const [next] = queue.splice(Math.max(0, i), 1);
+      void playThrough(next).then(pump);
+      return;
+    }
+    const next = [current, ...loaded].find((l) => l && l.played && l.docId !== null && !l.again);
+    if (next) void playAgain(next).then(pump);
+  }
+
+  /** A replay's key fights played again by the game from just before each (their first engagement, `engagement`). */
+  async function playAgain(entry: Loaded): Promise<void> {
+    if (!sim?.present || againRunning || !entry.played || entry.again) return;
+    const again: Again = { results: new Map(), failed: null, done: false, fraction: -1 };
+    entry.again = again;
+    const key = entry.played.fights.filter((f) => f.key);
+    const show = () => { if (entry === current) side?.render(); };
+    if (!key.length || !sim.fights) { again.done = true; return; }
+    const run = { entry, controller: new AbortController() };
+    againRunning = run;
+    show();
+    try {
+      const state = await sim.status();
+      if (!state.available || !state.fights) { again.failed = state.reason ?? t("The game engine on this site cannot play a fight again yet."); return; }
+      const asked = key.map(engagement);
+      const result = await sim.fights(entry.bytes, asked, {
+        signal: run.controller.signal,
+        onProgress: (p) => { again.fraction = p.stage === "playing" && p.frames > 0 ? p.frame / p.frames : -1; if (entry === current) side?.update(); },
+      });
+      key.forEach((f, i) => { const r = result.fights[i]; if (r) again.results.set(f, r); });
+      again.done = true;
+    } catch (err) {
+      if ((err as Error)?.name === "AbortError") { entry.again = null; return; }
+      again.failed = err instanceof Error ? err.message : String(err);
+      api.log("Aftermath: fights played again,", entry.fileName, err);
+    } finally {
+      if (againRunning === run) againRunning = null;
+      show();
+    }
   }
 
   /** Map stats has been seen to be worth a look, once a map: when a second of its games is counted. */
@@ -2670,6 +2728,8 @@ export function activate(api: PluginApi) {
     private buildPlayer = -1;
     /** Map stats' line for the game the engine is playing, refreshed with its progress. */
     private running: { el: HTMLElement; entry: Loaded } | null = null;
+    /** The Fights tab's lines for key moments still being played again, refreshed with the engine's progress. */
+    private againing: HTMLElement[] = [];
 
     constructor(body: HTMLElement) {
       this.root = el("div", { className: "afm" });
@@ -2697,6 +2757,7 @@ export function activate(api: PluginApi) {
       this.live = [];
       this.steps = [];
       this.running = null;
+      this.againing = [];
       const entry = current;
       if (!entry) { this.renderEmpty(); return; }
       const rep = entry.report.replay;
@@ -2951,6 +3012,35 @@ export function activate(api: PluginApi) {
       body.append(w.group(t("How it went"), list));
     }
 
+    /** A key moment played again by the game: what each side lost as played and with attack-move only, or that it is under way. */
+    private again(entry: Loaded, f: Fight): HTMLElement | null {
+      const again = entry.again;
+      if (!again) return null;
+      const r = again.results.get(f);
+      if (!r) {
+        if (again.done || again.failed) return null;
+        const line = el("div", { className: "afm-again afm-dim" }, this.againText(entry));
+        this.againing.push(line);
+        return line;
+      }
+      const played = r.versions.find((v) => v.version === "played"), plain = r.versions.find((v) => v.version === "attackMove");
+      if (!played || !plain) return null;
+      const byIndex = new Map(entry.report.players.map((p) => [p.player.index, p.player] as const));
+      const rows = played.sides.filter((sd) => byIndex.has(sd.player) && sd.units > 0).map((sd) => {
+        const other = plain.sides.find((x) => x.player === sd.player);
+        const player = byIndex.get(sd.player)!;
+        return el("div", { title: t("{name}: {units} units worth {value} took part. Played as it was, they lost {played}; with both sides only attack-moving, {attackMove}.", { name: player.name, units: sd.units, value: sd.value, played: sd.lostValue, attackMove: other?.lostValue ?? 0 }) },
+          el("span", { className: "afm-swatch", style: `background:${player.color}` }), ` ${sd.lostValue} → ${other?.lostValue ?? 0}`);
+      });
+      if (!rows.length) return null;
+      return el("div", { className: "afm-again" }, el("div", { className: "afm-again-head" }, t("As played → attack-move only")), ...rows);
+    }
+
+    private againText(entry: Loaded): string {
+      const fraction = entry.again?.fraction ?? -1;
+      return againRunning?.entry === entry && fraction >= 0 ? t("Being played again by the game… {percent}%", { percent: Math.floor(fraction * 100) }) : t("Being played again by the game…");
+    }
+
     private renderFights(body: HTMLElement, entry: Loaded): void {
       if (!entry.played) {
         body.append(w.hint(running?.entry === entry ? t("The fights show once the game has been analysed, which is under way.") : t("The fights show once the game has been analysed.")));
@@ -2969,6 +3059,8 @@ export function activate(api: PluginApi) {
             el("div", { className: "afm-sides" }, ...sidesOf(f)),
           ),
         );
+        const again = f.key ? this.again(entry, f) : null;
+        if (again) line.children[1].append(again);
         line.addEventListener("click", () => goToFight(f));
         this.steps.push({ el: line, frame: f.from });
         return line;
@@ -2990,6 +3082,8 @@ export function activate(api: PluginApi) {
         body.append(fold);
       }
       if (fights.length) body.append(w.hint(t("Each fight is weighed against everything the players had at the time, armies and workers. The key moments are the ones that mattered most; the side that came out ahead is in bold. N and Shift+N go to the next and the previous.")));
+      if (entry.again?.results.size) body.append(w.hint(t("Under each key moment, the game played it again from just before its first loss: once as it was played, and once with both sides only attack-moving to where it was fought and nobody giving any other order. The numbers are what each side lost, by cost, of the units that took part, as played and then with attack-move. Losing more as played is not a mistake in itself: pulling back, or trading units for time, costs units too.")));
+      else if (entry.again?.failed) body.append(w.hint(t("The key moments could not be played again: {why}", { why: entry.again.failed })));
 
       if (entry.played.killers.length) {
         const top = el("div");
@@ -3131,6 +3225,7 @@ export function activate(api: PluginApi) {
     update(): void {
       const entry = current;
       if (!entry) return;
+      for (const line of this.againing) if (line.isConnected) line.textContent = this.againText(entry);
       const frame = entry.frame;
       const tl = entry.played?.timeline ?? null;
       const at = tl ? sampleIndex(tl.samples.frame, frame) : -1;
@@ -3561,6 +3656,7 @@ export function activate(api: PluginApi) {
     cancelAnimationFrame(cam.raf);
     bindKeys(false);
     running?.controller.abort();
+    againRunning?.controller.abort();
     game.dispose();
     simWatch.dispose();
     endCast();

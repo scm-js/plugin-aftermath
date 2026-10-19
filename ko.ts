@@ -441,4 +441,11 @@ export const KO: Record<string, string> = {
   "The game full screen, dressed as a broadcast, without the editor around it. Esc leaves.": "편집기 없이 게임을 방송처럼 전체 화면으로 봅니다. Esc로 나갑니다.",
   "Make a new cast, or watch another kept in this browser": "새 중계를 만들거나, 이 브라우저에 보관된 다른 중계를 봅니다",
   "Kept in this browser: {n, plural, one {# cast} other {# casts}}, {mb} MB. Past {max} casts or {maxMb} MB, the ones watched longest ago go.": "이 브라우저에 보관: 중계 {n}개, {mb} MB. {max}개 또는 {maxMb} MB를 넘으면 가장 오래전에 본 것부터 지웁니다.",
+  "The game engine on this site cannot play a fight again yet.": "이 사이트의 게임 엔진은 아직 전투를 다시 재생할 수 없습니다.",
+  "{name}: {units} units worth {value} took part. Played as it was, they lost {played}; with both sides only attack-moving, {attackMove}.": "{name}: 유닛 {units}기(가치 {value})가 참여했습니다. 실제로 플레이된 대로는 {played}를 잃었고, 양쪽 모두 어택 땅만 했을 때는 {attackMove}를 잃었습니다.",
+  "As played → attack-move only": "실제 → 어택 땅만",
+  "Being played again by the game… {percent}%": "게임이 다시 재생하는 중… {percent}%",
+  "Being played again by the game…": "게임이 다시 재생하는 중…",
+  "Under each key moment, the game played it again from just before its first loss: once as it was played, and once with both sides only attack-moving to where it was fought and nobody giving any other order. The numbers are what each side lost, by cost, of the units that took part, as played and then with attack-move. Losing more as played is not a mistake in itself: pulling back, or trading units for time, costs units too.": "각 주요 장면 아래의 숫자는 게임이 첫 손실 직전부터 그 장면을 다시 재생한 결과입니다. 한 번은 실제로 플레이된 대로, 한 번은 양쪽 모두 싸움이 벌어진 곳으로 어택 땅만 하고 다른 명령은 아무도 내리지 않은 채로 재생합니다. 숫자는 참여한 유닛 중 각 쪽이 잃은 가치이며, 실제 결과 다음에 어택 땅 결과가 옵니다. 실제로 더 많이 잃었다고 해서 그 자체가 실수는 아닙니다. 후퇴하거나 시간을 벌려고 유닛을 내주는 것도 유닛을 잃는 일입니다.",
+  "The key moments could not be played again: {why}": "주요 장면을 다시 재생할 수 없었습니다: {why}",
 };

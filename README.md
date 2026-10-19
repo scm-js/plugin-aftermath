@@ -76,6 +76,23 @@ Afterwards Aftermath shows what happened instead of what was ordered:
   moment and the place, or press **N** and **Shift+N** for the next and the previous key
   moment. While a fight goes on, a dashed box on the map follows where things are falling.
   Two High or Dark Templar merging into an Archon are not counted as a loss.
+
+  **Each key moment played again.** Once every open replay has been analysed, the engine
+  plays each game's key moments again, from just before the losses start. It does each
+  one twice: once as it was played, and once with both sides only attack-moving to where
+  the fight happened, with nobody giving any other order anywhere. Production already
+  queued still finishes and walks to its rally point, but nothing new is started. Under
+  each key moment, *As played → attack-move only* gives each side's losses in both
+  versions, by cost, counting the units that took part. Those are every unit that came into
+  the fight at any time as it was played, wherever it stood at the start. Hover a line for
+  how many units took part and what they were worth.
+
+  The game plays only the busiest 45 seconds of a fight, with a stray loss at either end
+  left out. A fight found as one can run for minutes, and an attack-move over all of that
+  would be a different game, not the same fight fought another way. Losing more as played
+  than with attack-move is not a mistake in itself: pulling back, or giving up units to buy
+  time, costs units too. The second number is what the game itself does when nobody
+  micros. It is not a guess at what a better player would have done.
 - **Most kills**: the units that killed the most. Click one to go to its first kill.
 - On the map, a thin line runs for a moment from a unit to what it just killed.
 

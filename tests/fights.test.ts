@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ReplayTimeline, UnitEvent } from "../vendor/scm-sim";
-import { fights, kills, topKillers } from "../fights";
+import { engagement, fights, kills, topKillers, type Fight } from "../fights";
 import { unitIndex } from "../played";
 
 const MARINE = 0, TANK = 5, ZERGLING = 37, SCV = 7, SCARAB = 85;
@@ -169,5 +169,25 @@ describe("kills", () => {
     const t = timeline(events);
     expect(topKillers(t, cost).map((k) => [k.unit, k.type, k.player, k.kills, k.value, k.frame])).toEqual([[tank.unit, TANK, 0, 2, 275, 60], [marine.unit, MARINE, 0, 1, 25, 50]]);
     expect(kills(t).map((k) => [k.frame, k.fromX, k.x, k.player, k.by])).toEqual([[50, 10, 1, 1, 0], [60, 900, 2, 1, 0], [70, 900, 3, 1, 0]]);
+  });
+});
+
+describe("the heart of a fight", () => {
+  const fight = (points: { frame: number; x: number; y: number }[]): Fight => ({
+    from: points[0].frame, to: points[points.length - 1].frame, x: 0, y: 0, rect: { x0: 0, y0: 0, x1: 0, y1: 0 }, points, losses: points.length, value: 0,
+    sides: [{ player: 0 }, { player: 3 }] as Fight["sides"], winner: null, kind: "battle", tier: "major", share: 0, turning: false, importance: 0, key: true,
+  });
+
+  it("is the 45 seconds with the most losses, a stray loss before them left out", () => {
+    const e = engagement(fight([{ frame: 1000, x: 9, y: 9 }, { frame: 1500, x: 100, y: 200 }, { frame: 1600, x: 300, y: 150 }, { frame: 1720, x: 200, y: 400 }, { frame: 3000, x: 2000, y: 2000 }]));
+    expect(e).toEqual({ from: 1500, to: 1720, x0: 100, y0: 150, x1: 300, y1: 400, players: [0, 3] });
+  });
+
+  it("runs 45 seconds at most, the earliest when two stretches have as many", () => {
+    const points = Array.from({ length: 30 }, (_, i) => ({ frame: 500 + i * 100, x: i, y: i }));
+    const e = engagement(fight(points));
+    expect(e.from).toBe(500);
+    expect(e.to).toBe(1500);
+    expect(e.x1).toBe(10);
   });
 });
