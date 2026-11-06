@@ -88,7 +88,7 @@ The strip under the map has:
   (a key to the marks, in the map's bottom-left corner).
 - The **Vision** menu: everyone, or one player's eyes.
 - How the analysis is going.
-- **Analysis**, **Cast…** and **Cinematic**, where they apply.
+- **Play From Here**, **Analysis**, **Cast…** and **Cinematic**, where they apply.
 - A menu for the graph: actions per minute, or once the game is analysed, the army lead (in
   a game of two), army value, army size, workers, supply, minerals or gas in the bank, or
   buildings.
@@ -399,6 +399,15 @@ Casts are kept in this browser with their voices, so watching one again costs no
 you open a replay again, the timeline offers its newest cast as **Watch cast**, and the
 window lists the others. Past 30 casts or 300 MB, the ones watched longest ago are deleted.
 While a cast plays, pausing pauses the voices, and going elsewhere on the timeline ends it.
+
+### Play From Here
+
+With the scm-sim plugin 0.15.0 or later, **Play From Here** on the timeline opens the replay on
+the site's play page at the moment shown, seen as the player chosen in the **Vision** menu (the
+first player when it says everyone). The play page stops there with its Watch Replay menu
+open. From there you take one of the players and play on alone, against a community bot, or
+with others who join by an invite. Going back to an earlier moment in the play page watches
+the replay again.
 
 ### Cinematic view
 

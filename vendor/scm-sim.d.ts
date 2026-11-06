@@ -693,6 +693,14 @@ export interface ScmSimService {
    */
   play(map?: { bytes: Uint8Array; name: string }): Promise<void>;
   /**
+   * A replay watched on the play page, in the same tab as `play`, from `frame` and through `player`'s eyes (a replay
+   * player's slot; left out, the page's own choice), paused there with its Watch Replay menu open: the person plays on
+   * from that moment, alone, against a community bot, or with others. `replay` is a whole .rep file. Call it from the
+   * click that asks for it. Resolves when the replay is on the page; rejects worded for the person (a play page from
+   * before it: "No map came with the request."). Added in 0.15.0: check that the function is there before calling it.
+   */
+  playReplay?(replay: { bytes: Uint8Array; name: string }, at: { frame: number; player?: number }): Promise<void>;
+  /**
    * The game drawn inside `element` (filling it), for watching a replay with its own
    * graphics: see `ScmSimView`. The engine is a gigabyte of memory, so keep one view and
    * load replays into it rather than one per replay. Added in 0.5.0: check that the
