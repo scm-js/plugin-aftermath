@@ -3368,6 +3368,21 @@ export function activate(api: PluginApi) {
         : null;
       // (With a cast to watch, the window — a new cast, the others kept — is a button of its own.)
       const castMore = castButton && castState === "ready" ? w.button(t("Cast…"), { className: "sm", title: t("Make a new cast, or watch another kept in this browser"), onClick: () => openCastWindow() }) : null;
+      // Play From Here: this replay on the play page at the moment shown, through the eyes chosen (else the first
+      // player's), its Watch Replay menu open there to play on: alone, against a community bot, or with others.
+      const playHere = sim?.present && sim.playReplay
+        ? w.button(t("Play From Here"), {
+          className: "sm",
+          title: t("Open this replay on the play page at this moment and play on from there: as one of its players, alone, against a community bot, or with others"),
+          onClick: () => {
+            const frame = Math.round((gameClock() ? game.frameNow(settings.speed) : null) ?? entry.frame);
+            if (playing) stop();
+            const player = entry.eyes ?? entry.report.players[0]?.player.slot;
+            sim!.playReplay!({ bytes: entry.bytes, name: entry.fileName }, { frame, ...(player !== undefined ? { player } : {}) })
+              .catch((err) => api.ui.toast({ kind: "error", title: t("The play page could not open the replay"), detail: err instanceof Error ? err.message : String(err) }));
+          },
+        })
+        : null;
       const cinemaButton = cinemaPossible()
         ? w.button(t("Cinematic"), { className: "sm", title: t("The game full screen, dressed as a broadcast, without the editor around it. Esc leaves."), onClick: () => { void setCinema(true); } })
         : null;
@@ -3391,7 +3406,7 @@ export function activate(api: PluginApi) {
       this.eyesSelect = eyes;
       this.root.append(el("div", { className: "afm-row" }, this.playButton, this.timeLabel, speed,
         el("span", { className: "afm-toggles" }, this.spectateButton, this.ordersButton, this.statsButton, this.legendButton), eyes,
-        this.status, retry, castCardsButton, cinemaButton, castButton, castMore, analysis, chartSelect));
+        this.status, retry, castCardsButton, playHere, cinemaButton, castButton, castMore, analysis, chartSelect));
 
       // The lane of marks and the graph, one canvas: press or drag anywhere on it to go there.
       const canvas = el("canvas") as HTMLCanvasElement;
