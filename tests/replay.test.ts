@@ -2,8 +2,8 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { analyse, buildOrderRows, clickKind, formatTime, heat } from "../analysis";
 import { likeness, plainText, readChk } from "../chk";
-import { cString, detectFormat, parseReplay, ReplayError, type ReplayFormat } from "../replay";
-import { chk, cmds, le16, writeReplay } from "./writer";
+import { cString, detectFormat, parseReplay, ReplayError, type ReplayFormat } from "@scm-js/replay";
+import { chk, cmds, le16, writeReplay } from "@scm-js/replay/write";
 
 const players = [
   { index: 0, id: 0, race: 1, name: "Alpha", color: 0 },

@@ -20,7 +20,7 @@
  */
 import type { Disposable, MapView, MapViewCamera, MapViewHandle, MinimapView, PluginApi } from "@scm-js/plugin-api";
 import type { ScmSimService, ScmSimView, ViewFrame, ViewHover, ViewTrack, ViewUnits } from "./vendor/scm-sim";
-import { FRAME_MS } from "./replay";
+import { FRAME_MS } from "@scm-js/replay";
 
 /** A seek the viewer says is over but that has shown no frame near where it went is settled after this long. */
 const SEEK_GIVE_UP_MS = 2500;

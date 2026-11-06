@@ -444,13 +444,12 @@ npm run typecheck
 npm run build     # dist/plugin.js, the bundle the editor loads
 ```
 
-The tests write their own replays in all three formats (`tests/writer.ts`), so nobody's
-games are in the repository. Put real replays in `fixtures/` (gitignored) and the tests read
+The tests write their own replays in all three formats (`@scm-js/replay/write`), so
+nobody's games are in the repository. Put real replays in `fixtures/` (gitignored) and the tests read
 each of them as well.
 
 | File | What it is |
 | --- | --- |
-| `replay.ts` | Reads a `.rep`: the sections, the header, every command and the map. |
 | `analysis.ts` | Per-player build orders, placements, clicks and actions per minute; the heat grid. |
 | `chk.ts` | The map's size, tileset and tiles, and whether two maps are the same one. |
 | `played.ts`, `fights.ts`, `story.ts` | What the engine's timeline says happened: units, losses, fights, the Game tab. |
@@ -462,9 +461,9 @@ each of them as well.
 | `ko.ts` | The Korean catalogue. |
 | `plugin.ts` | The tabs, the panels, the playback clock and the overlay. |
 
-The reader follows the replay format as [screp](https://github.com/icza/screp) (Apache-2.0)
-documents it in code. Sections from before 1.18 are unpacked with
-[mopaq](https://www.npmjs.com/package/mopaq)'s PKWARE decoder.
+Replays are read by [@scm-js/replay](https://github.com/scm-js/replay), which began as
+this plugin's own reader and is now shared with the `scmjs` command line. Its own tests
+are there.
 
 ## Licence
 

@@ -13,7 +13,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "mopaq": "^1.5.0"
+    "@scm-js/replay": "^1.0.0"
   },
   "devDependencies": {
     "@scm-js/plugin-api": "^1.54.0",
