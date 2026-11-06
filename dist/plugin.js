@@ -1366,6 +1366,9 @@ var KO = {
   "Key fight": "\uC8FC\uC694 \uAD50\uC804",
   "{name} wins": "{name} \uC2B9\uB9AC",
   "Cinematic": "\uC2DC\uB124\uB9C8\uD2F1",
+  "Play From Here": "\uC5EC\uAE30\uC11C\uBD80\uD130 \uD50C\uB808\uC774",
+  "Open this replay on the play page at this moment and play on from there: as one of its players, alone, against a community bot, or with others": "\uC774 \uB9AC\uD50C\uB808\uC774\uB97C \uD50C\uB808\uC774 \uD398\uC774\uC9C0\uC5D0\uC11C \uC774 \uC21C\uAC04\uBD80\uD130 \uC5F4\uACE0, \uAC70\uAE30\uC11C\uBD80\uD130 \uC774\uC5B4\uC11C \uD50C\uB808\uC774\uD569\uB2C8\uB2E4: \uD50C\uB808\uC774\uC5B4 \uC911 \uD55C \uBA85\uC73C\uB85C, \uD63C\uC790\uC11C, \uCEE4\uBBA4\uB2C8\uD2F0 \uBD07\uC744 \uC0C1\uB300\uB85C, \uB610\uB294 \uB2E4\uB978 \uC0AC\uB78C\uB4E4\uACFC \uD568\uAED8",
+  "The play page could not open the replay": "\uD50C\uB808\uC774 \uD398\uC774\uC9C0\uAC00 \uB9AC\uD50C\uB808\uC774\uB97C \uC5F4 \uC218 \uC5C6\uC5C8\uC2B5\uB2C8\uB2E4",
   "The game full screen, dressed as a broadcast, without the editor around it. Esc leaves.": "\uD3B8\uC9D1\uAE30 \uC5C6\uC774 \uAC8C\uC784\uC744 \uBC29\uC1A1\uCC98\uB7FC \uC804\uCCB4 \uD654\uBA74\uC73C\uB85C \uBD05\uB2C8\uB2E4. Esc\uB85C \uB098\uAC11\uB2C8\uB2E4.",
   "Make a new cast, or watch another kept in this browser": "\uC0C8 \uC911\uACC4\uB97C \uB9CC\uB4E4\uAC70\uB098, \uC774 \uBE0C\uB77C\uC6B0\uC800\uC5D0 \uBCF4\uAD00\uB41C \uB2E4\uB978 \uC911\uACC4\uB97C \uBD05\uB2C8\uB2E4",
   "Kept in this browser: {n, plural, one {# cast} other {# casts}}, {mb} MB. Past {max} casts or {maxMb} MB, the ones watched longest ago go.": "\uC774 \uBE0C\uB77C\uC6B0\uC800\uC5D0 \uBCF4\uAD00: \uC911\uACC4 {n}\uAC1C, {mb} MB. {max}\uAC1C \uB610\uB294 {maxMb} MB\uB97C \uB118\uC73C\uBA74 \uAC00\uC7A5 \uC624\uB798\uC804\uC5D0 \uBCF8 \uAC83\uBD80\uD130 \uC9C0\uC6C1\uB2C8\uB2E4.",
@@ -8805,6 +8808,16 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
         }
       }) : null;
       const castMore = castButton && castState === "ready" ? w.button(t("Cast\u2026"), { className: "sm", title: t("Make a new cast, or watch another kept in this browser"), onClick: () => openCastWindow() }) : null;
+      const playHere = sim?.present && sim.playReplay ? w.button(t("Play From Here"), {
+        className: "sm",
+        title: t("Open this replay on the play page at this moment and play on from there: as one of its players, alone, against a community bot, or with others"),
+        onClick: () => {
+          const frame = Math.round((gameClock() ? game.frameNow(settings.speed) : null) ?? entry.frame);
+          if (playing3) stop();
+          const player = entry.eyes ?? entry.report.players[0]?.player.slot;
+          sim.playReplay({ bytes: entry.bytes, name: entry.fileName }, { frame, ...player !== void 0 ? { player } : {} }).catch((err) => api.ui.toast({ kind: "error", title: t("The play page could not open the replay"), detail: err instanceof Error ? err.message : String(err) }));
+        }
+      }) : null;
       const cinemaButton = cinemaPossible() ? w.button(t("Cinematic"), { className: "sm", title: t("The game full screen, dressed as a broadcast, without the editor around it. Esc leaves."), onClick: () => {
         void setCinema(true);
       } }) : null;
@@ -8844,6 +8857,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
         this.status,
         retry,
         castCardsButton,
+        playHere,
         cinemaButton,
         castButton,
         castMore,
