@@ -10,7 +10,7 @@
  *
  * Pure: no editor, no DOM. `plugin.ts` turns it into the panel and the overlay.
  */
-import { FRAME_MS, type Command, type Replay, type ReplayPlayer } from "./replay";
+import { FRAME_MS, type Command, type Replay, type ReplayPlayer } from "@scm-js/replay";
 
 export type ClickKind = "move" | "attack" | "patrol" | "rally" | "ability" | "ping";
 

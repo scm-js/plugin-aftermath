@@ -33,7 +33,7 @@
 import type { Disposable, MapView, OverlayHandle, PanelHandle, PluginApi, PluginImage } from "@scm-js/plugin-api";
 import { analyse, buildOrderRows, formatTime, FRAMES_PER_MINUTE, heat, TOWN_HALLS, type ClickKind, type HeatGrid, type PlayerReport, type ReplayReport } from "./analysis";
 import { likeness, plainText, readChk, type ChkInfo } from "./chk";
-import { FRAME_MS, parseReplay, ReplayError } from "./replay";
+import { FRAME_MS, parseReplay, ReplayError } from "@scm-js/replay";
 import { KO } from "./ko";
 import { buildings as standingBuildings, isBuilding, losses, lossPoints, madeRows, mineralLines, presencePoints, sampleAt, series, unitIndex, unitsAt, WORKERS, type Metric, type Point, type Standing, type UnitIndex } from "./played";
 import { knowledge, knownAt, placedBuildings, REMEMBER_FRAMES, trails, type Knowledge, type Trail } from "./knew";
