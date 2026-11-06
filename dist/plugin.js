@@ -29,6 +29,22 @@ var CRYPTO_TABLE = (() => {
   }
   return table;
 })();
+var WEIGHTS = [
+  hex("0a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000020000"),
+  hex("5416160d0c08060506050603040403050e0b141313090b0605040302030202020d070906060403020403030303030202090604040404030203020202020302040803040709050303030302020203020203020202020202020201010102010202060a0808060704030404020204020303040307070906040303020102020202020a0202030202010102020206030502030201010101010101010101020301010102010101010101020404040709080c02010101010101010101010101020101030401020405010101010101010201010104010101010102010101010101010101020101010101010103010101010101010201010101010102020101020202064b0000"),
+  hex("0000000000000000000327000023000000000000000000000000000000000000ff0101010101010102020101060e10040608050404030302020303010102010101040204020202010104010102030302030103060401010101010102010201010129071612400a0a112501031710262a100123232f100607020901010101010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
+  hex("ff0b07050b020202060202010402010309010101030401010201010102010101050101010d0101010101010101010101020101030101010101010102010101010a0402010603020101010101030101010502030403030302010101020102030301030101020501010403050103010303020104030a06010101010101010101010202010a0205010102070217010501010e0101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101060201040501010201010101020101010101010101010101010101010101010101010101010101010701010201010101020101010101010102010101010101110000"),
+  hex("fffb989a848563643e3e2222131318170000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
+  hex("fff19d9e9a9b9a9793938c8e868880827c7c7273696b5f6055564a4b404137372f2f272721211b1c1717131310100d0d0b0b09090808070706050504040419180000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
+  hex("c3cbf541ff7bf7210000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000bfccf240fd7cf72200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007a460000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
+  hex("c3d9ef3df97ce91efdabf12cfc5bfe17000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000bdd9ec3df57de81dfbaef02cfb5cff18000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000706c0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
+  hex("bac5da33e36dd818e594da23df4ad110eeafe42cea5ade15f487e921f643fc120000000000000000000000000000000000000000000000000000000000000000b0c7d833e36bd618e795d823db49d011e9b2e22be85cdd15f187e720f744ff1300000000000000000000000000000000000000000000000000000000000000005f9e0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+];
+function hex(digits) {
+  const out = new Uint8Array(digits.length / 2);
+  for (let i = 0; i < out.length; i++) out[i] = parseInt(digits.substr(i * 2, 2), 16);
+  return out;
+}
 var MAX_BITS = 13;
 var MAX_WINDOW = 4096;
 var MAX_MATCH = 518;
@@ -307,7 +323,7 @@ for (let symbol = 0; symbol < LENGTH_BASE.length; symbol++) {
   }
 }
 
-// replay.ts
+// node_modules/@scm-js/replay/dist/index.mjs
 var ReplayError = class extends Error {
 };
 var msg = (text) => text;
@@ -343,7 +359,7 @@ function isZlib(c) {
   return c.length > 4 && c[0] === 120 && (c[0] << 8 | c[1]) % 31 === 0;
 }
 async function section(r, size, format, unzip) {
-  if (size === 0) return new Uint8Array(0);
+  if (size === 0) return /* @__PURE__ */ new Uint8Array(0);
   r.u32();
   const count = r.u32();
   if (count > 65536) throw new ReplayError(msg("A section claims more chunks than a replay can hold."));
@@ -413,12 +429,13 @@ function cString(b, alwaysUtf8 = false) {
     return utf8Strict.decode(s);
   } catch {
   }
-  legacy ??= { korean: decoder("euc-kr", true), western: decoder("windows-1252", false) };
-  if (legacy.korean) {
-    try {
-      return legacy.korean.decode(s);
-    } catch {
-    }
+  legacy ??= {
+    korean: decoder("euc-kr", true),
+    western: decoder("windows-1252", false)
+  };
+  if (legacy.korean) try {
+    return legacy.korean.decode(s);
+  } catch {
   }
   return (legacy.western ?? utf8).decode(s);
 }
@@ -448,7 +465,7 @@ var COLORS = [
   8421504,
   3947580
 ];
-var hex = (rgb) => "#" + rgb.toString(16).padStart(6, "0");
+var hex2 = (rgb) => "#" + rgb.toString(16).padStart(6, "0");
 function readHeader(d, format) {
   if (d.length < 633) throw new ReplayError(msg("The replay's header is too short."));
   const dv = new DataView(d.buffer, d.byteOffset, d.byteLength);
@@ -457,8 +474,7 @@ function readHeader(d, format) {
   const header = {
     engine: d[0],
     frames: dv.getUint32(1, true),
-    started: started ? new Date(started * 1e3) : null,
-    // Remastered writes UTF-8 and cuts a long title mid-character, so it is read leniently.
+    started: started ? /* @__PURE__ */ new Date(started * 1e3) : null,
     title: text(24, 28, format !== "legacy"),
     mapWidth: dv.getUint16(52, true),
     mapHeight: dv.getUint16(54, true),
@@ -479,14 +495,42 @@ function readHeader(d, format) {
       race: d[at + 9],
       team: d[at + 10],
       name: text(at + 11, 25),
-      color: color >= 0 && color < COLORS.length ? hex(COLORS[color]) : "#9aa4b2"
+      color: color >= 0 && color < COLORS.length ? hex2(COLORS[color]) : "#9aa4b2"
     });
   }
-  return { header, slots };
+  return {
+    header,
+    slots
+  };
 }
-var EMPTY = /* @__PURE__ */ new Set([27, 28, 29, 39, 42, 54, 90]);
-var CANCELS = /* @__PURE__ */ new Set([24, 25, 46, 49, 51, 52]);
-var SESSION = /* @__PURE__ */ new Set([5, 8, 16, 17, 56, 57, 60, 84, 91]);
+var EMPTY = /* @__PURE__ */ new Set([
+  27,
+  28,
+  29,
+  39,
+  42,
+  54,
+  90
+]);
+var CANCELS = /* @__PURE__ */ new Set([
+  24,
+  25,
+  46,
+  49,
+  51,
+  52
+]);
+var SESSION = /* @__PURE__ */ new Set([
+  5,
+  8,
+  16,
+  17,
+  56,
+  57,
+  60,
+  84,
+  91
+]);
 var SKIP = {
   55: 6,
   58: 1,
@@ -504,7 +548,18 @@ var SKIP = {
   86: 9,
   85: 1
 };
-var QUEUEABLE = /* @__PURE__ */ new Set([26, 30, 33, 34, 37, 38, 40, 43, 44, 45]);
+var QUEUEABLE = /* @__PURE__ */ new Set([
+  26,
+  30,
+  33,
+  34,
+  37,
+  38,
+  40,
+  43,
+  44,
+  45
+]);
 var ORDER_LAND = 71;
 function readCommands(d) {
   const commands = [];
@@ -529,7 +584,11 @@ function readCommands(d) {
     while (p + 2 <= end) {
       const player = u8();
       const type = u8();
-      const at = { frame, player, type };
+      const at = {
+        frame,
+        player,
+        type
+      };
       try {
         switch (type) {
           case 20:
@@ -537,7 +596,14 @@ function readCommands(d) {
             const x = u16(), y = u16();
             u16();
             if (type === 96) u16();
-            commands.push({ ...at, kind: "rightClick", x, y, unit: u16(), queued: u8() !== 0 });
+            commands.push({
+              ...at,
+              kind: "rightClick",
+              x,
+              y,
+              unit: u16(),
+              queued: u8() !== 0
+            });
             break;
           }
           case 21:
@@ -546,7 +612,15 @@ function readCommands(d) {
             u16();
             if (type === 97) u16();
             const unit = u16(), order = u8();
-            commands.push({ ...at, kind: "targeted", x, y, unit, order, queued: u8() !== 0 });
+            commands.push({
+              ...at,
+              kind: "targeted",
+              x,
+              y,
+              unit,
+              order,
+              queued: u8() !== 0
+            });
             break;
           }
           case 9:
@@ -561,94 +635,191 @@ function readCommands(d) {
               tags.push(u16());
               if (type >= 99) u16();
             }
-            commands.push({ ...at, kind: "select", tags });
+            commands.push({
+              ...at,
+              kind: "select",
+              tags
+            });
             break;
           }
           case 19: {
             const kind = u8();
-            commands.push({ ...at, kind: "hotkey", value: u8(), order: kind });
+            commands.push({
+              ...at,
+              kind: "hotkey",
+              value: u8(),
+              order: kind
+            });
             break;
           }
           case 31:
-            commands.push({ ...at, kind: "train", unit: u16() });
+            commands.push({
+              ...at,
+              kind: "train",
+              unit: u16()
+            });
             break;
           case 35:
-            commands.push({ ...at, kind: "morph", unit: u16() });
+            commands.push({
+              ...at,
+              kind: "morph",
+              unit: u16()
+            });
             break;
           case 53:
-            commands.push({ ...at, kind: "buildingMorph", unit: u16() });
+            commands.push({
+              ...at,
+              kind: "buildingMorph",
+              unit: u16()
+            });
             break;
           case 12: {
             const order = u8(), x = u16(), y = u16(), unit = u16();
-            commands.push({ ...at, kind: order === ORDER_LAND ? "land" : "build", order, x, y, unit });
+            commands.push({
+              ...at,
+              kind: order === ORDER_LAND ? "land" : "build",
+              order,
+              x,
+              y,
+              unit
+            });
             break;
           }
           case 47: {
             const x = u16(), y = u16();
-            commands.push({ ...at, kind: "liftOff", x, y });
+            commands.push({
+              ...at,
+              kind: "liftOff",
+              x,
+              y
+            });
             break;
           }
           case 48:
-            commands.push({ ...at, kind: "tech", value: u8() });
+            commands.push({
+              ...at,
+              kind: "tech",
+              value: u8()
+            });
             break;
           case 50:
-            commands.push({ ...at, kind: "upgrade", value: u8() });
+            commands.push({
+              ...at,
+              kind: "upgrade",
+              value: u8()
+            });
             break;
           case 32:
             u16();
-            commands.push({ ...at, kind: "cancel" });
+            commands.push({
+              ...at,
+              kind: "cancel"
+            });
             break;
           case 41:
             u16();
-            commands.push({ ...at, kind: "simple" });
+            commands.push({
+              ...at,
+              kind: "simple"
+            });
             break;
           case 98:
             u16();
             u16();
-            commands.push({ ...at, kind: "simple" });
+            commands.push({
+              ...at,
+              kind: "simple"
+            });
             break;
           case 87:
-            commands.push({ ...at, kind: "leave", value: u8() });
+            commands.push({
+              ...at,
+              kind: "leave",
+              value: u8()
+            });
             break;
           case 88: {
             const x = u16(), y = u16();
-            commands.push({ ...at, kind: "ping", x, y });
+            commands.push({
+              ...at,
+              kind: "ping",
+              x,
+              y
+            });
             break;
           }
           case 92: {
             const sender = u8();
             const text = cString(d.subarray(p, p + 80));
             p += 80;
-            commands.push({ ...at, player: sender, kind: "chat", text });
+            commands.push({
+              ...at,
+              player: sender,
+              kind: "chat",
+              text
+            });
             break;
           }
           case 13:
-            commands.push({ ...at, kind: "vision", value: u16() });
+            commands.push({
+              ...at,
+              kind: "vision",
+              value: u16()
+            });
             break;
           case 14:
-            commands.push({ ...at, kind: "alliance", value: u32() });
+            commands.push({
+              ...at,
+              kind: "alliance",
+              value: u32()
+            });
             break;
           case 15:
             u8();
-            commands.push({ ...at, kind: "system" });
+            commands.push({
+              ...at,
+              kind: "system"
+            });
             break;
           case 18:
             u32();
-            commands.push({ ...at, kind: "system" });
+            commands.push({
+              ...at,
+              kind: "system"
+            });
             break;
           case 6:
           case 7:
             p += u32();
-            commands.push({ ...at, kind: "system" });
+            commands.push({
+              ...at,
+              kind: "system"
+            });
             break;
           default:
-            if (QUEUEABLE.has(type)) commands.push({ ...at, kind: "simple", queued: u8() !== 0 });
-            else if (EMPTY.has(type)) commands.push({ ...at, kind: "simple" });
-            else if (CANCELS.has(type)) commands.push({ ...at, kind: "cancel" });
-            else if (SESSION.has(type)) commands.push({ ...at, kind: "system" });
+            if (QUEUEABLE.has(type)) commands.push({
+              ...at,
+              kind: "simple",
+              queued: u8() !== 0
+            });
+            else if (EMPTY.has(type)) commands.push({
+              ...at,
+              kind: "simple"
+            });
+            else if (CANCELS.has(type)) commands.push({
+              ...at,
+              kind: "cancel"
+            });
+            else if (SESSION.has(type)) commands.push({
+              ...at,
+              kind: "system"
+            });
             else if (type in SKIP) {
               p += SKIP[type];
-              commands.push({ ...at, kind: "system" });
+              commands.push({
+                ...at,
+                kind: "system"
+              });
             } else {
               unknown++;
               p = end;
@@ -661,7 +832,10 @@ function readCommands(d) {
     }
     p = end;
   }
-  return { commands, unknown };
+  return {
+    commands,
+    unknown
+  };
 }
 var tag = (s) => (s.charCodeAt(0) | s.charCodeAt(1) << 8 | s.charCodeAt(2) << 16 | s.charCodeAt(3) << 24) >>> 0;
 var TAGGED = {
@@ -675,38 +849,39 @@ async function parseReplay(bytes, unzip = inflate) {
   const format = detectFormat(bytes);
   if (!format) throw new ReplayError(msg("This is not a StarCraft replay."));
   const r = new Reader(bytes);
-  const id = await section(r, 4, format, unzip);
+  await section(r, 4, format, unzip);
   if (format === "1.21") r.u32();
   const { header, slots } = readHeader(await section(r, 633, format, unzip), format);
   const { commands, unknown } = readCommands(await sized(r, format, unzip));
   const chk = await sized(r, format, unzip);
-  void id;
-  if (format !== "legacy") {
-    try {
-      const names = await section(r, 768, format, unzip);
-      slots.forEach((s, i) => {
-        if (s.type === 0 || (i + 1) * 96 > names.length) return;
-        const name = cString(names.subarray(i * 96, (i + 1) * 96));
-        if (name) s.name = name;
-      });
-      while (r.left >= 8) {
-        const kind = r.u32();
-        const raw = r.u32();
-        const start = r.pos;
-        const size = TAGGED[kind];
-        if (size && kind === tag("CCLR")) {
-          const colors = await section(r, size, format, unzip);
-          const dv = new DataView(colors.buffer, colors.byteOffset, colors.byteLength);
-          slots.forEach((s, i) => {
-            if ((i + 1) * 16 > colors.length) return;
-            const c = [0, 4, 8].map((o) => Math.round(Math.min(1, Math.max(0, dv.getFloat32(i * 16 + o, true))) * 255));
-            if (dv.getFloat32(i * 16 + 12, true) > 0) s.color = hex(c[0] << 16 | c[1] << 8 | c[2]);
-          });
-        }
-        r.pos = start + raw;
+  if (format !== "legacy") try {
+    const names = await section(r, 768, format, unzip);
+    slots.forEach((s, i) => {
+      if (s.type === 0 || (i + 1) * 96 > names.length) return;
+      const name = cString(names.subarray(i * 96, (i + 1) * 96));
+      if (name) s.name = name;
+    });
+    while (r.left >= 8) {
+      const kind = r.u32();
+      const raw = r.u32();
+      const start = r.pos;
+      const size = TAGGED[kind];
+      if (size && kind === tag("CCLR")) {
+        const colors = await section(r, size, format, unzip);
+        const dv = new DataView(colors.buffer, colors.byteOffset, colors.byteLength);
+        slots.forEach((s, i) => {
+          if ((i + 1) * 16 > colors.length) return;
+          const c = [
+            0,
+            4,
+            8
+          ].map((o) => Math.round(Math.min(1, Math.max(0, dv.getFloat32(i * 16 + o, true))) * 255));
+          if (dv.getFloat32(i * 16 + 12, true) > 0) s.color = hex2(c[0] << 16 | c[1] << 8 | c[2]);
+        });
       }
-    } catch {
+      r.pos = start + raw;
     }
+  } catch {
   }
   const players = slots.filter((s) => s.name !== "" && s.type !== 0);
   if ((header.gameType === 2 || header.gameType === 4) && players.length === 2 && players[0].team === players[1].team) {
@@ -716,7 +891,14 @@ async function parseReplay(bytes, unzip = inflate) {
   if (header.gameType === 3) players.forEach((p, i) => {
     p.team = i + 1;
   });
-  return { format, header, players, commands, unknownCommands: unknown, chk };
+  return {
+    format,
+    header,
+    players,
+    commands,
+    unknownCommands: unknown,
+    chk
+  };
 }
 
 // analysis.ts
@@ -9351,8 +9533,8 @@ function firstAfter(list, frame) {
   }
   return lo;
 }
-function withAlpha(hex2, a) {
-  const n = parseInt(hex2.slice(1), 16);
+function withAlpha(hex3, a) {
+  const n = parseInt(hex3.slice(1), 16);
   return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`;
 }
 function ramp(v) {
