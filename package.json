@@ -13,10 +13,10 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@scm-js/replay": "^1.0.0"
+    "@scm-js/replay": "file:../replay-tag"
   },
   "devDependencies": {
-    "@scm-js/plugin-api": "^1.54.0",
+    "@scm-js/plugin-api": "^1.68.0",
     "esbuild": "^0.28.2",
     "typescript": "~5.9.2",
     "vitest": "^3.2.4"

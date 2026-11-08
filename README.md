@@ -129,6 +129,26 @@ It has five tabs:
 - **Map stats**: every replay of this map you have open, taken together. See
   [Map stats](#map-stats-many-replays-of-one-map).
 
+### Replays of mods
+
+A replay of a game played with a mod, saved by scmJS's play page, says which mod it was.
+The panel then shows "Replay of a mod" with the mod's name and the hash of its data set,
+a link to its makers, and the plugins that ran.
+
+A mod gives the game's unit numbers to its own units, so the replay is named only by the
+mod: until the editor draws with the mod's files, units, upgrades and technologies show by
+number, never by the game's names. **Attach the Mod's Folder…** asks for the mod's folder
+(the one holding its `arr`, `unit` and other game folders, or the folder above it), checks
+that it is the data set the replay names, and has the editor draw with it for the session.
+Names, costs and pictures then come from the mod. A folder of another version is refused,
+with both hashes. Archives in the folder (an `.mpq`, the mod's `.exe`) are not read; pick
+the folder of loose files.
+
+What the game engine shows waits for the play page to play a mod's replay: the Replay
+view, the analysis (the Game and Fights tabs, Analysis, Cast) and Play From Here. What is
+shown is the players' orders. The Build tab's choice of workers and town halls goes by the
+game's own unit numbers, which a mod may give other units.
+
 ### On the map
 
 Marks are in the player's colour. Before analysis, the map shows every building ordered up
