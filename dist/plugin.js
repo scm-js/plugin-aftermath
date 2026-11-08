@@ -837,6 +837,23 @@ function readCommands(d) {
     unknown
   };
 }
+var isObject = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isFile = (v) => isObject(v) && typeof v.name === "string" && typeof v.sha256 === "string" && /^[0-9a-f]{64}$/.test(v.sha256);
+function isModTag(value) {
+  if (!isObject(value)) return false;
+  const { v, dataSet, plugins, firegraft, noplugins, engine, madeBy } = value;
+  return typeof v === "number" && Number.isInteger(v) && v >= 1 && isObject(dataSet) && typeof dataSet.hash === "string" && /^[0-9a-f]{16}$/.test(dataSet.hash) && typeof dataSet.name === "string" && (dataSet.url === null || typeof dataSet.url === "string") && Array.isArray(plugins) && plugins.every(isFile) && (firegraft === null || isFile(firegraft)) && typeof noplugins === "boolean" && (engine === null || isObject(engine) && typeof engine.lifter === "string" && typeof engine.build === "string") && typeof madeBy === "string";
+}
+async function readModBody(body, format, unzip) {
+  try {
+    const payload = await sized(new Reader(body), format, unzip);
+    if (payload.length > 65536) return null;
+    const value = JSON.parse(utf8Strict.decode(payload));
+    return isModTag(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
 var tag = (s) => (s.charCodeAt(0) | s.charCodeAt(1) << 8 | s.charCodeAt(2) << 16 | s.charCodeAt(3) << 24) >>> 0;
 var TAGGED = {
   [tag("SKIN")]: 5600,
@@ -845,6 +862,29 @@ var TAGGED = {
   [tag("CCLR")]: 192,
   [tag("GCFG")]: 25
 };
+var SCMJ = tag("SCMJ");
+var u32At = (b, at) => (b[at] | b[at + 1] << 8 | b[at + 2] << 16 | b[at + 3] << 24) >>> 0;
+function taggedRun(r) {
+  const out = [];
+  while (r.left >= 8) {
+    const start = r.pos;
+    const kind = r.u32();
+    const raw = r.u32();
+    if (raw > r.left) {
+      r.pos = start;
+      break;
+    }
+    out.push({
+      kind,
+      start,
+      body: r.pos,
+      end: r.pos + raw
+    });
+    r.pos += raw;
+  }
+  return out;
+}
+var tagHere = (r) => r.left >= 4 && (u32At(r.b, r.pos) === SCMJ || u32At(r.b, r.pos) in TAGGED);
 async function parseReplay(bytes, unzip = inflate) {
   const format = detectFormat(bytes);
   if (!format) throw new ReplayError(msg("This is not a StarCraft replay."));
@@ -854,35 +894,33 @@ async function parseReplay(bytes, unzip = inflate) {
   const { header, slots } = readHeader(await section(r, 633, format, unzip), format);
   const { commands, unknown } = readCommands(await sized(r, format, unzip));
   const chk = await sized(r, format, unzip);
-  if (format !== "legacy") try {
+  let mod = null;
+  let run = format === "legacy";
+  if (!run && !tagHere(r)) try {
     const names = await section(r, 768, format, unzip);
     slots.forEach((s, i) => {
       if (s.type === 0 || (i + 1) * 96 > names.length) return;
       const name = cString(names.subarray(i * 96, (i + 1) * 96));
       if (name) s.name = name;
     });
-    while (r.left >= 8) {
-      const kind = r.u32();
-      const raw = r.u32();
-      const start = r.pos;
-      const size = TAGGED[kind];
-      if (size && kind === tag("CCLR")) {
-        const colors = await section(r, size, format, unzip);
-        const dv = new DataView(colors.buffer, colors.byteOffset, colors.byteLength);
-        slots.forEach((s, i) => {
-          if ((i + 1) * 16 > colors.length) return;
-          const c = [
-            0,
-            4,
-            8
-          ].map((o) => Math.round(Math.min(1, Math.max(0, dv.getFloat32(i * 16 + o, true))) * 255));
-          if (dv.getFloat32(i * 16 + 12, true) > 0) s.color = hex2(c[0] << 16 | c[1] << 8 | c[2]);
-        });
-      }
-      r.pos = start + raw;
-    }
+    run = true;
   } catch {
   }
+  for (const t of run ? taggedRun(r) : []) if (t.kind === tag("CCLR") && format !== "legacy") try {
+    const colors = await section(new Reader(bytes.subarray(t.body, t.end)), TAGGED[t.kind], format, unzip);
+    const dv = new DataView(colors.buffer, colors.byteOffset, colors.byteLength);
+    slots.forEach((s, i) => {
+      if ((i + 1) * 16 > colors.length) return;
+      const c = [
+        0,
+        4,
+        8
+      ].map((o) => Math.round(Math.min(1, Math.max(0, dv.getFloat32(i * 16 + o, true))) * 255));
+      if (dv.getFloat32(i * 16 + 12, true) > 0) s.color = hex2(c[0] << 16 | c[1] << 8 | c[2]);
+    });
+  } catch {
+  }
+  else if (t.kind === SCMJ && !mod) mod = await readModBody(bytes.subarray(t.body, t.end), format, unzip);
   const players = slots.filter((s) => s.name !== "" && s.type !== 0);
   if ((header.gameType === 2 || header.gameType === 4) && players.length === 2 && players[0].team === players[1].team) {
     players[0].team = 1;
@@ -897,7 +935,8 @@ async function parseReplay(bytes, unzip = inflate) {
     players,
     commands,
     unknownCommands: unknown,
-    chk
+    chk,
+    mod
   };
 }
 
@@ -1100,13 +1139,107 @@ function readChk(chk) {
 }
 function likeness(a, b) {
   if (a.width !== b.width || a.height !== b.height || a.tileset !== b.tileset || a.tiles.length === 0) return 0;
-  let same = 0;
+  let same2 = 0;
   const n = Math.min(a.tiles.length, b.tiles.length);
-  for (let i = 0; i < n; i++) if (a.tiles[i] === b.tiles[i]) same++;
-  return n ? same / n : 0;
+  for (let i = 0; i < n; i++) if (a.tiles[i] === b.tiles[i]) same2++;
+  return n ? same2 / n : 0;
 }
 function plainText(s) {
   return s.replace(/[\u0000-\u001f\u007f]/g, "").trim();
+}
+
+// modreplay.ts
+var GAME_FOLDERS = ["arr", "rez", "scripts", "unit", "tileset", "sound", "game", "font", "dlgs", "glue", "triggers", "portrait", "music", "cursor", "local", "parallax", "smk", "maps", "anim", "hd2", "sd", "templates", "staredit", "campaign", "datreq", "samase", "lua", "config"];
+var gameName = (path) => path.replace(/\//g, "\\").replace(/^\\+/, "").toLowerCase();
+function modRoot(paths) {
+  const score = /* @__PURE__ */ new Map(), hasArr = /* @__PURE__ */ new Set();
+  for (const p of paths) {
+    const parts = p.split("/");
+    for (let i = 0; i < parts.length - 1; i++) {
+      const folder = parts[i].toLowerCase();
+      if (!GAME_FOLDERS.includes(folder) || folder === "maps") continue;
+      const root = parts.slice(0, i).join("/");
+      score.set(root, (score.get(root) ?? 0) + 1);
+      if (folder === "arr") hasArr.add(root);
+    }
+  }
+  const best = (list) => list.sort((a, b) => (score.get(b) ?? 0) - (score.get(a) ?? 0) || a.split("/").length - b.split("/").length)[0];
+  return best([...hasArr]) ?? best([...score.keys()]) ?? "";
+}
+function modFolder(picked) {
+  const inside = picked.map((f) => ({ ...f, path: f.path.split("/").slice(1).join("/") })).filter((f) => f.path && !f.path.split("/").slice(0, -1).some((part) => part.startsWith(".")));
+  const unread = [];
+  const plugins = /* @__PURE__ */ new Map(), firegraft = /* @__PURE__ */ new Map();
+  const loose = inside.filter((f) => {
+    const leaf = f.path.split("/").pop(), lower = leaf.toLowerCase();
+    if (/\.(qdp|bwl)$/.test(lower)) {
+      if (!plugins.has(lower)) plugins.set(lower, f);
+      return false;
+    }
+    if (/\.fgp$/.test(lower)) {
+      if (!firegraft.has(lower)) firegraft.set(lower, f);
+      return false;
+    }
+    if (/\.(fgd|dll)$/.test(lower)) return false;
+    if (/\.(mpq|exe|zip)$/.test(lower)) {
+      unread.push(f.path);
+      return false;
+    }
+    return true;
+  });
+  const root = modRoot(loose.map((f) => f.path));
+  const files = /* @__PURE__ */ new Map();
+  for (const f of loose) {
+    if (root && !f.path.startsWith(root + "/")) continue;
+    const rel = root ? f.path.slice(root.length + 1) : f.path;
+    const top = rel.split("/")[0].toLowerCase();
+    if (!rel.includes("/") || top === "plugins" || top === "firegraft") continue;
+    files.set(gameName(rel), { path: rel, file: f.file });
+  }
+  return { files, plugins, firegraft, unread };
+}
+var hex3 = (b) => [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join("");
+var sha256 = async (bytes) => hex3(await crypto.subtle.digest("SHA-256", bytes));
+async function hashLines(lines) {
+  const name = (l) => l.slice(0, l.indexOf("	"));
+  const sorted = [...lines].sort((a, b) => name(a) < name(b) ? -1 : name(a) > name(b) ? 1 : 0);
+  return (await sha256(new TextEncoder().encode(sorted.join("\n")))).slice(0, 16);
+}
+var pluginLine = (name, sha) => `plugins\\${name.split(/[\\/]/).pop().toLowerCase()}	${sha}`;
+var firegraftLine = (name, sha) => `${name.split(/[\\/]/).pop().toLowerCase()}	${sha}`;
+var same = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
+async function folderHashes(folder, under, progress) {
+  const changed = [], game = [], code = [], plugins = [];
+  let done = 0;
+  const of = folder.files.size + folder.plugins.size + folder.firegraft.size;
+  for (const [member, f] of folder.files) {
+    const bytes = new Uint8Array(await f.file.arrayBuffer());
+    const line = `${member}	${await sha256(bytes)}`;
+    game.push(line);
+    const theirs = await under(member);
+    if (!theirs || !same(theirs, bytes)) changed.push(line);
+    progress?.(++done, of);
+  }
+  for (const [name, f] of folder.firegraft) {
+    code.push(firegraftLine(name, await sha256(new Uint8Array(await f.file.arrayBuffer()))));
+    progress?.(++done, of);
+  }
+  for (const [name, f] of folder.plugins) {
+    plugins.push(pluginLine(name, await sha256(new Uint8Array(await f.file.arrayBuffer()))));
+    progress?.(++done, of);
+  }
+  return { hash: await hashLines([...game, ...code, ...plugins]), withoutPlugins: await hashLines([...game, ...code]), all: await hashLines(game), changed: await hashLines(changed) };
+}
+var isReplaysMod = (tag2, hashes) => [hashes.hash, hashes.withoutPlugins, hashes.all, hashes.changed].includes(tag2.dataSet.hash);
+var pluginNames = (tag2) => tag2.noplugins ? "" : [...tag2.plugins.map((p) => p.name), ...tag2.firegraft ? [tag2.firegraft.name] : []].join(", ");
+function safeLink(url) {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    return u.protocol === "https:" || u.protocol === "http:" ? u.href : null;
+  } catch {
+    return null;
+  }
 }
 
 // ko.ts
@@ -1604,7 +1737,31 @@ var KO = {
   "Each of the opponents' units and buildings a player ever saw, counted to the player's unit that saw it first; a unit's worth is what all it showed them first cost. The game does not record which unit sees what: it is the unit nearest to having the thing in its sight, the likeliest one. Buildings are left out, and new kinds are the ones the player had never seen before.": "\uC120\uC218\uAC00 \uBCF8 \uC0C1\uB300\uC758 \uC720\uB2DB\uACFC \uAC74\uBB3C \uD558\uB098\uD558\uB098\uB97C, \uADF8\uAC83\uC744 \uCC98\uC74C \uBCF8 \uADF8 \uC120\uC218\uC758 \uC720\uB2DB\uC5D0\uAC8C \uC149\uB2C8\uB2E4. \uC720\uB2DB\uC758 \uAC00\uCE58\uB294 \uADF8 \uC720\uB2DB\uC774 \uCC98\uC74C \uBCF4\uC5EC \uC900 \uAC83\uB4E4\uC758 \uAC00\uACA9 \uD569\uC785\uB2C8\uB2E4. \uAC8C\uC784\uC740 \uC5B4\uB290 \uC720\uB2DB\uC774 \uBB34\uC5C7\uC744 \uBCF4\uB294\uC9C0 \uAE30\uB85D\uD558\uC9C0 \uC54A\uC73C\uBBC0\uB85C, \uADF8\uAC83\uC744 \uC2DC\uC57C\uC5D0 \uB450\uAE30\uC5D0 \uAC00\uC7A5 \uAC00\uAE4C\uC6E0\uB358 \uC720\uB2DB, \uC989 \uAC00\uC7A5 \uADF8\uB7F4\uB4EF\uD55C \uC720\uB2DB\uC73C\uB85C \uC149\uB2C8\uB2E4. \uAC74\uBB3C\uC740 \uBE7C\uBA70, \uC0C8\uB85C \uBCF8 \uC885\uB958\uB294 \uC120\uC218\uAC00 \uADF8\uB54C\uAE4C\uC9C0 \uD55C \uBC88\uB3C4 \uBCF4\uC9C0 \uBABB\uD55C \uAC83\uC785\uB2C8\uB2E4.",
   "When": "\uB54C",
   "Worth": "\uAC00\uCE58",
-  "What it found": "\uCC3E\uC544\uB0B8 \uAC83"
+  "What it found": "\uCC3E\uC544\uB0B8 \uAC83",
+  "Unit {id}": "\uC720\uB2DB {id}",
+  "Upgrade {id}": "\uC5C5\uADF8\uB808\uC774\uB4DC {id}",
+  "Technology {id}": "\uAE30\uC220 {id}",
+  "This editor cannot take a mod's folder": "\uC774 \uD3B8\uC9D1\uAE30\uB294 \uBAA8\uB4DC \uD3F4\uB354\uB97C \uBC1B\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4",
+  "Attaching a mod's data set needs a newer scmJS.": "\uBAA8\uB4DC\uC758 \uB370\uC774\uD130 \uC138\uD2B8\uB97C \uBD99\uC774\uB824\uBA74 \uB354 \uC0C8\uB85C\uC6B4 scmJS\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4.",
+  "No game files in that folder": "\uADF8 \uD3F4\uB354\uC5D0 \uAC8C\uC784 \uD30C\uC77C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4",
+  "Pick the mod's folder: the one holding its arr, unit and other game folders, or the folder above it.": "\uBAA8\uB4DC \uD3F4\uB354\uB97C \uACE0\uB974\uC138\uC694: arr, unit \uAC19\uC740 \uAC8C\uC784 \uD3F4\uB354\uAC00 \uB4E4\uC5B4 \uC788\uB294 \uD3F4\uB354\uB098 \uADF8 \uC704\uC758 \uD3F4\uB354\uC785\uB2C8\uB2E4.",
+  "This folder is not the mod the replay was played with": "\uC774 \uD3F4\uB354\uB294 \uB9AC\uD50C\uB808\uC774\uB97C \uD50C\uB808\uC774\uD55C \uBAA8\uB4DC\uAC00 \uC544\uB2D9\uB2C8\uB2E4",
+  "Its data set is {hash}, the replay's is {wanted} ({name}).": "\uC774 \uD3F4\uB354\uC758 \uB370\uC774\uD130 \uC138\uD2B8\uB294 {hash}, \uB9AC\uD50C\uB808\uC774\uC758 \uAC83\uC740 {wanted}({name})\uC785\uB2C8\uB2E4.",
+  "Its archives ({list}) are not read here: pick a folder of the mod's loose files.": "\uD3F4\uB354\uC758 \uC544\uCE74\uC774\uBE0C({list})\uB294 \uC5EC\uAE30\uC11C \uC77D\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4: \uBAA8\uB4DC\uC758 \uB0B1\uAC1C \uD30C\uC77C\uC774 \uB4E0 \uD3F4\uB354\uB97C \uACE0\uB974\uC138\uC694.",
+  "Mod": "\uBAA8\uB4DC",
+  "{name} attached": "{name}\uC744(\uB97C) \uBD99\uC600\uC2B5\uB2C8\uB2E4",
+  "The editor draws with the mod's files until its data set is changed or the page is loaded again.": "\uB370\uC774\uD130 \uC138\uD2B8\uB97C \uBC14\uAFB8\uAC70\uB098 \uD398\uC774\uC9C0\uB97C \uB2E4\uC2DC \uBD88\uB7EC\uC62C \uB54C\uAE4C\uC9C0 \uD3B8\uC9D1\uAE30\uB294 \uBAA8\uB4DC\uC758 \uD30C\uC77C\uB85C \uADF8\uB9BD\uB2C8\uB2E4.",
+  "The mod could not be attached": "\uBAA8\uB4DC\uB97C \uBD99\uC77C \uC218 \uC5C6\uC2B5\uB2C8\uB2E4",
+  "This replay was played with a mod, which the game engine here does not play replays of yet.": "\uC774 \uB9AC\uD50C\uB808\uC774\uB294 \uBAA8\uB4DC\uB85C \uD50C\uB808\uC774\uB418\uC5C8\uACE0, \uC5EC\uAE30\uC758 \uAC8C\uC784 \uC5D4\uC9C4\uC740 \uC544\uC9C1 \uBAA8\uB4DC\uC758 \uB9AC\uD50C\uB808\uC774\uB97C \uC7AC\uC0DD\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
+  "Replay of a mod: {name} ({hash})": "\uBAA8\uB4DC\uC758 \uB9AC\uD50C\uB808\uC774: {name} ({hash})",
+  "unnamed": "\uC774\uB984 \uC5C6\uC74C",
+  "Its makers": "\uC81C\uC791\uC790",
+  "Plugins: {names}": "\uD50C\uB7EC\uADF8\uC778: {names}",
+  "Names and costs are the mod's: the editor draws with its data set.": "\uC774\uB984\uACFC \uBE44\uC6A9\uC740 \uBAA8\uB4DC\uC758 \uAC83\uC785\uB2C8\uB2E4: \uD3B8\uC9D1\uAE30\uAC00 \uBAA8\uB4DC\uC758 \uB370\uC774\uD130 \uC138\uD2B8\uB85C \uADF8\uB9AC\uACE0 \uC788\uC2B5\uB2C8\uB2E4.",
+  "Reading the mod: {done} of {n} files\u2026": "\uBAA8\uB4DC\uB97C \uC77D\uB294 \uC911: \uD30C\uC77C {n}\uAC1C \uC911 {done}\uAC1C\u2026",
+  "Units, upgrades and technologies show by id until the editor draws with the mod: attach the mod's folder, and it is checked against the replay first.": "\uD3B8\uC9D1\uAE30\uAC00 \uBAA8\uB4DC\uB85C \uADF8\uB9AC\uAE30 \uC804\uAE4C\uC9C0 \uC720\uB2DB, \uC5C5\uADF8\uB808\uC774\uB4DC, \uAE30\uC220\uC740 \uBC88\uD638\uB85C \uBCF4\uC785\uB2C8\uB2E4: \uBAA8\uB4DC \uD3F4\uB354\uB97C \uBD99\uC774\uC138\uC694. \uBA3C\uC800 \uB9AC\uD50C\uB808\uC774\uC640 \uAC19\uC740 \uBAA8\uB4DC\uC778\uC9C0 \uD655\uC778\uD569\uB2C8\uB2E4.",
+  "Attach the Mod's Folder\u2026": "\uBAA8\uB4DC \uD3F4\uB354 \uBD99\uC774\uAE30\u2026",
+  "The game view, the analysis (the Game and Fights tabs, Analysis, Cast) and Play From Here wait for the play page to play a mod's replay. What is shown is the players' orders, and Aftermath's own rules for workers and town halls go by the game's unit ids, which a mod may give other units.": "\uAC8C\uC784 \uD654\uBA74, \uBD84\uC11D(\uAC8C\uC784\uACFC \uC804\uD22C \uD0ED, \uBD84\uC11D, \uC911\uACC4)\uACFC \uC5EC\uAE30\uC11C\uBD80\uD130 \uD50C\uB808\uC774\uB294 \uD50C\uB808\uC774 \uD398\uC774\uC9C0\uAC00 \uBAA8\uB4DC\uC758 \uB9AC\uD50C\uB808\uC774\uB97C \uC7AC\uC0DD\uD560 \uC218 \uC788\uC744 \uB54C\uAE4C\uC9C0 \uAE30\uB2E4\uB9BD\uB2C8\uB2E4. \uBCF4\uC774\uB294 \uAC83\uC740 \uD50C\uB808\uC774\uC5B4\uB4E4\uC758 \uBA85\uB839\uC774\uBA70, Aftermath\uAC00 \uC77C\uAFBC\uACFC \uBCF8\uC9C4\uC744 \uAC00\uB824\uB0B4\uB294 \uADDC\uCE59\uC740 \uAC8C\uC784\uC758 \uC720\uB2DB \uBC88\uD638\uB97C \uB530\uB974\uB294\uB370, \uBAA8\uB4DC\uB294 \uADF8 \uBC88\uD638\uB97C \uB2E4\uB978 \uC720\uB2DB\uC5D0 \uC904 \uC218 \uC788\uC2B5\uB2C8\uB2E4."
 };
 
 // played.ts
@@ -2583,20 +2740,20 @@ function direct(t, index, fights2, bases2, cost, only) {
       continue;
     }
     const best = list.reduce((a, b) => b.score > a.score ? b : a);
-    const same = cur ? list.find((c) => c.key === cur.key) : void 0;
+    const same2 = cur ? list.find((c) => c.key === cur.key) : void 0;
     let keep = false;
-    if (cur && same) {
-      const tired = (same.kind === "army" || same.kind === "home") && cur.held >= ARMY_HOLD;
-      keep = same.kind === "fight" ? best.score < same.score * BETTER || best.kind !== "fight" : cur.held < MIN_HOLD ? best.kind !== "fight" || best.score < same.score * BETTER : !tired && best.score < same.score * BETTER;
+    if (cur && same2) {
+      const tired = (same2.kind === "army" || same2.kind === "home") && cur.held >= ARMY_HOLD;
+      keep = same2.kind === "fight" ? best.score < same2.score * BETTER || best.kind !== "fight" : cur.held < MIN_HOLD ? best.kind !== "fight" || best.score < same2.score * BETTER : !tired && best.score < same2.score * BETTER;
     }
-    if (keep && same && cur) {
-      cur.shot.path.push({ frame, x: same.x, y: same.y });
+    if (keep && same2 && cur) {
+      cur.shot.path.push({ frame, x: same2.x, y: same2.y });
       cur.shot.to = frame;
       cur.held++;
       continue;
     }
     const top = (from) => from.reduce((a, b) => !a || b.score > a.score ? b : a, null);
-    const pick = cur && same && (same.kind === "army" || same.kind === "home") && best.key === cur.key ? top(list.filter((c) => !c.players.some((pl) => cur.shot.players.includes(pl)))) ?? top(list.filter((c) => c.key !== cur.key)) ?? best : best;
+    const pick = cur && same2 && (same2.kind === "army" || same2.kind === "home") && best.key === cur.key ? top(list.filter((c) => !c.players.some((pl) => cur.shot.players.includes(pl)))) ?? top(list.filter((c) => c.key !== cur.key)) ?? best : best;
     if (cur && pick.key === cur.key) {
       cur.shot.path.push({ frame, x: pick.x, y: pick.y });
       cur.shot.to = frame;
@@ -5985,6 +6142,8 @@ var STYLE = `
 .afm-tl > .afm-row > button:first-child { min-width: 64px; }
 .afm-tl canvas { flex: 1; min-height: 40px; width: 100%; display: block; cursor: pointer; touch-action: none; }
 .afm-tl canvas.afm-faded { opacity: 0.3; }
+.afm .afm-mod { margin: 6px 0; padding: 6px 8px; border-left: 2px solid var(--accent, #6aa0ff); display: grid; gap: 3px; }
+.afm .afm-mod a { color: inherit; }
 .afm .afm-game { padding: 2px 0; }
 .afm .afm-game > label { display: flex; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .afm .afm-game.afm-out { opacity: 0.55; }
@@ -6058,6 +6217,61 @@ function activate(api) {
   const loaded = [];
   let nextId = 1;
   let current = null;
+  const ownData = (entry) => !entry?.mod || api.gameData?.source?.()?.hash === entry.mod.dataSet.hash;
+  const names = {
+    unit: (id) => ownData(current) ? api.names.unit(id) : t("Unit {id}", { id }),
+    upgrade: (id) => ownData(current) ? api.names.upgrade(id) : t("Upgrade {id}", { id }),
+    tech: (id) => ownData(current) ? api.names.tech(id) : t("Technology {id}", { id })
+  };
+  let attaching = null;
+  async function attachMod(entry) {
+    const tag2 = entry.mod;
+    if (!tag2 || attaching) return;
+    if (!api.gameData?.attach || !api.gameData.storedPath) {
+      api.ui.toast({ kind: "warn", title: t("This editor cannot take a mod's folder"), detail: t("Attaching a mod's data set needs a newer scmJS.") });
+      return;
+    }
+    const picked = await api.ui.pickFiles({ directory: true });
+    if (!picked.length) return;
+    const folder = modFolder(picked);
+    if (!folder.files.size) {
+      api.ui.toast({ kind: "warn", title: t("No game files in that folder"), detail: t("Pick the mod's folder: the one holding its arr, unit and other game folders, or the folder above it.") });
+      return;
+    }
+    attaching = { entry, done: 0, of: folder.files.size + folder.plugins.size + folder.firegraft.size };
+    side?.render();
+    let shown = 0;
+    try {
+      const hashes = await folderHashes(folder, (member) => api.gameData.read(api.gameData.storedPath(member)), (done) => {
+        if (!attaching) return;
+        attaching.done = done;
+        if (performance.now() - shown > 250) {
+          shown = performance.now();
+          side?.render();
+        }
+      });
+      if (!isReplaysMod(tag2, hashes)) {
+        const detail = t("Its data set is {hash}, the replay's is {wanted} ({name}).", { hash: hashes.hash, wanted: tag2.dataSet.hash, name: tag2.dataSet.name });
+        api.ui.toast({ kind: "error", title: t("This folder is not the mod the replay was played with"), detail: folder.unread.length ? `${detail} ${t("Its archives ({list}) are not read here: pick a folder of the mod's loose files.", { list: folder.unread.join(", ") })}` : detail });
+        return;
+      }
+      const url = safeLink(tag2.dataSet.url);
+      await api.gameData.attach({ id: `replay-${tag2.dataSet.hash}`, name: tag2.dataSet.name || t("Mod"), ...url ? { url } : {} }, async (_path, file) => {
+        const f = file?.member ? folder.files.get(file.member) : void 0;
+        return f ? new Uint8Array(await f.file.arrayBuffer()) : null;
+      }, { hash: tag2.dataSet.hash });
+      await api.data.load();
+      api.ui.toast({ kind: "ok", title: t("{name} attached", { name: tag2.dataSet.name || tag2.dataSet.hash }), detail: t("The editor draws with the mod's files until its data set is changed or the page is loaded again.") });
+    } catch (err) {
+      api.ui.toast({ kind: "error", title: t("The mod could not be attached"), detail: err instanceof Error ? err.message : String(err) });
+      api.log("Aftermath: attaching a mod,", err);
+    } finally {
+      attaching = null;
+      side?.render();
+      strip?.render();
+      redraw();
+    }
+  }
   let playing3 = false;
   let raf = 0;
   let lastTick = 0;
@@ -6122,7 +6336,7 @@ function activate(api) {
     return el("span", { className: "progress-track afm-tip-track" }, el("i", { style: `width:${pct.toFixed(1)}%;background:${colour}` }));
   }
   function tipIcon(type, owner, first) {
-    const box = el("span", { className: first ? "afm-tip-icon afm-first" : "afm-tip-icon", title: api.names.unit(type) });
+    const box = el("span", { className: first ? "afm-tip-icon afm-first" : "afm-tip-icon", title: names.unit(type) });
     const pic = api.graphics.unitImage(type, { owner });
     if (!pic) {
       api.graphics.requestUnit(type);
@@ -6139,15 +6353,15 @@ function activate(api) {
       case "construction":
         return t("Under construction");
       case "train":
-        return t("Training {name}", { name: api.names.unit(u.workId) });
+        return t("Training {name}", { name: names.unit(u.workId) });
       case "research":
-        return t("Researching {name}", { name: api.names.tech(u.workId) });
+        return t("Researching {name}", { name: names.tech(u.workId) });
       case "upgrade":
-        return t("Upgrading {name}", { name: api.names.upgrade(u.workId) });
+        return t("Upgrading {name}", { name: names.upgrade(u.workId) });
       case "morph":
-        return t("Morphing into {name}", { name: api.names.unit(u.workId) });
+        return t("Morphing into {name}", { name: names.unit(u.workId) });
       case "addon":
-        return t("Building {name}", { name: api.names.unit(u.workId) });
+        return t("Building {name}", { name: names.unit(u.workId) });
       case "nuke":
         return u.type === 108 ? t("Nuclear missile ready") : t("Calling down a nuclear strike");
       default:
@@ -6161,7 +6375,7 @@ function activate(api) {
       "div",
       { className: "afm-tip-head" },
       el("span", { className: "afm-tip-swatch", style: `background:${colour}` }),
-      el("b", {}, api.names.unit(u.type)),
+      el("b", {}, names.unit(u.type)),
       owner ? el("span", { className: "afm-dim" }, owner.player.name) : null
     )];
     const stat = (label2, value, max, barColour) => rows.push(el(
@@ -6212,7 +6426,7 @@ function activate(api) {
   const gameClock = () => current !== null && game.shown && game.holds(current.id);
   function handOver(on) {
     const entry = current;
-    if (!entry) return;
+    if (!entry || on && entry.mod) return;
     if (on) {
       cancelAnimationFrame(raf);
       const asked = entry.frame;
@@ -6230,6 +6444,10 @@ function activate(api) {
   }
   function gameFor(entry) {
     if (entry.docId === null) return;
+    if (entry.mod) {
+      if (game.shown) game.show(false);
+      return;
+    }
     if (!offered.has(entry.id)) {
       offered.add(entry.id);
       const at = startTile(entry);
@@ -6258,7 +6476,7 @@ function activate(api) {
         const replay = await parseReplay(bytes);
         const id = nextId++, map = readChk(replay.chk);
         const group = [...loaded, ...batch].find((l) => likeness(map, l.map) >= SAME_MAP)?.group ?? id;
-        batch.push({ id, fileName: file.name, report: analyse(replay), map, bytes, docId: null, group, excluded: false, frame: 0, hidden: /* @__PURE__ */ new Set(), played: null, failed: null, eyes: null, again: null });
+        batch.push({ id, fileName: file.name, report: analyse(replay), map, bytes, docId: null, group, excluded: false, frame: 0, hidden: /* @__PURE__ */ new Set(), played: null, failed: null, eyes: null, again: null, mod: replay.mod ?? null });
       } catch (err) {
         const detail = err instanceof ReplayError ? translate(err.message) : String(err);
         api.ui.toast({ kind: "error", title: t("Could not read {name}", { name: file.name }), detail });
@@ -6719,9 +6937,9 @@ function activate(api) {
       bases: done.bases,
       winner: winnerOf(players.map((p) => ({ index: p.player.index, left: p.leftAt !== null })), done.standing),
       names: {
-        unit: (id) => plainName(api.names.unit(id)),
-        upgrade: (id) => api.names.upgrade(id),
-        tech: (id) => api.names.tech(id),
+        unit: (id) => plainName(names.unit(id)),
+        upgrade: (id) => names.upgrade(id),
+        tech: (id) => names.tech(id),
         place: (x, y) => {
           const c = clockOf(x, y, map.width * 32, map.height * 32);
           return c ? `${c} o'clock` : "the middle";
@@ -6981,7 +7199,7 @@ function activate(api) {
         };
         const progressView = (m) => {
           const order = ["reading", "writing", "voicing", "timing"];
-          const names = { reading: t("Read the game"), writing: t("Write the script"), voicing: t("Voice it"), timing: t("Time it") };
+          const names2 = { reading: t("Read the game"), writing: t("Write the script"), voicing: t("Voice it"), timing: t("Time it") };
           const shownSteps = order.filter((k) => k !== "voicing" || m.voiced);
           const clock2 = el2("span", { className: "afm-dim" });
           const stepsRow = el2("div", { className: "afm-cast-steps" });
@@ -6993,7 +7211,7 @@ function activate(api) {
             stepsRow.replaceChildren(...shownSteps.map((k) => {
               const i = order.indexOf(k);
               const state = m.error && i === at ? "error" : i < at ? "done" : i === at ? "now" : "todo";
-              return el2("span", { className: `afm-cast-step afm-cast-step-${state}` }, state === "done" ? `\u2713 ${names[k]}` : state === "error" ? `\u2715 ${names[k]}` : names[k]);
+              return el2("span", { className: `afm-cast-step afm-cast-step-${state}` }, state === "done" ? `\u2713 ${names2[k]}` : state === "error" ? `\u2715 ${names2[k]}` : names2[k]);
             }));
             bar?.set(fraction(m), makingLine(m));
             const opening2 = m.writing.storyline ? /^.*?[.!?](?=\s|$)/.exec(m.writing.storyline.trim())?.[0] ?? null : null;
@@ -7041,8 +7259,8 @@ function activate(api) {
               from: e.making[0],
               to: e.making[1]
             });
-            const same = kept.find((k) => k.key === castKey(replay, { format, banter }, voiced, notes));
-            make.textContent = same ? t("Make a new one") : t("Make cast");
+            const same2 = kept.find((k) => k.key === castKey(replay, { format, banter }, voiced, notes));
+            make.textContent = same2 ? t("Make a new one") : t("Make cast");
           };
           const formatPick = w.segmented([{ value: "game", label: t("Whole game") }, { value: "highlights", label: t("Key moments") }], { value: format, onChange: (v) => {
             format = v;
@@ -7395,7 +7613,7 @@ function activate(api) {
     if (!card) return;
     const frame = (gameClock() ? game.frameNow(settings.speed) : null) ?? entry.frame;
     const who = entry.report.players.find((p) => p.player.index === card.player)?.player;
-    const name = card.kind === "unit" ? plainName(api.names.unit(card.type)).replace(/\s*\([^)]*\)\s*$/, "") : card.kind === "tech" ? api.names.tech(card.type) : card.level > 1 ? `${api.names.upgrade(card.type)} ${card.level}` : api.names.upgrade(card.type);
+    const name = card.kind === "unit" ? plainName(names.unit(card.type)).replace(/\s*\([^)]*\)\s*$/, "") : card.kind === "tech" ? names.tech(card.type) : card.level > 1 ? `${names.upgrade(card.type)} ${card.level}` : names.upgrade(card.type);
     const making2 = frame < card.done && card.done > card.start;
     const share = making2 ? Math.max(0, Math.min(1, (frame - card.start) / (card.done - card.start))) : 1;
     const status = making2 ? t("{what} \xB7 {time} left", { what: card.kind === "unit" ? isBuilding(card.type) ? t("Building") : t("In production") : t("Researching"), time: formatTime(card.done - frame) }) : frame < card.start ? t("Ordered") : t("Done at {time}", { time: formatTime(card.done) });
@@ -7541,6 +7759,7 @@ function activate(api) {
     entry.failed = null;
     strip?.render();
     try {
+      if (entry.mod) throw new Error(t("This replay was played with a mod, which the game engine here does not play replays of yet."));
       const state = await sim.status();
       if (!state.available) throw new Error(state.reason ?? t("The game engine cannot run a game here."));
       if (entry.report.replay.format !== "legacy" && (state.timeline ?? 0) < 3) throw new Error(t("The game engine on this site is an older one that plays replays from StarCraft 1.16.1 and earlier only."));
@@ -8123,8 +8342,8 @@ function activate(api) {
             { className: "afm-gt-lost" },
             ...shown.map(([type, n]) => el(
               "span",
-              { className: "afm-gt-unit", title: api.names.unit(type) },
-              gameIcon("unit", type, sd.player) ?? el("span", { className: "afm-gt-uname" }, api.names.unit(type)),
+              { className: "afm-gt-unit", title: names.unit(type) },
+              gameIcon("unit", type, sd.player) ?? el("span", { className: "afm-gt-uname" }, names.unit(type)),
               n > 1 ? el("span", { className: "afm-gt-count" }, `\xD7${n}`) : null
             )),
             types.length > shown.length ? el("span", { className: "afm-dim" }, `+${types.length - shown.length}`) : null
@@ -8146,7 +8365,7 @@ function activate(api) {
       ) });
     };
     for (const r of tl?.research ?? []) {
-      const name = r.kind === "tech" ? api.names.tech(r.id) : api.names.upgrade(r.id);
+      const name = r.kind === "tech" ? names.tech(r.id) : names.upgrade(r.id);
       moment(r.frame, r.player, gameIcon(r.kind, r.id, r.player), r.kind === "upgrade" && r.level > 1 ? t("{name}, level {level}", { name, level: r.level }) : name);
     }
     for (const b of entry.played?.bases ?? []) {
@@ -8378,6 +8597,28 @@ function activate(api) {
         void load(files, current && lensOf() === "map" ? current : null);
       });
     }
+    /** A replay of a mod: which, its makers' link, its plugins, and whether the editor draws with it. */
+    renderMod(entry, tag2) {
+      const link = safeLink(tag2.dataSet.url);
+      const plugins = pluginNames(tag2);
+      const box = el(
+        "div",
+        { className: "afm-mod" },
+        el("div", {}, t("Replay of a mod: {name} ({hash})", { name: tag2.dataSet.name || t("unnamed"), hash: tag2.dataSet.hash })),
+        link ? el("div", { className: "afm-dim" }, t("Its makers"), ": ", el("a", { href: link, target: "_blank", rel: "noopener noreferrer" }, link)) : null,
+        plugins ? el("div", { className: "afm-dim" }, t("Plugins: {names}", { names: plugins })) : null
+      );
+      if (ownData(entry)) box.append(el("div", { className: "afm-dim" }, t("Names and costs are the mod's: the editor draws with its data set.")));
+      else if (attaching?.entry === entry) box.append(el("div", { className: "afm-dim" }, t("Reading the mod: {done} of {n} files\u2026", { done: attaching.done, n: attaching.of })));
+      else box.append(
+        w.hint(t("Units, upgrades and technologies show by id until the editor draws with the mod: attach the mod's folder, and it is checked against the replay first.")),
+        w.button(t("Attach the Mod's Folder\u2026"), { className: "sm", onClick: () => {
+          void attachMod(entry);
+        } })
+      );
+      box.append(w.hint(t("The game view, the analysis (the Game and Fights tabs, Analysis, Cast) and Play From Here wait for the play page to play a mod's replay. What is shown is the players' orders, and Aftermath's own rules for workers and town halls go by the game's unit ids, which a mod may give other units.")));
+      this.root.append(box);
+    }
     render() {
       this.root.replaceChildren();
       this.live = [];
@@ -8400,6 +8641,7 @@ function activate(api) {
         el("div", { className: "afm-title", title: entry.fileName }, plainText(rep.header.mapName) || entry.fileName),
         el("div", { className: "afm-dim" }, facts)
       );
+      if (entry.mod) this.renderMod(entry, entry.mod);
       const parted = entry.played?.timeline.check?.parted ?? null;
       if (parted !== null) this.root.append(el("div", { className: "afm-warn" }, t("From {time} the game played here is not the game in the replay: a player gave an order to a unit that had not been made. What is shown after that moment is not what happened, and this game is left out of Map stats.", { time: formatTime(parted) })));
       if (rep.unknownCommands > 0) this.root.append(w.hint(t("{n, plural, one {# command of a kind Aftermath does not know was skipped.} other {# commands of a kind Aftermath does not know were skipped.}}", { n: rep.unknownCommands })));
@@ -8499,7 +8741,7 @@ function activate(api) {
       if (entry.played && pr) {
         let count = 0;
         for (const row of madeRows(entry.played.timeline, pr.player.index, { workers: settings.workers })) {
-          const name = row.kind === "upgrade" ? `${api.names.upgrade(row.id)} ${row.level ?? ""}`.trim() : row.kind === "tech" ? api.names.tech(row.id) : api.names.unit(row.id);
+          const name = row.kind === "upgrade" ? `${names.upgrade(row.id)} ${row.level ?? ""}`.trim() : row.kind === "tech" ? names.tech(row.id) : names.unit(row.id);
           const hall = row.kind === "unit" && TOWN_HALLS.has(row.id);
           const end = row.kind !== "unit" ? t("researched") : row.done === null ? row.lost === null ? t("not finished") : row.building ? t("cancelled or destroyed {time}", { time: formatTime(row.lost) }) : t("lost {time}", { time: formatTime(row.lost) }) : row.lost !== null ? t("lost {time}", { time: formatTime(row.lost) }) : row.building ? t("done {time}", { time: formatTime(row.done) }) : "";
           const line = el(
@@ -8520,7 +8762,7 @@ function activate(api) {
       } else {
         const rows = pr ? buildOrderRows(pr.build, { workers: settings.workers }) : [];
         for (const step2 of rows) {
-          const name = step2.kind === "upgrade" ? api.names.upgrade(step2.id) : step2.kind === "tech" ? api.names.tech(step2.id) : api.names.unit(step2.id);
+          const name = step2.kind === "upgrade" ? names.upgrade(step2.id) : step2.kind === "tech" ? names.tech(step2.id) : names.unit(step2.id);
           const hall = step2.kind === "build" && TOWN_HALLS.has(step2.id);
           const line = el(
             "div",
@@ -8745,7 +8987,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
             "div",
             { className: "afm-step", title: t("Go to its first kill") },
             el("span", { className: "afm-t" }, formatTime(k.frame)),
-            el("span", {}, el("span", { style: owner ? `color:${owner.color}` : "" }, api.names.unit(k.type)), el("span", { className: "afm-end" }, " \xB7 " + (k.value > 0 ? t("{n, plural, one {# kill} other {# kills}}, worth {value}", { n: k.kills, value: k.value }) : t("{n, plural, one {# kill} other {# kills}}", { n: k.kills }))))
+            el("span", {}, el("span", { style: owner ? `color:${owner.color}` : "" }, names.unit(k.type)), el("span", { className: "afm-end" }, " \xB7 " + (k.value > 0 ? t("{n, plural, one {# kill} other {# kills}}, worth {value}", { n: k.kills, value: k.value }) : t("{n, plural, one {# kill} other {# kills}}", { n: k.kills }))))
           );
           line.addEventListener("click", () => goTo(Math.max(0, k.frame - 24), k.x, k.y));
           top.append(line);
@@ -8778,12 +9020,12 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
         const status = el("span", { className: "afm-status" }, this.statusOf(l));
         if (running?.entry === l) this.running = { el: status, entry: l };
         if (l.failed) status.title = l.failed;
-        const names = l.report.players.map((p) => p.player.name).join(", ");
+        const names2 = l.report.players.map((p) => p.player.name).join(", ");
         const open = l === entry ? el("span", { className: "afm-dim" }, t("this replay")) : el("button", { className: "afm-link", type: "button", title: t("Watch this game in a tab of its own") }, t("Watch"));
         if (l !== entry) open.addEventListener("click", () => void openTab(l));
         rows.append(el(
           "div",
-          { className: "afm-game" + (inStats.has(l) ? "" : " afm-out"), title: names },
+          { className: "afm-game" + (inStats.has(l) ? "" : " afm-out"), title: names2 },
           w.checkbox(l.fileName, {
             value: !l.excluded,
             title: l.excluded ? t("Put this game back into Map stats") : t("Leave this game out of Map stats"),
@@ -8796,7 +9038,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
               strip?.update();
             }
           }),
-          el("div", { className: "afm-sub" }, el("span", { className: "afm-names" }, `${formatTime(l.report.frames)} \xB7 ${names}`), status, open)
+          el("div", { className: "afm-sub" }, el("span", { className: "afm-names" }, `${formatTime(l.report.frames)} \xB7 ${names2}`), status, open)
         ));
       }
       body.append(w.group(
@@ -8990,7 +9232,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
         }
       }) : null;
       const castMore = castButton && castState === "ready" ? w.button(t("Cast\u2026"), { className: "sm", title: t("Make a new cast, or watch another kept in this browser"), onClick: () => openCastWindow() }) : null;
-      const playHere = sim?.present && sim.playReplay ? w.button(t("Play From Here"), {
+      const playHere = sim?.present && sim.playReplay && !entry.mod ? w.button(t("Play From Here"), {
         className: "sm",
         title: t("Open this replay on the play page at this moment and play on from there: as one of its players, alone, against a community bot, or with others"),
         onClick: () => {
@@ -9374,6 +9616,11 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
     side?.render();
     strip?.render();
   });
+  api.events.on("gameData", () => {
+    side?.render();
+    strip?.render();
+    redraw();
+  });
   return () => {
     stop();
     cancelAnimationFrame(cam.raf);
@@ -9533,8 +9780,8 @@ function firstAfter(list, frame) {
   }
   return lo;
 }
-function withAlpha(hex3, a) {
-  const n = parseInt(hex3.slice(1), 16);
+function withAlpha(hex4, a) {
+  const n = parseInt(hex4.slice(1), 16);
   return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`;
 }
 function ramp(v) {
