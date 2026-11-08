@@ -194,6 +194,22 @@ export interface ScmSimStatus {
    */
   measure: number | null;
   /**
+   * The version of the test request the engine's page answers (`test`); null when it could not be asked or its page
+   * is from before it (scm-sim with TrigScript 4's tests).
+   */
+  tests?: number | null;
+  /**
+   * The version of the request for a test of several players the engine's page answers (`testCopies`); null when it
+   * could not be asked, its page is from before it, or the browser cannot run copies of the game in step (they share
+   * memory, which Chrome and Edge from 137 allow there). From scm-sim 0.13.0.
+   */
+  copies?: number | null;
+  /**
+   * The version of the debugger's requests the engine's page answers (`debug`, a session's `picture`); null when it
+   * could not be asked or its page is from before it (scm-sim with TrigScript 4's debugger).
+   */
+  debug?: number | null;
+  /**
    * The `FightsResult.version` the engine answers `fights` with; null when it could not be
    * asked or its page is from before `fights`.
    */
@@ -340,6 +356,53 @@ export interface MeasureOptions {
   limit?: number;
   signal?: AbortSignal;
   onProgress?: (progress: MeasureProgress) => void;
+}
+
+/** What `ScmSimService.test` may be told beside the map and the module. */
+export interface TestRunOptions {
+  signal?: AbortSignal;
+  onProgress?: (p: { stage: "starting" }) => void;
+}
+
+/** What `ScmSimService.testCopies` is told beside the map and the module. */
+export interface TestCopiesOptions extends TestRunOptions {
+  /** The slots of the players, one copy of the game each (P1 is 0); two to eight, each one the map opens to a person. */
+  players: number[];
+  /**
+   * The build's map of triggers (TrigScript's `triggerMap` lines): where eudplib's payload starts, and each trigger's
+   * offset in it, its numbers of conditions and actions, and the line it came from. Without it a report names no lines
+   * and eudplib's payload is not watched.
+   */
+  triggers?: { payload: number; triggers: [number, number, number, string][] } | null;
+}
+
+/**
+ * A test recorded for the debugger (`ScmSimService.debug`): what the module's `debugGameTest` wrote down of the run,
+ * and the run's game, held by the engine's page for pictures of its frames until `close()`. A new session ends the
+ * one before (each holds a game: a gigabyte).
+ */
+export interface ScmSimDebugSession {
+  /** The module's record of the run (TrigScript's `DebugRecording`), as it came. */
+  readonly recording: unknown;
+  /** The run's game at `frame` (clamped to the run), for a view to draw (`ScmSimView.show`). Rejects once the session is over. */
+  picture(frame: number, options?: { signal?: AbortSignal }): Promise<ScmSimPicture>;
+  close(): void;
+  /** The session is over: closed, a newer one began, or the engine's page was loaded afresh. */
+  readonly closed: boolean;
+}
+
+/** A debugged run's game at a frame: opaque, for a view that started the same map (`ScmSimView.debug`) to draw. */
+export interface ScmSimPicture { frame: number; kept: unknown }
+
+/** One copy's answer to `testCopies`: what the module's `drive` returned, or why it failed, and where the copies split. */
+export interface TestCopyResult {
+  result: unknown;
+  error: string | null;
+  /** Where the copies stopped agreeing (scm-sim's `DesyncReport`), as every copy reports it; null while they agreed. */
+  desync: unknown;
+  /** The frame the copy stood at, and the slot it played. */
+  frame: number;
+  player: number;
 }
 
 /* ── A map's pathing (`ScmSimService.pathing`) ── */
@@ -663,6 +726,18 @@ export interface ScmSimView {
    * editor's hotkeys and every plugin's act on it as if it had been pressed there.
    */
   onKey(listener: (key: ViewKey) => void): Disposable;
+  /**
+   * A debugged run's built map (TrigScript 4, A5; the whole .scx `ScmSimService.debug` was given): started as the
+   * engine's page started it for the record, so that the run's pictures (`show`) can be drawn here. The view then
+   * never plays. Rejects on a play page from before it, and where the person's copy of the game may only watch (a
+   * picture of a map's run is the map played).
+   */
+  debug?(map: Uint8Array): Promise<{ map: { width: number; height: number } }>;
+  /** Draws a picture of the debugged run as it stands (`ScmSimDebugSession.picture`); `onShown` hears its frame once up. */
+  show?(picture: ScmSimPicture): void;
+  onShown?(listener: (frame: number) => void): Disposable;
+  /** What went wrong with no request waiting on it: a picture that could not be drawn. */
+  onError?(listener: (message: string) => void): Disposable;
   /** Takes the frame away and the engine with it. */
   dispose(): void;
 }
@@ -698,8 +773,13 @@ export interface ScmSimService {
    * from that moment, alone, against a community bot, or with others. `replay` is a whole .rep file. Call it from the
    * click that asks for it. Resolves when the replay is on the page; rejects worded for the person (a play page from
    * before it: "No map came with the request."). Added in 0.15.0: check that the function is there before calling it.
+   *
+   * `dataSet` (0.16.0) names the mod the replay was played with, for a replay whose file does not say it (a replay
+   * the play page saved carries its mod in an `SCMJ` section, and the page reads that first): the page plays it with
+   * the mod it keeps under `hash`, takes `files` as a dropped mod when it has not got it, or says what the replay needs
+   * and where `url` publishes it. `null` is the game's own data. A page from before 0.16.0 ignores it.
    */
-  playReplay?(replay: { bytes: Uint8Array; name: string }, at: { frame: number; player?: number }): Promise<void>;
+  playReplay?(replay: { bytes: Uint8Array; name: string; dataSet?: ReplayDataSet | null }, at: { frame: number; player?: number }): Promise<void>;
   /**
    * The game drawn inside `element` (filling it), for watching a replay with its own
    * graphics: see `ScmSimView`. The engine is a gigabyte of memory, so keep one view and
@@ -730,6 +810,34 @@ export interface ScmSimService {
    */
   measure?(scenario?: Uint8Array, options?: MeasureOptions): Promise<MeasureResult>;
   /**
+   * A script's tests run beside the game (TrigScript 4): `scenario` is the map as Save builds it
+   * (a whole .scx, whose scenario the page reads) or that scenario as eudplib built it for
+   * StarCraft: Remastered (`.chk` bytes), started by the game with EUD let through;
+   * `module` is the text of an ES module whose `runGameTests(game, payload)` drives the game
+   * through the engine's test handle (scm-sim `src/exact/testGame.ts`) and returns plain data,
+   * which this resolves with. Nothing is drawn and nobody plays. One request runs at a time,
+   * replays included. The module runs with the engine page's rights; it is taken only from the
+   * editor of the same origin. Needs a play page that answers it (`status().tests`): check both
+   * that this function is there and that before offering it. From scm-sim 0.13.0.
+   */
+  test?(scenario: Uint8Array, module: string, payload: unknown, options?: TestRunOptions): Promise<unknown>;
+  /**
+   * A test of several players (TrigScript 4): a copy of the game for each of `options.players`, each seated as that
+   * player, kept in step as a game between people is (scm-sim `src/exact/copies.ts`), each running the module's
+   * `drive(game, payload)` over a handle that also knows the copies (`game.copy`: every player's screen, and where
+   * the copies stopped agreeing). Resolves with each copy's answer, in the order of `players`. A gigabyte of memory a
+   * copy. Needs a play page that answers it (`status().copies`): check both before offering it. From scm-sim 0.13.0.
+   */
+  testCopies?(scenario: Uint8Array, module: string, payload: unknown, options: TestCopiesOptions): Promise<TestCopyResult[]>;
+  /**
+   * One of a script's tests recorded for the debugger (TrigScript 4, A5): as `test`, but the module's
+   * `debugGameTest(game, payload)` runs one test with everything written down, and the run's game stays with the
+   * engine's page for pictures of its frames (`ScmSimDebugSession.picture`). Nothing is drawn for the record, so any
+   * copy that runs `test` runs this; a picture is drawn by a view, under its own rule. Needs a play page that answers
+   * it (`status().debug`).
+   */
+  debug?(scenario: Uint8Array, module: string, payload: unknown, options?: TestRunOptions): Promise<ScmSimDebugSession>;
+  /**
    * A replay's fights played again by the game from just before each: as recorded, and with
    * both sides only attack-moving (`FightsOptions.versions`), each measured the same way, so
    * the two compare. `replay` is a whole .rep file. The replay is played once from its start
@@ -740,3 +848,56 @@ export interface ScmSimService {
    */
   fights?(replay: Uint8Array, fights: FightAsk[], options?: FightsOptions): Promise<FightsResult>;
 }
+
+/* ── Live edit: `scm-sim.live` ─────────────────────────────────────────────────────────── */
+
+/** A field of one of the game's tables, by PyMS's names (`@scm-js/core`'s schema): the value as the file stores it (hit points in 256ths). */
+export interface LiveField { table: string; id: number; field: string; part?: string; value: number }
+/** A file of the mod by the game's path (`arr/units.dat`, `unit/terran/marine.grp`, `datreq/buttons.graft`). */
+export interface LiveFile { path: string; bytes: Uint8Array }
+/**
+ * The mod a replay was played with, as `playReplay` hands it to the play page (0.16.0): `hash` as the page presents
+ * the mod (16 hex digits: the replay's `SCMJ` tag, `Replay.mod.dataSet.hash` in `@scm-js/replay`), its name, its
+ * makers' page, and its files in the game's paths when the editor has them (`files`, as Test Map's mod test hands them).
+ */
+export interface ReplayDataSet { hash: string; name?: string; url?: string; files?: LiveFile[] }
+/** What became of one field or file, in words (`message`); the field's value before (`was`) when it was written. */
+export interface LiveItem { table?: string; id?: number; field?: string; part?: string; value?: number; was?: number; path?: string; message: string }
+/**
+ * The play page's answer to a patch. `applied`: in the running game now (a field written between two turns, a picture
+ * loaded and drawn, a graft's buttons or requirements written; the card follows). `deferred`: kept in the mod and
+ * taken at the next start (iscript, the sound table, strings, images.tbl and every other file read once). `errors`:
+ * refused, each with why — every item in a game between people (a change on one page only would be another game),
+ * a wider table, a requirement list longer than the room the game keeps it in. `frame`: when it was written.
+ */
+export interface LiveAnswer { applied: LiveItem[]; deferred: LiveItem[]; errors: LiveItem[]; frame?: number }
+/** The game in the play page's tab: running at all, played alone (the only game a patch is taken by), its mod, the files waiting for a start. */
+export interface LiveState { running: boolean; alone: boolean; frame: number; mod: { hash: string; name: string } | null; waiting: string[] }
+
+/**
+ * The `scm-sim.live` service (`ServiceInfo.version` 1): a mod changed while a test game runs in the play page's tab,
+ * and the running game takes the change. The tab is the one `scm-sim.engine`'s `play` and Test in Browser use.
+ */
+export interface ScmSimLiveService {
+  /** As `ScmSimService.present`: false where the editor has no play page beside it. */
+  readonly present: boolean;
+  /** Whether a game played alone is running in the tab now (asked of the page; false with no tab or no answer). */
+  playing(): Promise<boolean>;
+  /** What the page says of its game now; null with no tab or no answer. */
+  state(): Promise<LiveState | null>;
+  /** Called whenever the page says what it is playing (a game started), and with null when the tab is gone or loaded again. */
+  onState(listener: (state: LiveState | null) => void): () => void;
+  /** Fields and files sent to the running game. Rejects only when there is no tab or no answer; refusals are `errors`. */
+  patch(fields: readonly LiveField[], files?: readonly LiveFile[]): Promise<LiveAnswer>;
+  /** The running game's button sets and requirement lists as `.graft` files (`datreq/buttons.graft`, `datreq/units.graft` …), and what no graft can say. */
+  grafts(): Promise<{ files: LiveFile[]; left: string[] }>;
+  /**
+   * A test game: the mod's files (those that differ from the game's, by the shared hash rule) and a map — or, with
+   * `map` null, the mod alone, shown in the page's Mods dialog — handed to the tab, played as the Preferences page
+   * says (`useMapSettings`, when given, in place of its kind of game: a map made blank for the test has no start
+   * locations for a melee game). Call it from a click. Resolves "started" (or "shown") once the game is on the page.
+   */
+  play(test: LiveTest | Promise<LiveTest>): Promise<"started" | "shown">;
+}
+/** What `ScmSimLiveService.play` hands over. */
+export interface LiveTest { map: { bytes: Uint8Array; name: string } | null; mod: { name: string; hash: string; files: LiveFile[] }; useMapSettings?: boolean }

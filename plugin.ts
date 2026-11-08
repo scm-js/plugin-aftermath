@@ -34,7 +34,7 @@ import type { Disposable, MapView, OverlayHandle, PanelHandle, PluginApi, Plugin
 import { analyse, buildOrderRows, formatTime, FRAMES_PER_MINUTE, heat, TOWN_HALLS, type ClickKind, type HeatGrid, type PlayerReport, type ReplayReport } from "./analysis";
 import { likeness, plainText, readChk, type ChkInfo } from "./chk";
 import { FRAME_MS, parseReplay, ReplayError, type ModTag } from "@scm-js/replay";
-import { folderHashes, isReplaysMod, modFolder, pluginNames, safeLink } from "./modreplay";
+import { folderHashes, handedReplay, isReplaysMod, modFolder, pluginNames, pluginsRan, safeLink } from "./modreplay";
 import { KO } from "./ko";
 import { buildings as standingBuildings, isBuilding, losses, lossPoints, madeRows, mineralLines, presencePoints, sampleAt, series, unitIndex, unitsAt, WORKERS, type Metric, type Point, type Standing, type UnitIndex } from "./played";
 import { knowledge, knownAt, placedBuildings, REMEMBER_FRAMES, trails, type Knowledge, type Trail } from "./knew";
@@ -738,7 +738,8 @@ export function activate(api: PluginApi) {
   /** Offer a replay's tab the Game view the first time it comes to the front, showing it there; and load it when shown. */
   function gameFor(entry: Loaded): void {
     if (entry.docId === null) return;
-    // (No game view for a mod's replay: the engine would play it with the game's own files.)
+    // (No game view for a mod's replay: the engine would play it with the game's own files. scm-sim's `view` frames its
+    // `?view` page, which plays a mod only as `?view&mod=<hash>` and never switches; 0.16.0's `view` takes no mod.)
     if (entry.mod) { if (game.shown) game.show(false); return; }
     if (!offered.has(entry.id)) {
       offered.add(entry.id);
@@ -2898,7 +2899,11 @@ export function activate(api: PluginApi) {
         w.hint(t("Units, upgrades and technologies show by id until the editor draws with the mod: attach the mod's folder, and it is checked against the replay first.")),
         w.button(t("Attach the Mod's Folder…"), { className: "sm", onClick: () => { void attachMod(entry); } }),
       );
-      box.append(w.hint(t("The game view, the analysis (the Game and Fights tabs, Analysis, Cast) and Play From Here wait for the play page to play a mod's replay. What is shown is the players' orders, and Aftermath's own rules for workers and town halls go by the game's unit ids, which a mod may give other units.")));
+      const own = entry.report.replay.unknownCommands;
+      if (own > 0) box.append(el("div", { className: "afm-dim" }, t("{n, plural, one {# command block is the mod's own and is not analysed.} other {# command blocks are the mod's own and are not analysed.}}", { n: own })));
+      // (Play From Here plays it with the mod on the play page. The Replay view and the analysis still play it with the
+      // game's own files: the service's `view` and `analyse` take no mod, and the page framed by `view` never switches.)
+      box.append(w.hint(t("Play From Here plays it with the mod on the play page. The Replay view and the analysis (the Game and Fights tabs, Analysis, Cast) do not play a mod's replay yet. What is shown is the players' orders, and Aftermath's own rules for workers and town halls go by the game's unit ids, which a mod may give other units.")));
       this.root.append(box);
     }
 
@@ -2926,7 +2931,8 @@ export function activate(api: PluginApi) {
       if (entry.mod) this.renderMod(entry, entry.mod);
       const parted = entry.played?.timeline.check?.parted ?? null;
       if (parted !== null) this.root.append(el("div", { className: "afm-warn" }, t("From {time} the game played here is not the game in the replay: a player gave an order to a unit that had not been made. What is shown after that moment is not what happened, and this game is left out of Map stats.", { time: formatTime(parted) })));
-      if (rep.unknownCommands > 0) this.root.append(w.hint(t("{n, plural, one {# command of a kind Aftermath does not know was skipped.} other {# commands of a kind Aftermath does not know were skipped.}}", { n: rep.unknownCommands })));
+      // (A mod's replay says so in its own box: its own commands.)
+      if (rep.unknownCommands > 0 && !entry.mod) this.root.append(w.hint(t("{n, plural, one {# command of a kind Aftermath does not know was skipped.} other {# commands of a kind Aftermath does not know were skipped.}}", { n: rep.unknownCommands })));
 
       // The players, a line each; a click takes one off the map and the graph, or puts them back.
       const list = el("div", { className: "afm-players" });
@@ -3464,17 +3470,34 @@ export function activate(api: PluginApi) {
       // (With a cast to watch, the window — a new cast, the others kept — is a button of its own.)
       const castMore = castButton && castState === "ready" ? w.button(t("Cast…"), { className: "sm", title: t("Make a new cast, or watch another kept in this browser"), onClick: () => openCastWindow() }) : null;
       // Play From Here: this replay on the play page at the moment shown, through the eyes chosen (else the first
-      // player's), its Watch Replay menu open there to play on: alone, against a community bot, or with others.
-      const playHere = sim?.present && sim.playReplay && !entry.mod
+      // player's), its Watch Replay menu open there to play on: alone, against a community bot, or with others. A mod's
+      // replay goes with the mod's hash, name and link (scm-sim 0.16.0), never its files: the page plays it with the
+      // copy it keeps, or asks for the mod's folder with the link (it reads a tagged replay's own tag first anyway).
+      const modTag = entry.mod;
+      const modLink = modTag ? safeLink(modTag.dataSet.url) : null;
+      const modSays = modTag
+        ? modLink
+          ? t("It was played with {name}: the play page plays it with that mod if this browser keeps it, and otherwise asks for the mod's folder, which its makers publish at {link}.", { name: modTag.dataSet.name || modTag.dataSet.hash, link: modLink })
+          : t("It was played with {name}: the play page plays it with that mod if this browser keeps it, and otherwise asks for the mod's folder.", { name: modTag.dataSet.name || modTag.dataSet.hash })
+        : null;
+      // (The play page is opened at /play/, where a mod's plugins do not run: it refuses such a replay until its address
+      // has ?lift=live, and once loaded so it is handed the replay again. scm-sim 0.16.0's playReplay cannot ask for it.)
+      const modSaysAll = modTag && modSays && pluginsRan(modTag)
+        ? `${modSays} ${t("Its plugins run only on a play page opened with ?lift=live: if the page asks for it, add ?lift=live to the page's address and load it, and the replay comes again.")}`
+        : modSays;
+      const playHere = sim?.present && sim.playReplay
         ? w.button(t("Play From Here"), {
           className: "sm",
-          title: t("Open this replay on the play page at this moment and play on from there: as one of its players, alone, against a community bot, or with others"),
+          title: modSaysAll
+            ? `${t("Open this replay on the play page at this moment and play on from there: as one of its players, alone, against a community bot, or with others")}. ${modSaysAll}`
+            : t("Open this replay on the play page at this moment and play on from there: as one of its players, alone, against a community bot, or with others"),
           onClick: () => {
             const frame = Math.round((gameClock() ? game.frameNow(settings.speed) : null) ?? entry.frame);
             if (playing) stop();
             const player = entry.eyes ?? entry.report.players[0]?.player.slot;
-            sim!.playReplay!({ bytes: entry.bytes, name: entry.fileName }, { frame, ...(player !== undefined ? { player } : {}) })
+            sim!.playReplay!(handedReplay(entry.bytes, entry.fileName, entry.mod), { frame, ...(player !== undefined ? { player } : {}) })
               .catch((err) => api.ui.toast({ kind: "error", title: t("The play page could not open the replay"), detail: err instanceof Error ? err.message : String(err) }));
+            if (modSaysAll) api.ui.toast({ kind: "info", title: t("A replay of a mod"), detail: modSaysAll });
           },
         })
         : null;
