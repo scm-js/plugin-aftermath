@@ -33,7 +33,8 @@
 import type { Disposable, MapView, OverlayHandle, PanelHandle, PluginApi, PluginImage } from "@scm-js/plugin-api";
 import { analyse, buildOrderRows, formatTime, FRAMES_PER_MINUTE, heat, TOWN_HALLS, type ClickKind, type HeatGrid, type PlayerReport, type ReplayReport } from "./analysis";
 import { likeness, plainText, readChk, type ChkInfo } from "./chk";
-import { FRAME_MS, parseReplay, ReplayError } from "@scm-js/replay";
+import { FRAME_MS, parseReplay, ReplayError, type ModTag } from "@scm-js/replay";
+import { folderHashes, isReplaysMod, modFolder, pluginNames, safeLink } from "./modreplay";
 import { KO } from "./ko";
 import { buildings as standingBuildings, isBuilding, losses, lossPoints, madeRows, mineralLines, presencePoints, sampleAt, series, unitIndex, unitsAt, WORKERS, type Metric, type Point, type Standing, type UnitIndex } from "./played";
 import { knowledge, knownAt, placedBuildings, REMEMBER_FRAMES, trails, type Knowledge, type Trail } from "./knew";
@@ -123,6 +124,8 @@ interface Loaded {
   eyes: number | null;
   /** The key fights played again by the game (`ScmSimService.fights`), once asked for. */
   again: Again | null;
+  /** The mod the game was played with (the replay's SCMJ section), or null for the game itself. */
+  mod: ModTag | null;
 }
 
 /** A game's key fights played again by the game: as played, and with both sides only attack-moving. */
@@ -432,6 +435,8 @@ const STYLE = `
 .afm-tl > .afm-row > button:first-child { min-width: 64px; }
 .afm-tl canvas { flex: 1; min-height: 40px; width: 100%; display: block; cursor: pointer; touch-action: none; }
 .afm-tl canvas.afm-faded { opacity: 0.3; }
+.afm .afm-mod { margin: 6px 0; padding: 6px 8px; border-left: 2px solid var(--accent, #6aa0ff); display: grid; gap: 3px; }
+.afm .afm-mod a { color: inherit; }
 .afm .afm-game { padding: 2px 0; }
 .afm .afm-game > label { display: flex; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .afm .afm-game.afm-out { opacity: 0.55; }
@@ -502,6 +507,72 @@ export function activate(api: PluginApi) {
   let nextId = 1;
   /** The replay whose tab is in front, or null. */
   let current: Loaded | null = null;
+
+  /*
+   * A replay of a mod (its SCMJ section) is named only by that mod's data set: unit 7 of a mod is not an SCV. While
+   * the editor draws with another data set, its units, upgrades and technologies are shown by id.
+   */
+  /** The editor draws with the replay's own data set: a replay of the game itself, or of the mod in use. */
+  const ownData = (entry: Loaded | null) => !entry?.mod || api.gameData?.source?.()?.hash === entry.mod.dataSet.hash;
+  const names = {
+    unit: (id: number) => (ownData(current) ? api.names.unit(id) : t("Unit {id}", { id })),
+    upgrade: (id: number) => (ownData(current) ? api.names.upgrade(id) : t("Upgrade {id}", { id })),
+    tech: (id: number) => (ownData(current) ? api.names.tech(id) : t("Technology {id}", { id })),
+  };
+  /** A mod's folder being read to attach, and how far. */
+  let attaching: { entry: Loaded; done: number; of: number } | null = null;
+
+  /**
+   * The mod's folder, picked by the person and attached as the editor's data set for the session (nothing stored), once
+   * its hash is the replay's: names, costs and pictures then come from the mod. The hash is the mod's, by the rule the
+   * play page and scmJS share (its game files, plugins and FireGraft project), with or without the plugins; a replay
+   * tagged before that rule is matched by its older forms. Archives in the folder are not read.
+   */
+  async function attachMod(entry: Loaded): Promise<void> {
+    const tag = entry.mod;
+    if (!tag || attaching) return;
+    if (!api.gameData?.attach || !api.gameData.storedPath) {
+      api.ui.toast({ kind: "warn", title: t("This editor cannot take a mod's folder"), detail: t("Attaching a mod's data set needs a newer scmJS.") });
+      return;
+    }
+    const picked = await api.ui.pickFiles({ directory: true });
+    if (!picked.length) return;
+    const folder = modFolder(picked);
+    if (!folder.files.size) {
+      api.ui.toast({ kind: "warn", title: t("No game files in that folder"), detail: t("Pick the mod's folder: the one holding its arr, unit and other game folders, or the folder above it.") });
+      return;
+    }
+    attaching = { entry, done: 0, of: folder.files.size + folder.plugins.size + folder.firegraft.size };
+    side?.render();
+    let shown = 0;
+    try {
+      const hashes = await folderHashes(folder, (member) => api.gameData.read(api.gameData.storedPath(member)), (done) => {
+        if (!attaching) return;
+        attaching.done = done;
+        if (performance.now() - shown > 250) { shown = performance.now(); side?.render(); }
+      });
+      if (!isReplaysMod(tag, hashes)) {
+        const detail = t("Its data set is {hash}, the replay's is {wanted} ({name}).", { hash: hashes.hash, wanted: tag.dataSet.hash, name: tag.dataSet.name });
+        api.ui.toast({ kind: "error", title: t("This folder is not the mod the replay was played with"), detail: folder.unread.length ? `${detail} ${t("Its archives ({list}) are not read here: pick a folder of the mod's loose files.", { list: folder.unread.join(", ") })}` : detail });
+        return;
+      }
+      const url = safeLink(tag.dataSet.url);
+      await api.gameData.attach({ id: `replay-${tag.dataSet.hash}`, name: tag.dataSet.name || t("Mod"), ...(url ? { url } : {}) }, async (_path, file) => {
+        const f = file?.member ? folder.files.get(file.member) : undefined;
+        return f ? new Uint8Array(await f.file.arrayBuffer()) : null;
+      }, { hash: tag.dataSet.hash });
+      await api.data.load();
+      api.ui.toast({ kind: "ok", title: t("{name} attached", { name: tag.dataSet.name || tag.dataSet.hash }), detail: t("The editor draws with the mod's files until its data set is changed or the page is loaded again.") });
+    } catch (err) {
+      api.ui.toast({ kind: "error", title: t("The mod could not be attached"), detail: err instanceof Error ? err.message : String(err) });
+      api.log("Aftermath: attaching a mod,", err);
+    } finally {
+      attaching = null;
+      side?.render();
+      strip?.render();
+      redraw();
+    }
+  }
   let playing = false;
   let raf = 0;
   let lastTick = 0;
@@ -570,7 +641,7 @@ export function activate(api: PluginApi) {
 
   /** A unit type's picture, small, in its owner's colours; its name until the picture has loaded. */
   function tipIcon(type: number, owner: number, first: boolean): HTMLElement {
-    const box = el("span", { className: first ? "afm-tip-icon afm-first" : "afm-tip-icon", title: api.names.unit(type) });
+    const box = el("span", { className: first ? "afm-tip-icon afm-first" : "afm-tip-icon", title: names.unit(type) });
     const pic = api.graphics.unitImage(type, { owner });
     if (!pic) { api.graphics.requestUnit(type); return box; }
     const size = 22, k = Math.min(size / pic.width, size / pic.height, 1);
@@ -584,11 +655,11 @@ export function activate(api: PluginApi) {
   function workLine(u: ViewHoverUnit): string | null {
     switch (u.work) {
       case "construction": return t("Under construction");
-      case "train": return t("Training {name}", { name: api.names.unit(u.workId) });
-      case "research": return t("Researching {name}", { name: api.names.tech(u.workId) });
-      case "upgrade": return t("Upgrading {name}", { name: api.names.upgrade(u.workId) });
-      case "morph": return t("Morphing into {name}", { name: api.names.unit(u.workId) });
-      case "addon": return t("Building {name}", { name: api.names.unit(u.workId) });
+      case "train": return t("Training {name}", { name: names.unit(u.workId) });
+      case "research": return t("Researching {name}", { name: names.tech(u.workId) });
+      case "upgrade": return t("Upgrading {name}", { name: names.upgrade(u.workId) });
+      case "morph": return t("Morphing into {name}", { name: names.unit(u.workId) });
+      case "addon": return t("Building {name}", { name: names.unit(u.workId) });
       case "nuke": return u.type === 108 ? t("Nuclear missile ready") : t("Calling down a nuclear strike");
       default: return u.completed ? null : t("Under construction");
     }
@@ -599,7 +670,7 @@ export function activate(api: PluginApi) {
     const colour = owner?.player.color ?? api.graphics.playerColor(u.owner);
     const rows: HTMLElement[] = [el("div", { className: "afm-tip-head" },
       el("span", { className: "afm-tip-swatch", style: `background:${colour}` }),
-      el("b", {}, api.names.unit(u.type)),
+      el("b", {}, names.unit(u.type)),
       owner ? el("span", { className: "afm-dim" }, owner.player.name) : null)];
     const stat = (label: string, value: number, max: number, barColour: string) => rows.push(el("div", { className: "afm-tip-row" },
       el("span", { className: "afm-tip-label" }, label), tipBar(max > 0 ? value / max : 0, barColour), el("span", { className: "afm-tip-num" }, `${value}/${max}`)));
@@ -646,7 +717,7 @@ export function activate(api: PluginApi) {
   /** The tab in front went from the map to the game or back: the clock goes with it, from where it stood. */
   function handOver(on: boolean): void {
     const entry = current;
-    if (!entry) return;
+    if (!entry || (on && entry.mod)) return;
     if (on) {
       cancelAnimationFrame(raf);
       const asked = entry.frame;
@@ -667,6 +738,8 @@ export function activate(api: PluginApi) {
   /** Offer a replay's tab the Game view the first time it comes to the front, showing it there; and load it when shown. */
   function gameFor(entry: Loaded): void {
     if (entry.docId === null) return;
+    // (No game view for a mod's replay: the engine would play it with the game's own files.)
+    if (entry.mod) { if (game.shown) game.show(false); return; }
     if (!offered.has(entry.id)) {
       offered.add(entry.id);
       // (The game opens where the map does, not where the editor's view stood when the tab came in.)
@@ -703,7 +776,7 @@ export function activate(api: PluginApi) {
         const replay = await parseReplay(bytes);
         const id = nextId++, map = readChk(replay.chk);
         const group = [...loaded, ...batch].find((l) => likeness(map, l.map) >= SAME_MAP)?.group ?? id;
-        batch.push({ id, fileName: file.name, report: analyse(replay), map, bytes, docId: null, group, excluded: false, frame: 0, hidden: new Set(), played: null, failed: null, eyes: null, again: null });
+        batch.push({ id, fileName: file.name, report: analyse(replay), map, bytes, docId: null, group, excluded: false, frame: 0, hidden: new Set(), played: null, failed: null, eyes: null, again: null, mod: replay.mod ?? null });
       } catch (err) {
         const detail = err instanceof ReplayError ? translate(err.message) : String(err);
         api.ui.toast({ kind: "error", title: t("Could not read {name}", { name: file.name }), detail });
@@ -1236,7 +1309,7 @@ export function activate(api: PluginApi) {
       bases: done.bases,
       winner: winnerOf(players.map((p) => ({ index: p.player.index, left: p.leftAt !== null })), done.standing),
       names: {
-        unit: (id) => plainName(api.names.unit(id)), upgrade: (id) => api.names.upgrade(id), tech: (id) => api.names.tech(id),
+        unit: (id) => plainName(names.unit(id)), upgrade: (id) => names.upgrade(id), tech: (id) => names.tech(id),
         place: (x, y) => { const c = clockOf(x, y, map.width * 32, map.height * 32); return c ? `${c} o'clock` : "the middle"; },
       },
       durations,
@@ -1829,9 +1902,9 @@ export function activate(api: PluginApi) {
     if (!card) return;
     const frame = (gameClock() ? game.frameNow(settings.speed) : null) ?? entry.frame;
     const who = entry.report.players.find((p) => p.player.index === card.player)?.player;
-    const name = card.kind === "unit" ? plainName(api.names.unit(card.type)).replace(/\s*\([^)]*\)\s*$/, "")
-      : card.kind === "tech" ? api.names.tech(card.type)
-      : card.level > 1 ? `${api.names.upgrade(card.type)} ${card.level}` : api.names.upgrade(card.type);
+    const name = card.kind === "unit" ? plainName(names.unit(card.type)).replace(/\s*\([^)]*\)\s*$/, "")
+      : card.kind === "tech" ? names.tech(card.type)
+      : card.level > 1 ? `${names.upgrade(card.type)} ${card.level}` : names.upgrade(card.type);
     const making = frame < card.done && card.done > card.start;
     const share = making ? Math.max(0, Math.min(1, (frame - card.start) / (card.done - card.start))) : 1;
     const status = making
@@ -1963,6 +2036,8 @@ export function activate(api: PluginApi) {
     entry.failed = null;
     strip?.render();
     try {
+      // (A mod's replay played with the game's own files would be another game: the play page plays one from its next release.)
+      if (entry.mod) throw new Error(t("This replay was played with a mod, which the game engine here does not play replays of yet."));
       const state = await sim.status();
       if (!state.available) throw new Error(state.reason ?? t("The game engine cannot run a game here."));
       // An engine from before timeline 3 reads only the file 1.16.1 wrote.
@@ -2565,8 +2640,8 @@ export function activate(api: PluginApi) {
           swatch(sd.player),
           el("span", { className: "afm-gt-name" }, nameOf(sd.player)),
           el("span", { className: "afm-dim" }, sd.lostValue > 0 ? t("lost {value}", { value: number(sd.lostValue) }) : t("lost {n}", { n: sd.lost })),
-          el("span", { className: "afm-gt-lost" }, ...shown.map(([type, n]) => el("span", { className: "afm-gt-unit", title: api.names.unit(type) },
-            gameIcon("unit", type, sd.player) ?? el("span", { className: "afm-gt-uname" }, api.names.unit(type)),
+          el("span", { className: "afm-gt-lost" }, ...shown.map(([type, n]) => el("span", { className: "afm-gt-unit", title: names.unit(type) },
+            gameIcon("unit", type, sd.player) ?? el("span", { className: "afm-gt-uname" }, names.unit(type)),
             n > 1 ? el("span", { className: "afm-gt-count" }, `×${n}`) : null)),
             types.length > shown.length ? el("span", { className: "afm-dim" }, `+${types.length - shown.length}`) : null)));
       }
@@ -2581,7 +2656,7 @@ export function activate(api: PluginApi) {
         icon ?? el("span", { className: "afm-gi afm-gi-none" }), player !== null ? swatch(player) : null, el("span", { className: "afm-gt-mtext" }, text), el("span", { className: "afm-dim" }, formatTime(f))) });
     };
     for (const r of tl?.research ?? []) {
-      const name = r.kind === "tech" ? api.names.tech(r.id) : api.names.upgrade(r.id);
+      const name = r.kind === "tech" ? names.tech(r.id) : names.upgrade(r.id);
       moment(r.frame, r.player, gameIcon(r.kind, r.id, r.player), r.kind === "upgrade" && r.level > 1 ? t("{name}, level {level}", { name, level: r.level }) : name);
     }
     for (const b of entry.played?.bases ?? []) {
@@ -2808,6 +2883,25 @@ export function activate(api: PluginApi) {
       });
     }
 
+    /** A replay of a mod: which, its makers' link, its plugins, and whether the editor draws with it. */
+    renderMod(entry: Loaded, tag: ModTag): void {
+      const link = safeLink(tag.dataSet.url);
+      const plugins = pluginNames(tag);
+      const box = el("div", { className: "afm-mod" },
+        el("div", {}, t("Replay of a mod: {name} ({hash})", { name: tag.dataSet.name || t("unnamed"), hash: tag.dataSet.hash })),
+        link ? el("div", { className: "afm-dim" }, t("Its makers"), ": ", el("a", { href: link, target: "_blank", rel: "noopener noreferrer" }, link)) : null,
+        plugins ? el("div", { className: "afm-dim" }, t("Plugins: {names}", { names: plugins })) : null,
+      );
+      if (ownData(entry)) box.append(el("div", { className: "afm-dim" }, t("Names and costs are the mod's: the editor draws with its data set.")));
+      else if (attaching?.entry === entry) box.append(el("div", { className: "afm-dim" }, t("Reading the mod: {done} of {n} files…", { done: attaching.done, n: attaching.of })));
+      else box.append(
+        w.hint(t("Units, upgrades and technologies show by id until the editor draws with the mod: attach the mod's folder, and it is checked against the replay first.")),
+        w.button(t("Attach the Mod's Folder…"), { className: "sm", onClick: () => { void attachMod(entry); } }),
+      );
+      box.append(w.hint(t("The game view, the analysis (the Game and Fights tabs, Analysis, Cast) and Play From Here wait for the play page to play a mod's replay. What is shown is the players' orders, and Aftermath's own rules for workers and town halls go by the game's unit ids, which a mod may give other units.")));
+      this.root.append(box);
+    }
+
     render(): void {
       this.root.replaceChildren();
       this.live = [];
@@ -2829,6 +2923,7 @@ export function activate(api: PluginApi) {
         el("div", { className: "afm-title", title: entry.fileName }, plainText(rep.header.mapName) || entry.fileName),
         el("div", { className: "afm-dim" }, facts),
       );
+      if (entry.mod) this.renderMod(entry, entry.mod);
       const parted = entry.played?.timeline.check?.parted ?? null;
       if (parted !== null) this.root.append(el("div", { className: "afm-warn" }, t("From {time} the game played here is not the game in the replay: a player gave an order to a unit that had not been made. What is shown after that moment is not what happened, and this game is left out of Map stats.", { time: formatTime(parted) })));
       if (rep.unknownCommands > 0) this.root.append(w.hint(t("{n, plural, one {# command of a kind Aftermath does not know was skipped.} other {# commands of a kind Aftermath does not know were skipped.}}", { n: rep.unknownCommands })));
@@ -2918,7 +3013,7 @@ export function activate(api: PluginApi) {
         // What happened: every line is something that was really started, with what became of it.
         let count = 0;
         for (const row of madeRows(entry.played.timeline, pr.player.index, { workers: settings.workers })) {
-          const name = row.kind === "upgrade" ? `${api.names.upgrade(row.id)} ${row.level ?? ""}`.trim() : row.kind === "tech" ? api.names.tech(row.id) : api.names.unit(row.id);
+          const name = row.kind === "upgrade" ? `${names.upgrade(row.id)} ${row.level ?? ""}`.trim() : row.kind === "tech" ? names.tech(row.id) : names.unit(row.id);
           const hall = row.kind === "unit" && TOWN_HALLS.has(row.id);
           const end = row.kind !== "unit" ? t("researched")
             : row.done === null ? (row.lost === null ? t("not finished") : row.building ? t("cancelled or destroyed {time}", { time: formatTime(row.lost) }) : t("lost {time}", { time: formatTime(row.lost) }))
@@ -2937,7 +3032,7 @@ export function activate(api: PluginApi) {
       } else {
         const rows = pr ? buildOrderRows(pr.build, { workers: settings.workers }) : [];
         for (const step of rows) {
-          const name = step.kind === "upgrade" ? api.names.upgrade(step.id) : step.kind === "tech" ? api.names.tech(step.id) : api.names.unit(step.id);
+          const name = step.kind === "upgrade" ? names.upgrade(step.id) : step.kind === "tech" ? names.tech(step.id) : names.unit(step.id);
           const hall = step.kind === "build" && TOWN_HALLS.has(step.id);
           const line = el("div", { className: "afm-step" + (hall ? " afm-hall" : ""), title: step.placement ? t("Go to the time and place") : t("Go to the time") },
             el("span", { className: "afm-t" }, formatTime(step.frame)),
@@ -3147,7 +3242,7 @@ export function activate(api: PluginApi) {
           const owner = byIndex.get(k.player);
           const line = el("div", { className: "afm-step", title: t("Go to its first kill") },
             el("span", { className: "afm-t" }, formatTime(k.frame)),
-            el("span", {}, el("span", { style: owner ? `color:${owner.color}` : "" }, api.names.unit(k.type)), el("span", { className: "afm-end" }, " · " + (k.value > 0 ? t("{n, plural, one {# kill} other {# kills}}, worth {value}", { n: k.kills, value: k.value }) : t("{n, plural, one {# kill} other {# kills}}", { n: k.kills })))),
+            el("span", {}, el("span", { style: owner ? `color:${owner.color}` : "" }, names.unit(k.type)), el("span", { className: "afm-end" }, " · " + (k.value > 0 ? t("{n, plural, one {# kill} other {# kills}}, worth {value}", { n: k.kills, value: k.value }) : t("{n, plural, one {# kill} other {# kills}}", { n: k.kills })))),
           );
           line.addEventListener("click", () => goTo(Math.max(0, k.frame - 24), k.x, k.y));
           top.append(line);
@@ -3370,7 +3465,7 @@ export function activate(api: PluginApi) {
       const castMore = castButton && castState === "ready" ? w.button(t("Cast…"), { className: "sm", title: t("Make a new cast, or watch another kept in this browser"), onClick: () => openCastWindow() }) : null;
       // Play From Here: this replay on the play page at the moment shown, through the eyes chosen (else the first
       // player's), its Watch Replay menu open there to play on: alone, against a community bot, or with others.
-      const playHere = sim?.present && sim.playReplay
+      const playHere = sim?.present && sim.playReplay && !entry.mod
         ? w.button(t("Play From Here"), {
           className: "sm",
           title: t("Open this replay on the play page at this moment and play on from there: as one of its players, alone, against a community bot, or with others"),
@@ -3722,6 +3817,8 @@ export function activate(api: PluginApi) {
     strip?.update();
   });
   api.events.on("language", () => { side?.render(); strip?.render(); });
+  // (Another data set in use: a mod's replay is named by its mod only while the editor draws with it.)
+  api.events.on("gameData", () => { side?.render(); strip?.render(); redraw(); });
 
   return () => {
     stop();

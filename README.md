@@ -129,6 +129,33 @@ It has five tabs:
 - **Map stats**: every replay of this map you have open, taken together. See
   [Map stats](#map-stats-many-replays-of-one-map).
 
+### Replays of mods
+
+A replay of a game played with a mod, saved by scmJS's play page, says which mod it was.
+The panel then shows "Replay of a mod" with the mod's name and its hash, a link to its
+makers, and the plugins that ran.
+
+A mod gives the game's unit numbers to its own units, so the replay is named only by the
+mod: until the editor draws with the mod's files, units, upgrades and technologies show by
+number, never by the game's names. **Attach the Mod's Folder…** asks for the mod's folder
+(the one holding its `arr`, `unit` and other game folders, or a folder above it), checks
+that it is the mod the replay names, and has the editor draw with it for the session.
+Names, costs and pictures then come from the mod. A folder of another version is refused,
+with both hashes.
+
+The check is the mod's hash as the play page and `scmjs mod info` work it out: one line
+for each of the folder's game files, each plugin it carries (`.qdp`, `.bwl`) and its
+FireGraft project (`.fgp`), never compared with your copy of the game; a replay of a game
+that ran none of the plugins names the hash without them, which is taken too, as are the
+older forms a replay saved before November 2026 names. Only the folder's loose files are
+read: archives in it (an `.mpq`, the mod's `.exe`) are not, so a mod that keeps its files
+in one is refused here, and the message says so. Pick the folder of loose files.
+
+What the game engine shows waits for the play page to play a mod's replay: the Replay
+view, the analysis (the Game and Fights tabs, Analysis, Cast) and Play From Here. What is
+shown is the players' orders. The Build tab's choice of workers and town halls goes by the
+game's own unit numbers, which a mod may give other units.
+
 ### On the map
 
 Marks are in the player's colour. Before analysis, the map shows every building ordered up
