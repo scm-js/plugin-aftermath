@@ -504,6 +504,7 @@ export const KO: Record<string, string> = {
   "Pick the mod's folder: the one holding its arr, unit and other game folders, or the folder above it.": "모드 폴더를 고르세요: arr, unit 같은 게임 폴더가 들어 있는 폴더나 그 위의 폴더입니다.",
   "This folder is not the mod the replay was played with": "이 폴더는 리플레이를 플레이한 모드가 아닙니다",
   "Its data set is {hash}, the replay's is {wanted} ({name}).": "이 폴더의 데이터 세트는 {hash}, 리플레이의 것은 {wanted}({name})입니다.",
+  "Its archives ({list}) are not read here: pick a folder of the mod's loose files.": "폴더의 아카이브({list})는 여기서 읽지 않습니다: 모드의 낱개 파일이 든 폴더를 고르세요.",
   "Mod": "모드",
   "{name} attached": "{name}을(를) 붙였습니다",
   "The editor draws with the mod's files until its data set is changed or the page is loaded again.": "데이터 세트를 바꾸거나 페이지를 다시 불러올 때까지 편집기는 모드의 파일로 그립니다.",

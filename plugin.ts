@@ -524,8 +524,9 @@ export function activate(api: PluginApi) {
 
   /**
    * The mod's folder, picked by the person and attached as the editor's data set for the session (nothing stored), once
-   * its data set's hash is the replay's: names, costs and pictures then come from the mod. The hash is worked out by the
-   * shared rule over the folder's files that differ from the data set in use, and over all of them; either is taken.
+   * its hash is the replay's: names, costs and pictures then come from the mod. The hash is the mod's, by the rule the
+   * play page and scmJS share (its game files, plugins and FireGraft project), with or without the plugins; a replay
+   * tagged before that rule is matched by its older forms. Archives in the folder are not read.
    */
   async function attachMod(entry: Loaded): Promise<void> {
     const tag = entry.mod;
@@ -541,7 +542,7 @@ export function activate(api: PluginApi) {
       api.ui.toast({ kind: "warn", title: t("No game files in that folder"), detail: t("Pick the mod's folder: the one holding its arr, unit and other game folders, or the folder above it.") });
       return;
     }
-    attaching = { entry, done: 0, of: folder.files.size };
+    attaching = { entry, done: 0, of: folder.files.size + folder.plugins.size + folder.firegraft.size };
     side?.render();
     let shown = 0;
     try {
@@ -551,7 +552,8 @@ export function activate(api: PluginApi) {
         if (performance.now() - shown > 250) { shown = performance.now(); side?.render(); }
       });
       if (!isReplaysMod(tag, hashes)) {
-        api.ui.toast({ kind: "error", title: t("This folder is not the mod the replay was played with"), detail: t("Its data set is {hash}, the replay's is {wanted} ({name}).", { hash: hashes.changed, wanted: tag.dataSet.hash, name: tag.dataSet.name }) });
+        const detail = t("Its data set is {hash}, the replay's is {wanted} ({name}).", { hash: hashes.hash, wanted: tag.dataSet.hash, name: tag.dataSet.name });
+        api.ui.toast({ kind: "error", title: t("This folder is not the mod the replay was played with"), detail: folder.unread.length ? `${detail} ${t("Its archives ({list}) are not read here: pick a folder of the mod's loose files.", { list: folder.unread.join(", ") })}` : detail });
         return;
       }
       const url = safeLink(tag.dataSet.url);

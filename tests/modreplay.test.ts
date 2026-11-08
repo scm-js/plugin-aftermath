@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { appendModTag, parseReplay, type ModTag } from "@scm-js/replay";
 import { chk, cmds, le16, writeReplay } from "@scm-js/replay/write";
-import { dataSetHash, folderHashes, gameName, isReplaysMod, modFolder, modRoot, pluginNames, safeLink, sha256 } from "../modreplay";
+import { dataSetHash, folderHashes, gameName, hashLines, isReplaysMod, modFolder, modRoot, pluginNames, safeLink, sha256 } from "../modreplay";
 
 const blob = (s: string) => new Blob([new TextEncoder().encode(s)]);
 const tag = (more: Partial<ModTag> = {}): ModTag => ({
@@ -18,18 +18,26 @@ describe("a picked folder read as a mod", () => {
       { path: "release/mpq/notes.txt", file: blob("notes") },
       { path: "release/README.md", file: blob("readme") },
       { path: "release/Test Mod.exe", file: blob("MZ") },
+      { path: "release/discord.dll", file: blob("MZ") },
       { path: "release/plugins/gptp.qdp", file: blob("plugin") },
       { path: "release/Test Mod.fgp", file: blob("fg") },
+      { path: "release/Test Mod.fgd", file: blob("db") },
+      { path: "release/mpq/plugins/gptp.ini", file: blob("a plugin's own") },
       { path: "release/mpq/lua/.gitignore", file: blob("x") },
       { path: "release/mpq/.git/config", file: blob("x") },
     ]);
-    expect([...folder.files.keys()]).toEqual(["arr\\units.dat", "rez\\stat_txt.tbl"]);
+    // A dot file is the mod's; a dot folder, a plugin's own folder and a library are not.
+    expect([...folder.files.keys()]).toEqual(["arr\\units.dat", "rez\\stat_txt.tbl", "lua\\.gitignore"]);
+    expect([...folder.plugins.keys()]).toEqual(["gptp.qdp"]);
+    expect([...folder.firegraft.keys()]).toEqual(["test mod.fgp"]);
     expect(folder.unread).toEqual(["Test Mod.exe"]);
   });
 
   it("takes a folder whose root is the game's paths", () => {
     expect([...modFolder([{ path: "mymod/arr/units.dat", file: blob("u") }, { path: "mymod/unit/terran/marine.grp", file: blob("g") }]).files.keys()]).toEqual(["arr\\units.dat", "unit\\terran\\marine.grp"]);
     expect(modRoot(["mpq/arr/units.dat", "mpq/unit/terran/unit/x.grp"])).toBe("mpq");
+    // At any depth, as the play page looks: a zip unpacked into a folder of its own.
+    expect(modRoot(["Mod 1.2/mpq/arr/units.dat", "Mod 1.2/mpq/unit/x.grp", "Mod 1.2/README.md"])).toBe("Mod 1.2/mpq");
     expect(gameName("Arr/Units.DAT")).toBe("arr\\units.dat");
   });
 });
@@ -42,15 +50,38 @@ describe("the data set's hash", () => {
     expect(await sha256(new TextEncoder().encode("abc"))).toBe(createHash("sha256").update("abc").digest("hex"));
   });
 
-  it("is worked out over the files that differ from the data set underneath, and over all of them", async () => {
+  it("is the play page's for a made mod: game files, the plugin and the project, never the .fgd", async () => {
+    // The page's own buildMod over this folder (scm-sim lift-ts 0215c82), 2026-11-08.
+    const page = { hash: "963daa4f7aecfe5d", withoutPlugins: "998ef33385c9e844" };
+    const folder = modFolder([
+      { path: "Made/arr/units.dat", file: blob("a made units.dat") },
+      { path: "Made/lua/.gitignore", file: blob("*.bak") },
+      { path: "Made/rez/stat_txt.tbl", file: blob("made strings") },
+      { path: "Made/sound/made/new.wav", file: blob("RIFF made sound") },
+      { path: "Made/plugins/x.qdp", file: blob("a plugin's bytes") },
+      { path: "Made/y.fgp", file: blob("a FireGraft project's bytes") },
+      { path: "Made/y.fgd", file: blob("FireGraft's database") },
+      { path: "Made/README.md", file: blob("notes") },
+    ]);
+    const seen: number[] = [];
+    const h = await folderHashes(folder, async () => null, (done) => seen.push(done));
+    expect({ hash: h.hash, withoutPlugins: h.withoutPlugins }).toEqual(page);
+    expect(seen).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(isReplaysMod(tag({ dataSet: { hash: page.hash, name: "", url: null } }), h)).toBe(true);
+    expect(isReplaysMod(tag({ dataSet: { hash: page.withoutPlugins, name: "", url: null } }), h)).toBe(true);
+  });
+
+  it("keeps the older forms for replays tagged before: the game files alone, and those that differ from the data set underneath", async () => {
     const folder = modFolder([{ path: "m/arr/units.dat", file: blob("mine") }, { path: "m/arr/weapons.dat", file: blob("same") }]);
     const under = async (member: string) => (member === "arr\\weapons.dat" ? new TextEncoder().encode("same") : null);
-    const seen: number[] = [];
-    const h = await folderHashes(folder, under, (done) => seen.push(done));
+    const h = await folderHashes(folder, under);
     const digest = (s: string) => createHash("sha256").update(s).digest("hex");
     expect(h.changed).toBe(await dataSetHash([{ name: "arr\\units.dat", sha256: digest("mine") }]));
     expect(h.all).toBe(await dataSetHash([{ name: "arr\\units.dat", sha256: digest("mine") }, { name: "arr\\weapons.dat", sha256: digest("same") }]));
-    expect(seen).toEqual([1, 2]);
+    // No plugins or project: the mod's hash is the game files'.
+    expect(h.hash).toBe(h.all);
+    expect(h.withoutPlugins).toBe(h.all);
+    expect(await hashLines([`b\t${"2".repeat(64)}`, `a\t${"1".repeat(64)}`])).toBe(createHash("sha256").update(`a\t${"1".repeat(64)}\nb\t${"2".repeat(64)}`).digest("hex").slice(0, 16));
     expect(isReplaysMod(tag({ dataSet: { hash: h.all, name: "", url: null } }), h)).toBe(true);
     expect(isReplaysMod(tag({ dataSet: { hash: h.changed, name: "", url: null } }), h)).toBe(true);
     expect(isReplaysMod(tag(), h)).toBe(false);

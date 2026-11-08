@@ -5,10 +5,13 @@
  * not an SCV: the plugin shows the mod, takes names only from the mod's own data set, and lets the person attach the
  * mod's folder, known for the mod by the same hash.
  *
- * Here, pure: which files of a picked folder are the mod's (the game's paths at the folder's root or one folder down,
- * as `scmjs mod` reads a folder), and the data set's hash by the shared rule — SHA-256 over the sorted
- * `name<TAB>sha256` lines of the files, the game's names in lower case with backslashes; its first sixteen hex
- * digits — over the files that differ from the data set underneath, and over all of them.
+ * Here, pure: which files of a picked folder are the mod's (the game's paths at the folder's root or in a folder under
+ * it, as the play page and `scmjs mod` read a folder), and the mod's hash by the rule the play page, `scmjs` and the
+ * editor share — SHA-256 over the sorted lines `name<TAB>sha256 of the bytes`, one for every game file the mod lays over
+ * the game (its game name, lower case with backslashes), one for each plugin it carries (`plugins\<file>.qdp`, lower
+ * case) and one for its FireGraft project (`<file>.fgp`, lower case); the first sixteen hex digits — and the same
+ * without the plugins' lines. The folder's loose files only: an archive in it (an `.mpq`, a mod's `.exe`) is not read,
+ * so a mod that keeps files in one hashes otherwise here than on the play page.
  */
 import type { ModTag } from "@scm-js/replay";
 
@@ -24,12 +27,12 @@ const GAME_FOLDERS = ["arr", "rez", "scripts", "unit", "tileset", "sound", "game
 /** A path as the game names it: backslashes, lower case (`arr\units.dat`). */
 export const gameName = (path: string): string => path.replace(/\//g, "\\").replace(/^\\+/, "").toLowerCase();
 
-/** The folder the game's paths start in: the one holding `arr/`, else the one holding most files under the game's folders, at the root or a folder down. */
+/** The folder the game's paths start in: the one holding `arr/`, else the one holding most files under the game's folders (the shallower on a tie), at any depth. */
 export function modRoot(paths: readonly string[]): string {
   const score = new Map<string, number>(), hasArr = new Set<string>();
   for (const p of paths) {
     const parts = p.split("/");
-    for (let i = 0; i < Math.min(parts.length - 1, 2); i++) {
+    for (let i = 0; i < parts.length - 1; i++) {
       const folder = parts[i].toLowerCase();
       if (!GAME_FOLDERS.includes(folder) || folder === "maps") continue;
       const root = parts.slice(0, i).join("/");
@@ -42,24 +45,32 @@ export function modRoot(paths: readonly string[]): string {
 }
 
 export interface ModFolder {
-  /** The mod's files by the game's name. */
+  /** The mod's game files by the game's name. */
   files: Map<string, PickedFile>;
+  /** The plugins it carries (`.qdp`, `.bwl`, anywhere in the folder), by file name; the first of a name. */
+  plugins: Map<string, PickedFile>;
+  /** Its FireGraft projects (`.fgp`), by file name; the first of a name. FireGraft's `.fgd` database is not hashed. */
+  firegraft: Map<string, PickedFile>;
   /** Archives and programs in the folder, which are not read here (an `.mpq`, a mod's `.exe`, a `.zip`). */
   unread: string[];
 }
 
 /**
- * A picked folder's files that are the mod's: under its root, not beside the game's folders (a read-me), not a dot
- * file, and not a plugin, a FireGraft file, an archive or a program — the files `scmjs mod` counts in a folder. The folder's own name, first in every path, is not part of it.
+ * A picked folder's files that are the mod's, as the play page reads a folder: under its root, not beside the game's
+ * folders (a read-me), not under a `plugins` or `firegraft` folder there, and not a plugin, a FireGraft file, an
+ * archive, a program or a library. A dot file counts; a dot folder (git's, an editor's) does not. The plugins and the
+ * FireGraft project are kept beside, wherever they are. The folder's own name, first in every path, is not part of it.
  */
 export function modFolder(picked: readonly PickedFile[]): ModFolder {
-  // (A dot file or folder is a tool's own — git's, an editor's — never the game's.)
-  const inside = picked.map((f) => ({ ...f, path: f.path.split("/").slice(1).join("/") })).filter((f) => f.path && !f.path.split("/").some((part) => part.startsWith(".")));
+  const inside = picked.map((f) => ({ ...f, path: f.path.split("/").slice(1).join("/") })).filter((f) => f.path && !f.path.split("/").slice(0, -1).some((part) => part.startsWith(".")));
   const unread: string[] = [];
+  const plugins = new Map<string, PickedFile>(), firegraft = new Map<string, PickedFile>();
   const loose = inside.filter((f) => {
-    const leaf = f.path.split("/").pop()!.toLowerCase();
-    if (/\.(qdp|bwl|fgp|fgd)$/.test(leaf) || leaf === "mod.json") return false;
-    if (/\.(mpq|exe|zip)$/.test(leaf)) { unread.push(f.path); return false; }
+    const leaf = f.path.split("/").pop()!, lower = leaf.toLowerCase();
+    if (/\.(qdp|bwl)$/.test(lower)) { if (!plugins.has(lower)) plugins.set(lower, f); return false; }
+    if (/\.fgp$/.test(lower)) { if (!firegraft.has(lower)) firegraft.set(lower, f); return false; }
+    if (/\.(fgd|dll)$/.test(lower)) return false;
+    if (/\.(mpq|exe|zip)$/.test(lower)) { unread.push(f.path); return false; }
     return true;
   });
   const root = modRoot(loose.map((f) => f.path));
@@ -67,43 +78,68 @@ export function modFolder(picked: readonly PickedFile[]): ModFolder {
   for (const f of loose) {
     if (root && !f.path.startsWith(root + "/")) continue;
     const rel = root ? f.path.slice(root.length + 1) : f.path;
-    if (!rel.includes("/")) continue;
+    const top = rel.split("/")[0].toLowerCase();
+    if (!rel.includes("/") || top === "plugins" || top === "firegraft") continue;
     files.set(gameName(rel), { path: rel, file: f.file });
   }
-  return { files, unread };
+  return { files, plugins, firegraft, unread };
 }
 
 const hex = (b: ArrayBuffer) => [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join("");
 export const sha256 = async (bytes: Uint8Array): Promise<string> => hex(await crypto.subtle.digest("SHA-256", bytes as BufferSource));
 
-/** The data-set hash of files given as their game names and SHA-256s. */
+/** The hash of lines `name<TAB>sha256` in any order: sorted by name, joined with "\n", SHA-256, sixteen hex digits. */
+export async function hashLines(lines: readonly string[]): Promise<string> {
+  const name = (l: string) => l.slice(0, l.indexOf("\t"));
+  const sorted = [...lines].sort((a, b) => (name(a) < name(b) ? -1 : name(a) > name(b) ? 1 : 0));
+  return (await sha256(new TextEncoder().encode(sorted.join("\n")))).slice(0, 16);
+}
+
+/** A plugin's line (`plugins\<file name>`, lower case) and the FireGraft project's (`<file name>`, lower case). */
+export const pluginLine = (name: string, sha: string): string => `plugins\\${name.split(/[\\/]/).pop()!.toLowerCase()}\t${sha}`;
+export const firegraftLine = (name: string, sha: string): string => `${name.split(/[\\/]/).pop()!.toLowerCase()}\t${sha}`;
+
+/** The hash of game files alone, given as their game names and SHA-256s (what a replay tagged before the plugins had lines names). */
 export async function dataSetHash(files: readonly { name: string; sha256: string }[]): Promise<string> {
-  const lines = files.map((f) => ({ name: gameName(f.name), sha256: f.sha256 })).sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0)).map((f) => `${f.name}\t${f.sha256}`);
-  return (await sha256(new TextEncoder().encode(lines.join("\n")))).slice(0, 16);
+  return hashLines(files.map((f) => `${gameName(f.name)}\t${f.sha256}`));
 }
 
 const same = (a: Uint8Array, b: Uint8Array) => a.length === b.length && a.every((x, i) => x === b[i]);
 
-/**
- * The folder's hash over the files that differ from the data set underneath (`under`, by game name; null when it has
- * none of that name), and over all of its files. A file at a time, the bytes let go after each.
- */
-export async function folderHashes(folder: ModFolder, under: (member: string) => Promise<Uint8Array | null>, progress?: (done: number, of: number) => void): Promise<{ changed: string; all: string }> {
-  const changed: { name: string; sha256: string }[] = [], all: { name: string; sha256: string }[] = [];
-  let done = 0;
-  for (const [member, f] of folder.files) {
-    const bytes = new Uint8Array(await f.file.arrayBuffer());
-    const digest = { name: member, sha256: await sha256(bytes) };
-    all.push(digest);
-    const theirs = await under(member);
-    if (!theirs || !same(theirs, bytes)) changed.push(digest);
-    progress?.(++done, folder.files.size);
-  }
-  return { changed: await dataSetHash(changed), all: await dataSetHash(all) };
+/** The hashes a replay may name the mod by. */
+export interface FolderHashes {
+  /** The mod's hash: its game files, its plugins and its FireGraft project. */
+  hash: string;
+  /** The same without the plugins' lines: what a page that ran none of them names. */
+  withoutPlugins: string;
+  /** Older forms, for replays tagged before the plugins and the project had lines: the game files alone, and those that differ from the data set underneath. */
+  all: string;
+  changed: string;
 }
 
-/** Whether a folder's hashes are the replay's data set: either counts, as the play page and the command line may hash with or without a copy of the game beneath. */
-export const isReplaysMod = (tag: ModTag, hashes: { changed: string; all: string }) => tag.dataSet.hash === hashes.changed || tag.dataSet.hash === hashes.all;
+/**
+ * The folder's hashes (`under` reads the data set underneath by game name, null when it has none of that name, for
+ * the older "changed" form). A file at a time, the bytes let go after each.
+ */
+export async function folderHashes(folder: ModFolder, under: (member: string) => Promise<Uint8Array | null>, progress?: (done: number, of: number) => void): Promise<FolderHashes> {
+  const changed: string[] = [], game: string[] = [], code: string[] = [], plugins: string[] = [];
+  let done = 0;
+  const of = folder.files.size + folder.plugins.size + folder.firegraft.size;
+  for (const [member, f] of folder.files) {
+    const bytes = new Uint8Array(await f.file.arrayBuffer());
+    const line = `${member}\t${await sha256(bytes)}`;
+    game.push(line);
+    const theirs = await under(member);
+    if (!theirs || !same(theirs, bytes)) changed.push(line);
+    progress?.(++done, of);
+  }
+  for (const [name, f] of folder.firegraft) { code.push(firegraftLine(name, await sha256(new Uint8Array(await f.file.arrayBuffer())))); progress?.(++done, of); }
+  for (const [name, f] of folder.plugins) { plugins.push(pluginLine(name, await sha256(new Uint8Array(await f.file.arrayBuffer())))); progress?.(++done, of); }
+  return { hash: await hashLines([...game, ...code, ...plugins]), withoutPlugins: await hashLines([...game, ...code]), all: await hashLines(game), changed: await hashLines(changed) };
+}
+
+/** Whether a folder is the replay's mod: by its hash, without its plugins, or by an older form. */
+export const isReplaysMod = (tag: ModTag, hashes: FolderHashes) => [hashes.hash, hashes.withoutPlugins, hashes.all, hashes.changed].includes(tag.dataSet.hash);
 
 /** The plugins and FireGraft patch a tag names, for a line: "gptp.qdp, aise.qdp"; "" for none. */
 export const pluginNames = (tag: ModTag): string => (tag.noplugins ? "" : [...tag.plugins.map((p) => p.name), ...(tag.firegraft ? [tag.firegraft.name] : [])].join(", "));

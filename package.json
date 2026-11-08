@@ -13,7 +13,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@scm-js/replay": "file:../replay-tag"
+    "@scm-js/replay": "^1.1.0"
   },
   "devDependencies": {
     "@scm-js/plugin-api": "^1.68.0",
