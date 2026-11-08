@@ -19,7 +19,7 @@
  * the game's files (the engine's page says so). Otherwise nothing changes: the tab has the map alone.
  */
 import type { Disposable, MapView, MapViewCamera, MapViewHandle, MinimapView, PluginApi } from "@scm-js/plugin-api";
-import type { ScmSimService, ScmSimView, ViewFrame, ViewHover, ViewTrack, ViewUnits } from "./vendor/scm-sim";
+import type { ReplayDataSet, ScmSimService, ScmSimView, ViewFrame, ViewHover, ViewTrack, ViewUnits } from "./vendor/scm-sim";
 import { FRAME_MS } from "@scm-js/replay";
 
 /** A seek the viewer says is over but that has shown no frame near where it went is settled after this long. */
@@ -42,6 +42,8 @@ export interface Held {
   docId: number | null;
   /** Whose eyes the game is seen through, a replay player's slot (with the fog of war); null for everyone's, no fog. */
   eyes: number | null;
+  /** The mod it was played with (`replayDataSet` of its tag), for the view to be loaded at the address that plays it; none for the game itself. */
+  dataSet?: ReplayDataSet;
 }
 
 export interface GameViewHooks {
@@ -79,6 +81,11 @@ export class GameView {
   /** Whether the engine can play here: unknown until asked, then kept. */
   private canPlay: boolean | null = null;
   private asking: Promise<boolean> | null = null;
+  /**
+   * Whether the view plays a mod's replay with its mod: the scm-sim plugin's view takes the mod (0.17.0) and the play
+   * page reads it (its `features` say "replayDoor"). Known once `available` has asked; false until then.
+   */
+  playsMods = false;
   private sim: ScmSimService | null = null;
   private readonly changed: Disposable;
   /**
@@ -311,6 +318,7 @@ export class GameView {
     this.sim = sim;
     this.canPlay = null;
     this.asking = null;
+    this.playsMods = false;
   }
 
   /** Whether the Game view can be offered: the scm-sim plugin has one, and the browser has the game's files. */
@@ -318,7 +326,7 @@ export class GameView {
     const sim = this.sim;
     if (!sim?.present || typeof sim.view !== "function") return false;
     if (this.canPlay !== null) return this.canPlay;
-    this.asking ??= sim.status().then((s) => (this.canPlay = s.available), () => (this.canPlay = false));
+    this.asking ??= sim.status().then((s) => { this.playsMods = s.available && (s.features ?? []).includes("replayDoor"); return (this.canPlay = s.available); }, () => (this.canPlay = false));
     return this.asking;
   }
 
@@ -328,6 +336,7 @@ export class GameView {
    */
   async offer(entry: Held, show: boolean, start?: { x: number; y: number }): Promise<boolean> {
     if (entry.docId === null || !(await this.available())) return false;
+    if (entry.dataSet && !this.playsMods) return false;
     this.handle.offer(true, entry.docId);
     if (show) this.handle.show(true, entry.docId);
     // (After the show: the editor's `onShow` comes in during it.)
@@ -412,7 +421,8 @@ export class GameView {
       this.said = null;
       this.settle(true);
       try {
-        const viewed = await view.load(entry.bytes, entry.fileName);
+        // (A mod's replay with its mod: the view loads at the address that plays it, `?view&mod=…`, first.)
+        const viewed = await view.load(entry.bytes, entry.fileName, entry.dataSet ?? null);
         this.tracks = viewed.follows === true && typeof view.follow === "function";
       } catch (err) {
         // A load replaced by another is that one's to finish.

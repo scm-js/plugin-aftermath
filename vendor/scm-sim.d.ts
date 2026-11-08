@@ -214,6 +214,13 @@ export interface ScmSimStatus {
    * asked or its page is from before `fights`.
    */
   fights?: number | null;
+  /**
+   * What the site's play page says it does that a page from before did not (0.17.0, from scm-sim's R2b; the analysis
+   * page is of the same build): "replayDoor" (a replay's mod is read from its `SCMJ` tag and played, switched to or
+   * asked for), "liveSwitch" (a replay of a mod whose code ran loads the page again with `?lift=live` rather than
+   * refusing). Names are only ever added; empty from a page before them or one that could not be asked.
+   */
+  features?: string[];
 }
 
 /* ── A replay's fights played again (`ScmSimService.fights`) ── */
@@ -504,6 +511,8 @@ export interface ViewReady {
   files: ScmSimStatus["files"];
   /** When `files` is null: why, in words for the person. */
   reason: string | null;
+  /** What the view's page says it does (as `ScmSimStatus.features`; 0.17.0): empty from a page before scm-sim's R2b. */
+  features?: string[];
 }
 
 /** What the game is drawn with: what the person's copy of the game allows, and what is on. */
@@ -686,8 +695,19 @@ export interface ViewWheel {
 export interface ScmSimView {
   /** Resolves once the page has looked for the game's files (never rejects: `files` is null and `reason` says why). */
   readonly ready: Promise<ViewReady>;
-  /** Plays this replay (a whole .rep file) from the start, paused at frame 0. A load asked for before the last finished replaces it. */
-  load(replay: Uint8Array, name?: string): Promise<ViewedReplay>;
+  /**
+   * Plays this replay (a whole .rep file) from the start, paused at frame 0. A load asked for before the last finished
+   * replaces it.
+   *
+   * `dataSet` (0.17.0) is the mod the replay was played with (the replay's `SCMJ` tag, as `playReplay` takes it; only
+   * `hash` and `live` are used): the view's page plays a mod only as its address names it (`?view&mod=<hash>`, with
+   * `&lift=live` when `live`) and never switches to another, so the view is loaded at that address first when it
+   * stands at another, and back at its own (`?view`, the game's own data) for a replay without one. Its files are not
+   * sent: the page plays the mod it keeps under `hash`, and says in the rejection when it has not got it. A page from
+   * before ignores the address's mod; one from scm-sim's R2b on loads itself again with `?lift=live` where the replay
+   * needs it and `live` was not said.
+   */
+  load(replay: Uint8Array, name?: string, dataSet?: ReplayDataSet | null): Promise<ViewedReplay>;
   play(playing: boolean): void;
   /** 1 is Fastest, the game's own pace; 2, 4, 8, 16 faster. */
   speed(multiplier: number): void;
@@ -778,6 +798,11 @@ export interface ScmSimService {
    * the play page saved carries its mod in an `SCMJ` section, and the page reads that first): the page plays it with
    * the mod it keeps under `hash`, takes `files` as a dropped mod when it has not got it, or says what the replay needs
    * and where `url` publishes it. `null` is the game's own data. A page from before 0.16.0 ignores it.
+   *
+   * `dataSet.live` (0.17.0): the mod's code ran in the replay's game (its plugins, or its FireGraft project's exe
+   * edits), which the page runs only with `?lift=live` in its address: the tab is opened there (an open tab without
+   * it is pointed there first). Without it, a page from scm-sim's R2b on loads itself again with `?lift=live` for a
+   * tagged replay that needs it (the replay handed over again on its new `ready`); an older one refuses in a sentence.
    */
   playReplay?(replay: { bytes: Uint8Array; name: string; dataSet?: ReplayDataSet | null }, at: { frame: number; player?: number }): Promise<void>;
   /**
@@ -859,8 +884,11 @@ export interface LiveFile { path: string; bytes: Uint8Array }
  * The mod a replay was played with, as `playReplay` hands it to the play page (0.16.0): `hash` as the page presents
  * the mod (16 hex digits: the replay's `SCMJ` tag, `Replay.mod.dataSet.hash` in `@scm-js/replay`), its name, its
  * makers' page, and its files in the game's paths when the editor has them (`files`, as Test Map's mod test hands them).
+ * `live` (0.17.0): the mod's code ran — plugins ran (the tag's `plugins` is not empty), or its FireGraft project's exe
+ * edits were written (`firegraft` named and the engine a lifter, not "shipped") — so the page is opened with its live
+ * lifter (`?lift=live`).
  */
-export interface ReplayDataSet { hash: string; name?: string; url?: string; files?: LiveFile[] }
+export interface ReplayDataSet { hash: string; name?: string; url?: string; files?: LiveFile[]; live?: boolean }
 /** What became of one field or file, in words (`message`); the field's value before (`was`) when it was written. */
 export interface LiveItem { table?: string; id?: number; field?: string; part?: string; value?: number; was?: number; path?: string; message: string }
 /**

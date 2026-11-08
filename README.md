@@ -158,17 +158,22 @@ mod and asks for its folder, with the makers' link, and plays the replay once th
 dropped. A copy of the mod of another version is refused. A replay saved by the play page
 names its mod itself, and the page reads that first.
 
-A mod whose plugins ran in the game (Cosmonarchy's do) plays only on a play page that runs
-them, which the page does when its address ends in `?lift=live`. The page opened by Play From
-Here does not, and says so: add `?lift=live` to its address and load it, and the replay is
-handed to it again.
+A mod whose code ran in the game (its plugins, as Cosmonarchy's do, or its FireGraft
+project's changes to the game's program) plays only on a play page that runs it: one whose
+address has `?lift=live`. With the scm-sim plugin 0.17.0, Play From Here opens the page that
+way for such a replay, and the play page also reloads itself with `?lift=live` when it is
+handed one without it.
 
-The Replay view and the analysis (the Game and Fights tabs, Analysis, Cast) do not play a
-mod's replay yet: the engine they use plays the game's own files. What is shown is the
-players' orders. A mod may send commands of its own, which the game does not have; the panel
-counts their command blocks, and they are left out of the analysis. The Build tab's choice
-of workers and town halls goes by the game's own unit numbers, which a mod may give other
-units.
+With the scm-sim plugin 0.17.0 and a play page that knows a mod's replays, the Replay view
+plays a mod's replay with its mod too: the view loads with the mod the replay names (from the
+copy the browser keeps), and with `?lift=live` when its code ran. With older ones the tab of a
+mod's replay shows the map only.
+
+The analysis (the Game and Fights tabs, Analysis, Cast) does not play a mod's replay yet: it
+plays replays with the game's own files. What is shown is the players' orders. A mod may send
+commands of its own, which the game does not have; the panel counts their command blocks, and
+they are left out of the analysis. The Build tab's choice of workers and town halls goes by
+the game's own unit numbers, which a mod may give other units.
 
 ### On the map
 

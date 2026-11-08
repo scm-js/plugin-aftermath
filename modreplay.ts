@@ -152,15 +152,24 @@ export function safeLink(url: string | null): string | null {
 }
 
 /**
- * The mod a replay was played with, as Play From Here hands it to the play page beside the replay (scm-sim 0.16.0's
- * `ReplayDataSet`): the tag's hash, the mod's name and its makers' page (a safe link only). Never its files: a mod is
- * hundreds of megabytes, and the page plays the replay with the copy it keeps under that hash, or asks for the mod's
- * folder with the link. Undefined for a replay of the game itself, which hands nothing more than before.
+ * Whether the mod's code ran in the game the replay records, which the play page runs only with its live lifter
+ * (`?lift=live`): its plugins ran, or its FireGraft project's exe edits were written — the tag names the project and an
+ * engine that was a lifter, not the shipped module. scm-sim's replay door goes by the same rule (`replayLift` in its
+ * `src/replay/door.ts`): a project whose engine the tag does not name is left to the page as it is.
+ */
+export const liveLifter = (tag: ModTag): boolean => tag.plugins.length > 0 || (tag.firegraft !== null && tag.engine !== null && tag.engine.lifter !== "shipped");
+
+/**
+ * The mod a replay was played with, as Play From Here and the Replay view hand it to scm-sim (its `ReplayDataSet`):
+ * the tag's hash, the mod's name, its makers' page (a safe link only), and `live` when the mod's code ran
+ * (`liveLifter`, 0.17.0: the page is opened with `?lift=live`). Never its files: a mod is hundreds of megabytes, and the
+ * page plays the replay with the copy it keeps under that hash, or asks for the mod's folder with the link. Undefined
+ * for a replay of the game itself, which hands nothing more than before.
  */
 export function replayDataSet(tag: ModTag | null): ReplayDataSet | undefined {
   if (!tag) return undefined;
   const url = safeLink(tag.dataSet.url);
-  return { hash: tag.dataSet.hash, ...(tag.dataSet.name ? { name: tag.dataSet.name } : {}), ...(url ? { url } : {}) };
+  return { hash: tag.dataSet.hash, ...(tag.dataSet.name ? { name: tag.dataSet.name } : {}), ...(url ? { url } : {}), ...(liveLifter(tag) ? { live: true } : {}) };
 }
 
 /** The replay as `playReplay` takes it: the whole file, its name, and the mod it was played with when the tag says one. */
@@ -168,9 +177,3 @@ export function handedReplay(bytes: Uint8Array, name: string, tag: ModTag | null
   const dataSet = replayDataSet(tag);
   return { bytes, name, ...(dataSet ? { dataSet } : {}) };
 }
-
-/**
- * Whether the mod's plugins ran in the game the replay records: the play page then plays it only with them running,
- * which it does when opened with `?lift=live` (scm-sim's replay door refuses it otherwise, naming the address).
- */
-export const pluginsRan = (tag: ModTag): boolean => !tag.noplugins && tag.plugins.length > 0;
