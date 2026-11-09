@@ -4,7 +4,7 @@ import { readChk } from "../chk";
 import { describe, expect, it } from "vitest";
 import { appendModTag, parseReplay, type ModTag } from "@scm-js/replay";
 import { chk, cmds, le16, writeReplay } from "@scm-js/replay/write";
-import { assumedDataSet, assumedTag, dataSetHash, engineReason, engineSentence, folderHashes, gameName, handedReplay, hashLines, isReplaysMod, modAnalysis, modFolder, modHashPending, modRoot, modSigns, liveLifter, openModOf, pickedModFiles, playsModReplays, pluginNames, REMASTERED_TERRAIN_GROUPS, replayDataSet, safeLink, sha256 } from "../modreplay";
+import { assumedDataSet, assumedTag, dataSetHash, engineReason, engineSentence, folderHashes, gameName, handedReplay, hashLines, hashLinesAsWere, isReplaysMod, isSystemFile, SYSTEM_FILES, modAnalysis, modFolder, modHashPending, modRoot, modSigns, liveLifter, openModOf, pickedModFiles, playsModReplays, pluginNames, REMASTERED_TERRAIN_GROUPS, replayDataSet, safeLink, sha256 } from "../modreplay";
 
 const blob = (s: string) => new Blob([new TextEncoder().encode(s)]);
 const tag = (more: Partial<ModTag> = {}): ModTag => ({
@@ -87,6 +87,75 @@ describe("the data set's hash", () => {
     expect(isReplaysMod(tag({ dataSet: { hash: h.all, name: "", url: null } }), h)).toBe(true);
     expect(isReplaysMod(tag({ dataSet: { hash: h.changed, name: "", url: null } }), h)).toBe(true);
     expect(isReplaysMod(tag(), h)).toBe(false);
+  });
+});
+
+describe("an operating system's files are not a mod's", () => {
+  const digest = (s: string) => createHash("sha256").update(s).digest("hex");
+  /** The rule as it was until 2026-11-09, written out: every line, sorted by name, SHA-256, sixteen hex digits. */
+  const ruleAsWas = (files: Record<string, string>) => createHash("sha256").update(Object.keys(files).sort().map((n) => `${n}\t${digest(files[n])}`).join("\n")).digest("hex").slice(0, 16);
+  const MOD: Record<string, string> = { "arr/units.dat": "a made units.dat", "sound/made/new.wav": "RIFF made sound", "lua/.gitignore": "*.bak", "plugins/x.qdp": "a plugin's bytes", "y.fgp": "a project" };
+  /** One file of each kind the list names, under a game folder (and the zip folder macOS makes). */
+  const SYSTEM: Record<string, string> = {
+    "sound/desktop.ini": "[ViewState]", "sound/made/Desktop.INI": "[ViewState]", "unit/Thumbs.db": "t", "unit/ehthumbs.db": "t", "unit/ehthumbs_vista.db": "t",
+    "arr/.DS_Store": "Bud1", "arr/._units.dat": "fork", "arr/Icon\r": "", "lua/.directory": "[Dolphin]", "arr/__MACOSX/units.dat": "anything under that folder",
+  };
+  /** Names that only hold one of the list's: files of the mod like any other. */
+  const NOT_SYSTEM = ["sound/mydesktop.ini", "sound/desktop.ini.bak", "sound/desktop.ini/voice.wav", "unit/thumbs.db.txt", "unit/xthumbs.db", "arr/.ds_store2", "arr/a._b", "arr/_.units.dat", "lua/x.directory", "arr/icon", "my__macosx/units.dat", "samase/config.ini"];
+  const picked = (files: Record<string, string>) => modFolder(Object.entries(files).map(([path, data]) => ({ path: `Made/${path}`, file: blob(data) })));
+  const names = (files: Record<string, string>) => Object.fromEntries(Object.entries(files).map(([p, d]) => [p.replace(/\//g, "\\").toLowerCase(), d]));
+
+  it("is told by name alone, any case and either slash; a name that only holds one is a file like any other", () => {
+    for (const path of Object.keys(SYSTEM)) {
+      expect(isSystemFile(path), path).toBe(true);
+      expect(isSystemFile(path.toUpperCase().replace(/\//g, "\\")), path).toBe(true);
+    }
+    expect(isSystemFile("__MACOSX/arr/._units.dat")).toBe(true);
+    for (const path of NOT_SYSTEM) expect(isSystemFile(path), path).toBe(false);
+    for (const name of SYSTEM_FILES.names) expect(Object.keys(SYSTEM).some((p) => p.toLowerCase().endsWith(`/${name}`)), JSON.stringify(name)).toBe(true);
+  });
+
+  it("a picked folder hashes alike with each of them and without, and other with a file that only holds the name", async () => {
+    const plain = await folderHashes(picked(MOD), async () => null);
+    expect(plain.older).toEqual([]);
+    for (const [path, data] of Object.entries(SYSTEM)) {
+      const folder = picked({ ...MOD, [path]: data });
+      expect([...folder.files.keys()], path).toEqual([...picked(MOD).files.keys()]);
+      const h = await folderHashes(folder, async () => null);
+      expect({ ...h, older: [] }, path).toEqual(plain);
+    }
+    for (const path of NOT_SYSTEM) {
+      const h = await folderHashes(picked({ ...MOD, [path]: "x" }), async () => null);
+      expect(h.hash, path).not.toBe(plain.hash);
+      expect(h.older, path).toEqual([]);
+    }
+    // macOS's half of a plugin or of a project is neither, and the zip folder's files are no files of the mod
+    const forked = picked({ ...MOD, "plugins/._x.qdp": "fork", "._y.fgp": "fork", "__MACOSX/arr/._units.dat": "fork" });
+    expect([...forked.plugins.keys()]).toEqual(["x.qdp"]);
+    expect([...forked.firegraft.keys()]).toEqual(["y.fgp"]);
+    expect((await folderHashes(forked, async () => null)).hash).toBe(plain.hash);
+    // the rule itself drops such a line, whatever list it is given
+    expect(await hashLines([`arr\\units.dat\t${"1".repeat(64)}`, `sound\\desktop.ini\t${"2".repeat(64)}`])).toBe(await hashLines([`arr\\units.dat\t${"1".repeat(64)}`]));
+    expect(await hashLinesAsWere([`arr\\units.dat\t${"1".repeat(64)}`, `sound\\desktop.ini\t${"2".repeat(64)}`])).not.toBe(await hashLines([`arr\\units.dat\t${"1".repeat(64)}`]));
+  });
+
+  it("a replay tagged while they had lines still names the folder, when the folder shows them", async () => {
+    const seen = { ...MOD, "sound/desktop.ini": "[ViewState]", "sound/cm/desktop.ini": "[ViewState]" };
+    const game = names({ "arr/units.dat": MOD["arr/units.dat"], "sound/made/new.wav": MOD["sound/made/new.wav"], "lua/.gitignore": MOD["lua/.gitignore"], "sound/desktop.ini": "[ViewState]", "sound/cm/desktop.ini": "[ViewState]" });
+    const under = async (member: string) => (member === "arr\\units.dat" ? new TextEncoder().encode(MOD["arr/units.dat"]) : null);
+    const h = await folderHashes(picked(seen), under);
+    const plain = await folderHashes(picked(MOD), under);
+    expect({ ...h, older: [] }).toEqual(plain);
+    // the four forms as they were, every line written out: with the plugins, without, the game files alone, those that differ
+    const { "arr\\units.dat": _same, ...differ } = game;
+    const were = [ruleAsWas({ ...game, "y.fgp": MOD["y.fgp"], "plugins\\x.qdp": MOD["plugins/x.qdp"] }), ruleAsWas({ ...game, "y.fgp": MOD["y.fgp"] }), ruleAsWas(game), ruleAsWas(differ)];
+    expect(h.older).toEqual(were);
+    for (const hash of were) {
+      expect(isReplaysMod(tag({ dataSet: { hash, name: "", url: null } }), h), hash).toBe(true);
+      // a folder picked through the browser's folder picker does not show the files: it cannot be told by that hash
+      expect(isReplaysMod(tag({ dataSet: { hash, name: "", url: null } }), plain), hash).toBe(false);
+    }
+    expect(isReplaysMod(tag({ dataSet: { hash: h.hash, name: "", url: null } }), plain)).toBe(true);
   });
 });
 
