@@ -149,7 +149,19 @@ export interface ReplayTimeline {
   check?: ReplayCheck | null;
   /** Who saw what, when; from timeline version 5, absent before. */
   sight?: Sightings | null;
+  /**
+   * The mod the replay was played with (0.18.0, a page whose `status().features` has "modAnalysis"): absent or null
+   * for the game's own data.
+   */
+  mod?: AnalysedMod | null;
 }
+
+/**
+ * The mod a replay of a mod was played with by the engine (0.18.0, scm-sim's R4): `hash`, the one the replay named (its
+ * `SCMJ` tag, else `AnalyseOptions.dataSet`); `name`, the kept mod's; `plugins`, those that ran in load order by file
+ * name (empty where none ran); `lifter`, what lifted the game's code (null: the shipped module).
+ */
+export interface AnalysedMod { hash: string; name: string; plugins: string[]; lifter: string | null }
 
 export interface AnalyseProgress {
   /** "starting": the engine is being fetched and the game started. "playing": `frame` of `frames`. */
@@ -165,6 +177,16 @@ export interface AnalyseOptions {
   positionsEvery?: number;
   /** The file's name, for the engine's own messages. */
   name?: string;
+  /**
+   * The mod the replay was played with, for a replay whose file does not say it (0.18.0; only `hash`, `name`, `url` and
+   * `live` are sent, never `files`). A replay the play page saved names its mod in an `SCMJ` section, which the page
+   * reads first. A page whose `status().features` has "modAnalysis" plays the replay with the mod this browser keeps
+   * under that hash (as the play page keeps it: the same site), with its plugins where they ran, and says what it
+   * played with in `ReplayTimeline.mod`; it rejects in a sentence naming the mod, its hash and `url` when the browser
+   * has not got it, or keeps another version. `null` or left out: the replay's own tag, or the game's own data. A page
+   * from before it plays a replay of a mod with the game's own files, or refuses a tagged one: check `features` first.
+   */
+  dataSet?: ReplayDataSet | null;
   onProgress?(progress: AnalyseProgress): void;
   /** Aborting stops the game and rejects the promise with an `AbortError`. */
   signal?: AbortSignal;
@@ -218,7 +240,9 @@ export interface ScmSimStatus {
    * What the site's play page says it does that a page from before did not (0.17.0, from scm-sim's R2b; the analysis
    * page is of the same build): "replayDoor" (a replay's mod is read from its `SCMJ` tag and played, switched to or
    * asked for), "liveSwitch" (a replay of a mod whose code ran loads the page again with `?lift=live` rather than
-   * refusing). Names are only ever added; empty from a page before them or one that could not be asked.
+   * refusing), and on the analysis page "modAnalysis" (0.18.0, scm-sim's R4: `analyse` and `fights` play a replay of a
+   * mod with the mod the browser keeps, `AnalyseOptions.dataSet`). Names are only ever added; empty from a page before
+   * them or one that could not be asked.
    */
   features?: string[];
 }
@@ -265,6 +289,8 @@ export interface FightsResult {
   version: number;
   /** In the order asked; null for a fight the replay ends before. */
   fights: (FightResult | null)[];
+  /** The mod the replay was played with (0.18.0, as `ReplayTimeline.mod`); absent or null for the game's own data. */
+  mod?: AnalysedMod | null;
 }
 export interface FightsProgress { stage: "starting" | "playing"; frame: number; frames: number }
 export interface FightsOptions {
@@ -275,6 +301,11 @@ export interface FightsOptions {
   tail?: number;
   /** Pixels the box is widened by on every side (default 256). */
   margin?: number;
+  /**
+   * The mod the replay was played with, as `AnalyseOptions.dataSet` (0.18.0). While the mod's plugins run the page
+   * rejects in a sentence: playing a fight again puts the game back to an earlier moment, which it cannot do yet with them.
+   */
+  dataSet?: ReplayDataSet | null;
   /** `frame` of `frames`: the replay played up to the last fight's start. */
   onProgress?(progress: FightsProgress): void;
   /** Aborting stops the game and rejects the promise with an `AbortError`. */
@@ -775,7 +806,8 @@ export interface ScmSimService {
   /**
    * Plays a replay to its end without showing it and resolves with what happened. A
    * twenty-minute game takes about ten to fifteen seconds; one replay runs at a time and
-   * further calls wait their turn. Rejects with an `Error` worded for the person.
+   * further calls wait their turn. Rejects with an `Error` worded for the person. A replay of a mod
+   * (0.18.0): see `AnalyseOptions.dataSet`.
    */
   analyse(replay: Uint8Array, options?: AnalyseOptions): Promise<ReplayTimeline>;
   /**

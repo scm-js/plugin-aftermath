@@ -14,7 +14,7 @@
  * so a mod that keeps files in one hashes otherwise here than on the play page.
  */
 import type { ModTag } from "@scm-js/replay";
-import type { ReplayDataSet } from "./vendor/scm-sim";
+import type { AnalysedMod, ReplayDataSet } from "./vendor/scm-sim";
 
 /** A file of a picked folder, as `api.ui.pickFiles({ directory: true })` gives them: the path from the folder's parent. */
 export interface PickedFile {
@@ -176,4 +176,30 @@ export function replayDataSet(tag: ModTag | null): ReplayDataSet | undefined {
 export function handedReplay(bytes: Uint8Array, name: string, tag: ModTag | null): { bytes: Uint8Array; name: string; dataSet?: ReplayDataSet } {
   const dataSet = replayDataSet(tag);
   return { bytes, name, ...(dataSet ? { dataSet } : {}) };
+}
+
+/**
+ * Whether the engine's page plays a replay of a mod with its mod (scm-sim's R4, plugin-scm-sim 0.18.0: its `features`
+ * has "modAnalysis", and `analyse` and `fights` are given the replay's `dataSet`). An older page plays every replay with
+ * the game's own files, which for a mod's replay is another game: it is not asked.
+ */
+export const playsModReplays = (features: readonly string[] | null | undefined): boolean => !!features?.includes("modAnalysis");
+
+/** What the analysis did with a replay of a mod, for the mod panel's sentence. */
+export type ModAnalysis =
+  /** Played it with the mod: the timeline's `mod`. */
+  | { kind: "played"; mod: AnalysedMod }
+  /** No engine, or one from before R4: it plays replays with the game's own files, so it does not play this one. */
+  | { kind: "older" }
+  /** The engine's sentence: the mod not kept in this browser (its hash and the makers' link), another version of it. */
+  | { kind: "failed"; reason: string }
+  /** Not yet: it will be played with the mod this browser keeps. */
+  | { kind: "waiting" };
+
+/** `played`: the timeline's mod; `engine`: an engine is beside the editor; `features`: what its page said (null: not asked yet). */
+export function modAnalysis(o: { played: AnalysedMod | null | undefined; engine: boolean; features: readonly string[] | null; failed: string | null }): ModAnalysis {
+  if (o.played) return { kind: "played", mod: o.played };
+  if (!o.engine || (o.features !== null && !playsModReplays(o.features))) return { kind: "older" };
+  if (o.failed) return { kind: "failed", reason: o.failed };
+  return { kind: "waiting" };
 }
