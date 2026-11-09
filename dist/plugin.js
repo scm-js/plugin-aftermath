@@ -561,7 +561,8 @@ var QUEUEABLE = /* @__PURE__ */ new Set([
   45
 ]);
 var ORDER_LAND = 71;
-function readCommands(d) {
+function readCommands(d, format) {
+  const legacy2 = format === "legacy";
   const commands = [];
   let unknown = 0;
   const dv = new DataView(d.buffer, d.byteOffset, d.byteLength);
@@ -589,6 +590,11 @@ function readCommands(d) {
         player,
         type
       };
+      if (legacy2 && type >= 96 && type <= 101) {
+        unknown++;
+        p = end;
+        break;
+      }
       try {
         switch (type) {
           case 20:
@@ -892,7 +898,7 @@ async function parseReplay(bytes, unzip = inflate) {
   await section(r, 4, format, unzip);
   if (format === "1.21") r.u32();
   const { header, slots } = readHeader(await section(r, 633, format, unzip), format);
-  const { commands, unknown } = readCommands(await sized(r, format, unzip));
+  const { commands, unknown } = readCommands(await sized(r, format, unzip), format);
   const chk = await sized(r, format, unzip);
   let mod = null;
   let run = format === "legacy";
@@ -1240,6 +1246,16 @@ function safeLink(url) {
   } catch {
     return null;
   }
+}
+var liveLifter = (tag2) => tag2.plugins.length > 0 || tag2.firegraft !== null && tag2.engine !== null && tag2.engine.lifter !== "shipped";
+function replayDataSet(tag2) {
+  if (!tag2) return void 0;
+  const url = safeLink(tag2.dataSet.url);
+  return { hash: tag2.dataSet.hash, ...tag2.dataSet.name ? { name: tag2.dataSet.name } : {}, ...url ? { url } : {}, ...liveLifter(tag2) ? { live: true } : {} };
+}
+function handedReplay(bytes, name, tag2) {
+  const dataSet = replayDataSet(tag2);
+  return { bytes, name, ...dataSet ? { dataSet } : {} };
 }
 
 // ko.ts
@@ -1761,7 +1777,14 @@ var KO = {
   "Reading the mod: {done} of {n} files\u2026": "\uBAA8\uB4DC\uB97C \uC77D\uB294 \uC911: \uD30C\uC77C {n}\uAC1C \uC911 {done}\uAC1C\u2026",
   "Units, upgrades and technologies show by id until the editor draws with the mod: attach the mod's folder, and it is checked against the replay first.": "\uD3B8\uC9D1\uAE30\uAC00 \uBAA8\uB4DC\uB85C \uADF8\uB9AC\uAE30 \uC804\uAE4C\uC9C0 \uC720\uB2DB, \uC5C5\uADF8\uB808\uC774\uB4DC, \uAE30\uC220\uC740 \uBC88\uD638\uB85C \uBCF4\uC785\uB2C8\uB2E4: \uBAA8\uB4DC \uD3F4\uB354\uB97C \uBD99\uC774\uC138\uC694. \uBA3C\uC800 \uB9AC\uD50C\uB808\uC774\uC640 \uAC19\uC740 \uBAA8\uB4DC\uC778\uC9C0 \uD655\uC778\uD569\uB2C8\uB2E4.",
   "Attach the Mod's Folder\u2026": "\uBAA8\uB4DC \uD3F4\uB354 \uBD99\uC774\uAE30\u2026",
-  "The game view, the analysis (the Game and Fights tabs, Analysis, Cast) and Play From Here wait for the play page to play a mod's replay. What is shown is the players' orders, and Aftermath's own rules for workers and town halls go by the game's unit ids, which a mod may give other units.": "\uAC8C\uC784 \uD654\uBA74, \uBD84\uC11D(\uAC8C\uC784\uACFC \uC804\uD22C \uD0ED, \uBD84\uC11D, \uC911\uACC4)\uACFC \uC5EC\uAE30\uC11C\uBD80\uD130 \uD50C\uB808\uC774\uB294 \uD50C\uB808\uC774 \uD398\uC774\uC9C0\uAC00 \uBAA8\uB4DC\uC758 \uB9AC\uD50C\uB808\uC774\uB97C \uC7AC\uC0DD\uD560 \uC218 \uC788\uC744 \uB54C\uAE4C\uC9C0 \uAE30\uB2E4\uB9BD\uB2C8\uB2E4. \uBCF4\uC774\uB294 \uAC83\uC740 \uD50C\uB808\uC774\uC5B4\uB4E4\uC758 \uBA85\uB839\uC774\uBA70, Aftermath\uAC00 \uC77C\uAFBC\uACFC \uBCF8\uC9C4\uC744 \uAC00\uB824\uB0B4\uB294 \uADDC\uCE59\uC740 \uAC8C\uC784\uC758 \uC720\uB2DB \uBC88\uD638\uB97C \uB530\uB974\uB294\uB370, \uBAA8\uB4DC\uB294 \uADF8 \uBC88\uD638\uB97C \uB2E4\uB978 \uC720\uB2DB\uC5D0 \uC904 \uC218 \uC788\uC2B5\uB2C8\uB2E4."
+  "Play From Here and the Replay view play it with the mod.": "\uC5EC\uAE30\uC11C\uBD80\uD130 \uD50C\uB808\uC774\uC640 \uB9AC\uD50C\uB808\uC774 \uD654\uBA74\uC740 \uC774 \uBAA8\uB4DC\uB85C \uC7AC\uC0DD\uD569\uB2C8\uB2E4.",
+  "Play From Here plays it with the mod on the play page.": "\uC5EC\uAE30\uC11C\uBD80\uD130 \uD50C\uB808\uC774\uB294 \uD50C\uB808\uC774 \uD398\uC774\uC9C0\uC5D0\uC11C \uC774 \uBAA8\uB4DC\uB85C \uC7AC\uC0DD\uD569\uB2C8\uB2E4.",
+  "The analysis (the Game and Fights tabs, Analysis, Cast) does not: it plays replays with the game's own files.": "\uBD84\uC11D(\uAC8C\uC784\uACFC \uC804\uD22C \uD0ED, \uBD84\uC11D, \uC911\uACC4)\uC740 \uBAA8\uB4DC\uB85C \uC7AC\uC0DD\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4: \uB9AC\uD50C\uB808\uC774\uB97C \uAC8C\uC784 \uC790\uCCB4\uC758 \uD30C\uC77C\uB85C \uC7AC\uC0DD\uD569\uB2C8\uB2E4.",
+  "What is shown is the players' orders, and Aftermath's own rules for workers and town halls go by the game's unit ids, which a mod may give other units.": "\uBCF4\uC774\uB294 \uAC83\uC740 \uD50C\uB808\uC774\uC5B4\uB4E4\uC758 \uBA85\uB839\uC774\uBA70, Aftermath\uAC00 \uC77C\uAFBC\uACFC \uBCF8\uC9C4\uC744 \uAC00\uB824\uB0B4\uB294 \uADDC\uCE59\uC740 \uAC8C\uC784\uC758 \uC720\uB2DB \uBC88\uD638\uB97C \uB530\uB974\uB294\uB370, \uBAA8\uB4DC\uB294 \uADF8 \uBC88\uD638\uB97C \uB2E4\uB978 \uC720\uB2DB\uC5D0 \uC904 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+  "{n, plural, one {# command block is the mod's own and is not analysed.} other {# command blocks are the mod's own and are not analysed.}}": "\uBA85\uB839 \uBB36\uC74C {n}\uAC1C\uB294 \uBAA8\uB4DC \uC790\uCCB4\uC758 \uAC83\uC774\uB77C \uBD84\uC11D\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
+  "It was played with {name}: the play page plays it with that mod if this browser keeps it, and otherwise asks for the mod's folder, which its makers publish at {link}.": "{name}(\uC73C)\uB85C \uD50C\uB808\uC774\uD55C \uB9AC\uD50C\uB808\uC774\uC785\uB2C8\uB2E4: \uC774 \uBE0C\uB77C\uC6B0\uC800\uC5D0 \uADF8 \uBAA8\uB4DC\uAC00 \uC788\uC73C\uBA74 \uD50C\uB808\uC774 \uD398\uC774\uC9C0\uAC00 \uADF8 \uBAA8\uB4DC\uB85C \uC7AC\uC0DD\uD558\uACE0, \uC5C6\uC73C\uBA74 \uBAA8\uB4DC \uD3F4\uB354\uB97C \uC694\uCCAD\uD569\uB2C8\uB2E4. \uBAA8\uB4DC\uB294 \uC81C\uC791\uC790\uAC00 {link}\uC5D0\uC11C \uBC30\uD3EC\uD569\uB2C8\uB2E4.",
+  "It was played with {name}: the play page plays it with that mod if this browser keeps it, and otherwise asks for the mod's folder.": "{name}(\uC73C)\uB85C \uD50C\uB808\uC774\uD55C \uB9AC\uD50C\uB808\uC774\uC785\uB2C8\uB2E4: \uC774 \uBE0C\uB77C\uC6B0\uC800\uC5D0 \uADF8 \uBAA8\uB4DC\uAC00 \uC788\uC73C\uBA74 \uD50C\uB808\uC774 \uD398\uC774\uC9C0\uAC00 \uADF8 \uBAA8\uB4DC\uB85C \uC7AC\uC0DD\uD558\uACE0, \uC5C6\uC73C\uBA74 \uBAA8\uB4DC \uD3F4\uB354\uB97C \uC694\uCCAD\uD569\uB2C8\uB2E4.",
+  "A replay of a mod": "\uBAA8\uB4DC\uC758 \uB9AC\uD50C\uB808\uC774"
 };
 
 // played.ts
@@ -3036,6 +3059,11 @@ var GameView = class {
   /** Whether the engine can play here: unknown until asked, then kept. */
   canPlay = null;
   asking = null;
+  /**
+   * Whether the view plays a mod's replay with its mod: the scm-sim plugin's view takes the mod (0.17.0) and the play
+   * page reads it (its `features` say "replayDoor"). Known once `available` has asked; false until then.
+   */
+  playsMods = false;
   sim = null;
   changed;
   /**
@@ -3295,13 +3323,17 @@ var GameView = class {
     this.sim = sim;
     this.canPlay = null;
     this.asking = null;
+    this.playsMods = false;
   }
   /** Whether the Game view can be offered: the scm-sim plugin has one, and the browser has the game's files. */
   async available() {
     const sim = this.sim;
     if (!sim?.present || typeof sim.view !== "function") return false;
     if (this.canPlay !== null) return this.canPlay;
-    this.asking ??= sim.status().then((s) => this.canPlay = s.available, () => this.canPlay = false);
+    this.asking ??= sim.status().then((s) => {
+      this.playsMods = s.available && (s.features ?? []).includes("replayDoor");
+      return this.canPlay = s.available;
+    }, () => this.canPlay = false);
     return this.asking;
   }
   /**
@@ -3310,6 +3342,7 @@ var GameView = class {
    */
   async offer(entry, show, start) {
     if (entry.docId === null || !await this.available()) return false;
+    if (entry.dataSet && !this.playsMods) return false;
     this.handle.offer(true, entry.docId);
     if (show) this.handle.show(true, entry.docId);
     if (show && start && !this.holds(entry.id)) this.look = { x: start.x, y: start.y, width: 0, height: GAME_ROWS };
@@ -3404,7 +3437,7 @@ var GameView = class {
       this.said = null;
       this.settle(true);
       try {
-        const viewed = await view.load(entry.bytes, entry.fileName);
+        const viewed = await view.load(entry.bytes, entry.fileName, entry.dataSet ?? null);
         this.tracks = viewed.follows === true && typeof view.follow === "function";
       } catch (err) {
         if (this.wanted !== entry.id) return false;
@@ -6426,7 +6459,7 @@ function activate(api) {
   const gameClock = () => current !== null && game.shown && game.holds(current.id);
   function handOver(on) {
     const entry = current;
-    if (!entry || on && entry.mod) return;
+    if (!entry || on && entry.mod && !game.playsMods) return;
     if (on) {
       cancelAnimationFrame(raf);
       const asked = entry.frame;
@@ -6444,15 +6477,13 @@ function activate(api) {
   }
   function gameFor(entry) {
     if (entry.docId === null) return;
-    if (entry.mod) {
-      if (game.shown) game.show(false);
-      return;
-    }
+    if (entry.mod && game.shown && !game.holds(entry.id) && !game.playsMods) game.show(false);
     if (!offered.has(entry.id)) {
       offered.add(entry.id);
       const at = startTile(entry);
       void game.offer(entry, true, { x: at.tx * 32 + 16, y: at.ty * 32 + 16 }).then((ok) => {
         if (!ok) offered.delete(entry.id);
+        if (entry.mod) side?.render();
       });
       return;
     }
@@ -6476,7 +6507,7 @@ function activate(api) {
         const replay = await parseReplay(bytes);
         const id = nextId++, map = readChk(replay.chk);
         const group = [...loaded, ...batch].find((l) => likeness(map, l.map) >= SAME_MAP)?.group ?? id;
-        batch.push({ id, fileName: file.name, report: analyse(replay), map, bytes, docId: null, group, excluded: false, frame: 0, hidden: /* @__PURE__ */ new Set(), played: null, failed: null, eyes: null, again: null, mod: replay.mod ?? null });
+        batch.push({ id, fileName: file.name, report: analyse(replay), map, bytes, docId: null, group, excluded: false, frame: 0, hidden: /* @__PURE__ */ new Set(), played: null, failed: null, eyes: null, again: null, mod: replay.mod ?? null, ...replay.mod ? { dataSet: replayDataSet(replay.mod) } : {} });
       } catch (err) {
         const detail = err instanceof ReplayError ? translate(err.message) : String(err);
         api.ui.toast({ kind: "error", title: t("Could not read {name}", { name: file.name }), detail });
@@ -8616,7 +8647,9 @@ function activate(api) {
           void attachMod(entry);
         } })
       );
-      box.append(w.hint(t("The game view, the analysis (the Game and Fights tabs, Analysis, Cast) and Play From Here wait for the play page to play a mod's replay. What is shown is the players' orders, and Aftermath's own rules for workers and town halls go by the game's unit ids, which a mod may give other units.")));
+      const own = entry.report.replay.unknownCommands;
+      if (own > 0) box.append(el("div", { className: "afm-dim" }, t("{n, plural, one {# command block is the mod's own and is not analysed.} other {# command blocks are the mod's own and are not analysed.}}", { n: own })));
+      box.append(w.hint(`${game.playsMods ? t("Play From Here and the Replay view play it with the mod.") : t("Play From Here plays it with the mod on the play page.")} ${t("The analysis (the Game and Fights tabs, Analysis, Cast) does not: it plays replays with the game's own files.")} ${t("What is shown is the players' orders, and Aftermath's own rules for workers and town halls go by the game's unit ids, which a mod may give other units.")}`));
       this.root.append(box);
     }
     render() {
@@ -8644,7 +8677,7 @@ function activate(api) {
       if (entry.mod) this.renderMod(entry, entry.mod);
       const parted = entry.played?.timeline.check?.parted ?? null;
       if (parted !== null) this.root.append(el("div", { className: "afm-warn" }, t("From {time} the game played here is not the game in the replay: a player gave an order to a unit that had not been made. What is shown after that moment is not what happened, and this game is left out of Map stats.", { time: formatTime(parted) })));
-      if (rep.unknownCommands > 0) this.root.append(w.hint(t("{n, plural, one {# command of a kind Aftermath does not know was skipped.} other {# commands of a kind Aftermath does not know were skipped.}}", { n: rep.unknownCommands })));
+      if (rep.unknownCommands > 0 && !entry.mod) this.root.append(w.hint(t("{n, plural, one {# command of a kind Aftermath does not know was skipped.} other {# commands of a kind Aftermath does not know were skipped.}}", { n: rep.unknownCommands })));
       const list = el("div", { className: "afm-players" });
       for (const p of entry.report.players) {
         const readout = el("span", { className: "afm-live" });
@@ -9232,14 +9265,18 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
         }
       }) : null;
       const castMore = castButton && castState === "ready" ? w.button(t("Cast\u2026"), { className: "sm", title: t("Make a new cast, or watch another kept in this browser"), onClick: () => openCastWindow() }) : null;
-      const playHere = sim?.present && sim.playReplay && !entry.mod ? w.button(t("Play From Here"), {
+      const modTag = entry.mod;
+      const modLink = modTag ? safeLink(modTag.dataSet.url) : null;
+      const modSays = modTag ? modLink ? t("It was played with {name}: the play page plays it with that mod if this browser keeps it, and otherwise asks for the mod's folder, which its makers publish at {link}.", { name: modTag.dataSet.name || modTag.dataSet.hash, link: modLink }) : t("It was played with {name}: the play page plays it with that mod if this browser keeps it, and otherwise asks for the mod's folder.", { name: modTag.dataSet.name || modTag.dataSet.hash }) : null;
+      const playHere = sim?.present && sim.playReplay ? w.button(t("Play From Here"), {
         className: "sm",
-        title: t("Open this replay on the play page at this moment and play on from there: as one of its players, alone, against a community bot, or with others"),
+        title: modSays ? `${t("Open this replay on the play page at this moment and play on from there: as one of its players, alone, against a community bot, or with others")}. ${modSays}` : t("Open this replay on the play page at this moment and play on from there: as one of its players, alone, against a community bot, or with others"),
         onClick: () => {
           const frame = Math.round((gameClock() ? game.frameNow(settings.speed) : null) ?? entry.frame);
           if (playing3) stop();
           const player = entry.eyes ?? entry.report.players[0]?.player.slot;
-          sim.playReplay({ bytes: entry.bytes, name: entry.fileName }, { frame, ...player !== void 0 ? { player } : {} }).catch((err) => api.ui.toast({ kind: "error", title: t("The play page could not open the replay"), detail: err instanceof Error ? err.message : String(err) }));
+          sim.playReplay(handedReplay(entry.bytes, entry.fileName, entry.mod), { frame, ...player !== void 0 ? { player } : {} }).catch((err) => api.ui.toast({ kind: "error", title: t("The play page could not open the replay"), detail: err instanceof Error ? err.message : String(err) }));
+          if (modSays) api.ui.toast({ kind: "info", title: t("A replay of a mod"), detail: modSays });
         }
       }) : null;
       const cinemaButton = cinemaPossible() ? w.button(t("Cinematic"), { className: "sm", title: t("The game full screen, dressed as a broadcast, without the editor around it. Esc leaves."), onClick: () => {
