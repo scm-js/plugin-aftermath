@@ -1257,6 +1257,13 @@ function handedReplay(bytes, name, tag2) {
   const dataSet = replayDataSet(tag2);
   return { bytes, name, ...dataSet ? { dataSet } : {} };
 }
+var playsModReplays = (features) => !!features?.includes("modAnalysis");
+function modAnalysis(o) {
+  if (o.played) return { kind: "played", mod: o.played };
+  if (!o.engine || o.features !== null && !playsModReplays(o.features)) return { kind: "older" };
+  if (o.failed) return { kind: "failed", reason: o.failed };
+  return { kind: "waiting" };
+}
 
 // ko.ts
 var KO = {
@@ -1780,6 +1787,10 @@ var KO = {
   "Play From Here and the Replay view play it with the mod.": "\uC5EC\uAE30\uC11C\uBD80\uD130 \uD50C\uB808\uC774\uC640 \uB9AC\uD50C\uB808\uC774 \uD654\uBA74\uC740 \uC774 \uBAA8\uB4DC\uB85C \uC7AC\uC0DD\uD569\uB2C8\uB2E4.",
   "Play From Here plays it with the mod on the play page.": "\uC5EC\uAE30\uC11C\uBD80\uD130 \uD50C\uB808\uC774\uB294 \uD50C\uB808\uC774 \uD398\uC774\uC9C0\uC5D0\uC11C \uC774 \uBAA8\uB4DC\uB85C \uC7AC\uC0DD\uD569\uB2C8\uB2E4.",
   "The analysis (the Game and Fights tabs, Analysis, Cast) does not: it plays replays with the game's own files.": "\uBD84\uC11D(\uAC8C\uC784\uACFC \uC804\uD22C \uD0ED, \uBD84\uC11D, \uC911\uACC4)\uC740 \uBAA8\uB4DC\uB85C \uC7AC\uC0DD\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4: \uB9AC\uD50C\uB808\uC774\uB97C \uAC8C\uC784 \uC790\uCCB4\uC758 \uD30C\uC77C\uB85C \uC7AC\uC0DD\uD569\uB2C8\uB2E4.",
+  "The analysis (the Game and Fights tabs, Analysis, Cast) played it with {name} ({hash}) and its plugins: {plugins}.": "\uBD84\uC11D(\uAC8C\uC784\uACFC \uC804\uD22C \uD0ED, \uBD84\uC11D, \uC911\uACC4)\uC740 {name}({hash}) \uBAA8\uB4DC\uC640 \uADF8 \uD50C\uB7EC\uADF8\uC778\uC73C\uB85C \uC7AC\uC0DD\uD588\uC2B5\uB2C8\uB2E4: {plugins}.",
+  "The analysis (the Game and Fights tabs, Analysis, Cast) played it with {name} ({hash}).": "\uBD84\uC11D(\uAC8C\uC784\uACFC \uC804\uD22C \uD0ED, \uBD84\uC11D, \uC911\uACC4)\uC740 {name}({hash}) \uBAA8\uB4DC\uB85C \uC7AC\uC0DD\uD588\uC2B5\uB2C8\uB2E4.",
+  "The analysis could not play it with the mod: {reason}": "\uBD84\uC11D\uC740 \uC774 \uB9AC\uD50C\uB808\uC774\uB97C \uBAA8\uB4DC\uB85C \uC7AC\uC0DD\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4: {reason}",
+  "The analysis (the Game and Fights tabs, Analysis, Cast) plays it with the mod, when this browser keeps it: a mod is added once on the play page.": "\uBD84\uC11D(\uAC8C\uC784\uACFC \uC804\uD22C \uD0ED, \uBD84\uC11D, \uC911\uACC4)\uC740 \uC774 \uBE0C\uB77C\uC6B0\uC800\uC5D0 \uBAA8\uB4DC\uAC00 \uC788\uC73C\uBA74 \uADF8 \uBAA8\uB4DC\uB85C \uC7AC\uC0DD\uD569\uB2C8\uB2E4: \uBAA8\uB4DC\uB294 \uD50C\uB808\uC774 \uD398\uC774\uC9C0\uC5D0\uC11C \uD55C \uBC88 \uCD94\uAC00\uD569\uB2C8\uB2E4.",
   "What is shown is the players' orders, and Aftermath's own rules for workers and town halls go by the game's unit ids, which a mod may give other units.": "\uBCF4\uC774\uB294 \uAC83\uC740 \uD50C\uB808\uC774\uC5B4\uB4E4\uC758 \uBA85\uB839\uC774\uBA70, Aftermath\uAC00 \uC77C\uAFBC\uACFC \uBCF8\uC9C4\uC744 \uAC00\uB824\uB0B4\uB294 \uADDC\uCE59\uC740 \uAC8C\uC784\uC758 \uC720\uB2DB \uBC88\uD638\uB97C \uB530\uB974\uB294\uB370, \uBAA8\uB4DC\uB294 \uADF8 \uBC88\uD638\uB97C \uB2E4\uB978 \uC720\uB2DB\uC5D0 \uC904 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
   "{n, plural, one {# command block is the mod's own and is not analysed.} other {# command blocks are the mod's own and are not analysed.}}": "\uBA85\uB839 \uBB36\uC74C {n}\uAC1C\uB294 \uBAA8\uB4DC \uC790\uCCB4\uC758 \uAC83\uC774\uB77C \uBD84\uC11D\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
   "It was played with {name}: the play page plays it with that mod if this browser keeps it, and otherwise asks for the mod's folder, which its makers publish at {link}.": "{name}(\uC73C)\uB85C \uD50C\uB808\uC774\uD55C \uB9AC\uD50C\uB808\uC774\uC785\uB2C8\uB2E4: \uC774 \uBE0C\uB77C\uC6B0\uC800\uC5D0 \uADF8 \uBAA8\uB4DC\uAC00 \uC788\uC73C\uBA74 \uD50C\uB808\uC774 \uD398\uC774\uC9C0\uAC00 \uADF8 \uBAA8\uB4DC\uB85C \uC7AC\uC0DD\uD558\uACE0, \uC5C6\uC73C\uBA74 \uBAA8\uB4DC \uD3F4\uB354\uB97C \uC694\uCCAD\uD569\uB2C8\uB2E4. \uBAA8\uB4DC\uB294 \uC81C\uC791\uC790\uAC00 {link}\uC5D0\uC11C \uBC30\uD3EC\uD569\uB2C8\uB2E4.",
@@ -7723,6 +7734,7 @@ function activate(api) {
   let sim = null;
   let running = null;
   const queue = [];
+  let engineFeatures = null;
   let againRunning = null;
   function pump() {
     if (running || againRunning || !sim?.present) return;
@@ -7757,9 +7769,14 @@ function activate(api) {
         again.failed = state.reason ?? t("The game engine on this site cannot play a fight again yet.");
         return;
       }
+      if (entry.mod && !playsModReplays(state.features)) {
+        again.failed = t("This replay was played with a mod, which the game engine here does not play replays of yet.");
+        return;
+      }
       const asked = key.map(engagement);
       const result = await sim.fights(entry.bytes, asked, {
         signal: run.controller.signal,
+        ...entry.dataSet ? { dataSet: entry.dataSet } : {},
         onProgress: (p) => {
           again.fraction = p.stage === "playing" && p.frames > 0 ? p.frame / p.frames : -1;
           if (entry === current) side?.update();
@@ -7790,13 +7807,15 @@ function activate(api) {
     entry.failed = null;
     strip?.render();
     try {
-      if (entry.mod) throw new Error(t("This replay was played with a mod, which the game engine here does not play replays of yet."));
       const state = await sim.status();
+      engineFeatures = state.features ?? [];
+      if (entry.mod && !playsModReplays(state.features)) throw new Error(t("This replay was played with a mod, which the game engine here does not play replays of yet."));
       if (!state.available) throw new Error(state.reason ?? t("The game engine cannot run a game here."));
       if (entry.report.replay.format !== "legacy" && (state.timeline ?? 0) < 3) throw new Error(t("The game engine on this site is an older one that plays replays from StarCraft 1.16.1 and earlier only."));
       const timeline = await sim.analyse(entry.bytes, {
         name: entry.fileName,
         signal: run.controller.signal,
+        ...entry.dataSet ? { dataSet: entry.dataSet } : {},
         onProgress: (p) => {
           run.fraction = p.stage === "playing" && p.frames > 0 ? p.frame / p.frames : -1;
           if (entry === current) strip?.update();
@@ -8628,6 +8647,18 @@ function activate(api) {
         void load(files, current && lensOf() === "map" ? current : null);
       });
     }
+    /**
+     * What the analysis did with a replay of a mod, in a sentence: played it with the mod (the timeline's `mod`, scm-sim's
+     * R4), could not (the engine's sentence: the mod not kept in this browser, with its hash and the makers' link, or
+     * another version), will, or — an engine page from before R4 — plays replays with the game's own files.
+     */
+    modAnalysisLine(entry) {
+      const a = modAnalysis({ played: entry.played?.timeline.mod, engine: !!sim?.present, features: engineFeatures, failed: entry.failed });
+      if (a.kind === "played") return a.mod.plugins.length ? t("The analysis (the Game and Fights tabs, Analysis, Cast) played it with {name} ({hash}) and its plugins: {plugins}.", { name: a.mod.name || a.mod.hash, hash: a.mod.hash, plugins: a.mod.plugins.join(", ") }) : t("The analysis (the Game and Fights tabs, Analysis, Cast) played it with {name} ({hash}).", { name: a.mod.name || a.mod.hash, hash: a.mod.hash });
+      if (a.kind === "older") return t("The analysis (the Game and Fights tabs, Analysis, Cast) does not: it plays replays with the game's own files.");
+      if (a.kind === "failed") return t("The analysis could not play it with the mod: {reason}", { reason: a.reason });
+      return t("The analysis (the Game and Fights tabs, Analysis, Cast) plays it with the mod, when this browser keeps it: a mod is added once on the play page.");
+    }
     /** A replay of a mod: which, its makers' link, its plugins, and whether the editor draws with it. */
     renderMod(entry, tag2) {
       const link = safeLink(tag2.dataSet.url);
@@ -8649,7 +8680,7 @@ function activate(api) {
       );
       const own = entry.report.replay.unknownCommands;
       if (own > 0) box.append(el("div", { className: "afm-dim" }, t("{n, plural, one {# command block is the mod's own and is not analysed.} other {# command blocks are the mod's own and are not analysed.}}", { n: own })));
-      box.append(w.hint(`${game.playsMods ? t("Play From Here and the Replay view play it with the mod.") : t("Play From Here plays it with the mod on the play page.")} ${t("The analysis (the Game and Fights tabs, Analysis, Cast) does not: it plays replays with the game's own files.")} ${t("What is shown is the players' orders, and Aftermath's own rules for workers and town halls go by the game's unit ids, which a mod may give other units.")}`));
+      box.append(w.hint(`${game.playsMods ? t("Play From Here and the Replay view play it with the mod.") : t("Play From Here plays it with the mod on the play page.")} ${this.modAnalysisLine(entry)} ${t("What is shown is the players' orders, and Aftermath's own rules for workers and town halls go by the game's unit ids, which a mod may give other units.")}`));
       this.root.append(box);
     }
     render() {
