@@ -1317,7 +1317,7 @@ function modSigns(players, map) {
   return signs;
 }
 function modHashPending(source) {
-  return !!source && source.kind !== "none" && source.profile.id !== "starcraft" && !(source.hash && /^[0-9a-f]{16}$/.test(source.hash));
+  return !!source && source.kind === "reader" && source.profile.id !== "starcraft" && !(source.hash && /^[0-9a-f]{16}$/.test(source.hash));
 }
 function pickedModFiles(picked) {
   return picked.filter((f) => f.path && !f.path.split("/").slice(0, -1).some((part) => part.startsWith("."))).map((f) => ({ path: f.path, file: f.file instanceof File ? f.file : new File([f.file], f.path.split("/").pop() || "file") }));
