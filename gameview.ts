@@ -21,6 +21,7 @@
 import type { Disposable, MapView, MapViewCamera, MapViewHandle, MinimapView, PluginApi } from "@scm-js/plugin-api";
 import type { ReplayDataSet, ScmSimService, ScmSimView, ViewFrame, ViewHover, ViewTrack, ViewUnits } from "./vendor/scm-sim";
 import { FRAME_MS } from "@scm-js/replay";
+import { engineReason, engineSentence, type EngineReason } from "./modreplay";
 
 /** A seek the viewer says is over but that has shown no frame near where it went is settled after this long. */
 const SEEK_GIVE_UP_MS = 2500;
@@ -59,6 +60,11 @@ export interface GameViewHooks {
   shown(shown: boolean): void;
   /** A replay is being loaded into the viewer, or failed to (null when neither). */
   state(text: string | null): void;
+  /**
+   * A replay could not be loaded: the engine's sentence, and its reason where it gave one (plugin-scm-sim 0.19.0:
+   * "mod-missing", "mod-terrain", "remastered-terrain"), so the panel can say what to do; null once one loaded.
+   */
+  failure?(id: number, failed: { reason: EngineReason | null; message: string } | null): void;
   /** A jump runs on towards where it was sent (`GameView.seekProgress`). */
   seeking(): void;
   /** What the pointer is on over the game (null: nothing, or the game is not shown), for `tip`. */
@@ -71,7 +77,7 @@ export class GameView {
   private readonly api: PluginApi;
   private readonly hooks: GameViewHooks;
   private readonly handle: MapViewHandle;
-  private readonly words: { loading: (name: string) => string; failed: (message: string) => string };
+  private readonly words: { loading: (name: string) => string; failed: (message: string) => string; keeping?: (message: string) => string };
   private element: HTMLElement | null = null;
   private view: ScmSimView | null = null;
   private subs: Disposable[] = [];
@@ -348,6 +354,11 @@ export class GameView {
   get shown(): boolean { return this.handle.isShown(); }
   /** Show the map (or the game again) on a replay's tab. */
   show(on: boolean, docId?: number): void { this.handle.show(on, docId); }
+  /** The replay is to be loaded again the next time it is held (it is to be played with other data now: a mod picked). */
+  forget(id: number): void {
+    if (this.holding === id) this.holding = null;
+  }
+
   /** The viewer holds this replay, loaded and ready to be driven. */
   holds(id: number | null): boolean { return id !== null && this.holding === id && this.wanted === null; }
 
@@ -397,6 +408,8 @@ export class GameView {
     if (typeof view.onPointer === "function") this.subs.push(view.onPointer((p) => this.handle.setPointer?.(this.loaded && this.shown ? p : null)));
     // (scm-sim before 0.9.0 keeps the wheel; an editor before map views zoomed has no wheel to hand it to.)
     if (typeof view.onWheel === "function") this.subs.push(view.onWheel((w) => { if (this.loaded && this.shown && typeof this.handle.wheel === "function") this.handle.wheel(w); }));
+    // (plugin-scm-sim 0.19.0: the page keeps a mod's files handed over with the replay first, a minute or two for a large one.)
+    if (typeof view.onKeeping === "function") this.subs.push(view.onKeeping((k) => { if (this.wanted !== null) this.hooks.state(this.words.keeping ? this.words.keeping(k.message) : k.message); }));
     if (typeof view.onUnits === "function") this.subs.push(view.onUnits((u) => { if (!this.loaded) return; this.units = u; this.handle.redrawMinimap?.(); this.hooks.units?.(); }));
     return view;
   }
@@ -430,12 +443,16 @@ export class GameView {
         this.wanted = null;
         this.holding = null;
         this.settle(false);
-        this.hooks.state(this.words.failed(err instanceof Error ? err.message : String(err)));
+        // (The engine's own sentence, without the "Error: " its worker puts before it.)
+        const message = engineSentence(err);
+        this.hooks.failure?.(entry.id, { reason: engineReason(err), message });
+        this.hooks.state(this.words.failed(message));
         return false;
       }
       if (this.wanted !== entry.id) return false;
       this.wanted = null;
       this.holding = entry.id;
+      this.hooks.failure?.(entry.id, null);
       this.hooks.state(null);
       this.remastered = null;
       this.eyesTold = undefined;

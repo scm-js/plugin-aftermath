@@ -216,3 +216,45 @@ describe("the Game view opening a replay", () => {
     });
   });
 });
+
+describe("the Game view when the engine cannot play the replay with what it has (plugin-scm-sim 0.19.0)", () => {
+  afterEach(() => { delete (globalThis as { document?: unknown }).document; delete (globalThis as { window?: unknown }).window; });
+
+  it("passes on the engine's reason with its sentence (no doubled \"Error:\"), says how far a mod's keeping is, and loads again once forgotten", async () => {
+    Object.assign(globalThis, { document: { createElement: () => fakeElement() }, window: { devicePixelRatio: 1, setInterval, clearInterval } });
+    const none = { dispose() {} };
+    let keeping: ((k: { hash: string; message: string }) => void) | null = null;
+    let loads = 0;
+    let answer: (() => Promise<unknown>) = () => Promise.reject(Object.assign(new Error("Error: this map is built on terrain that StarCraft has not got, neither 1.16.1 nor Remastered (jungle tile group 3734; Remastered's jungle ends at 2045). It was made for a mod, and plays with that mod's files."), { reason: "mod-terrain" }));
+    const view = {
+      load: () => { loads++; return answer(); },
+      camera() {}, play() {}, speed() {}, seek() {}, player() {}, follow() {},
+      options: () => Promise.resolve({}),
+      onFrame: () => none, onKey: () => none, onUnits: () => none, onCamera: () => none, onWheel: () => none, onPointer: () => none,
+      onKeeping: (l: (k: { hash: string; message: string }) => void) => { keeping = l; return none; },
+    } as unknown as ScmSimView;
+    const sim = { present: true, view: () => view, status: () => Promise.resolve({ available: true, features: ["replayDoor"] }) } as unknown as ScmSimService;
+    const api = { view: { flags: () => ({}) }, ui: { mapView: (s: MapViewSpec) => { s.mount(fakeElement()); return { offer() {}, onChange: () => none, isShown: () => false, show() {}, dispose() {}, setCamera() {}, redrawMinimap() {} }; } } } as unknown as PluginApi;
+    const states: (string | null)[] = [];
+    const failures: unknown[] = [];
+    const game = new GameView(api, { frame() {}, movedByUser() {}, shown() {}, state: (s) => { states.push(s); }, seeking() {}, hover() {}, failure: (id, f) => { failures.push({ id, ...f }); } }, "Replay", { loading: (n) => `loading ${n}`, failed: (m) => `failed: ${m}`, keeping: (m) => `keeping: ${m}` });
+    game.setService(sim);
+    const entry = { id: 3, fileName: "c.rep", bytes: new Uint8Array(1), docId: 7, eyes: null, dataSet: { hash: "ac3f86533e4b5a31" } };
+    expect(await game.hold(entry, 0, false, 1)).toBe(false);
+    expect(failures).toEqual([{ id: 3, reason: "mod-terrain", message: "This map is built on terrain that StarCraft has not got, neither 1.16.1 nor Remastered (jungle tile group 3734; Remastered's jungle ends at 2045). It was made for a mod, and plays with that mod's files." }]);
+    expect(states.at(-1)).toMatch(/^failed: This map is built/);
+    expect(states.at(-1)).not.toMatch(/Error:/);
+    // The mod picked: loaded again, the page keeping the mod's files first, then the replay.
+    let finish: () => void = () => {};
+    answer = () => new Promise((resolve) => { finish = () => resolve({ name: "c.rep", frames: 8073, players: [], map: { width: 128, height: 128 }, rewinds: false, looks: {}, follows: false }); });
+    game.forget(3);
+    const held = game.hold(entry, 0, false, 1);
+    await Promise.resolve();
+    keeping!({ hash: "ac3f86533e4b5a31", message: "Keeping the mod's files: 100 of 7,755 (40.0 MB)…" });
+    expect(states.at(-1)).toBe("keeping: Keeping the mod's files: 100 of 7,755 (40.0 MB)…");
+    finish();
+    expect(await held).toBe(true);
+    expect(loads).toBe(2);
+    expect(failures.at(-1)).toEqual({ id: 3 });
+  });
+});

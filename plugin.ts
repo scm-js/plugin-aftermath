@@ -34,7 +34,7 @@ import type { Disposable, MapView, OverlayHandle, PanelHandle, PluginApi, Plugin
 import { analyse, buildOrderRows, formatTime, FRAMES_PER_MINUTE, heat, TOWN_HALLS, type ClickKind, type HeatGrid, type PlayerReport, type ReplayReport } from "./analysis";
 import { likeness, plainText, readChk, type ChkInfo } from "./chk";
 import { FRAME_MS, parseReplay, ReplayError, type ModTag } from "@scm-js/replay";
-import { assumedDataSet, assumedTag, folderHashes, handedReplay, isReplaysMod, modAnalysis, modFolder, openModOf, playsModReplays, pluginNames, replayDataSet, safeLink } from "./modreplay";
+import { assumedDataSet, assumedTag, engineReason, engineSentence, folderHashes, handedReplay, isReplaysMod, modAnalysis, modFolder, modHashPending, modSigns, openModOf, pickedModFiles, playsModReplays, pluginNames, replayDataSet, safeLink, type EngineReason, type ModFolder, type ModSign, type OpenMod, type PickedFile } from "./modreplay";
 import { KO } from "./ko";
 import { buildings as standingBuildings, isBuilding, losses, lossPoints, madeRows, mineralLines, presencePoints, sampleAt, series, unitIndex, unitsAt, WORKERS, type Metric, type Point, type Standing, type UnitIndex } from "./played";
 import { knowledge, knownAt, placedBuildings, REMEMBER_FRAMES, trails, type Knowledge, type Trail } from "./knew";
@@ -133,6 +133,15 @@ interface Loaded {
    * that mod (`assumedTag`), not read from the replay.
    */
   assumed?: boolean;
+  /**
+   * Signs, read from the replay itself, that it was played with a mod although it names none (`modSigns`): a tile group
+   * past Remastered's table, a race byte the game has not got. Empty for a tagged replay, and where nothing says so.
+   */
+  signs: ModSign[];
+  /** Why the Game view could not show it, with the engine's reason where it gave one (plugin-scm-sim 0.19.0). */
+  viewFailed?: { reason: EngineReason | null; message: string } | null;
+  /** The engine's reason beside `failed`, where it gave one. */
+  failedReason?: EngineReason | null;
 }
 
 /** A game's key fights played again by the game: as played, and with both sides only attack-moving. */
@@ -191,6 +200,8 @@ const SENT: ReadonlySet<ClickKind> = new Set(["move", "attack", "patrol", "abili
 const msg = (text: string) => text;
 
 const RACES = [msg("Zerg"), msg("Terran"), msg("Protoss")];
+/** The tilesets by the map's ERA number, for the signs of a mod's terrain. */
+const TILESETS = [msg("Badlands"), msg("Space Platform"), msg("Installation"), msg("Ash World"), msg("Jungle"), msg("Desert"), msg("Ice"), msg("Twilight")];
 
 const GAME_TYPES: Record<number, string> = {
   2: msg("Melee"), 3: msg("Free For All"), 4: msg("One on One"), 5: msg("Capture the Flag"), 6: msg("Greed"), 7: msg("Slaughter"),
@@ -444,6 +455,7 @@ const STYLE = `
 .afm-tl canvas.afm-faded { opacity: 0.3; }
 .afm .afm-mod { margin: 6px 0; padding: 6px 8px; border-left: 2px solid var(--accent, #6aa0ff); display: grid; gap: 3px; }
 .afm .afm-mod a { color: inherit; }
+.afm .afm-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
 .afm .afm-game { padding: 2px 0; }
 .afm .afm-game > label { display: flex; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .afm .afm-game.afm-out { opacity: 0.55; }
@@ -564,11 +576,10 @@ export function activate(api: PluginApi) {
         return;
       }
       const url = safeLink(tag.dataSet.url);
-      await api.gameData.attach({ id: `replay-${tag.dataSet.hash}`, name: tag.dataSet.name || t("Mod"), ...(url ? { url } : {}) }, async (_path, file) => {
-        const f = file?.member ? folder.files.get(file.member) : undefined;
-        return f ? new Uint8Array(await f.file.arrayBuffer()) : null;
-      }, { hash: tag.dataSet.hash });
-      await api.data.load();
+      await attachFolder(folder, { id: `replay-${tag.dataSet.hash}`, name: tag.dataSet.name || t("Mod"), ...(url ? { url } : {}) }, tag.dataSet.hash);
+      // (The engine's pages are handed the folder's files where they have not got the mod: plugin-scm-sim 0.19.0.)
+      provideFolder(tag.dataSet.hash, tag.dataSet.name || t("Mod"), picked);
+      if (entry.viewFailed) playWithMod(entry);
       api.ui.toast({ kind: "ok", title: t("{name} attached", { name: tag.dataSet.name || tag.dataSet.hash }), detail: t("The editor draws with the mod's files until its data set is changed or the page is loaded again.") });
     } catch (err) {
       api.ui.toast({ kind: "error", title: t("The mod could not be attached"), detail: err instanceof Error ? err.message : String(err) });
@@ -580,6 +591,147 @@ export function activate(api: PluginApi) {
       redraw();
     }
   }
+  /** The folder's game files as the editor's data set for the session (nothing stored), named by `hash`. */
+  async function attachFolder(folder: ModFolder, profile: { id: string; name: string; url?: string }, hash: string): Promise<void> {
+    await api.gameData.attach(profile, async (_path, file) => {
+      const f = file?.member ? folder.files.get(file.member) : undefined;
+      return f ? new Uint8Array(await f.file.arrayBuffer()) : null;
+    }, { hash });
+    await api.data.load();
+  }
+
+  /** Folders picked for a mod, by the hash they were named by: handed to the engine's pages that have not got the mod. */
+  const pickedFolders = new Map<string, { name: string; picked: PickedFile[] }>();
+  const provided = new Map<string, Disposable>();
+  /**
+   * The picked folder registered with the scm-sim plugin (0.19.0, `provideMod`) under `hash`: the Game view, Play From
+   * Here and the analysis then hand its files to a page of the engine that has not got the mod, which keeps them once.
+   * An older scm-sim plugin is left alone; a later one gets it when it comes (`registerFolders`).
+   */
+  function provideFolder(hash: string, name: string, picked: PickedFile[]): void {
+    pickedFolders.set(hash, { name, picked });
+    registerFolders();
+  }
+  function registerFolders(): void {
+    for (const [hash, { name, picked }] of pickedFolders) {
+      if (provided.has(hash) || typeof sim?.provideMod !== "function") continue;
+      try { provided.set(hash, sim.provideMod(hash, { name, files: async () => pickedModFiles(picked) })); } catch (err) { api.log("Aftermath: registering a mod's folder,", err); }
+    }
+  }
+  function unregisterFolders(): void { for (const d of provided.values()) d.dispose(); provided.clear(); }
+
+  /** What the engine said of playing the replay with what it had, where it is about the mod: the Game view's, else the analysis'. */
+  const modReason = (entry: Loaded): "mod-missing" | "mod-terrain" | null => {
+    for (const r of [entry.viewFailed?.reason, entry.failedReason]) if (r === "mod-missing" || r === "mod-terrain") return r;
+    return null;
+  };
+
+  /** The signs that a replay was played with a mod, in words: "its map uses Jungle tile group 3734, and StarCraft's last is 2045". */
+  function signsText(signs: readonly ModSign[]): string {
+    return signs.map((sign) => sign.kind === "terrain"
+      ? t("its map uses {tileset} tile group {group}, and the last StarCraft has, in Remastered, is {last}", { tileset: translate(TILESETS[sign.tileset]), group: sign.group, last: sign.last })
+      : t("{player}'s race is {race}, which is none of the game's", { player: plainText(sign.player), race: sign.race })).join("; ");
+  }
+
+  /**
+   * The mod the editor draws with, once its hash is worked out (a large mod's comes after it opens): null when another
+   * data set is chosen meanwhile. The question about an untagged replay waits for it rather than being skipped.
+   */
+  function modHashWaited(): Promise<OpenMod | null> {
+    return new Promise((resolve) => {
+      const name = api.gameData?.source?.()?.profile.name ?? "";
+      api.ui.status(t("Waiting for {name}'s hash before the replay opens…", { name }));
+      let sub: Disposable | null = null, timer = 0, done = false;
+      const end = (mod: OpenMod | null) => { if (done) return; done = true; sub?.dispose(); clearInterval(timer); resolve(mod); };
+      const check = () => {
+        const source = api.gameData?.source?.();
+        const mod = openModOf(source);
+        if (mod) end(mod); else if (!modHashPending(source)) end(null);
+      };
+      sub = api.events.on("gameData", check);
+      timer = window.setInterval(check, 1000);
+      check();
+    });
+  }
+
+  /** Replays that name no mod, watched with `mod` from now on: their tag is made up from it, and they are played again with it. */
+  function assume(entries: readonly Loaded[], mod: OpenMod): void {
+    for (const e of entries) {
+      e.mod = assumedTag(mod);
+      e.dataSet = assumedDataSet(mod);
+      e.assumed = true;
+      if (loaded.includes(e)) playWithMod(e);
+    }
+  }
+
+  /** A replay open already is to be played with its mod now: analysed again, and loaded again in the Game view. */
+  function playWithMod(entry: Loaded): void {
+    entry.viewFailed = null;
+    if (running?.entry === entry) running.controller.abort();
+    if (againRunning?.entry === entry) againRunning.controller.abort();
+    entry.played = null;
+    entry.failed = null;
+    entry.failedReason = null;
+    entry.again = null;
+    if (!queue.includes(entry)) queue.push(entry);
+    game.forget(entry.id);
+    offered.delete(entry.id);
+    if (current === entry) {
+      if (game.shown) handOver(true);
+      else gameFor(entry);
+    }
+    side?.render();
+    strip?.render();
+    redraw();
+    pump();
+  }
+
+  /**
+   * The mod's folder picked for replays that name no mod and were played with one: attached as the editor's data set the
+   * way `attachMod` attaches one (its hash the folder's own: there is no tag to compare it with), the replays watched with
+   * it (`assume`), and its files registered with the scm-sim plugin for the Game view and the analysis.
+   */
+  async function pickModFolder(entries: Loaded[]): Promise<boolean> {
+    if (attaching || !entries.length) return false;
+    if (!api.gameData?.attach || !api.gameData.storedPath) {
+      api.ui.toast({ kind: "warn", title: t("This editor cannot take a mod's folder"), detail: t("Attaching a mod's data set needs a newer scmJS.") });
+      return false;
+    }
+    const picked = await api.ui.pickFiles({ directory: true });
+    if (!picked.length) return false;
+    const folder = modFolder(picked);
+    if (!folder.files.size) {
+      api.ui.toast({ kind: "warn", title: t("No game files in that folder"), detail: t("Pick the mod's folder: the one holding its arr, unit and other game folders, or the folder above it.") });
+      return false;
+    }
+    const entry = entries[0];
+    attaching = { entry, done: 0, of: folder.files.size + folder.plugins.size + folder.firegraft.size };
+    side?.render();
+    let shown = 0;
+    try {
+      const hashes = await folderHashes(folder, (member) => api.gameData.read(api.gameData.storedPath(member)), (done) => {
+        if (!attaching) return;
+        attaching.done = done;
+        if (performance.now() - shown > 250) { shown = performance.now(); side?.render(); }
+      });
+      const name = picked[0].path.split("/")[0] || t("Mod");
+      await attachFolder(folder, { id: `replay-${hashes.hash}`, name }, hashes.hash);
+      provideFolder(hashes.hash, name, picked);
+      assume(entries, { hash: hashes.hash, name, url: null });
+      api.ui.toast({ kind: "ok", title: t("{name} attached", { name }), detail: t("The replay is watched and analysed with it, and the editor draws with its files until its data set is changed or the page is loaded again.") });
+      return true;
+    } catch (err) {
+      api.ui.toast({ kind: "error", title: t("The mod could not be attached"), detail: err instanceof Error ? err.message : String(err) });
+      api.log("Aftermath: attaching a mod,", err);
+      return false;
+    } finally {
+      attaching = null;
+      side?.render();
+      strip?.render();
+      redraw();
+    }
+  }
+
   let playing = false;
   let raf = 0;
   let lastTick = 0;
@@ -609,9 +761,16 @@ export function activate(api: PluginApi) {
     seeking: () => { strip?.update(); showBusy(); },
     hover: (h) => showHover(h),
     fog: (on) => fogFromEditor(on),
+    failure: (id, failed) => {
+      const entry = loaded.find((l) => l.id === id);
+      if (!entry) return;
+      entry.viewFailed = failed;
+      if (entry === current) side?.render();
+    },
   }, "Replay", {
     loading: (name) => t("Loading {name}…", { name }),
     failed: (message) => t("The game could not be shown: {message}", { message }),
+    keeping: (message) => t("The play page keeps the mod first: {message}", { message }),
   });
   /** Whose eyes each replay was last seen through, for View ▸ Fog of War turned on again. */
   const lastEyes = new Map<number, number>();
@@ -787,7 +946,7 @@ export function activate(api: PluginApi) {
         const replay = await parseReplay(bytes);
         const id = nextId++, map = readChk(replay.chk);
         const group = [...loaded, ...batch].find((l) => likeness(map, l.map) >= SAME_MAP)?.group ?? id;
-        batch.push({ id, fileName: file.name, report: analyse(replay), map, bytes, docId: null, group, excluded: false, frame: 0, hidden: new Set(), played: null, failed: null, eyes: null, again: null, mod: replay.mod ?? null, ...(replay.mod ? { dataSet: replayDataSet(replay.mod) } : {}) });
+        batch.push({ id, fileName: file.name, report: analyse(replay), map, bytes, docId: null, group, excluded: false, frame: 0, hidden: new Set(), played: null, failed: null, eyes: null, again: null, mod: replay.mod ?? null, ...(replay.mod ? { dataSet: replayDataSet(replay.mod) } : {}), signs: replay.mod ? [] : modSigns(replay.players, map) });
       } catch (err) {
         const detail = err instanceof ReplayError ? translate(err.message) : String(err);
         api.ui.toast({ kind: "error", title: t("Could not read {name}", { name: file.name }), detail });
@@ -796,17 +955,29 @@ export function activate(api: PluginApi) {
     }
     if (!batch.length) return;
 
-    // A replay that names no mod, opened while the editor draws with a mod (a game the mod's own release recorded writes
-    // no tag): the person says whether it was played with that mod. Without, it plays with the game's own data.
+    // A replay that names no mod (a game the mod's own release recorded writes no tag). While the editor draws with a mod
+    // (its hash waited for, when it is still being worked out), the person says whether it was played with that mod. With
+    // none open, a replay whose own content says it was played with a mod (`modSigns`) says so, and its folder can be
+    // picked. Without, it plays with the game's own data.
     const untagged = batch.filter((e) => !e.mod);
-    const open = untagged.length ? openModOf(api.gameData?.source?.()) : null;
+    let open = untagged.length ? openModOf(api.gameData?.source?.()) : null;
+    if (untagged.length && !open && modHashPending(api.gameData?.source?.())) open = await modHashWaited();
+    const signed = untagged.filter((e) => e.signs.length);
     if (open) {
       const name = open.name || open.hash;
       const withMod = await api.ui.confirm(
-        t("{n, plural, one {This replay names no mod.} other {# of these replays name no mod.}} A game played with StarCraft's own data names none, and so does one played with a mod's own release, which does not write which mod it was. The editor has {name} open. Watch with {name}?", { n: untagged.length, name }),
+        signed.length
+          ? t("{n, plural, one {This replay was played with a mod, and does not say which} other {# of these replays were played with a mod, and do not say which}}: {signs}. A mod's own release writes no name of its mod into a replay. The editor has {name} open. Watch with {name}?", { n: signed.length, signs: signsText(signed[0].signs), name })
+          : t("{n, plural, one {This replay names no mod.} other {# of these replays name no mod.}} A game played with StarCraft's own data names none, and so does one played with a mod's own release, which does not write which mod it was. The editor has {name} open. Watch with {name}?", { n: untagged.length, name }),
         { title: t("A replay that names no mod"), confirmLabel: t("Watch With {name}", { name }), cancelLabel: t("Watch Without") },
       );
-      if (withMod) for (const e of untagged) { e.mod = assumedTag(open); e.dataSet = assumedDataSet(open); e.assumed = true; }
+      if (withMod) assume(untagged, open);
+    } else if (signed.length) {
+      const pick = await api.ui.confirm(
+        t("{n, plural, one {This replay was played with a mod, and does not say which} other {# of these replays were played with a mod, and do not say which}}: {signs}. A mod's own release writes no name of its mod into a replay. Pick the mod's folder and it is watched and analysed with it, or open the mod with File ▸ Open a Mod… first. Without the mod it is played with StarCraft's own data, which is another game.", { n: signed.length, signs: signsText(signed[0].signs) }),
+        { title: t("A replay played with a mod"), confirmLabel: t("Pick the Mod's Folder…"), cancelLabel: t("Open Without") },
+      );
+      if (pick) await pickModFolder(signed);
     }
 
     const tabbed: Loaded[] = [], quiet: Loaded[] = [];
@@ -2062,6 +2233,7 @@ export function activate(api: PluginApi) {
     const run = { entry, controller: new AbortController(), fraction: -1 };
     running = run;
     entry.failed = null;
+    entry.failedReason = null;
     strip?.render();
     try {
       const state = await sim.status();
@@ -2102,7 +2274,9 @@ export function activate(api: PluginApi) {
       for (const b of entry.played.standing) api.graphics.requestUnit(b.type);
     } catch (err) {
       if ((err as Error)?.name !== "AbortError") {
-        entry.failed = err instanceof Error ? err.message : String(err);
+        // (The engine's own sentence, without the "Error: " its worker puts before it, and its reason where it gave one.)
+        entry.failed = engineSentence(err);
+        entry.failedReason = engineReason(err);
         api.log("Aftermath:", entry.fileName, err);
       }
     } finally {
@@ -2929,6 +3103,33 @@ export function activate(api: PluginApi) {
       return t("The analysis (the Game and Fights tabs, Analysis, Cast) plays it with the mod, when this browser keeps it: a mod is added once on the play page.");
     }
 
+    /**
+     * A replay that names no mod, and its own content says it was played with one (`modSigns`), or the engine said its
+     * map is on a mod's terrain: the sentence, and what to do — watch it with the mod open in the editor (a mod opened in
+     * the Mod Editor after the replay is offered here too), or pick the mod's folder.
+     */
+    renderModWanted(entry: Loaded): void {
+      const box = el("div", { className: "afm-mod" },
+        el("div", {}, entry.signs.length
+          ? t("Played with a mod, and the replay does not say which: {signs}.", { signs: signsText(entry.signs) })
+          : t("Played with a mod, and the replay does not say which: the game engine found its map on terrain StarCraft has not got, neither 1.16.1 nor Remastered.")),
+        w.hint(t("A mod's own release writes no name of its mod into a replay. Until the mod is chosen, the Game view and the analysis play it with StarCraft's own data, which is another game. Open the mod with File ▸ Open a Mod… and watch with it here, or pick its folder.")),
+      );
+      this.modActions(entry, box, null);
+      this.root.append(box);
+    }
+
+    /** "Watch With" the mod open in the editor (not the one `except` names), and "Pick the Mod's Folder…"; or how far the folder is read. */
+    private modActions(entry: Loaded, box: HTMLElement, except: string | null): void {
+      if (attaching?.entry === entry) { box.append(el("div", { className: "afm-dim" }, t("Reading the mod: {done} of {n} files…", { done: attaching.done, n: attaching.of }))); return; }
+      const open = openModOf(api.gameData?.source?.());
+      const acts = el("div", { className: "afm-acts" });
+      if (open && open.hash !== except) acts.append(w.button(t("Watch With {name}", { name: open.name || open.hash }), { className: "sm", onClick: () => { assume([entry], open); } }));
+      // (A replay that names its mod: its folder is checked against the tag first. One that does not: the folder is the mod.)
+      acts.append(w.button(t("Pick the Mod's Folder…"), { className: "sm", onClick: () => { void (entry.mod && !entry.assumed ? attachMod(entry) : pickModFolder([entry])); } }));
+      box.append(acts);
+    }
+
     /** A replay of a mod: which, its makers' link, its plugins, and whether the editor draws with it. */
     renderMod(entry: Loaded, tag: ModTag): void {
       const link = safeLink(tag.dataSet.url);
@@ -2946,6 +3147,15 @@ export function activate(api: PluginApi) {
         w.hint(t("Units, upgrades and technologies show by id until the editor draws with the mod: attach the mod's folder, and it is checked against the replay first.")),
         w.button(t("Attach the Mod's Folder…"), { className: "sm", onClick: () => { void attachMod(entry); } }),
       );
+      // The engine could not play it with the mod: what to do, with the same actions as for a replay that names none.
+      const reason = modReason(entry);
+      if (reason) {
+        const name = tag.dataSet.name || tag.dataSet.hash;
+        box.append(el("div", { className: "afm-warn" }, reason === "mod-missing"
+          ? t("The play page has not got {name}'s files, so the replay is not played there. Open the mod with File ▸ Open a Mod…, or pick its folder: its files are then handed to the play page, which keeps them.", { name })
+          : t("{name} has not got this map's terrain either: the replay was played with another mod, or another version of {name}. Open that mod with File ▸ Open a Mod…, or pick its folder.", { name })));
+        this.modActions(entry, box, tag.dataSet.hash);
+      }
       const own = entry.report.replay.unknownCommands;
       if (own > 0) box.append(el("div", { className: "afm-dim" }, t("{n, plural, one {# command block is the mod's own and is not analysed.} other {# command blocks are the mod's own and are not analysed.}}", { n: own })));
       // (Play From Here and the Replay view play it with the mod, given the mod's hash and `live` (scm-sim 0.17.0); the
@@ -2976,6 +3186,7 @@ export function activate(api: PluginApi) {
         el("div", { className: "afm-dim" }, facts),
       );
       if (entry.mod) this.renderMod(entry, entry.mod);
+      else if (entry.signs.length || modReason(entry) === "mod-terrain") this.renderModWanted(entry);
       const parted = entry.played?.timeline.check?.parted ?? null;
       if (parted !== null) this.root.append(el("div", { className: "afm-warn" }, t("From {time} the game played here is not the game in the replay: a player gave an order to a unit that had not been made. What is shown after that moment is not what happened, and this game is left out of Map stats.", { time: formatTime(parted) })));
       // (A mod's replay says so in its own box: its own commands.)
@@ -3862,7 +4073,7 @@ export function activate(api: PluginApi) {
   if (bottomDock) api.ui.fileType({ name: msg("StarCraft replay"), extensions: [".rep"], open: (files) => void load(files) });
 
   // Last: a service already there is announced at once, and the answer reaches the panels.
-  const simWatch = api.services.watch<ScmSimService>("scm-sim.engine", (service) => { sim = service; game.setService(service); if (current) gameFor(current); pump(); strip?.render(); });
+  const simWatch = api.services.watch<ScmSimService>("scm-sim.engine", (service) => { unregisterFolders(); sim = service; registerFolders(); game.setService(service); if (current) gameFor(current); pump(); strip?.render(); });
 
   let accountChange: (() => void) | null = null;
   const accountWatch = api.services.watch<ScmjsAccountService>("scmjs-dev.account", (service) => {
@@ -3895,6 +4106,7 @@ export function activate(api: PluginApi) {
     running?.controller.abort();
     againRunning?.controller.abort();
     game.dispose();
+    unregisterFolders();
     simWatch.dispose();
     endCast();
     making?.abort.abort();

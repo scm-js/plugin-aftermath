@@ -1,8 +1,10 @@
 import { createHash } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
+import { readChk } from "../chk";
 import { describe, expect, it } from "vitest";
 import { appendModTag, parseReplay, type ModTag } from "@scm-js/replay";
 import { chk, cmds, le16, writeReplay } from "@scm-js/replay/write";
-import { assumedDataSet, assumedTag, dataSetHash, folderHashes, gameName, handedReplay, hashLines, isReplaysMod, modAnalysis, modFolder, modRoot, liveLifter, openModOf, playsModReplays, pluginNames, replayDataSet, safeLink, sha256 } from "../modreplay";
+import { assumedDataSet, assumedTag, dataSetHash, engineReason, engineSentence, folderHashes, gameName, handedReplay, hashLines, isReplaysMod, modAnalysis, modFolder, modHashPending, modRoot, modSigns, liveLifter, openModOf, pickedModFiles, playsModReplays, pluginNames, REMASTERED_TERRAIN_GROUPS, replayDataSet, safeLink, sha256 } from "../modreplay";
 
 const blob = (s: string) => new Blob([new TextEncoder().encode(s)]);
 const tag = (more: Partial<ModTag> = {}): ModTag => ({
@@ -207,5 +209,73 @@ describe("an untagged replay watched with the mod open in the editor", () => {
     expect(pluginNames(tag)).toBe("");
     expect(assumedDataSet(mod)).toEqual({ hash: "1c41a2d7701fe842", name: "Cosmonarchy BW", url: "https://example.org/cosmo", live: true });
     expect(assumedDataSet({ hash: "1c41a2d7701fe842", name: "", url: null })).toEqual({ hash: "1c41a2d7701fe842", live: true });
+  });
+});
+
+describe("signs that an untagged replay was played with a mod (from the replay itself)", () => {
+  const players = (...races: number[]) => races.map((race, i) => ({ name: `P${i + 1}`, race }));
+  const map = (tileset: number, ...groups: number[]) => ({ tileset, tiles: Uint16Array.from(groups.map((g) => (g << 4) | 3)) });
+
+  it("is a tile group past Remastered's table for its tileset, compared as the raw 12-bit group", () => {
+    expect([...REMASTERED_TERRAIN_GROUPS]).toEqual([1979, 2046, 1265, 1418, 2046, 2046, 2039, 2047]);
+    // Jungle: Remastered's last group is 2045; Cosmonarchy's table has 4,095.
+    expect(modSigns(players(0, 1), map(4, 1, 2045))).toEqual([]);
+    expect(modSigns(players(0, 1), map(4, 1, 3734, 2046))).toEqual([{ kind: "terrain", tileset: 4, group: 3734, last: 2045 }]);
+    // (the subtile in the low four bits is not the group)
+    expect(modSigns(players(0), { tileset: 4, tiles: Uint16Array.from([(2045 << 4) | 15]) })).toEqual([]);
+    // Installation is as long in 1.16.1 as in Remastered; the era's high bits are not the tileset.
+    expect(modSigns(players(0), map(2 | 8, 1265))).toEqual([{ kind: "terrain", tileset: 2, group: 1265, last: 1264 }]);
+    // A map with no terrain says nothing.
+    expect(modSigns(players(0), { tileset: 0, tiles: new Uint16Array(0) })).toEqual([]);
+  });
+
+  it("is a player's race byte that is none of the game's (0 to 7), never a name", () => {
+    expect(modSigns(players(0, 1, 2, 6, 7), map(0, 1))).toEqual([]);
+    expect(modSigns([{ name: "IAMtheWHEATofGOD", race: 69 }, { name: "Cosmonarchy", race: 0 }], map(0, 1))).toEqual([{ kind: "race", player: "IAMtheWHEATofGOD", race: 69 }]);
+    expect(modSigns(players(8, 255), map(4, 3734)).map((s) => s.kind)).toEqual(["terrain", "race", "race"]);
+  });
+
+  it("waits for a mod's hash still being worked out, not for the game's own data or none", () => {
+    expect(modHashPending({ kind: "reader", profile: { id: "cosmonarchy" } })).toBe(true);
+    expect(modHashPending({ kind: "reader", hash: "", profile: { id: "cosmonarchy" } })).toBe(true);
+    expect(modHashPending({ kind: "reader", hash: "ac3f86533e4b5a31", profile: { id: "cosmonarchy" } })).toBe(false);
+    expect(modHashPending({ kind: "copy", profile: { id: "starcraft" } })).toBe(false);
+    expect(modHashPending({ kind: "none", profile: { id: "x" } })).toBe(false);
+    expect(modHashPending(null)).toBe(false);
+  });
+
+  it("hands a picked folder to the engine's page as a drop gives it: every file by its path, dot folders left out", () => {
+    const blob = new Blob(["x"]);
+    const files = pickedModFiles([
+      { path: "Release/mpq/arr/units.dat", file: blob },
+      { path: "Release/plugins/gptp.qdp", file: new File(["y"], "gptp.qdp") },
+      { path: "Release/Cosmonarchy BW.exe", file: blob },
+      { path: "Release/.git/config", file: blob },
+    ]);
+    expect(files.map((f) => f.path)).toEqual(["Release/mpq/arr/units.dat", "Release/plugins/gptp.qdp", "Release/Cosmonarchy BW.exe"]);
+    expect(files.every((f) => f.file instanceof File)).toBe(true);
+    expect(files[0].file.name).toBe("units.dat");
+  });
+
+  it("reads the engine's reason, and its sentence without the worker's \"Error: \"", () => {
+    const e = Object.assign(new Error("Error: this map is built on terrain that StarCraft has not got"), { reason: "mod-terrain" });
+    expect(engineReason(e)).toBe("mod-terrain");
+    expect(engineSentence(e)).toBe("This map is built on terrain that StarCraft has not got");
+    expect(engineReason(new Error("x"))).toBeNull();
+    expect(engineReason({ reason: "made-up" })).toBeNull();
+    expect(engineSentence("Error: Error: twice")).toBe("Twice");
+    expect(engineSentence(new Error("The replay could not be started."))).toBe("The replay could not be started.");
+  });
+});
+
+// A replay a mod's own release recorded (untagged), where one is at hand: SCM_MOD_REPLAY=<path to .rep>. Never committed.
+const MOD_REPLAY = process.env.SCM_MOD_REPLAY;
+if (MOD_REPLAY && existsSync(MOD_REPLAY)) describe("a replay a mod's own release recorded", () => {
+  it("names no mod, and says it was played with one", async () => {
+    const replay = await parseReplay(new Uint8Array(readFileSync(MOD_REPLAY)));
+    expect(replay.mod).toBeNull();
+    const signs = modSigns(replay.players, readChk(replay.chk));
+    console.log(JSON.stringify(signs));
+    expect(signs.length).toBeGreaterThan(0);
   });
 });

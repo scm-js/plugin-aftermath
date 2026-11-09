@@ -164,10 +164,14 @@ export interface ReplayTimeline {
 export interface AnalysedMod { hash: string; name: string; plugins: string[]; lifter: string | null }
 
 export interface AnalyseProgress {
-  /** "starting": the engine is being fetched and the game started. "playing": `frame` of `frames`. */
-  stage: "starting" | "playing";
+  /**
+   * "starting": the engine is being fetched and the game started. "playing": `frame` of `frames`. "keeping" (0.19.0):
+   * the page keeps the mod's files handed over first, `message` saying how far it is.
+   */
+  stage: "starting" | "playing" | "keeping";
   frame: number;
   frames: number;
+  message?: string;
 }
 
 export interface AnalyseOptions {
@@ -178,13 +182,16 @@ export interface AnalyseOptions {
   /** The file's name, for the engine's own messages. */
   name?: string;
   /**
-   * The mod the replay was played with, for a replay whose file does not say it (0.18.0; only `hash`, `name`, `url` and
-   * `live` are sent, never `files`). A replay the play page saved names its mod in an `SCMJ` section, which the page
+   * The mod the replay was played with, for a replay whose file does not say it (0.18.0; `hash`, `name`, `url` and
+   * `live` are sent; from 0.19.0 also its files, where the page says it does not keep the mod, as for `ScmSimView.load`). A replay the play page saved names its mod in an `SCMJ` section, which the page
    * reads first. A page whose `status().features` has "modAnalysis" plays the replay with the mod this browser keeps
    * under that hash (as the play page keeps it: the same site), with its plugins where they ran, and says what it
    * played with in `ReplayTimeline.mod`; it rejects in a sentence naming the mod, its hash and `url` when the browser
    * has not got it, or keeps another version. `null` or left out: the replay's own tag, or the game's own data. A page
    * from before it plays a replay of a mod with the game's own files, or refuses a tagged one: check `features` first.
+   * From 0.19.0 a page whose `features` has "modFiles" is handed the mod's files when it does not keep the mod
+   * (`dataSet.files`, else the mod registered under `hash`), keeps them first and then plays; with none to hand it
+   * rejects with `reason` "mod-missing".
    */
   dataSet?: ReplayDataSet | null;
   onProgress?(progress: AnalyseProgress): void;
@@ -241,10 +248,13 @@ export interface ScmSimStatus {
    * page is of the same build): "replayDoor" (a replay's mod is read from its `SCMJ` tag and played, switched to or
    * asked for), "liveSwitch" (a replay of a mod whose code ran loads the page again with `?lift=live` rather than
    * refusing), and on the analysis page "modAnalysis" (0.18.0, scm-sim's R4: `analyse` and `fights` play a replay of a
-   * mod with the mod the browser keeps, `AnalyseOptions.dataSet`). Names are only ever added; empty from a page before
-   * them or one that could not be asked.
+   * mod with the mod the browser keeps, `AnalyseOptions.dataSet`), and "modFiles" (0.19.0: the pages say which mods the
+   * browser keeps, `mods`; the view and the analysis keep a mod's files handed over; errors say why in a word,
+   * `ScmSimError.reason`). Names are only ever added; empty from a page before them or one that could not be asked.
    */
   features?: string[];
+  /** The mods this browser keeps, as the analysis page said them when it loaded (0.19.0, "modFiles"). */
+  mods?: ScmSimMods;
 }
 
 /* ── A replay's fights played again (`ScmSimService.fights`) ── */
@@ -544,7 +554,12 @@ export interface ViewReady {
   reason: string | null;
   /** What the view's page says it does (as `ScmSimStatus.features`; 0.17.0): empty from a page before scm-sim's R2b. */
   features?: string[];
+  /** The mods this browser keeps, and the one the view plays (0.19.0): left out by a page from before "modFiles". */
+  mods?: ScmSimMods;
 }
+
+/** A mod the view is keeping before it plays a replay with it (0.19.0): how far it is, in words. */
+export interface ViewKeeping { hash: string; message: string }
 
 /** What the game is drawn with: what the person's copy of the game allows, and what is on. */
 export interface ViewLooks {
@@ -733,12 +748,19 @@ export interface ScmSimView {
    * `dataSet` (0.17.0) is the mod the replay was played with (the replay's `SCMJ` tag, as `playReplay` takes it; only
    * `hash` and `live` are used): the view's page plays a mod only as its address names it (`?view&mod=<hash>`, with
    * `&lift=live` when `live`) and never switches to another, so the view is loaded at that address first when it
-   * stands at another, and back at its own (`?view`, the game's own data) for a replay without one. Its files are not
-   * sent: the page plays the mod it keeps under `hash`, and says in the rejection when it has not got it. A page from
+   * stands at another, and back at its own (`?view`, the game's own data) for a replay without one. A page from
    * before ignores the address's mod; one from scm-sim's R2b on loads itself again with `?lift=live` where the replay
    * needs it and `live` was not said.
+   *
+   * From 0.19.0, on a page whose `ready` says "modFiles": when the page does not keep the mod, its files are handed
+   * over with the replay — `dataSet.files`, else the mod registered under `hash` (`ScmSimService.provideMod`) — and
+   * the page keeps them as a dropped mod (`onKeeping` says how far it is: a large mod with plugins takes a minute or
+   * two), loads itself again on it and plays the replay. With no files to hand, it rejects with `reason`
+   * "mod-missing" (`ScmSimError`) and never plays the replay with StarCraft's own data in its place.
    */
   load(replay: Uint8Array, name?: string, dataSet?: ReplayDataSet | null): Promise<ViewedReplay>;
+  /** While the page keeps a mod's files handed over with a replay (0.19.0): how far it is, a few times a second. */
+  onKeeping?(listener: (keeping: ViewKeeping) => void): Disposable;
   play(playing: boolean): void;
   /** 1 is Fastest, the game's own pace; 2, 4, 8, 16 faster. */
   speed(multiplier: number): void;
@@ -904,6 +926,15 @@ export interface ScmSimService {
    * (`status().fights`): check both before offering it.
    */
   fights?(replay: Uint8Array, fights: FightAsk[], options?: FightsOptions): Promise<FightsResult>;
+  /**
+   * A mod you have open, registered by `hash` (the hash the data set names it by, `GameDataSource.hash`) until the
+   * `Disposable` is disposed: whatever plays with that hash and has not got the mod — the game view, `playReplay`,
+   * Test in Browser, `analyse`, `fights` — finds its files here without the caller passing them (a caller's own
+   * `dataSet.files` come first). `files` is asked only when a page says it does not keep the mod, and a page keeps it
+   * once for the whole site. Register again under the new hash when the mod's hash changes. Added in 0.19.0: check that
+   * the function is there before calling it.
+   */
+  provideMod?(hash: string, mod: ProvidedMod): Disposable;
 }
 
 /* ── Live edit: `scm-sim.live` ─────────────────────────────────────────────────────────── */
@@ -920,7 +951,35 @@ export interface LiveFile { path: string; bytes: Uint8Array }
  * edits were written (`firegraft` named and the engine a lifter, not "shipped") — so the page is opened with its live
  * lifter (`?lift=live`).
  */
-export interface ReplayDataSet { hash: string; name?: string; url?: string; files?: LiveFile[]; live?: boolean }
+export interface ReplayDataSet { hash: string; name?: string; url?: string; files?: LiveFile[] | ModSource; live?: boolean }
+
+/** A file of a mod by the game's path (`arr/weapons.dat`), or by its path in the mod's folder (`Release/mpq/arr/weapons.dat`, `plugins/gptp.qdp`): the page reads a folder's layout as it reads a dropped one. */
+export interface ModSourceFile { path: string; file: File }
+/**
+ * Where a mod's files come from (0.19.0): asked only when the engine's page says it does not keep the mod (its
+ * `ready` lists the hashes it keeps), since gathering a large mod's files is not free. The page keeps what it is given
+ * as it keeps a dropped mod: the same reading, the same hash rule, the same storage for every page of the site.
+ */
+export type ModSource = () => Promise<(ModSourceFile | LiveFile)[]>;
+/** A mod a plugin has open, registered with the engine by its hash (`ScmSimService.provideMod`, 0.19.0). */
+export interface ProvidedMod { name?: string; url?: string; files: ModSource }
+
+/**
+ * Why the engine's page could not do what was asked, in a word, where it can say (0.19.0, scm-sim's `modFiles`):
+ * - "mod-missing": it is to be played with a mod this browser does not keep, and no files came (`hash`: which);
+ * - "mod-terrain": the map is on terrain StarCraft has not got, neither 1.16.1 nor Remastered: it was made for a mod,
+ *   and plays with that mod's files (or the mod played lacks it too: another mod, or another version of it);
+ * - "remastered-terrain": the map is on terrain only StarCraft: Remastered has; a copy of the game made from a
+ *   Remastered installation plays it.
+ */
+export type ScmSimReason = "mod-missing" | "mod-terrain" | "remastered-terrain";
+/**
+ * A rejection worded by the engine's page (every promise of this service rejects with an `Error`): from 0.19.0 it
+ * carries `reason` (and `hash` for "mod-missing") where the page said one. A page from before says none.
+ */
+export interface ScmSimError extends Error { reason?: ScmSimReason; hash?: string }
+/** What a page of the engine says of the mods this browser keeps (0.19.0, `modFiles`): every hash a kept mod answers to, and the one it plays (null: none). */
+export interface ScmSimMods { kept: string[]; plays: string | null }
 /** What became of one field or file, in words (`message`); the field's value before (`was`) when it was written. */
 export interface LiveItem { table?: string; id?: number; field?: string; part?: string; value?: number; was?: number; path?: string; message: string }
 /**
