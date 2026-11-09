@@ -749,7 +749,8 @@ export function activate(api: PluginApi) {
       offered.add(entry.id);
       // (The game opens where the map does, not where the editor's view stood when the tab came in.)
       const at = startTile(entry);
-      void game.offer(entry, true, { x: at.tx * 32 + 16, y: at.ty * 32 + 16 }).then((ok) => { if (!ok) offered.delete(entry.id); });
+      // (Once asked, whether the view plays a mod's replay is known: the panel says which views play it.)
+      void game.offer(entry, true, { x: at.tx * 32 + 16, y: at.ty * 32 + 16 }).then((ok) => { if (!ok) offered.delete(entry.id); if (entry.mod) side?.render(); });
       return;
     }
     if (game.shown && !game.holds(entry.id)) handOver(true);
