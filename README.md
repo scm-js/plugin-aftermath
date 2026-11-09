@@ -166,8 +166,10 @@ handed one without it.
 
 With the scm-sim plugin 0.17.0 and a play page that knows a mod's replays, the Replay view
 plays a mod's replay with its mod too: the view loads with the mod the replay names (from the
-copy the browser keeps), and with `?lift=live` when its code ran. With older ones the tab of a
-mod's replay shows the map only.
+copy the browser keeps), and with `?lift=live` when its code ran. While the mod's plugins run,
+the game cannot be put back to an earlier moment, so going back on the timeline starts the
+replay again from its first frame and plays forward to the moment, which takes a while. With
+older ones the tab of a mod's replay shows the map only.
 
 With the scm-sim plugin 0.18.0 and an engine page that analyses a mod's replays, the
 analysis (the Game and Fights tabs, Analysis, Cast) plays a mod's replay with its mod too: the
