@@ -235,3 +235,73 @@ export function modAnalysis(o: { played: AnalysedMod | null | undefined; engine:
   if (o.failed) return { kind: "failed", reason: o.failed };
   return { kind: "waiting" };
 }
+
+/* ── An untagged replay that was played with a mod: the signs, from the replay itself ── */
+
+/**
+ * Tile groups in StarCraft: Remastered's `tileset\<name>.cv5`, by tileset number in the map's ERA order (measured;
+ * scm-sim's `REMASTERED_TERRAIN_GROUPS`, scm-js `src/data/remasteredTiles.ts`). Remastered's tables are the longest the
+ * game has: a map on a group past its tileset's was made with a mod's longer table.
+ */
+export const REMASTERED_TERRAIN_GROUPS = [1979, 2046, 1265, 1418, 2046, 2046, 2039, 2047] as const;
+/** The race bytes the game writes for a player (0 Zerg, 1 Terran, 2 Protoss, 3 to 5 the game's others, 6 Random, 7 none). */
+const GAME_RACES = 8;
+
+/**
+ * A sign, read from the replay itself, that its game was played with a mod. Each is certain: StarCraft cannot make it.
+ * - `terrain`: the map uses tile group `group` of `tileset`, past the last Remastered has (`last`).
+ * - `race`: a player's race byte is none of the game's.
+ */
+export type ModSign =
+  | { kind: "terrain"; tileset: number; group: number; last: number }
+  | { kind: "race"; player: string; race: number };
+
+/**
+ * The signs that a replay was played with a mod (none: nothing says so, which does not say it was not). `players`: the
+ * replay's players (those who took part); `map`: the replay's map, its tileset and tiles (the raw 12-bit group is
+ * `tile >> 4`). Nothing is guessed from names.
+ */
+export function modSigns(players: readonly { name: string; race: number }[], map: { tileset: number; tiles: Uint16Array }): ModSign[] {
+  const signs: ModSign[] = [];
+  let highest = -1;
+  for (let i = 0; i < map.tiles.length; i++) { const g = map.tiles[i] >> 4; if (g > highest) highest = g; }
+  const ts = map.tileset & 7, last = REMASTERED_TERRAIN_GROUPS[ts] - 1;
+  if (highest > last) signs.push({ kind: "terrain", tileset: ts, group: highest, last });
+  for (const p of players) if (!(p.race >= 0 && p.race < GAME_RACES)) signs.push({ kind: "race", player: p.name, race: p.race });
+  return signs;
+}
+
+/**
+ * Whether the editor draws with a mod whose hash is not worked out yet (a large mod's comes after it opens): a data set
+ * that is not the game's own, with no hash of sixteen hex digits. Its hash is to be waited for, not the question skipped.
+ */
+export function modHashPending(source: { kind?: string; hash?: string; profile: { id: string } } | null | undefined): boolean {
+  return !!source && source.kind !== "none" && source.profile.id !== "starcraft" && !(source.hash && /^[0-9a-f]{16}$/.test(source.hash));
+}
+
+/**
+ * A picked folder's files as scm-sim's page takes a mod's (`ModSourceFile`): every file under the folder by its path from
+ * the folder's parent, as a dropped folder gives them (the page reads the folder's layout as it reads a drop: its game
+ * files, its archives and its program, its plugins and FireGraft project), dot folders left out.
+ */
+export function pickedModFiles(picked: readonly PickedFile[]): { path: string; file: File }[] {
+  return picked
+    .filter((f) => f.path && !f.path.split("/").slice(0, -1).some((part) => part.startsWith(".")))
+    .map((f) => ({ path: f.path, file: f.file instanceof File ? f.file : new File([f.file], f.path.split("/").pop() || "file") }));
+}
+
+/** The engine's reasons a replay could not be played with what it had (plugin-scm-sim 0.19.0's `ScmSimError.reason`). */
+export type EngineReason = "mod-missing" | "mod-terrain" | "remastered-terrain";
+
+/** The reason an error from the engine carries, if any. */
+export function engineReason(err: unknown): EngineReason | null {
+  const r = (err as { reason?: unknown } | null)?.reason;
+  return r === "mod-missing" || r === "mod-terrain" || r === "remastered-terrain" ? r : null;
+}
+
+/** An error's sentence as the person reads it: the engine's own, without the "Error: " a worker puts before it. */
+export const engineSentence = (err: unknown): string => {
+  const text = err instanceof Error ? err.message : String(err);
+  const plain = text.replace(/^(Error: )+/, "");
+  return plain ? plain[0].toUpperCase() + plain.slice(1) : plain;
+};

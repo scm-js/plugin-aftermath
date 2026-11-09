@@ -144,6 +144,30 @@ browser keeps. Without it, the replay is taken for a game of StarCraft itself. A
 StarCraft itself played back with a mod is another game, so choose the mod only for a replay
 that was played with it.
 
+A replay that names no mod can still say it was played with one: its map uses terrain past
+the last tile group StarCraft has, even in Remastered (a mod can carry longer tilesets), or a
+player's race is a number the game has not got. Aftermath reads both from the replay itself,
+and goes by nothing else (not by names). When it finds either:
+
+- With a mod open in the editor, the question above says what it found. While a large mod's
+  hash is still being worked out after it opens, the question waits for it.
+- With none open, Aftermath says the replay was played with a mod and does not say which, and
+  offers **Pick the Mod's Folder…** or opening it without. The folder picked is attached as
+  the editor's data set as **Attach the Mod's Folder…** attaches one (its hash is the folder's
+  own: the replay has none to compare it with), and the replay is watched and analysed with it.
+- Afterwards, the panel says the same with **Watch With** the mod open in the editor (a mod
+  opened with File ▸ Open a Mod… after the replay is offered there too) and **Pick the Mod's
+  Folder…**, until a mod is chosen.
+
+With the scm-sim plugin 0.19.0 or later, a mod picked here, or open in the Mod Editor, does
+not have to be added on the play page first: where the play page has not got it, the Replay
+view, Play From Here and the analysis hand it the mod's files, and the page keeps them. That
+takes a minute or two for a large mod with plugins; the timeline says how far it is. When the
+engine could not play the replay with what it had, the panel says what to do instead of only
+the engine's sentence: the mod's files are missing on the play page, or the map is on terrain
+the mod played has not got either (another mod, or another version of it), each with the same
+two actions.
+
 A mod gives the game's unit numbers to its own units, so the replay is named only by the
 mod: until the editor draws with the mod's files, units, upgrades and technologies show by
 number, never by the game's names. **Attach the Mod's Folder…** asks for the mod's folder
