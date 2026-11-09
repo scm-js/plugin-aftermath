@@ -34,7 +34,7 @@ import type { Disposable, MapView, OverlayHandle, PanelHandle, PluginApi, Plugin
 import { analyse, buildOrderRows, formatTime, FRAMES_PER_MINUTE, heat, TOWN_HALLS, type ClickKind, type HeatGrid, type PlayerReport, type ReplayReport } from "./analysis";
 import { likeness, plainText, readChk, type ChkInfo } from "./chk";
 import { FRAME_MS, parseReplay, ReplayError, type ModTag } from "@scm-js/replay";
-import { folderHashes, handedReplay, isReplaysMod, modFolder, pluginNames, replayDataSet, safeLink } from "./modreplay";
+import { folderHashes, handedReplay, isReplaysMod, modAnalysis, modFolder, playsModReplays, pluginNames, replayDataSet, safeLink } from "./modreplay";
 import { KO } from "./ko";
 import { buildings as standingBuildings, isBuilding, losses, lossPoints, madeRows, mineralLines, presencePoints, sampleAt, series, unitIndex, unitsAt, WORKERS, type Metric, type Point, type Standing, type UnitIndex } from "./played";
 import { knowledge, knownAt, placedBuildings, REMEMBER_FRAMES, trails, type Knowledge, type Trail } from "./knew";
@@ -1980,6 +1980,8 @@ export function activate(api: PluginApi) {
   let running: { entry: Loaded; controller: AbortController; fraction: number } | null = null;
   /** Replays waiting their turn: every one opened, in the order they were. */
   const queue: Loaded[] = [];
+  /** What the engine's page said it does when last asked (`status().features`); null before it is asked. */
+  let engineFeatures: string[] | null = null;
 
   /** The key fights being played again by the game, one game at a time, after every replay waiting has been analysed. */
   let againRunning: { entry: Loaded; controller: AbortController } | null = null;
@@ -2015,9 +2017,11 @@ export function activate(api: PluginApi) {
     try {
       const state = await sim.status();
       if (!state.available || !state.fights) { again.failed = state.reason ?? t("The game engine on this site cannot play a fight again yet."); return; }
+      if (entry.mod && !playsModReplays(state.features)) { again.failed = t("This replay was played with a mod, which the game engine here does not play replays of yet."); return; }
       const asked = key.map(engagement);
       const result = await sim.fights(entry.bytes, asked, {
         signal: run.controller.signal,
+        ...(entry.dataSet ? { dataSet: entry.dataSet } : {}),
         onProgress: (p) => { again.fraction = p.stage === "playing" && p.frames > 0 ? p.frame / p.frames : -1; if (entry === current) side?.update(); },
       });
       key.forEach((f, i) => { const r = result.fights[i]; if (r) again.results.set(f, r); });
@@ -2042,15 +2046,18 @@ export function activate(api: PluginApi) {
     entry.failed = null;
     strip?.render();
     try {
-      // (A mod's replay played with the game's own files would be another game: the play page plays one from its next release.)
-      if (entry.mod) throw new Error(t("This replay was played with a mod, which the game engine here does not play replays of yet."));
       const state = await sim.status();
+      engineFeatures = state.features ?? [];
+      // (A mod's replay played with the game's own files would be another game: an engine page from before scm-sim's R4
+      // is not asked. One from it on plays it with the mod this browser keeps, given the replay's data set.)
+      if (entry.mod && !playsModReplays(state.features)) throw new Error(t("This replay was played with a mod, which the game engine here does not play replays of yet."));
       if (!state.available) throw new Error(state.reason ?? t("The game engine cannot run a game here."));
       // An engine from before timeline 3 reads only the file 1.16.1 wrote.
       if (entry.report.replay.format !== "legacy" && (state.timeline ?? 0) < 3) throw new Error(t("The game engine on this site is an older one that plays replays from StarCraft 1.16.1 and earlier only."));
       const timeline = await sim.analyse(entry.bytes, {
         name: entry.fileName,
         signal: run.controller.signal,
+        ...(entry.dataSet ? { dataSet: entry.dataSet } : {}),
         onProgress: (p) => {
           run.fraction = p.stage === "playing" && p.frames > 0 ? p.frame / p.frames : -1;
           if (entry === current) strip?.update();
@@ -2889,6 +2896,21 @@ export function activate(api: PluginApi) {
       });
     }
 
+    /**
+     * What the analysis did with a replay of a mod, in a sentence: played it with the mod (the timeline's `mod`, scm-sim's
+     * R4), could not (the engine's sentence: the mod not kept in this browser, with its hash and the makers' link, or
+     * another version), will, or — an engine page from before R4 — plays replays with the game's own files.
+     */
+    modAnalysisLine(entry: Loaded): string {
+      const a = modAnalysis({ played: entry.played?.timeline.mod, engine: !!sim?.present, features: engineFeatures, failed: entry.failed });
+      if (a.kind === "played") return a.mod.plugins.length
+        ? t("The analysis (the Game and Fights tabs, Analysis, Cast) played it with {name} ({hash}) and its plugins: {plugins}.", { name: a.mod.name || a.mod.hash, hash: a.mod.hash, plugins: a.mod.plugins.join(", ") })
+        : t("The analysis (the Game and Fights tabs, Analysis, Cast) played it with {name} ({hash}).", { name: a.mod.name || a.mod.hash, hash: a.mod.hash });
+      if (a.kind === "older") return t("The analysis (the Game and Fights tabs, Analysis, Cast) does not: it plays replays with the game's own files.");
+      if (a.kind === "failed") return t("The analysis could not play it with the mod: {reason}", { reason: a.reason });
+      return t("The analysis (the Game and Fights tabs, Analysis, Cast) plays it with the mod, when this browser keeps it: a mod is added once on the play page.");
+    }
+
     /** A replay of a mod: which, its makers' link, its plugins, and whether the editor draws with it. */
     renderMod(entry: Loaded, tag: ModTag): void {
       const link = safeLink(tag.dataSet.url);
@@ -2906,9 +2928,9 @@ export function activate(api: PluginApi) {
       );
       const own = entry.report.replay.unknownCommands;
       if (own > 0) box.append(el("div", { className: "afm-dim" }, t("{n, plural, one {# command block is the mod's own and is not analysed.} other {# command blocks are the mod's own and are not analysed.}}", { n: own })));
-      // (Play From Here and the Replay view play it with the mod, given the mod's hash and `live` (scm-sim 0.17.0). The
-      // analysis does not: the service's `analyse` plays a replay inside the editor with the game's own files.)
-      box.append(w.hint(`${game.playsMods ? t("Play From Here and the Replay view play it with the mod.") : t("Play From Here plays it with the mod on the play page.")} ${t("The analysis (the Game and Fights tabs, Analysis, Cast) does not: it plays replays with the game's own files.")} ${t("What is shown is the players' orders, and Aftermath's own rules for workers and town halls go by the game's unit ids, which a mod may give other units.")}`));
+      // (Play From Here and the Replay view play it with the mod, given the mod's hash and `live` (scm-sim 0.17.0); the
+      // analysis too where the engine's page says "modAnalysis" (0.18.0), and its timeline says what it played with.)
+      box.append(w.hint(`${game.playsMods ? t("Play From Here and the Replay view play it with the mod.") : t("Play From Here plays it with the mod on the play page.")} ${this.modAnalysisLine(entry)} ${t("What is shown is the players' orders, and Aftermath's own rules for workers and town halls go by the game's unit ids, which a mod may give other units.")}`));
       this.root.append(box);
     }
 

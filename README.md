@@ -169,11 +169,22 @@ plays a mod's replay with its mod too: the view loads with the mod the replay na
 copy the browser keeps), and with `?lift=live` when its code ran. With older ones the tab of a
 mod's replay shows the map only.
 
-The analysis (the Game and Fights tabs, Analysis, Cast) does not play a mod's replay yet: it
-plays replays with the game's own files. What is shown is the players' orders. A mod may send
-commands of its own, which the game does not have; the panel counts their command blocks, and
-they are left out of the analysis. The Build tab's choice of workers and town halls goes by
-the game's own unit numbers, which a mod may give other units.
+With the scm-sim plugin 0.18.0 and an engine page that analyses a mod's replays, the
+analysis (the Game and Fights tabs, Analysis, Cast) plays a mod's replay with its mod too: the
+engine plays it with the copy of the mod the browser keeps, with its plugins where they ran,
+and the panel says what it played with. The browser keeps a mod once it is added on the play
+page (Game Menu ▸ Mods ▸ Add a Mod…). When it has not got the mod, or keeps another version,
+the panel says so with the mod's hash and its makers' link, and nothing is analysed. A mod
+whose plugins run is slow to analyse: about 17 seconds to start, then 30 to 40 game frames a
+second, so a 20-minute game takes over ten minutes. Its key fights are not played again yet:
+the Fights tab lists them and says why. With older ones the analysis does not play a mod's
+replay: it would play it with the game's own files.
+
+Costs and names come from the data set the editor draws with, so attach the mod's folder for
+the mod's own. A mod may send commands of its own, which the game does not have; the panel
+counts their command blocks, and they are left out of the analysis. The Build tab's choice
+of workers and town halls goes by the game's own unit numbers, which a mod may give other
+units.
 
 ### On the map
 

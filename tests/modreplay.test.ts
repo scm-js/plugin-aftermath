@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { appendModTag, parseReplay, type ModTag } from "@scm-js/replay";
 import { chk, cmds, le16, writeReplay } from "@scm-js/replay/write";
-import { dataSetHash, folderHashes, gameName, handedReplay, hashLines, isReplaysMod, modFolder, modRoot, liveLifter, pluginNames, replayDataSet, safeLink, sha256 } from "../modreplay";
+import { dataSetHash, folderHashes, gameName, handedReplay, hashLines, isReplaysMod, modAnalysis, modFolder, modRoot, liveLifter, playsModReplays, pluginNames, replayDataSet, safeLink, sha256 } from "../modreplay";
 
 const blob = (s: string) => new Blob([new TextEncoder().encode(s)]);
 const tag = (more: Partial<ModTag> = {}): ModTag => ({
@@ -167,5 +167,22 @@ describe("a mod's own commands", () => {
     const replay = await parseReplay(await appendModTag(bytes, tag()));
     expect(replay.unknownCommands).toBe(1);
     expect(replay.mod?.dataSet.hash).toBe("0123456789abcdef");
+  });
+});
+
+describe("the analysis of a mod's replay (scm-sim's R4)", () => {
+  const mod = { hash: "ac3f86533e4b5a31", name: "Cosmonarchy BW", plugins: ["aise.qdp", "gptp.qdp", "isdbg.qdp", "mtl.qdp"], lifter: "lift-5" };
+  it("is asked of an engine page that says modAnalysis, not of an older one", () => {
+    expect(playsModReplays(["replayDoor", "liveSwitch", "modAnalysis"])).toBe(true);
+    expect(playsModReplays(["replayDoor", "liveSwitch"])).toBe(false);
+    expect(playsModReplays(undefined)).toBe(false);
+  });
+  it("says it played with the mod, could not (the engine's words), will, or does not on an older page", () => {
+    expect(modAnalysis({ played: mod, engine: true, features: ["modAnalysis"], failed: null })).toEqual({ kind: "played", mod });
+    const why = "This replay was played with Cosmonarchy BW (ac3f86533e4b5a31), which this browser has not got.";
+    expect(modAnalysis({ played: null, engine: true, features: ["modAnalysis"], failed: why })).toEqual({ kind: "failed", reason: why });
+    expect(modAnalysis({ played: null, engine: true, features: null, failed: null })).toEqual({ kind: "waiting" });
+    expect(modAnalysis({ played: null, engine: true, features: ["replayDoor"], failed: "older" })).toEqual({ kind: "older" });
+    expect(modAnalysis({ played: undefined, engine: false, features: null, failed: null })).toEqual({ kind: "older" });
   });
 });
