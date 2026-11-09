@@ -1273,6 +1273,35 @@ function modAnalysis(o) {
   if (o.failed) return { kind: "failed", reason: o.failed };
   return { kind: "waiting" };
 }
+var REMASTERED_TERRAIN_GROUPS = [1979, 2046, 1265, 1418, 2046, 2046, 2039, 2047];
+var GAME_RACES = 8;
+function modSigns(players, map) {
+  const signs = [];
+  let highest = -1;
+  for (let i = 0; i < map.tiles.length; i++) {
+    const g = map.tiles[i] >> 4;
+    if (g > highest) highest = g;
+  }
+  const ts = map.tileset & 7, last = REMASTERED_TERRAIN_GROUPS[ts] - 1;
+  if (highest > last) signs.push({ kind: "terrain", tileset: ts, group: highest, last });
+  for (const p of players) if (!(p.race >= 0 && p.race < GAME_RACES)) signs.push({ kind: "race", player: p.name, race: p.race });
+  return signs;
+}
+function modHashPending(source) {
+  return !!source && source.kind !== "none" && source.profile.id !== "starcraft" && !(source.hash && /^[0-9a-f]{16}$/.test(source.hash));
+}
+function pickedModFiles(picked) {
+  return picked.filter((f) => f.path && !f.path.split("/").slice(0, -1).some((part) => part.startsWith("."))).map((f) => ({ path: f.path, file: f.file instanceof File ? f.file : new File([f.file], f.path.split("/").pop() || "file") }));
+}
+function engineReason(err) {
+  const r = err?.reason;
+  return r === "mod-missing" || r === "mod-terrain" || r === "remastered-terrain" ? r : null;
+}
+var engineSentence = (err) => {
+  const text = err instanceof Error ? err.message : String(err);
+  const plain = text.replace(/^(Error: )+/, "");
+  return plain ? plain[0].toUpperCase() + plain.slice(1) : plain;
+};
 
 // ko.ts
 var KO = {
@@ -1810,7 +1839,30 @@ var KO = {
   "Watch With {name}": "{name|\uC73C\uB85C} \uBCF4\uAE30",
   "Watch Without": "\uBAA8\uB4DC \uC5C6\uC774 \uBCF4\uAE30",
   "Watched with {name} ({hash}), the mod open in the editor. The replay itself names no mod.": "\uD3B8\uC9D1\uAE30\uC5D0 \uC5F4\uB9B0 \uBAA8\uB4DC\uB85C \uBD05\uB2C8\uB2E4: {name} ({hash}). \uB9AC\uD50C\uB808\uC774 \uC790\uCCB4\uC5D0\uB294 \uBAA8\uB4DC\uAC00 \uC801\uD600 \uC788\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
-  "It is played with {name}, the mod open in the editor: the play page plays it with that mod if this browser keeps it.": "\uD3B8\uC9D1\uAE30\uC5D0 \uC5F4\uB9B0 \uBAA8\uB4DC {name|\uC73C\uB85C} \uC7AC\uC0DD\uD569\uB2C8\uB2E4. \uC774 \uBE0C\uB77C\uC6B0\uC800\uC5D0 \uADF8 \uBAA8\uB4DC\uAC00 \uC788\uC73C\uBA74 \uD50C\uB808\uC774 \uD398\uC774\uC9C0\uAC00 \uADF8 \uBAA8\uB4DC\uB85C \uC7AC\uC0DD\uD569\uB2C8\uB2E4."
+  "It is played with {name}, the mod open in the editor: the play page plays it with that mod if this browser keeps it.": "\uD3B8\uC9D1\uAE30\uC5D0 \uC5F4\uB9B0 \uBAA8\uB4DC {name|\uC73C\uB85C} \uC7AC\uC0DD\uD569\uB2C8\uB2E4. \uC774 \uBE0C\uB77C\uC6B0\uC800\uC5D0 \uADF8 \uBAA8\uB4DC\uAC00 \uC788\uC73C\uBA74 \uD50C\uB808\uC774 \uD398\uC774\uC9C0\uAC00 \uADF8 \uBAA8\uB4DC\uB85C \uC7AC\uC0DD\uD569\uB2C8\uB2E4.",
+  "Badlands": "\uBC30\uB4DC\uB79C\uB4DC",
+  "Space Platform": "\uC6B0\uC8FC \uD50C\uB7AB\uD3FC",
+  "Installation": "\uC778\uC2A4\uD1A8\uB808\uC774\uC158",
+  "Ash World": "\uC560\uC26C\uC6D4\uB4DC",
+  "Jungle": "\uC815\uAE00",
+  "Desert": "\uC0AC\uB9C9",
+  "Ice": "\uC5BC\uC74C",
+  "Twilight": "\uD2B8\uC640\uC77C\uB77C\uC787",
+  "its map uses {tileset} tile group {group}, and the last StarCraft has, in Remastered, is {last}": "\uB9F5\uC774 {tileset} \uD0C0\uC77C \uADF8\uB8F9 {group}\uC744(\uB97C) \uC4F0\uB294\uB370, StarCraft\uC5D0 \uC788\uB294 \uB9C8\uC9C0\uB9C9 \uADF8\uB8F9\uC740 \uB9AC\uB9C8\uC2A4\uD130\uC5D0\uC11C\uB3C4 {last}\uC785\uB2C8\uB2E4",
+  "{player}'s race is {race}, which is none of the game's": "{player}\uC758 \uC885\uC871 \uAC12\uC774 {race}\uC778\uB370, \uAC8C\uC784\uC5D0 \uC5C6\uB294 \uC885\uC871\uC785\uB2C8\uB2E4",
+  "Waiting for {name}'s hash before the replay opens\u2026": "\uB9AC\uD50C\uB808\uC774\uB97C \uC5F4\uAE30 \uC804\uC5D0 {name}\uC758 \uD574\uC2DC\uB97C \uAE30\uB2E4\uB9AC\uB294 \uC911\u2026",
+  "The replay is watched and analysed with it, and the editor draws with its files until its data set is changed or the page is loaded again.": "\uB9AC\uD50C\uB808\uC774\uB97C \uC774 \uBAA8\uB4DC\uB85C \uBCF4\uACE0 \uBD84\uC11D\uD558\uBA70, \uB370\uC774\uD130 \uC138\uD2B8\uB97C \uBC14\uAFB8\uAC70\uB098 \uD398\uC774\uC9C0\uB97C \uB2E4\uC2DC \uBD88\uB7EC\uC62C \uB54C\uAE4C\uC9C0 \uD3B8\uC9D1\uAE30\uB294 \uBAA8\uB4DC\uC758 \uD30C\uC77C\uB85C \uADF8\uB9BD\uB2C8\uB2E4.",
+  "The play page keeps the mod first: {message}": "\uD50C\uB808\uC774 \uD398\uC774\uC9C0\uAC00 \uBA3C\uC800 \uBAA8\uB4DC\uB97C \uBCF4\uAD00\uD569\uB2C8\uB2E4: {message}",
+  "{n, plural, one {This replay was played with a mod, and does not say which} other {# of these replays were played with a mod, and do not say which}}: {signs}. A mod's own release writes no name of its mod into a replay. The editor has {name} open. Watch with {name}?": "{n, plural, one {\uC774 \uB9AC\uD50C\uB808\uC774\uB294 \uBAA8\uB4DC\uB85C \uD50C\uB808\uC774\uB418\uC5C8\uC9C0\uB9CC \uC5B4\uB5A4 \uBAA8\uB4DC\uC778\uC9C0 \uC801\uD600 \uC788\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4} other {\uC774 \uB9AC\uD50C\uB808\uC774 \uC911 #\uAC1C\uB294 \uBAA8\uB4DC\uB85C \uD50C\uB808\uC774\uB418\uC5C8\uC9C0\uB9CC \uC5B4\uB5A4 \uBAA8\uB4DC\uC778\uC9C0 \uC801\uD600 \uC788\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4}}: {signs}. \uBAA8\uB4DC \uC790\uCCB4 \uBC30\uD3EC\uD310\uC740 \uB9AC\uD50C\uB808\uC774\uC5D0 \uBAA8\uB4DC \uC774\uB984\uC744 \uAE30\uB85D\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uD3B8\uC9D1\uAE30\uC5D0 {name|\uC774} \uC5F4\uB824 \uC788\uC2B5\uB2C8\uB2E4. {name|\uC73C\uB85C} \uBCFC\uAE4C\uC694?",
+  "{n, plural, one {This replay was played with a mod, and does not say which} other {# of these replays were played with a mod, and do not say which}}: {signs}. A mod's own release writes no name of its mod into a replay. Pick the mod's folder and it is watched and analysed with it, or open the mod with File \u25B8 Open a Mod\u2026 first. Without the mod it is played with StarCraft's own data, which is another game.": "{n, plural, one {\uC774 \uB9AC\uD50C\uB808\uC774\uB294 \uBAA8\uB4DC\uB85C \uD50C\uB808\uC774\uB418\uC5C8\uC9C0\uB9CC \uC5B4\uB5A4 \uBAA8\uB4DC\uC778\uC9C0 \uC801\uD600 \uC788\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4} other {\uC774 \uB9AC\uD50C\uB808\uC774 \uC911 #\uAC1C\uB294 \uBAA8\uB4DC\uB85C \uD50C\uB808\uC774\uB418\uC5C8\uC9C0\uB9CC \uC5B4\uB5A4 \uBAA8\uB4DC\uC778\uC9C0 \uC801\uD600 \uC788\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4}}: {signs}. \uBAA8\uB4DC \uC790\uCCB4 \uBC30\uD3EC\uD310\uC740 \uB9AC\uD50C\uB808\uC774\uC5D0 \uBAA8\uB4DC \uC774\uB984\uC744 \uAE30\uB85D\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uBAA8\uB4DC \uD3F4\uB354\uB97C \uACE0\uB974\uBA74 \uADF8 \uBAA8\uB4DC\uB85C \uBCF4\uACE0 \uBD84\uC11D\uD569\uB2C8\uB2E4. \uB610\uB294 \uBA3C\uC800 \uD30C\uC77C \u25B8 \uBAA8\uB4DC \uC5F4\uAE30\u2026\uB85C \uBAA8\uB4DC\uB97C \uC5EC\uC138\uC694. \uBAA8\uB4DC \uC5C6\uC774 \uC5F4\uBA74 StarCraft \uC790\uCCB4 \uB370\uC774\uD130\uB85C \uC7AC\uC0DD\uB418\uC5B4 \uB2E4\uB978 \uAC8C\uC784\uC774 \uB429\uB2C8\uB2E4.",
+  "A replay played with a mod": "\uBAA8\uB4DC\uB85C \uD50C\uB808\uC774\uD55C \uB9AC\uD50C\uB808\uC774",
+  "Pick the Mod's Folder\u2026": "\uBAA8\uB4DC \uD3F4\uB354 \uACE0\uB974\uAE30\u2026",
+  "Open Without": "\uBAA8\uB4DC \uC5C6\uC774 \uC5F4\uAE30",
+  "Played with a mod, and the replay does not say which: {signs}.": "\uBAA8\uB4DC\uB85C \uD50C\uB808\uC774\uB418\uC5C8\uC9C0\uB9CC \uB9AC\uD50C\uB808\uC774\uC5D0 \uC5B4\uB5A4 \uBAA8\uB4DC\uC778\uC9C0 \uC801\uD600 \uC788\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4: {signs}.",
+  "Played with a mod, and the replay does not say which: the game engine found its map on terrain StarCraft has not got, neither 1.16.1 nor Remastered.": "\uBAA8\uB4DC\uB85C \uD50C\uB808\uC774\uB418\uC5C8\uC9C0\uB9CC \uB9AC\uD50C\uB808\uC774\uC5D0 \uC5B4\uB5A4 \uBAA8\uB4DC\uC778\uC9C0 \uC801\uD600 \uC788\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4: \uAC8C\uC784 \uC5D4\uC9C4\uC774 \uBCF4\uB2C8 \uB9F5\uC774 StarCraft\uC5D0 \uC5C6\uB294 \uC9C0\uD615, 1.16.1\uC5D0\uB3C4 \uB9AC\uB9C8\uC2A4\uD130\uC5D0\uB3C4 \uC5C6\uB294 \uC9C0\uD615\uC73C\uB85C \uB418\uC5B4 \uC788\uC2B5\uB2C8\uB2E4.",
+  "A mod's own release writes no name of its mod into a replay. Until the mod is chosen, the Game view and the analysis play it with StarCraft's own data, which is another game. Open the mod with File \u25B8 Open a Mod\u2026 and watch with it here, or pick its folder.": "\uBAA8\uB4DC \uC790\uCCB4 \uBC30\uD3EC\uD310\uC740 \uB9AC\uD50C\uB808\uC774\uC5D0 \uBAA8\uB4DC \uC774\uB984\uC744 \uAE30\uB85D\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uBAA8\uB4DC\uB97C \uACE0\uB974\uAE30 \uC804\uAE4C\uC9C0 \uAC8C\uC784 \uD654\uBA74\uACFC \uBD84\uC11D\uC740 StarCraft \uC790\uCCB4 \uB370\uC774\uD130\uB85C \uC7AC\uC0DD\uD558\uBBC0\uB85C \uB2E4\uB978 \uAC8C\uC784\uC774 \uB429\uB2C8\uB2E4. \uD30C\uC77C \u25B8 \uBAA8\uB4DC \uC5F4\uAE30\u2026\uB85C \uBAA8\uB4DC\uB97C \uC5F4\uACE0 \uC5EC\uAE30\uC11C \uADF8 \uBAA8\uB4DC\uB85C \uBCF4\uAC70\uB098, \uBAA8\uB4DC \uD3F4\uB354\uB97C \uACE0\uB974\uC138\uC694.",
+  "The play page has not got {name}'s files, so the replay is not played there. Open the mod with File \u25B8 Open a Mod\u2026, or pick its folder: its files are then handed to the play page, which keeps them.": "\uD50C\uB808\uC774 \uD398\uC774\uC9C0\uC5D0 {name}\uC758 \uD30C\uC77C\uC774 \uC5C6\uC5B4\uC11C \uB9AC\uD50C\uB808\uC774\uB97C \uC7AC\uC0DD\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uD30C\uC77C \u25B8 \uBAA8\uB4DC \uC5F4\uAE30\u2026\uB85C \uBAA8\uB4DC\uB97C \uC5F4\uAC70\uB098 \uBAA8\uB4DC \uD3F4\uB354\uB97C \uACE0\uB974\uC138\uC694. \uADF8\uB7EC\uBA74 \uBAA8\uB4DC\uC758 \uD30C\uC77C\uC774 \uD50C\uB808\uC774 \uD398\uC774\uC9C0\uB85C \uB118\uC5B4\uAC00 \uBCF4\uAD00\uB429\uB2C8\uB2E4.",
+  "{name} has not got this map's terrain either: the replay was played with another mod, or another version of {name}. Open that mod with File \u25B8 Open a Mod\u2026, or pick its folder.": "{name}\uC5D0\uB3C4 \uC774 \uB9F5\uC758 \uC9C0\uD615\uC774 \uC5C6\uC2B5\uB2C8\uB2E4: \uB9AC\uD50C\uB808\uC774\uB294 \uB2E4\uB978 \uBAA8\uB4DC, \uB610\uB294 {name}\uC758 \uB2E4\uB978 \uBC84\uC804\uC73C\uB85C \uD50C\uB808\uC774\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uD30C\uC77C \u25B8 \uBAA8\uB4DC \uC5F4\uAE30\u2026\uB85C \uADF8 \uBAA8\uB4DC\uB97C \uC5F4\uAC70\uB098 \uBAA8\uB4DC \uD3F4\uB354\uB97C \uACE0\uB974\uC138\uC694."
 };
 
 // played.ts
@@ -3382,6 +3434,10 @@ var GameView = class {
   show(on, docId) {
     this.handle.show(on, docId);
   }
+  /** The replay is to be loaded again the next time it is held (it is to be played with other data now: a mod picked). */
+  forget(id) {
+    if (this.holding === id) this.holding = null;
+  }
   /** The viewer holds this replay, loaded and ready to be driven. */
   holds(id) {
     return id !== null && this.holding === id && this.wanted === null;
@@ -3435,6 +3491,9 @@ var GameView = class {
     if (typeof view.onWheel === "function") this.subs.push(view.onWheel((w) => {
       if (this.loaded && this.shown && typeof this.handle.wheel === "function") this.handle.wheel(w);
     }));
+    if (typeof view.onKeeping === "function") this.subs.push(view.onKeeping((k) => {
+      if (this.wanted !== null) this.hooks.state(this.words.keeping ? this.words.keeping(k.message) : k.message);
+    }));
     if (typeof view.onUnits === "function") this.subs.push(view.onUnits((u) => {
       if (!this.loaded) return;
       this.units = u;
@@ -3470,12 +3529,15 @@ var GameView = class {
         this.wanted = null;
         this.holding = null;
         this.settle(false);
-        this.hooks.state(this.words.failed(err instanceof Error ? err.message : String(err)));
+        const message = engineSentence(err);
+        this.hooks.failure?.(entry.id, { reason: engineReason(err), message });
+        this.hooks.state(this.words.failed(message));
         return false;
       }
       if (this.wanted !== entry.id) return false;
       this.wanted = null;
       this.holding = entry.id;
+      this.hooks.failure?.(entry.id, null);
       this.hooks.state(null);
       this.remastered = null;
       this.eyesTold = void 0;
@@ -5948,6 +6010,7 @@ var LANE2 = 16;
 var SENT = /* @__PURE__ */ new Set(["move", "attack", "patrol", "ability"]);
 var msg2 = (text) => text;
 var RACES2 = [msg2("Zerg"), msg2("Terran"), msg2("Protoss")];
+var TILESETS = [msg2("Badlands"), msg2("Space Platform"), msg2("Installation"), msg2("Ash World"), msg2("Jungle"), msg2("Desert"), msg2("Ice"), msg2("Twilight")];
 var GAME_TYPES = {
   2: msg2("Melee"),
   3: msg2("Free For All"),
@@ -6203,6 +6266,7 @@ var STYLE = `
 .afm-tl canvas.afm-faded { opacity: 0.3; }
 .afm .afm-mod { margin: 6px 0; padding: 6px 8px; border-left: 2px solid var(--accent, #6aa0ff); display: grid; gap: 3px; }
 .afm .afm-mod a { color: inherit; }
+.afm .afm-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
 .afm .afm-game { padding: 2px 0; }
 .afm .afm-game > label { display: flex; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .afm .afm-game.afm-out { opacity: 0.55; }
@@ -6315,15 +6379,141 @@ function activate(api) {
         return;
       }
       const url = safeLink(tag2.dataSet.url);
-      await api.gameData.attach({ id: `replay-${tag2.dataSet.hash}`, name: tag2.dataSet.name || t("Mod"), ...url ? { url } : {} }, async (_path, file) => {
-        const f = file?.member ? folder.files.get(file.member) : void 0;
-        return f ? new Uint8Array(await f.file.arrayBuffer()) : null;
-      }, { hash: tag2.dataSet.hash });
-      await api.data.load();
+      await attachFolder(folder, { id: `replay-${tag2.dataSet.hash}`, name: tag2.dataSet.name || t("Mod"), ...url ? { url } : {} }, tag2.dataSet.hash);
+      provideFolder(tag2.dataSet.hash, tag2.dataSet.name || t("Mod"), picked);
+      if (entry.viewFailed) playWithMod(entry);
       api.ui.toast({ kind: "ok", title: t("{name} attached", { name: tag2.dataSet.name || tag2.dataSet.hash }), detail: t("The editor draws with the mod's files until its data set is changed or the page is loaded again.") });
     } catch (err) {
       api.ui.toast({ kind: "error", title: t("The mod could not be attached"), detail: err instanceof Error ? err.message : String(err) });
       api.log("Aftermath: attaching a mod,", err);
+    } finally {
+      attaching = null;
+      side?.render();
+      strip?.render();
+      redraw();
+    }
+  }
+  async function attachFolder(folder, profile, hash) {
+    await api.gameData.attach(profile, async (_path, file) => {
+      const f = file?.member ? folder.files.get(file.member) : void 0;
+      return f ? new Uint8Array(await f.file.arrayBuffer()) : null;
+    }, { hash });
+    await api.data.load();
+  }
+  const pickedFolders = /* @__PURE__ */ new Map();
+  const provided = /* @__PURE__ */ new Map();
+  function provideFolder(hash, name, picked) {
+    pickedFolders.set(hash, { name, picked });
+    registerFolders();
+  }
+  function registerFolders() {
+    for (const [hash, { name, picked }] of pickedFolders) {
+      if (provided.has(hash) || typeof sim?.provideMod !== "function") continue;
+      try {
+        provided.set(hash, sim.provideMod(hash, { name, files: async () => pickedModFiles(picked) }));
+      } catch (err) {
+        api.log("Aftermath: registering a mod's folder,", err);
+      }
+    }
+  }
+  function unregisterFolders() {
+    for (const d of provided.values()) d.dispose();
+    provided.clear();
+  }
+  const modReason = (entry) => {
+    for (const r of [entry.viewFailed?.reason, entry.failedReason]) if (r === "mod-missing" || r === "mod-terrain") return r;
+    return null;
+  };
+  function signsText(signs) {
+    return signs.map((sign) => sign.kind === "terrain" ? t("its map uses {tileset} tile group {group}, and the last StarCraft has, in Remastered, is {last}", { tileset: translate(TILESETS[sign.tileset]), group: sign.group, last: sign.last }) : t("{player}'s race is {race}, which is none of the game's", { player: plainText(sign.player), race: sign.race })).join("; ");
+  }
+  function modHashWaited() {
+    return new Promise((resolve) => {
+      const name = api.gameData?.source?.()?.profile.name ?? "";
+      api.ui.status(t("Waiting for {name}'s hash before the replay opens\u2026", { name }));
+      let sub = null, timer = 0, done = false;
+      const end = (mod) => {
+        if (done) return;
+        done = true;
+        sub?.dispose();
+        clearInterval(timer);
+        resolve(mod);
+      };
+      const check = () => {
+        const source = api.gameData?.source?.();
+        const mod = openModOf(source);
+        if (mod) end(mod);
+        else if (!modHashPending(source)) end(null);
+      };
+      sub = api.events.on("gameData", check);
+      timer = window.setInterval(check, 1e3);
+      check();
+    });
+  }
+  function assume(entries, mod) {
+    for (const e of entries) {
+      e.mod = assumedTag(mod);
+      e.dataSet = assumedDataSet(mod);
+      e.assumed = true;
+      if (loaded.includes(e)) playWithMod(e);
+    }
+  }
+  function playWithMod(entry) {
+    entry.viewFailed = null;
+    if (running?.entry === entry) running.controller.abort();
+    if (againRunning?.entry === entry) againRunning.controller.abort();
+    entry.played = null;
+    entry.failed = null;
+    entry.failedReason = null;
+    entry.again = null;
+    if (!queue.includes(entry)) queue.push(entry);
+    game.forget(entry.id);
+    offered.delete(entry.id);
+    if (current === entry) {
+      if (game.shown) handOver(true);
+      else gameFor(entry);
+    }
+    side?.render();
+    strip?.render();
+    redraw();
+    pump();
+  }
+  async function pickModFolder(entries) {
+    if (attaching || !entries.length) return false;
+    if (!api.gameData?.attach || !api.gameData.storedPath) {
+      api.ui.toast({ kind: "warn", title: t("This editor cannot take a mod's folder"), detail: t("Attaching a mod's data set needs a newer scmJS.") });
+      return false;
+    }
+    const picked = await api.ui.pickFiles({ directory: true });
+    if (!picked.length) return false;
+    const folder = modFolder(picked);
+    if (!folder.files.size) {
+      api.ui.toast({ kind: "warn", title: t("No game files in that folder"), detail: t("Pick the mod's folder: the one holding its arr, unit and other game folders, or the folder above it.") });
+      return false;
+    }
+    const entry = entries[0];
+    attaching = { entry, done: 0, of: folder.files.size + folder.plugins.size + folder.firegraft.size };
+    side?.render();
+    let shown = 0;
+    try {
+      const hashes = await folderHashes(folder, (member) => api.gameData.read(api.gameData.storedPath(member)), (done) => {
+        if (!attaching) return;
+        attaching.done = done;
+        if (performance.now() - shown > 250) {
+          shown = performance.now();
+          side?.render();
+        }
+      });
+      const name = picked[0].path.split("/")[0] || t("Mod");
+      await attachFolder(folder, { id: `replay-${hashes.hash}`, name }, hashes.hash);
+      provideFolder(hashes.hash, name, picked);
+      assume(entries, { hash: hashes.hash, name, url: null });
+      api.ui.toast({ kind: "ok", title: t("{name} attached", { name }), detail: t("The replay is watched and analysed with it, and the editor draws with its files until its data set is changed or the page is loaded again.") });
+      return true;
+    } catch (err) {
+      api.ui.toast({ kind: "error", title: t("The mod could not be attached"), detail: err instanceof Error ? err.message : String(err) });
+      api.log("Aftermath: attaching a mod,", err);
+      return false;
     } finally {
       attaching = null;
       side?.render();
@@ -6361,10 +6551,17 @@ function activate(api) {
       showBusy();
     },
     hover: (h) => showHover(h),
-    fog: (on) => fogFromEditor(on)
+    fog: (on) => fogFromEditor(on),
+    failure: (id, failed) => {
+      const entry = loaded.find((l) => l.id === id);
+      if (!entry) return;
+      entry.viewFailed = failed;
+      if (entry === current) side?.render();
+    }
   }, "Replay", {
     loading: (name) => t("Loading {name}\u2026", { name }),
-    failed: (message) => t("The game could not be shown: {message}", { message })
+    failed: (message) => t("The game could not be shown: {message}", { message }),
+    keeping: (message) => t("The play page keeps the mod first: {message}", { message })
   });
   const lastEyes = /* @__PURE__ */ new Map();
   function fogFromEditor(on) {
@@ -6533,7 +6730,7 @@ function activate(api) {
         const replay = await parseReplay(bytes);
         const id = nextId++, map = readChk(replay.chk);
         const group = [...loaded, ...batch].find((l) => likeness(map, l.map) >= SAME_MAP)?.group ?? id;
-        batch.push({ id, fileName: file.name, report: analyse(replay), map, bytes, docId: null, group, excluded: false, frame: 0, hidden: /* @__PURE__ */ new Set(), played: null, failed: null, eyes: null, again: null, mod: replay.mod ?? null, ...replay.mod ? { dataSet: replayDataSet(replay.mod) } : {} });
+        batch.push({ id, fileName: file.name, report: analyse(replay), map, bytes, docId: null, group, excluded: false, frame: 0, hidden: /* @__PURE__ */ new Set(), played: null, failed: null, eyes: null, again: null, mod: replay.mod ?? null, ...replay.mod ? { dataSet: replayDataSet(replay.mod) } : {}, signs: replay.mod ? [] : modSigns(replay.players, map) });
       } catch (err) {
         const detail = err instanceof ReplayError ? translate(err.message) : String(err);
         api.ui.toast({ kind: "error", title: t("Could not read {name}", { name: file.name }), detail });
@@ -6542,18 +6739,22 @@ function activate(api) {
     }
     if (!batch.length) return;
     const untagged = batch.filter((e) => !e.mod);
-    const open = untagged.length ? openModOf(api.gameData?.source?.()) : null;
+    let open = untagged.length ? openModOf(api.gameData?.source?.()) : null;
+    if (untagged.length && !open && modHashPending(api.gameData?.source?.())) open = await modHashWaited();
+    const signed = untagged.filter((e) => e.signs.length);
     if (open) {
       const name = open.name || open.hash;
       const withMod = await api.ui.confirm(
-        t("{n, plural, one {This replay names no mod.} other {# of these replays name no mod.}} A game played with StarCraft's own data names none, and so does one played with a mod's own release, which does not write which mod it was. The editor has {name} open. Watch with {name}?", { n: untagged.length, name }),
+        signed.length ? t("{n, plural, one {This replay was played with a mod, and does not say which} other {# of these replays were played with a mod, and do not say which}}: {signs}. A mod's own release writes no name of its mod into a replay. The editor has {name} open. Watch with {name}?", { n: signed.length, signs: signsText(signed[0].signs), name }) : t("{n, plural, one {This replay names no mod.} other {# of these replays name no mod.}} A game played with StarCraft's own data names none, and so does one played with a mod's own release, which does not write which mod it was. The editor has {name} open. Watch with {name}?", { n: untagged.length, name }),
         { title: t("A replay that names no mod"), confirmLabel: t("Watch With {name}", { name }), cancelLabel: t("Watch Without") }
       );
-      if (withMod) for (const e of untagged) {
-        e.mod = assumedTag(open);
-        e.dataSet = assumedDataSet(open);
-        e.assumed = true;
-      }
+      if (withMod) assume(untagged, open);
+    } else if (signed.length) {
+      const pick2 = await api.ui.confirm(
+        t("{n, plural, one {This replay was played with a mod, and does not say which} other {# of these replays were played with a mod, and do not say which}}: {signs}. A mod's own release writes no name of its mod into a replay. Pick the mod's folder and it is watched and analysed with it, or open the mod with File \u25B8 Open a Mod\u2026 first. Without the mod it is played with StarCraft's own data, which is another game.", { n: signed.length, signs: signsText(signed[0].signs) }),
+        { title: t("A replay played with a mod"), confirmLabel: t("Pick the Mod's Folder\u2026"), cancelLabel: t("Open Without") }
+      );
+      if (pick2) await pickModFolder(signed);
     }
     const tabbed = [], quiet = [];
     if (into) {
@@ -7834,6 +8035,7 @@ function activate(api) {
     const run = { entry, controller: new AbortController(), fraction: -1 };
     running = run;
     entry.failed = null;
+    entry.failedReason = null;
     strip?.render();
     try {
       const state = await sim.status();
@@ -7879,7 +8081,8 @@ function activate(api) {
       for (const b of entry.played.standing) api.graphics.requestUnit(b.type);
     } catch (err) {
       if (err?.name !== "AbortError") {
-        entry.failed = err instanceof Error ? err.message : String(err);
+        entry.failed = engineSentence(err);
+        entry.failedReason = engineReason(err);
         api.log("Aftermath:", entry.fileName, err);
       }
     } finally {
@@ -8688,6 +8891,37 @@ function activate(api) {
       if (a.kind === "failed") return t("The analysis could not play it with the mod: {reason}", { reason: a.reason });
       return t("The analysis (the Game and Fights tabs, Analysis, Cast) plays it with the mod, when this browser keeps it: a mod is added once on the play page.");
     }
+    /**
+     * A replay that names no mod, and its own content says it was played with one (`modSigns`), or the engine said its
+     * map is on a mod's terrain: the sentence, and what to do — watch it with the mod open in the editor (a mod opened in
+     * the Mod Editor after the replay is offered here too), or pick the mod's folder.
+     */
+    renderModWanted(entry) {
+      const box = el(
+        "div",
+        { className: "afm-mod" },
+        el("div", {}, entry.signs.length ? t("Played with a mod, and the replay does not say which: {signs}.", { signs: signsText(entry.signs) }) : t("Played with a mod, and the replay does not say which: the game engine found its map on terrain StarCraft has not got, neither 1.16.1 nor Remastered.")),
+        w.hint(t("A mod's own release writes no name of its mod into a replay. Until the mod is chosen, the Game view and the analysis play it with StarCraft's own data, which is another game. Open the mod with File \u25B8 Open a Mod\u2026 and watch with it here, or pick its folder."))
+      );
+      this.modActions(entry, box, null);
+      this.root.append(box);
+    }
+    /** "Watch With" the mod open in the editor (not the one `except` names), and "Pick the Mod's Folder…"; or how far the folder is read. */
+    modActions(entry, box, except) {
+      if (attaching?.entry === entry) {
+        box.append(el("div", { className: "afm-dim" }, t("Reading the mod: {done} of {n} files\u2026", { done: attaching.done, n: attaching.of })));
+        return;
+      }
+      const open = openModOf(api.gameData?.source?.());
+      const acts = el("div", { className: "afm-acts" });
+      if (open && open.hash !== except) acts.append(w.button(t("Watch With {name}", { name: open.name || open.hash }), { className: "sm", onClick: () => {
+        assume([entry], open);
+      } }));
+      acts.append(w.button(t("Pick the Mod's Folder\u2026"), { className: "sm", onClick: () => {
+        void (entry.mod && !entry.assumed ? attachMod(entry) : pickModFolder([entry]));
+      } }));
+      box.append(acts);
+    }
     /** A replay of a mod: which, its makers' link, its plugins, and whether the editor draws with it. */
     renderMod(entry, tag2) {
       const link = safeLink(tag2.dataSet.url);
@@ -8707,6 +8941,12 @@ function activate(api) {
           void attachMod(entry);
         } })
       );
+      const reason = modReason(entry);
+      if (reason) {
+        const name = tag2.dataSet.name || tag2.dataSet.hash;
+        box.append(el("div", { className: "afm-warn" }, reason === "mod-missing" ? t("The play page has not got {name}'s files, so the replay is not played there. Open the mod with File \u25B8 Open a Mod\u2026, or pick its folder: its files are then handed to the play page, which keeps them.", { name }) : t("{name} has not got this map's terrain either: the replay was played with another mod, or another version of {name}. Open that mod with File \u25B8 Open a Mod\u2026, or pick its folder.", { name })));
+        this.modActions(entry, box, tag2.dataSet.hash);
+      }
       const own = entry.report.replay.unknownCommands;
       if (own > 0) box.append(el("div", { className: "afm-dim" }, t("{n, plural, one {# command block is the mod's own and is not analysed.} other {# command blocks are the mod's own and are not analysed.}}", { n: own })));
       box.append(w.hint(`${game.playsMods ? t("Play From Here and the Replay view play it with the mod.") : t("Play From Here plays it with the mod on the play page.")} ${this.modAnalysisLine(entry)} ${t("What is shown is the players' orders, and Aftermath's own rules for workers and town halls go by the game's unit ids, which a mod may give other units.")}`));
@@ -8735,6 +8975,7 @@ function activate(api) {
         el("div", { className: "afm-dim" }, facts)
       );
       if (entry.mod) this.renderMod(entry, entry.mod);
+      else if (entry.signs.length || modReason(entry) === "mod-terrain") this.renderModWanted(entry);
       const parted = entry.played?.timeline.check?.parted ?? null;
       if (parted !== null) this.root.append(el("div", { className: "afm-warn" }, t("From {time} the game played here is not the game in the replay: a player gave an order to a unit that had not been made. What is shown after that moment is not what happened, and this game is left out of Map stats.", { time: formatTime(parted) })));
       if (rep.unknownCommands > 0 && !entry.mod) this.root.append(w.hint(t("{n, plural, one {# command of a kind Aftermath does not know was skipped.} other {# commands of a kind Aftermath does not know were skipped.}}", { n: rep.unknownCommands })));
@@ -9686,7 +9927,9 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
   }
   if (bottomDock) api.ui.fileType({ name: msg2("StarCraft replay"), extensions: [".rep"], open: (files) => void load(files) });
   const simWatch = api.services.watch("scm-sim.engine", (service) => {
+    unregisterFolders();
     sim = service;
+    registerFolders();
     game.setService(service);
     if (current) gameFor(current);
     pump();
@@ -9725,6 +9968,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
     running?.controller.abort();
     againRunning?.controller.abort();
     game.dispose();
+    unregisterFolders();
     simWatch.dispose();
     endCast();
     making?.abort.abort();
