@@ -151,10 +151,29 @@ older forms a replay saved before November 2026 names. Only the folder's loose f
 read: archives in it (an `.mpq`, the mod's `.exe`) are not, so a mod that keeps its files
 in one is refused here, and the message says so. Pick the folder of loose files.
 
-What the game engine shows waits for the play page to play a mod's replay: the Replay
-view, the analysis (the Game and Fights tabs, Analysis, Cast) and Play From Here. What is
-shown is the players' orders. The Build tab's choice of workers and town halls goes by the
-game's own unit numbers, which a mod may give other units.
+With the scm-sim plugin 0.16.0 or later, **Play From Here** opens a mod's replay on the play
+page with the mod's hash, name and link (never its files). The page plays it with that mod
+when the browser keeps it, switching to it first if it plays another; otherwise it names the
+mod and asks for its folder, with the makers' link, and plays the replay once the folder is
+dropped. A copy of the mod of another version is refused. A replay saved by the play page
+names its mod itself, and the page reads that first.
+
+A mod whose code ran in the game (its plugins, as Cosmonarchy's do, or its FireGraft
+project's changes to the game's program) plays only on a play page that runs it: one whose
+address has `?lift=live`. With the scm-sim plugin 0.17.0, Play From Here opens the page that
+way for such a replay, and the play page also reloads itself with `?lift=live` when it is
+handed one without it.
+
+With the scm-sim plugin 0.17.0 and a play page that knows a mod's replays, the Replay view
+plays a mod's replay with its mod too: the view loads with the mod the replay names (from the
+copy the browser keeps), and with `?lift=live` when its code ran. With older ones the tab of a
+mod's replay shows the map only.
+
+The analysis (the Game and Fights tabs, Analysis, Cast) does not play a mod's replay yet: it
+plays replays with the game's own files. What is shown is the players' orders. A mod may send
+commands of its own, which the game does not have; the panel counts their command blocks, and
+they are left out of the analysis. The Build tab's choice of workers and town halls goes by
+the game's own unit numbers, which a mod may give other units.
 
 ### On the map
 

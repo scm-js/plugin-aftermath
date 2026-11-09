@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { appendModTag, parseReplay, type ModTag } from "@scm-js/replay";
 import { chk, cmds, le16, writeReplay } from "@scm-js/replay/write";
-import { dataSetHash, folderHashes, gameName, hashLines, isReplaysMod, modFolder, modRoot, pluginNames, safeLink, sha256 } from "../modreplay";
+import { dataSetHash, folderHashes, gameName, handedReplay, hashLines, isReplaysMod, modFolder, modRoot, liveLifter, pluginNames, replayDataSet, safeLink, sha256 } from "../modreplay";
 
 const blob = (s: string) => new Blob([new TextEncoder().encode(s)]);
 const tag = (more: Partial<ModTag> = {}): ModTag => ({
@@ -104,5 +104,68 @@ describe("what is said of a mod's replay", () => {
     const bytes = writeReplay({ format: "legacy", players: [{ index: 0, id: 0, name: "Alpha" }], commands: cmds([[10, 0, 0x1f, ...le16(7)]]), chk: chk(64, 64) });
     expect((await parseReplay(bytes)).mod).toBeNull();
     expect((await parseReplay(await appendModTag(bytes, tag()))).mod).toEqual(tag());
+  });
+});
+
+describe("Play From Here with a mod's replay", () => {
+  it("hands the play page the tag's hash, name and link, never the mod's files", () => {
+    expect(replayDataSet(tag())).toEqual({ hash: "0123456789abcdef", name: "Test Mod", url: "https://example.org/mod", live: true });
+    expect(replayDataSet(tag({ plugins: [], firegraft: null }))).toEqual({ hash: "0123456789abcdef", name: "Test Mod", url: "https://example.org/mod" });
+    // No name, no link, a link that is not a web address: only what is there and safe.
+    expect(replayDataSet(tag({ dataSet: { hash: "fedcba9876543210", name: "", url: null }, plugins: [] }))).toEqual({ hash: "fedcba9876543210" });
+    expect(replayDataSet(tag({ dataSet: { hash: "fedcba9876543210", name: "M", url: "javascript:alert(1)" } }))).toEqual({ hash: "fedcba9876543210", name: "M", live: true });
+    const bytes = new Uint8Array([1, 2, 3]);
+    const handed = handedReplay(bytes, "Exodus.rep", tag());
+    expect(handed).toEqual({ bytes, name: "Exodus.rep", dataSet: { hash: "0123456789abcdef", name: "Test Mod", url: "https://example.org/mod", live: true } });
+    expect(handed.dataSet).not.toHaveProperty("files");
+  });
+
+  it("knows when the mod's code ran, which the page runs only with ?lift=live (scm-sim's replayLift)", () => {
+    const lifter = { lifter: "m10r2.1", build: "dev" }, shipped = { lifter: "shipped", build: "dev" };
+    // plugins ran (only ever with the live lifter)
+    expect(liveLifter(tag())).toBe(true);
+    expect(liveLifter(tag({ engine: shipped }))).toBe(true);
+    // none ran: the FireGraft project's exe edits, written only by a lifter
+    expect(liveLifter(tag({ plugins: [], noplugins: true, engine: lifter }))).toBe(true);
+    expect(liveLifter(tag({ plugins: [], noplugins: true, engine: shipped }))).toBe(false);
+    expect(liveLifter(tag({ plugins: [], noplugins: true, engine: null }))).toBe(false);
+    expect(liveLifter(tag({ plugins: [], firegraft: null, engine: lifter }))).toBe(false);
+    expect(replayDataSet(tag({ plugins: [], noplugins: true, engine: lifter }))).toMatchObject({ live: true });
+    expect(replayDataSet(tag({ plugins: [], noplugins: true, engine: shipped }))).not.toHaveProperty("live");
+  });
+
+  it("hands nothing more than before for a replay of the game itself", () => {
+    const bytes = new Uint8Array([1, 2, 3]);
+    expect(replayDataSet(null)).toBeUndefined();
+    const handed = handedReplay(bytes, "game.rep", null);
+    expect(handed).toEqual({ bytes, name: "game.rep" });
+    expect("dataSet" in handed).toBe(false);
+  });
+
+  it("is what the play page takes: its own check keeps the data set as handed", () => {
+    // plugin-scm-sim 0.17.0's validReplayDataSet (src/play.ts, view-mod 57058af), copied: a hash of 16 hex digits, or
+    // files; a name and an http(s) link when they are text; `live` when it is true.
+    const validReplayDataSet = (set: unknown) => {
+      if (!set || typeof set !== "object") return null;
+      const { hash, name, url, files, live } = set as Record<string, unknown>;
+      const good = typeof hash === "string" && /^[0-9a-f]{16}$/.test(hash) ? hash : "";
+      const kept = Array.isArray(files) ? files : [];
+      if (!good && !kept.length) return null;
+      return { hash: good, ...(typeof name === "string" && name.trim() ? { name: name.trim() } : {}), ...(typeof url === "string" && /^https?:\/\/\S+$/i.test(url) ? { url } : {}), ...(kept.length ? { files: kept } : {}), ...(live === true ? { live: true } : {}) };
+    };
+    // The saved Cosmonarchy replay's tag (scm-sim docs/mods-replays.md): four plugins ran.
+    const handed = handedReplay(new Uint8Array(0), "x.rep", tag({ dataSet: { hash: "ac3f86533e4b5a31", name: "release", url: "https://www.fraudsclub.com/cosmonarchy-bw/" }, engine: { lifter: "m10r2.1", build: "dev" } }));
+    expect(validReplayDataSet(handed.dataSet)).toEqual(handed.dataSet);
+    expect(handed.dataSet).toEqual({ hash: "ac3f86533e4b5a31", name: "release", url: "https://www.fraudsclub.com/cosmonarchy-bw/", live: true });
+  });
+});
+
+describe("a mod's own commands", () => {
+  it("count as unknown in a 1.16.1 replay (0x60 to 0x65), the rest of their block left out", async () => {
+    // Cosmonarchy sends 0x63 with a body of its own in every game.
+    const bytes = writeReplay({ format: "legacy", players: [{ index: 0, id: 0, name: "Alpha" }], commands: cmds([[10, 0, 0x63, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13], [20, 0, 0x1f, ...le16(7)]]), chk: chk(64, 64) });
+    const replay = await parseReplay(await appendModTag(bytes, tag()));
+    expect(replay.unknownCommands).toBe(1);
+    expect(replay.mod?.dataSet.hash).toBe("0123456789abcdef");
   });
 });

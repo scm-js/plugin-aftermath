@@ -518,5 +518,12 @@ export const KO: Record<string, string> = {
   "Reading the mod: {done} of {n} files…": "모드를 읽는 중: 파일 {n}개 중 {done}개…",
   "Units, upgrades and technologies show by id until the editor draws with the mod: attach the mod's folder, and it is checked against the replay first.": "편집기가 모드로 그리기 전까지 유닛, 업그레이드, 기술은 번호로 보입니다: 모드 폴더를 붙이세요. 먼저 리플레이와 같은 모드인지 확인합니다.",
   "Attach the Mod's Folder…": "모드 폴더 붙이기…",
-  "The game view, the analysis (the Game and Fights tabs, Analysis, Cast) and Play From Here wait for the play page to play a mod's replay. What is shown is the players' orders, and Aftermath's own rules for workers and town halls go by the game's unit ids, which a mod may give other units.": "게임 화면, 분석(게임과 전투 탭, 분석, 중계)과 여기서부터 플레이는 플레이 페이지가 모드의 리플레이를 재생할 수 있을 때까지 기다립니다. 보이는 것은 플레이어들의 명령이며, Aftermath가 일꾼과 본진을 가려내는 규칙은 게임의 유닛 번호를 따르는데, 모드는 그 번호를 다른 유닛에 줄 수 있습니다.",
+  "Play From Here and the Replay view play it with the mod.": "여기서부터 플레이와 리플레이 화면은 이 모드로 재생합니다.",
+  "Play From Here plays it with the mod on the play page.": "여기서부터 플레이는 플레이 페이지에서 이 모드로 재생합니다.",
+  "The analysis (the Game and Fights tabs, Analysis, Cast) does not: it plays replays with the game's own files.": "분석(게임과 전투 탭, 분석, 중계)은 모드로 재생하지 않습니다: 리플레이를 게임 자체의 파일로 재생합니다.",
+  "What is shown is the players' orders, and Aftermath's own rules for workers and town halls go by the game's unit ids, which a mod may give other units.": "보이는 것은 플레이어들의 명령이며, Aftermath가 일꾼과 본진을 가려내는 규칙은 게임의 유닛 번호를 따르는데, 모드는 그 번호를 다른 유닛에 줄 수 있습니다.",
+  "{n, plural, one {# command block is the mod's own and is not analysed.} other {# command blocks are the mod's own and are not analysed.}}": "명령 묶음 {n}개는 모드 자체의 것이라 분석하지 않습니다.",
+  "It was played with {name}: the play page plays it with that mod if this browser keeps it, and otherwise asks for the mod's folder, which its makers publish at {link}.": "{name}(으)로 플레이한 리플레이입니다: 이 브라우저에 그 모드가 있으면 플레이 페이지가 그 모드로 재생하고, 없으면 모드 폴더를 요청합니다. 모드는 제작자가 {link}에서 배포합니다.",
+  "It was played with {name}: the play page plays it with that mod if this browser keeps it, and otherwise asks for the mod's folder.": "{name}(으)로 플레이한 리플레이입니다: 이 브라우저에 그 모드가 있으면 플레이 페이지가 그 모드로 재생하고, 없으면 모드 폴더를 요청합니다.",
+  "A replay of a mod": "모드의 리플레이",
 };
