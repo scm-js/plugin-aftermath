@@ -12,6 +12,11 @@
  * case) and one for its FireGraft project (`<file>.fgp`, lower case); the first sixteen hex digits — and the same
  * without the plugins' lines. The folder's loose files only: an archive in it (an `.mpq`, a mod's `.exe`) is not read,
  * so a mod that keeps files in one hashes otherwise here than on the play page.
+ *
+ * An operating system's files (`SYSTEM_FILES`: `desktop.ini`, `Thumbs.db`, `.DS_Store`, …) are not the mod's and have
+ * no line, so a folder is named alike however it was picked: the browser's folder picker does not hand `desktop.ini`
+ * over, the older folder input does. Until 2026-11-09 they had lines; a replay tagged then names the mod by a hash
+ * with them, which is matched as an older form when the picked folder shows the files (`FolderHashes.older`).
  */
 import type { ModTag } from "@scm-js/replay";
 import type { AnalysedMod, ReplayDataSet } from "./vendor/scm-sim";
@@ -24,6 +29,29 @@ export interface PickedFile {
 
 /** The game's folders, by which the root of a mod's files is found (core's `GAME_FOLDERS`). */
 const GAME_FOLDERS = ["arr", "rez", "scripts", "unit", "tileset", "sound", "game", "font", "dlgs", "glue", "triggers", "portrait", "music", "cursor", "local", "parallax", "smk", "maps", "anim", "hd2", "sd", "templates", "staredit", "campaign", "datreq", "samase", "lua", "config"];
+
+/**
+ * Files an operating system or its file manager leaves in folders, never the game's and so never a mod's (scm-js
+ * core's `SYSTEM_FILES` and scm-sim's, the same list): told by name alone, any case. `desktop.ini` (Windows Explorer's
+ * settings for a folder), `Thumbs.db`, `ehthumbs.db`, `ehthumbs_vista.db` (its caches of thumbnails), `.DS_Store` and
+ * `Icon\r` (the macOS Finder's), `._<name>` (the AppleDouble half of a file) and everything under `__MACOSX/` (the
+ * folder macOS's zips keep those in), `.directory` (KDE's). A browser's folder handle never hands over `desktop.ini`
+ * or `Thumbs.db` (Chromium refuses the names); a folder input and a drop read through its entries do.
+ */
+export const SYSTEM_FILES = {
+  names: ["desktop.ini", "thumbs.db", "ehthumbs.db", "ehthumbs_vista.db", ".ds_store", "icon\r", ".directory"],
+  prefixes: ["._"],
+  folders: ["__macosx"],
+} as const;
+
+/** Whether a path (either slash, any case) is one of `SYSTEM_FILES`: by its file name, or by a folder it is under. */
+export function isSystemFile(path: string): boolean {
+  const parts = path.toLowerCase().split(/[\\/]/).filter(Boolean);
+  const leaf = parts.pop() ?? "";
+  return (SYSTEM_FILES.names as readonly string[]).includes(leaf)
+    || SYSTEM_FILES.prefixes.some((p) => leaf.startsWith(p))
+    || parts.some((folder) => (SYSTEM_FILES.folders as readonly string[]).includes(folder));
+}
 
 /** A path as the game names it: backslashes, lower case (`arr\units.dat`). */
 export const gameName = (path: string): string => path.replace(/\//g, "\\").replace(/^\\+/, "").toLowerCase();
@@ -54,6 +82,11 @@ export interface ModFolder {
   firegraft: Map<string, PickedFile>;
   /** Archives and programs in the folder, which are not read here (an `.mpq`, a mod's `.exe`, a `.zip`). */
   unread: string[];
+  /**
+   * An operating system's files where a game file would be (`isSystemFile`), by the game's name: not the mod's, and
+   * read only for the hashes the mod had while such files had lines (`FolderHashes.older`).
+   */
+  system: Map<string, PickedFile>;
 }
 
 /**
@@ -61,13 +94,16 @@ export interface ModFolder {
  * folders (a read-me), not under a `plugins` or `firegraft` folder there, and not a plugin, a FireGraft file, an
  * archive, a program or a library. A dot file counts; a dot folder (git's, an editor's) does not. The plugins and the
  * FireGraft project are kept beside, wherever they are. The folder's own name, first in every path, is not part of it.
+ * An operating system's file (`isSystemFile`) is none of these, whatever its name ends in.
  */
 export function modFolder(picked: readonly PickedFile[]): ModFolder {
   const inside = picked.map((f) => ({ ...f, path: f.path.split("/").slice(1).join("/") })).filter((f) => f.path && !f.path.split("/").slice(0, -1).some((part) => part.startsWith(".")));
   const unread: string[] = [];
   const plugins = new Map<string, PickedFile>(), firegraft = new Map<string, PickedFile>();
+  const systemLoose: PickedFile[] = [];
   const loose = inside.filter((f) => {
     const leaf = f.path.split("/").pop()!, lower = leaf.toLowerCase();
+    if (isSystemFile(f.path)) { systemLoose.push(f); return false; }
     if (/\.(qdp|bwl)$/.test(lower)) { if (!plugins.has(lower)) plugins.set(lower, f); return false; }
     if (/\.fgp$/.test(lower)) { if (!firegraft.has(lower)) firegraft.set(lower, f); return false; }
     if (/\.(fgd|dll)$/.test(lower)) return false;
@@ -83,16 +119,34 @@ export function modFolder(picked: readonly PickedFile[]): ModFolder {
     if (!rel.includes("/") || top === "plugins" || top === "firegraft") continue;
     files.set(gameName(rel), { path: rel, file: f.file });
   }
-  return { files, plugins, firegraft, unread };
+  const system = new Map<string, PickedFile>();
+  for (const f of systemLoose) {
+    // (macOS's half of a plugin or of a project was taken for a plugin or a project then: that hash is not worked out again)
+    if (/\.(qdp|bwl|fgp|fgd|dll|mpq|exe|zip)$/i.test(f.path) || (root && !f.path.startsWith(root + "/"))) continue;
+    const rel = root ? f.path.slice(root.length + 1) : f.path;
+    const top = rel.split("/")[0].toLowerCase();
+    if (!rel.includes("/") || top === "plugins" || top === "firegraft") continue;
+    system.set(gameName(rel), { path: rel, file: f.file });
+  }
+  return { files, plugins, firegraft, unread, system };
 }
 
 const hex = (b: ArrayBuffer) => [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join("");
 export const sha256 = async (bytes: Uint8Array): Promise<string> => hex(await crypto.subtle.digest("SHA-256", bytes as BufferSource));
 
-/** The hash of lines `name<TAB>sha256` in any order: sorted by name, joined with "\n", SHA-256, sixteen hex digits. */
+const lineName = (l: string) => l.slice(0, l.indexOf("\t"));
+
+/**
+ * The hash of lines `name<TAB>sha256` in any order: sorted by name, joined with "\n", SHA-256, sixteen hex digits. A
+ * line of an operating system's file (`isSystemFile`) is dropped first, so the hash is the same whatever list it is given.
+ */
 export async function hashLines(lines: readonly string[]): Promise<string> {
-  const name = (l: string) => l.slice(0, l.indexOf("\t"));
-  const sorted = [...lines].sort((a, b) => (name(a) < name(b) ? -1 : name(a) > name(b) ? 1 : 0));
+  return hashLinesAsWere(lines.filter((l) => !isSystemFile(lineName(l))));
+}
+
+/** `hashLines` as it was until 2026-11-09: every line given. For matching a hash made then, never for naming a mod now. */
+export async function hashLinesAsWere(lines: readonly string[]): Promise<string> {
+  const sorted = [...lines].sort((a, b) => (lineName(a) < lineName(b) ? -1 : lineName(a) > lineName(b) ? 1 : 0));
   return (await sha256(new TextEncoder().encode(sorted.join("\n")))).slice(0, 16);
 }
 
@@ -116,6 +170,12 @@ export interface FolderHashes {
   /** Older forms, for replays tagged before the plugins and the project had lines: the game files alone, and those that differ from the data set underneath. */
   all: string;
   changed: string;
+  /**
+   * Each of those four as it was while an operating system's files had lines (until 2026-11-09): there only when the
+   * picked folder shows such files where a game file would be. A folder read through the browser's folder picker
+   * never shows `desktop.ini` or `Thumbs.db`, so it has none for those.
+   */
+  older: string[];
 }
 
 /**
@@ -136,11 +196,17 @@ export async function folderHashes(folder: ModFolder, under: (member: string) =>
   }
   for (const [name, f] of folder.firegraft) { code.push(firegraftLine(name, await sha256(new Uint8Array(await f.file.arrayBuffer())))); progress?.(++done, of); }
   for (const [name, f] of folder.plugins) { plugins.push(pluginLine(name, await sha256(new Uint8Array(await f.file.arrayBuffer())))); progress?.(++done, of); }
-  return { hash: await hashLines([...game, ...code, ...plugins]), withoutPlugins: await hashLines([...game, ...code]), all: await hashLines(game), changed: await hashLines(changed) };
+  // The same four as they were while an operating system's files had lines (such a file is in no game, so it differed).
+  const system: string[] = [];
+  for (const [member, f] of folder.system ?? []) system.push(`${member}\t${await sha256(new Uint8Array(await f.file.arrayBuffer()))}`);
+  const older = system.length
+    ? [await hashLinesAsWere([...game, ...system, ...code, ...plugins]), await hashLinesAsWere([...game, ...system, ...code]), await hashLinesAsWere([...game, ...system]), await hashLinesAsWere([...changed, ...system])]
+    : [];
+  return { hash: await hashLines([...game, ...code, ...plugins]), withoutPlugins: await hashLines([...game, ...code]), all: await hashLines(game), changed: await hashLines(changed), older: [...new Set(older)] };
 }
 
 /** Whether a folder is the replay's mod: by its hash, without its plugins, or by an older form. */
-export const isReplaysMod = (tag: ModTag, hashes: FolderHashes) => [hashes.hash, hashes.withoutPlugins, hashes.all, hashes.changed].includes(tag.dataSet.hash);
+export const isReplaysMod = (tag: ModTag, hashes: FolderHashes) => [hashes.hash, hashes.withoutPlugins, hashes.all, hashes.changed, ...(hashes.older ?? [])].includes(tag.dataSet.hash);
 
 /** The plugins and FireGraft patch a tag names, for a line: "gptp.qdp, aise.qdp"; "" for none. */
 export const pluginNames = (tag: ModTag): string => (tag.noplugins ? "" : [...tag.plugins.map((p) => p.name), ...(tag.firegraft ? [tag.firegraft.name] : [])].join(", "));

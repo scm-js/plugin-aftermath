@@ -180,9 +180,13 @@ The check is the mod's hash as the play page and `scmjs mod info` work it out: o
 for each of the folder's game files, each plugin it carries (`.qdp`, `.bwl`) and its
 FireGraft project (`.fgp`), never compared with your copy of the game; a replay of a game
 that ran none of the plugins names the hash without them, which is taken too, as are the
-older forms a replay saved before November 2026 names. Only the folder's loose files are
-read: archives in it (an `.mpq`, the mod's `.exe`) are not, so a mod that keeps its files
-in one is refused here, and the message says so. Pick the folder of loose files.
+older forms a replay saved before November 2026 names. Files an operating system leaves in
+folders (`desktop.ini`, `Thumbs.db`, `.DS_Store` and the like) are not the mod's and have
+no line. They had one until 9 November 2026, and a replay saved before then names the mod
+by a hash with them: it is matched when the picked folder shows those files, which the
+browser's folder picker does not for `desktop.ini` and `Thumbs.db`. Only the folder's loose
+files are read: archives in it (an `.mpq`, the mod's `.exe`) are not, so a mod that keeps
+its files in one is refused here, and the message says so. Pick the folder of loose files.
 
 With the scm-sim plugin 0.16.0 or later, **Play From Here** opens a mod's replay on the play
 page with the mod's hash, name and link (never its files). The page plays it with that mod
