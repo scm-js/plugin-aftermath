@@ -304,12 +304,16 @@ describe("signs that an untagged replay was played with a mod (from the replay i
     expect(modSigns(players(8, 255), map(4, 3734)).map((s) => s.kind)).toEqual(["terrain", "race", "race"]);
   });
 
-  it("waits for a mod's hash still being worked out, not for the game's own data or none", () => {
+  it("waits for the hash of a mod in memory still being worked out, not for the game's own data, an installed set or none", () => {
     expect(modHashPending({ kind: "reader", profile: { id: "cosmonarchy" } })).toBe(true);
     expect(modHashPending({ kind: "reader", hash: "", profile: { id: "cosmonarchy" } })).toBe(true);
     expect(modHashPending({ kind: "reader", hash: "ac3f86533e4b5a31", profile: { id: "cosmonarchy" } })).toBe(false);
     expect(modHashPending({ kind: "copy", profile: { id: "starcraft" } })).toBe(false);
     expect(modHashPending({ kind: "none", profile: { id: "x" } })).toBe(false);
+    // An installed data set never gets a hash: StarCraft: Remastered in use must not hold a replay back for ever.
+    expect(modHashPending({ kind: "stored", profile: { id: "remastered" } })).toBe(false);
+    expect(modHashPending({ kind: "bundled", profile: { id: "a-mod-installed" } })).toBe(false);
+    expect(modHashPending({ profile: { id: "cosmonarchy" } })).toBe(false);
     expect(modHashPending(null)).toBe(false);
   });
 
