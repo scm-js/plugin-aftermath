@@ -172,9 +172,41 @@ export function replayDataSet(tag: ModTag | null): ReplayDataSet | undefined {
   return { hash: tag.dataSet.hash, ...(tag.dataSet.name ? { name: tag.dataSet.name } : {}), ...(url ? { url } : {}), ...(liveLifter(tag) ? { live: true } : {}) };
 }
 
-/** The replay as `playReplay` takes it: the whole file, its name, and the mod it was played with when the tag says one. */
-export function handedReplay(bytes: Uint8Array, name: string, tag: ModTag | null): { bytes: Uint8Array; name: string; dataSet?: ReplayDataSet } {
-  const dataSet = replayDataSet(tag);
+/** The mod the editor has open (`api.gameData.source()`), as an untagged replay may be watched with it. */
+export interface OpenMod { hash: string; name: string; url: string | null }
+
+/**
+ * The mod the editor draws with, when it is one: a data set with a mod's hash (sixteen hex digits) that is not the
+ * game's own (`starcraft`). Null for the game itself, a set with no hash yet (a large mod's is worked out after it
+ * opens), or no data at all.
+ */
+export function openModOf(source: { hash?: string; profile: { id: string; name: string; url?: string } } | null | undefined): OpenMod | null {
+  if (!source || source.profile.id === "starcraft" || !source.hash || !/^[0-9a-f]{16}$/.test(source.hash)) return null;
+  return { hash: source.hash, name: source.profile.name, url: safeLink(source.profile.url ?? null) };
+}
+
+/**
+ * A replay that names no mod, watched with the mod open in the editor because the person said so: the tag it would
+ * have carried had the game written one. Its plugins are not known (the replay does not say, and the editor's data set
+ * does not either), so the tag names none.
+ */
+export function assumedTag(mod: OpenMod): ModTag {
+  return { v: 1, dataSet: { hash: mod.hash, name: mod.name, url: mod.url }, plugins: [], firegraft: null, noplugins: false, engine: null, madeBy: "Aftermath" };
+}
+
+/**
+ * That mod as scm-sim is handed it. `live` always: whether the mod's code ran is not known, and a replay played with a
+ * mod's own release ran its plugins. The live lifter plays a mod without code the same, only slower to start.
+ */
+export function assumedDataSet(mod: OpenMod): ReplayDataSet {
+  return { hash: mod.hash, ...(mod.name ? { name: mod.name } : {}), ...(mod.url ? { url: mod.url } : {}), live: true };
+}
+
+/**
+ * The replay as `playReplay` takes it: the whole file, its name, and the mod it is played with when it has one — the
+ * tag's (`replayDataSet`), or the mod open in the editor for a replay that names none (`assumedDataSet`).
+ */
+export function handedReplay(bytes: Uint8Array, name: string, dataSet: ReplayDataSet | undefined): { bytes: Uint8Array; name: string; dataSet?: ReplayDataSet } {
   return { bytes, name, ...(dataSet ? { dataSet } : {}) };
 }
 
