@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { appendModTag, parseReplay, type ModTag } from "@scm-js/replay";
 import { chk, cmds, le16, writeReplay } from "@scm-js/replay/write";
-import { dataSetHash, folderHashes, gameName, handedReplay, hashLines, isReplaysMod, modAnalysis, modFolder, modRoot, liveLifter, playsModReplays, pluginNames, replayDataSet, safeLink, sha256 } from "../modreplay";
+import { assumedDataSet, assumedTag, dataSetHash, folderHashes, gameName, handedReplay, hashLines, isReplaysMod, modAnalysis, modFolder, modRoot, liveLifter, openModOf, playsModReplays, pluginNames, replayDataSet, safeLink, sha256 } from "../modreplay";
 
 const blob = (s: string) => new Blob([new TextEncoder().encode(s)]);
 const tag = (more: Partial<ModTag> = {}): ModTag => ({
@@ -115,7 +115,7 @@ describe("Play From Here with a mod's replay", () => {
     expect(replayDataSet(tag({ dataSet: { hash: "fedcba9876543210", name: "", url: null }, plugins: [] }))).toEqual({ hash: "fedcba9876543210" });
     expect(replayDataSet(tag({ dataSet: { hash: "fedcba9876543210", name: "M", url: "javascript:alert(1)" } }))).toEqual({ hash: "fedcba9876543210", name: "M", live: true });
     const bytes = new Uint8Array([1, 2, 3]);
-    const handed = handedReplay(bytes, "Exodus.rep", tag());
+    const handed = handedReplay(bytes, "Exodus.rep", replayDataSet(tag()));
     expect(handed).toEqual({ bytes, name: "Exodus.rep", dataSet: { hash: "0123456789abcdef", name: "Test Mod", url: "https://example.org/mod", live: true } });
     expect(handed.dataSet).not.toHaveProperty("files");
   });
@@ -137,7 +137,7 @@ describe("Play From Here with a mod's replay", () => {
   it("hands nothing more than before for a replay of the game itself", () => {
     const bytes = new Uint8Array([1, 2, 3]);
     expect(replayDataSet(null)).toBeUndefined();
-    const handed = handedReplay(bytes, "game.rep", null);
+    const handed = handedReplay(bytes, "game.rep", replayDataSet(null));
     expect(handed).toEqual({ bytes, name: "game.rep" });
     expect("dataSet" in handed).toBe(false);
   });
@@ -154,7 +154,7 @@ describe("Play From Here with a mod's replay", () => {
       return { hash: good, ...(typeof name === "string" && name.trim() ? { name: name.trim() } : {}), ...(typeof url === "string" && /^https?:\/\/\S+$/i.test(url) ? { url } : {}), ...(kept.length ? { files: kept } : {}), ...(live === true ? { live: true } : {}) };
     };
     // The saved Cosmonarchy replay's tag (scm-sim docs/mods-replays.md): four plugins ran.
-    const handed = handedReplay(new Uint8Array(0), "x.rep", tag({ dataSet: { hash: "ac3f86533e4b5a31", name: "release", url: "https://www.fraudsclub.com/cosmonarchy-bw/" }, engine: { lifter: "m10r2.1", build: "dev" } }));
+    const handed = handedReplay(new Uint8Array(0), "x.rep", replayDataSet(tag({ dataSet: { hash: "ac3f86533e4b5a31", name: "release", url: "https://www.fraudsclub.com/cosmonarchy-bw/" }, engine: { lifter: "m10r2.1", build: "dev" } })));
     expect(validReplayDataSet(handed.dataSet)).toEqual(handed.dataSet);
     expect(handed.dataSet).toEqual({ hash: "ac3f86533e4b5a31", name: "release", url: "https://www.fraudsclub.com/cosmonarchy-bw/", live: true });
   });
@@ -184,5 +184,28 @@ describe("the analysis of a mod's replay (scm-sim's R4)", () => {
     expect(modAnalysis({ played: null, engine: true, features: null, failed: null })).toEqual({ kind: "waiting" });
     expect(modAnalysis({ played: null, engine: true, features: ["replayDoor"], failed: "older" })).toEqual({ kind: "older" });
     expect(modAnalysis({ played: undefined, engine: false, features: null, failed: null })).toEqual({ kind: "older" });
+  });
+});
+
+describe("an untagged replay watched with the mod open in the editor", () => {
+  const source = (more: object = {}) => ({ hash: "1c41a2d7701fe842", profile: { id: "mod-cosmonarchy", name: "Cosmonarchy BW", url: "https://example.org/cosmo" }, ...more });
+
+  it("is offered only for a mod's data set with its hash", () => {
+    expect(openModOf(source())).toEqual({ hash: "1c41a2d7701fe842", name: "Cosmonarchy BW", url: "https://example.org/cosmo" });
+    expect(openModOf(source({ profile: { id: "starcraft", name: "StarCraft: Brood War" } }))).toBeNull();
+    expect(openModOf(source({ hash: undefined }))).toBeNull();
+    expect(openModOf(source({ hash: "not-a-hash" }))).toBeNull();
+    expect(openModOf(null)).toBeNull();
+    expect(openModOf(source({ profile: { id: "m", name: "M", url: "javascript:alert(1)" } }))?.url).toBeNull();
+  });
+
+  it("is tagged and handed over as that mod, with its code run", () => {
+    const mod = openModOf(source())!;
+    const tag = assumedTag(mod);
+    expect(tag.dataSet).toEqual({ hash: "1c41a2d7701fe842", name: "Cosmonarchy BW", url: "https://example.org/cosmo" });
+    expect(tag.plugins).toEqual([]);
+    expect(pluginNames(tag)).toBe("");
+    expect(assumedDataSet(mod)).toEqual({ hash: "1c41a2d7701fe842", name: "Cosmonarchy BW", url: "https://example.org/cosmo", live: true });
+    expect(assumedDataSet({ hash: "1c41a2d7701fe842", name: "", url: null })).toEqual({ hash: "1c41a2d7701fe842", live: true });
   });
 });

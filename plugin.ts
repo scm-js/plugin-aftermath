@@ -34,7 +34,7 @@ import type { Disposable, MapView, OverlayHandle, PanelHandle, PluginApi, Plugin
 import { analyse, buildOrderRows, formatTime, FRAMES_PER_MINUTE, heat, TOWN_HALLS, type ClickKind, type HeatGrid, type PlayerReport, type ReplayReport } from "./analysis";
 import { likeness, plainText, readChk, type ChkInfo } from "./chk";
 import { FRAME_MS, parseReplay, ReplayError, type ModTag } from "@scm-js/replay";
-import { folderHashes, handedReplay, isReplaysMod, modAnalysis, modFolder, playsModReplays, pluginNames, replayDataSet, safeLink } from "./modreplay";
+import { assumedDataSet, assumedTag, folderHashes, handedReplay, isReplaysMod, modAnalysis, modFolder, openModOf, playsModReplays, pluginNames, replayDataSet, safeLink } from "./modreplay";
 import { KO } from "./ko";
 import { buildings as standingBuildings, isBuilding, losses, lossPoints, madeRows, mineralLines, presencePoints, sampleAt, series, unitIndex, unitsAt, WORKERS, type Metric, type Point, type Standing, type UnitIndex } from "./played";
 import { knowledge, knownAt, placedBuildings, REMEMBER_FRAMES, trails, type Knowledge, type Trail } from "./knew";
@@ -128,6 +128,11 @@ interface Loaded {
   mod: ModTag | null;
   /** That mod as scm-sim is handed it (`replayDataSet`): Play From Here and the Replay view play the replay with it. */
   dataSet?: ReplayDataSet;
+  /**
+   * The replay names no mod, and the person chose to watch it with the mod open in the editor: `mod` is made up from
+   * that mod (`assumedTag`), not read from the replay.
+   */
+  assumed?: boolean;
 }
 
 /** A game's key fights played again by the game: as played, and with both sides only attack-moving. */
@@ -790,6 +795,19 @@ export function activate(api: PluginApi) {
       }
     }
     if (!batch.length) return;
+
+    // A replay that names no mod, opened while the editor draws with a mod (a game the mod's own release recorded writes
+    // no tag): the person says whether it was played with that mod. Without, it plays with the game's own data.
+    const untagged = batch.filter((e) => !e.mod);
+    const open = untagged.length ? openModOf(api.gameData?.source?.()) : null;
+    if (open) {
+      const name = open.name || open.hash;
+      const withMod = await api.ui.confirm(
+        t("{n, plural, one {This replay names no mod.} other {# of these replays name no mod.}} A game played with StarCraft's own data names none, and so does one played with a mod's own release, which does not write which mod it was. The editor has {name} open. Watch with {name}?", { n: untagged.length, name }),
+        { title: t("A replay that names no mod"), confirmLabel: t("Watch With {name}", { name }), cancelLabel: t("Watch Without") },
+      );
+      if (withMod) for (const e of untagged) { e.mod = assumedTag(open); e.dataSet = assumedDataSet(open); e.assumed = true; }
+    }
 
     const tabbed: Loaded[] = [], quiet: Loaded[] = [];
     if (into) {
@@ -2916,7 +2934,9 @@ export function activate(api: PluginApi) {
       const link = safeLink(tag.dataSet.url);
       const plugins = pluginNames(tag);
       const box = el("div", { className: "afm-mod" },
-        el("div", {}, t("Replay of a mod: {name} ({hash})", { name: tag.dataSet.name || t("unnamed"), hash: tag.dataSet.hash })),
+        entry.assumed
+          ? el("div", {}, t("Watched with {name} ({hash}), the mod open in the editor. The replay itself names no mod.", { name: tag.dataSet.name || t("unnamed"), hash: tag.dataSet.hash }))
+          : el("div", {}, t("Replay of a mod: {name} ({hash})", { name: tag.dataSet.name || t("unnamed"), hash: tag.dataSet.hash })),
         link ? el("div", { className: "afm-dim" }, t("Its makers"), ": ", el("a", { href: link, target: "_blank", rel: "noopener noreferrer" }, link)) : null,
         plugins ? el("div", { className: "afm-dim" }, t("Plugins: {names}", { names: plugins })) : null,
       );
@@ -3504,7 +3524,9 @@ export function activate(api: PluginApi) {
       const modTag = entry.mod;
       const modLink = modTag ? safeLink(modTag.dataSet.url) : null;
       const modSays = modTag
-        ? modLink
+        ? entry.assumed
+          ? t("It is played with {name}, the mod open in the editor: the play page plays it with that mod if this browser keeps it.", { name: modTag.dataSet.name || modTag.dataSet.hash })
+          : modLink
           ? t("It was played with {name}: the play page plays it with that mod if this browser keeps it, and otherwise asks for the mod's folder, which its makers publish at {link}.", { name: modTag.dataSet.name || modTag.dataSet.hash, link: modLink })
           : t("It was played with {name}: the play page plays it with that mod if this browser keeps it, and otherwise asks for the mod's folder.", { name: modTag.dataSet.name || modTag.dataSet.hash })
         : null;
@@ -3518,7 +3540,7 @@ export function activate(api: PluginApi) {
             const frame = Math.round((gameClock() ? game.frameNow(settings.speed) : null) ?? entry.frame);
             if (playing) stop();
             const player = entry.eyes ?? entry.report.players[0]?.player.slot;
-            sim!.playReplay!(handedReplay(entry.bytes, entry.fileName, entry.mod), { frame, ...(player !== undefined ? { player } : {}) })
+            sim!.playReplay!(handedReplay(entry.bytes, entry.fileName, entry.dataSet), { frame, ...(player !== undefined ? { player } : {}) })
               .catch((err) => api.ui.toast({ kind: "error", title: t("The play page could not open the replay"), detail: err instanceof Error ? err.message : String(err) }));
             if (modSays) api.ui.toast({ kind: "info", title: t("A replay of a mod"), detail: modSays });
           },
