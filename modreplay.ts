@@ -339,10 +339,12 @@ export function modSigns(players: readonly { name: string; race: number }[], map
 
 /**
  * Whether the editor draws with a mod whose hash is not worked out yet (a large mod's comes after it opens): a data set
- * that is not the game's own, with no hash of sixteen hex digits. Its hash is to be waited for, not the question skipped.
+ * in memory (`kind: "reader"`, what a mod open in the editor is) that is not the game's own, with no hash of sixteen hex
+ * digits. Its hash is to be waited for, not the question skipped. An installed data set (`stored`, as StarCraft:
+ * Remastered is, or `bundled`) is given no hash later, so there is nothing to wait for: waiting would never end.
  */
 export function modHashPending(source: { kind?: string; hash?: string; profile: { id: string } } | null | undefined): boolean {
-  return !!source && source.kind !== "none" && source.profile.id !== "starcraft" && !(source.hash && /^[0-9a-f]{16}$/.test(source.hash));
+  return !!source && source.kind === "reader" && source.profile.id !== "starcraft" && !(source.hash && /^[0-9a-f]{16}$/.test(source.hash));
 }
 
 /**
