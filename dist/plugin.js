@@ -1156,6 +1156,16 @@ function plainText(s) {
 
 // modreplay.ts
 var GAME_FOLDERS = ["arr", "rez", "scripts", "unit", "tileset", "sound", "game", "font", "dlgs", "glue", "triggers", "portrait", "music", "cursor", "local", "parallax", "smk", "maps", "anim", "hd2", "sd", "templates", "staredit", "campaign", "datreq", "samase", "lua", "config"];
+var SYSTEM_FILES = {
+  names: ["desktop.ini", "thumbs.db", "ehthumbs.db", "ehthumbs_vista.db", ".ds_store", "icon\r", ".directory"],
+  prefixes: ["._"],
+  folders: ["__macosx"]
+};
+function isSystemFile(path) {
+  const parts = path.toLowerCase().split(/[\\/]/).filter(Boolean);
+  const leaf = parts.pop() ?? "";
+  return SYSTEM_FILES.names.includes(leaf) || SYSTEM_FILES.prefixes.some((p) => leaf.startsWith(p)) || parts.some((folder) => SYSTEM_FILES.folders.includes(folder));
+}
 var gameName = (path) => path.replace(/\//g, "\\").replace(/^\\+/, "").toLowerCase();
 function modRoot(paths) {
   const score = /* @__PURE__ */ new Map(), hasArr = /* @__PURE__ */ new Set();
@@ -1176,8 +1186,13 @@ function modFolder(picked) {
   const inside = picked.map((f) => ({ ...f, path: f.path.split("/").slice(1).join("/") })).filter((f) => f.path && !f.path.split("/").slice(0, -1).some((part) => part.startsWith(".")));
   const unread = [];
   const plugins = /* @__PURE__ */ new Map(), firegraft = /* @__PURE__ */ new Map();
+  const systemLoose = [];
   const loose = inside.filter((f) => {
     const leaf = f.path.split("/").pop(), lower = leaf.toLowerCase();
+    if (isSystemFile(f.path)) {
+      systemLoose.push(f);
+      return false;
+    }
     if (/\.(qdp|bwl)$/.test(lower)) {
       if (!plugins.has(lower)) plugins.set(lower, f);
       return false;
@@ -1202,13 +1217,24 @@ function modFolder(picked) {
     if (!rel.includes("/") || top === "plugins" || top === "firegraft") continue;
     files.set(gameName(rel), { path: rel, file: f.file });
   }
-  return { files, plugins, firegraft, unread };
+  const system = /* @__PURE__ */ new Map();
+  for (const f of systemLoose) {
+    if (/\.(qdp|bwl|fgp|fgd|dll|mpq|exe|zip)$/i.test(f.path) || root && !f.path.startsWith(root + "/")) continue;
+    const rel = root ? f.path.slice(root.length + 1) : f.path;
+    const top = rel.split("/")[0].toLowerCase();
+    if (!rel.includes("/") || top === "plugins" || top === "firegraft") continue;
+    system.set(gameName(rel), { path: rel, file: f.file });
+  }
+  return { files, plugins, firegraft, unread, system };
 }
 var hex3 = (b) => [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join("");
 var sha256 = async (bytes) => hex3(await crypto.subtle.digest("SHA-256", bytes));
+var lineName = (l) => l.slice(0, l.indexOf("	"));
 async function hashLines(lines) {
-  const name = (l) => l.slice(0, l.indexOf("	"));
-  const sorted = [...lines].sort((a, b) => name(a) < name(b) ? -1 : name(a) > name(b) ? 1 : 0);
+  return hashLinesAsWere(lines.filter((l) => !isSystemFile(lineName(l))));
+}
+async function hashLinesAsWere(lines) {
+  const sorted = [...lines].sort((a, b) => lineName(a) < lineName(b) ? -1 : lineName(a) > lineName(b) ? 1 : 0);
   return (await sha256(new TextEncoder().encode(sorted.join("\n")))).slice(0, 16);
 }
 var pluginLine = (name, sha) => `plugins\\${name.split(/[\\/]/).pop().toLowerCase()}	${sha}`;
@@ -1234,9 +1260,12 @@ async function folderHashes(folder, under, progress) {
     plugins.push(pluginLine(name, await sha256(new Uint8Array(await f.file.arrayBuffer()))));
     progress?.(++done, of);
   }
-  return { hash: await hashLines([...game, ...code, ...plugins]), withoutPlugins: await hashLines([...game, ...code]), all: await hashLines(game), changed: await hashLines(changed) };
+  const system = [];
+  for (const [member, f] of folder.system ?? []) system.push(`${member}	${await sha256(new Uint8Array(await f.file.arrayBuffer()))}`);
+  const older = system.length ? [await hashLinesAsWere([...game, ...system, ...code, ...plugins]), await hashLinesAsWere([...game, ...system, ...code]), await hashLinesAsWere([...game, ...system]), await hashLinesAsWere([...changed, ...system])] : [];
+  return { hash: await hashLines([...game, ...code, ...plugins]), withoutPlugins: await hashLines([...game, ...code]), all: await hashLines(game), changed: await hashLines(changed), older: [...new Set(older)] };
 }
-var isReplaysMod = (tag2, hashes) => [hashes.hash, hashes.withoutPlugins, hashes.all, hashes.changed].includes(tag2.dataSet.hash);
+var isReplaysMod = (tag2, hashes) => [hashes.hash, hashes.withoutPlugins, hashes.all, hashes.changed, ...hashes.older ?? []].includes(tag2.dataSet.hash);
 var pluginNames = (tag2) => tag2.noplugins ? "" : [...tag2.plugins.map((p) => p.name), ...tag2.firegraft ? [tag2.firegraft.name] : []].join(", ");
 function safeLink(url) {
   if (!url) return null;
