@@ -135,6 +135,15 @@ A replay of a game played with a mod, saved by scmJS's play page, says which mod
 The panel then shows "Replay of a mod" with the mod's name and its hash, a link to its
 makers, and the plugins that ran.
 
+A replay recorded by a mod's own release, such as Cosmonarchy's, names no mod. When such a
+replay opens while the editor draws with a mod (opened with the Mod Editor's File ▸ Open a
+Mod…, or chosen as a data set), Aftermath asks whether to watch it with that mod. With it,
+the panel says the mod is the editor's and not the replay's, and the Replay view, the
+analysis and Play From Here play the replay with that mod and its code, from the copy the
+browser keeps. Without it, the replay is taken for a game of StarCraft itself. A game of
+StarCraft itself played back with a mod is another game, so choose the mod only for a replay
+that was played with it.
+
 A mod gives the game's unit numbers to its own units, so the replay is named only by the
 mod: until the editor draws with the mod's files, units, upgrades and technologies show by
 number, never by the game's names. **Attach the Mod's Folder…** asks for the mod's folder
