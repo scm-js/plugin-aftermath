@@ -1253,8 +1253,17 @@ function replayDataSet(tag2) {
   const url = safeLink(tag2.dataSet.url);
   return { hash: tag2.dataSet.hash, ...tag2.dataSet.name ? { name: tag2.dataSet.name } : {}, ...url ? { url } : {}, ...liveLifter(tag2) ? { live: true } : {} };
 }
-function handedReplay(bytes, name, tag2) {
-  const dataSet = replayDataSet(tag2);
+function openModOf(source) {
+  if (!source || source.profile.id === "starcraft" || !source.hash || !/^[0-9a-f]{16}$/.test(source.hash)) return null;
+  return { hash: source.hash, name: source.profile.name, url: safeLink(source.profile.url ?? null) };
+}
+function assumedTag(mod) {
+  return { v: 1, dataSet: { hash: mod.hash, name: mod.name, url: mod.url }, plugins: [], firegraft: null, noplugins: false, engine: null, madeBy: "Aftermath" };
+}
+function assumedDataSet(mod) {
+  return { hash: mod.hash, ...mod.name ? { name: mod.name } : {}, ...mod.url ? { url: mod.url } : {}, live: true };
+}
+function handedReplay(bytes, name, dataSet) {
   return { bytes, name, ...dataSet ? { dataSet } : {} };
 }
 var playsModReplays = (features) => !!features?.includes("modAnalysis");
@@ -1536,7 +1545,7 @@ var KO = {
   "Training {name}": "{name} \uC0DD\uC0B0 \uC911",
   "Researching {name}": "{name} \uC5F0\uAD6C \uC911",
   "Upgrading {name}": "{name} \uC5C5\uADF8\uB808\uC774\uB4DC \uC911",
-  "Morphing into {name}": "{name}(\uC73C)\uB85C \uBCC0\uD0DC \uC911",
+  "Morphing into {name}": "{name|\uC73C\uB85C} \uBCC0\uD0DC \uC911",
   "Building {name}": "{name} \uAC74\uC124 \uC911",
   "Nuclear missile ready": "\uD575\uBBF8\uC0AC\uC77C \uC900\uBE44 \uC644\uB8CC",
   "Calling down a nuclear strike": "\uD575 \uACF5\uACA9 \uC720\uB3C4 \uC911",
@@ -1793,9 +1802,15 @@ var KO = {
   "The analysis (the Game and Fights tabs, Analysis, Cast) plays it with the mod, when this browser keeps it: a mod is added once on the play page.": "\uBD84\uC11D(\uAC8C\uC784\uACFC \uC804\uD22C \uD0ED, \uBD84\uC11D, \uC911\uACC4)\uC740 \uC774 \uBE0C\uB77C\uC6B0\uC800\uC5D0 \uBAA8\uB4DC\uAC00 \uC788\uC73C\uBA74 \uADF8 \uBAA8\uB4DC\uB85C \uC7AC\uC0DD\uD569\uB2C8\uB2E4: \uBAA8\uB4DC\uB294 \uD50C\uB808\uC774 \uD398\uC774\uC9C0\uC5D0\uC11C \uD55C \uBC88 \uCD94\uAC00\uD569\uB2C8\uB2E4.",
   "What is shown is the players' orders, and Aftermath's own rules for workers and town halls go by the game's unit ids, which a mod may give other units.": "\uBCF4\uC774\uB294 \uAC83\uC740 \uD50C\uB808\uC774\uC5B4\uB4E4\uC758 \uBA85\uB839\uC774\uBA70, Aftermath\uAC00 \uC77C\uAFBC\uACFC \uBCF8\uC9C4\uC744 \uAC00\uB824\uB0B4\uB294 \uADDC\uCE59\uC740 \uAC8C\uC784\uC758 \uC720\uB2DB \uBC88\uD638\uB97C \uB530\uB974\uB294\uB370, \uBAA8\uB4DC\uB294 \uADF8 \uBC88\uD638\uB97C \uB2E4\uB978 \uC720\uB2DB\uC5D0 \uC904 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
   "{n, plural, one {# command block is the mod's own and is not analysed.} other {# command blocks are the mod's own and are not analysed.}}": "\uBA85\uB839 \uBB36\uC74C {n}\uAC1C\uB294 \uBAA8\uB4DC \uC790\uCCB4\uC758 \uAC83\uC774\uB77C \uBD84\uC11D\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
-  "It was played with {name}: the play page plays it with that mod if this browser keeps it, and otherwise asks for the mod's folder, which its makers publish at {link}.": "{name}(\uC73C)\uB85C \uD50C\uB808\uC774\uD55C \uB9AC\uD50C\uB808\uC774\uC785\uB2C8\uB2E4: \uC774 \uBE0C\uB77C\uC6B0\uC800\uC5D0 \uADF8 \uBAA8\uB4DC\uAC00 \uC788\uC73C\uBA74 \uD50C\uB808\uC774 \uD398\uC774\uC9C0\uAC00 \uADF8 \uBAA8\uB4DC\uB85C \uC7AC\uC0DD\uD558\uACE0, \uC5C6\uC73C\uBA74 \uBAA8\uB4DC \uD3F4\uB354\uB97C \uC694\uCCAD\uD569\uB2C8\uB2E4. \uBAA8\uB4DC\uB294 \uC81C\uC791\uC790\uAC00 {link}\uC5D0\uC11C \uBC30\uD3EC\uD569\uB2C8\uB2E4.",
-  "It was played with {name}: the play page plays it with that mod if this browser keeps it, and otherwise asks for the mod's folder.": "{name}(\uC73C)\uB85C \uD50C\uB808\uC774\uD55C \uB9AC\uD50C\uB808\uC774\uC785\uB2C8\uB2E4: \uC774 \uBE0C\uB77C\uC6B0\uC800\uC5D0 \uADF8 \uBAA8\uB4DC\uAC00 \uC788\uC73C\uBA74 \uD50C\uB808\uC774 \uD398\uC774\uC9C0\uAC00 \uADF8 \uBAA8\uB4DC\uB85C \uC7AC\uC0DD\uD558\uACE0, \uC5C6\uC73C\uBA74 \uBAA8\uB4DC \uD3F4\uB354\uB97C \uC694\uCCAD\uD569\uB2C8\uB2E4.",
-  "A replay of a mod": "\uBAA8\uB4DC\uC758 \uB9AC\uD50C\uB808\uC774"
+  "It was played with {name}: the play page plays it with that mod if this browser keeps it, and otherwise asks for the mod's folder, which its makers publish at {link}.": "{name|\uC73C\uB85C} \uD50C\uB808\uC774\uD55C \uB9AC\uD50C\uB808\uC774\uC785\uB2C8\uB2E4: \uC774 \uBE0C\uB77C\uC6B0\uC800\uC5D0 \uADF8 \uBAA8\uB4DC\uAC00 \uC788\uC73C\uBA74 \uD50C\uB808\uC774 \uD398\uC774\uC9C0\uAC00 \uADF8 \uBAA8\uB4DC\uB85C \uC7AC\uC0DD\uD558\uACE0, \uC5C6\uC73C\uBA74 \uBAA8\uB4DC \uD3F4\uB354\uB97C \uC694\uCCAD\uD569\uB2C8\uB2E4. \uBAA8\uB4DC\uB294 \uC81C\uC791\uC790\uAC00 {link}\uC5D0\uC11C \uBC30\uD3EC\uD569\uB2C8\uB2E4.",
+  "It was played with {name}: the play page plays it with that mod if this browser keeps it, and otherwise asks for the mod's folder.": "{name|\uC73C\uB85C} \uD50C\uB808\uC774\uD55C \uB9AC\uD50C\uB808\uC774\uC785\uB2C8\uB2E4: \uC774 \uBE0C\uB77C\uC6B0\uC800\uC5D0 \uADF8 \uBAA8\uB4DC\uAC00 \uC788\uC73C\uBA74 \uD50C\uB808\uC774 \uD398\uC774\uC9C0\uAC00 \uADF8 \uBAA8\uB4DC\uB85C \uC7AC\uC0DD\uD558\uACE0, \uC5C6\uC73C\uBA74 \uBAA8\uB4DC \uD3F4\uB354\uB97C \uC694\uCCAD\uD569\uB2C8\uB2E4.",
+  "A replay of a mod": "\uBAA8\uB4DC\uC758 \uB9AC\uD50C\uB808\uC774",
+  "{n, plural, one {This replay names no mod.} other {# of these replays name no mod.}} A game played with StarCraft's own data names none, and so does one played with a mod's own release, which does not write which mod it was. The editor has {name} open. Watch with {name}?": "{n, plural, one {\uC774 \uB9AC\uD50C\uB808\uC774\uC5D0\uB294 \uBAA8\uB4DC\uAC00 \uC801\uD600 \uC788\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.} other {\uC774 \uB9AC\uD50C\uB808\uC774 \uC911 #\uAC1C\uC5D0\uB294 \uBAA8\uB4DC\uAC00 \uC801\uD600 \uC788\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.}} StarCraft \uC790\uCCB4 \uB370\uC774\uD130\uB85C \uD55C \uAC8C\uC784\uC5D0\uB294 \uC801\uD788\uC9C0 \uC54A\uACE0, \uC5B4\uB5A4 \uBAA8\uB4DC\uC600\uB294\uC9C0 \uAE30\uB85D\uD558\uC9C0 \uC54A\uB294 \uBAA8\uB4DC \uC790\uCCB4 \uBC30\uD3EC\uD310\uC73C\uB85C \uD55C \uAC8C\uC784\uC5D0\uB3C4 \uC801\uD788\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uD3B8\uC9D1\uAE30\uC5D0 {name|\uC774} \uC5F4\uB824 \uC788\uC2B5\uB2C8\uB2E4. {name|\uC73C\uB85C} \uBCFC\uAE4C\uC694?",
+  "A replay that names no mod": "\uBAA8\uB4DC\uAC00 \uC801\uD788\uC9C0 \uC54A\uC740 \uB9AC\uD50C\uB808\uC774",
+  "Watch With {name}": "{name|\uC73C\uB85C} \uBCF4\uAE30",
+  "Watch Without": "\uBAA8\uB4DC \uC5C6\uC774 \uBCF4\uAE30",
+  "Watched with {name} ({hash}), the mod open in the editor. The replay itself names no mod.": "\uD3B8\uC9D1\uAE30\uC5D0 \uC5F4\uB9B0 \uBAA8\uB4DC\uB85C \uBD05\uB2C8\uB2E4: {name} ({hash}). \uB9AC\uD50C\uB808\uC774 \uC790\uCCB4\uC5D0\uB294 \uBAA8\uB4DC\uAC00 \uC801\uD600 \uC788\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
+  "It is played with {name}, the mod open in the editor: the play page plays it with that mod if this browser keeps it.": "\uD3B8\uC9D1\uAE30\uC5D0 \uC5F4\uB9B0 \uBAA8\uB4DC {name|\uC73C\uB85C} \uC7AC\uC0DD\uD569\uB2C8\uB2E4. \uC774 \uBE0C\uB77C\uC6B0\uC800\uC5D0 \uADF8 \uBAA8\uB4DC\uAC00 \uC788\uC73C\uBA74 \uD50C\uB808\uC774 \uD398\uC774\uC9C0\uAC00 \uADF8 \uBAA8\uB4DC\uB85C \uC7AC\uC0DD\uD569\uB2C8\uB2E4."
 };
 
 // played.ts
@@ -6526,6 +6541,20 @@ function activate(api) {
       }
     }
     if (!batch.length) return;
+    const untagged = batch.filter((e) => !e.mod);
+    const open = untagged.length ? openModOf(api.gameData?.source?.()) : null;
+    if (open) {
+      const name = open.name || open.hash;
+      const withMod = await api.ui.confirm(
+        t("{n, plural, one {This replay names no mod.} other {# of these replays name no mod.}} A game played with StarCraft's own data names none, and so does one played with a mod's own release, which does not write which mod it was. The editor has {name} open. Watch with {name}?", { n: untagged.length, name }),
+        { title: t("A replay that names no mod"), confirmLabel: t("Watch With {name}", { name }), cancelLabel: t("Watch Without") }
+      );
+      if (withMod) for (const e of untagged) {
+        e.mod = assumedTag(open);
+        e.dataSet = assumedDataSet(open);
+        e.assumed = true;
+      }
+    }
     const tabbed = [], quiet = [];
     if (into) {
       for (const e of batch) (e.group === into.group ? quiet : tabbed).push(e);
@@ -8666,7 +8695,7 @@ function activate(api) {
       const box = el(
         "div",
         { className: "afm-mod" },
-        el("div", {}, t("Replay of a mod: {name} ({hash})", { name: tag2.dataSet.name || t("unnamed"), hash: tag2.dataSet.hash })),
+        entry.assumed ? el("div", {}, t("Watched with {name} ({hash}), the mod open in the editor. The replay itself names no mod.", { name: tag2.dataSet.name || t("unnamed"), hash: tag2.dataSet.hash })) : el("div", {}, t("Replay of a mod: {name} ({hash})", { name: tag2.dataSet.name || t("unnamed"), hash: tag2.dataSet.hash })),
         link ? el("div", { className: "afm-dim" }, t("Its makers"), ": ", el("a", { href: link, target: "_blank", rel: "noopener noreferrer" }, link)) : null,
         plugins ? el("div", { className: "afm-dim" }, t("Plugins: {names}", { names: plugins })) : null
       );
@@ -9298,7 +9327,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
       const castMore = castButton && castState === "ready" ? w.button(t("Cast\u2026"), { className: "sm", title: t("Make a new cast, or watch another kept in this browser"), onClick: () => openCastWindow() }) : null;
       const modTag = entry.mod;
       const modLink = modTag ? safeLink(modTag.dataSet.url) : null;
-      const modSays = modTag ? modLink ? t("It was played with {name}: the play page plays it with that mod if this browser keeps it, and otherwise asks for the mod's folder, which its makers publish at {link}.", { name: modTag.dataSet.name || modTag.dataSet.hash, link: modLink }) : t("It was played with {name}: the play page plays it with that mod if this browser keeps it, and otherwise asks for the mod's folder.", { name: modTag.dataSet.name || modTag.dataSet.hash }) : null;
+      const modSays = modTag ? entry.assumed ? t("It is played with {name}, the mod open in the editor: the play page plays it with that mod if this browser keeps it.", { name: modTag.dataSet.name || modTag.dataSet.hash }) : modLink ? t("It was played with {name}: the play page plays it with that mod if this browser keeps it, and otherwise asks for the mod's folder, which its makers publish at {link}.", { name: modTag.dataSet.name || modTag.dataSet.hash, link: modLink }) : t("It was played with {name}: the play page plays it with that mod if this browser keeps it, and otherwise asks for the mod's folder.", { name: modTag.dataSet.name || modTag.dataSet.hash }) : null;
       const playHere = sim?.present && sim.playReplay ? w.button(t("Play From Here"), {
         className: "sm",
         title: modSays ? `${t("Open this replay on the play page at this moment and play on from there: as one of its players, alone, against a community bot, or with others")}. ${modSays}` : t("Open this replay on the play page at this moment and play on from there: as one of its players, alone, against a community bot, or with others"),
@@ -9306,7 +9335,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
           const frame = Math.round((gameClock() ? game.frameNow(settings.speed) : null) ?? entry.frame);
           if (playing3) stop();
           const player = entry.eyes ?? entry.report.players[0]?.player.slot;
-          sim.playReplay(handedReplay(entry.bytes, entry.fileName, entry.mod), { frame, ...player !== void 0 ? { player } : {} }).catch((err) => api.ui.toast({ kind: "error", title: t("The play page could not open the replay"), detail: err instanceof Error ? err.message : String(err) }));
+          sim.playReplay(handedReplay(entry.bytes, entry.fileName, entry.dataSet), { frame, ...player !== void 0 ? { player } : {} }).catch((err) => api.ui.toast({ kind: "error", title: t("The play page could not open the replay"), detail: err instanceof Error ? err.message : String(err) }));
           if (modSays) api.ui.toast({ kind: "info", title: t("A replay of a mod"), detail: modSays });
         }
       }) : null;
