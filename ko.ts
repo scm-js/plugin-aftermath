@@ -29,6 +29,7 @@ export const KO: Record<string, string> = {
   "Loading {name}…": "{name} 불러오는 중…",
   "Going to {time}…": "{time}(으)로 가는 중…",
   "Going to {time}… {percent}%": "{time}(으)로 가는 중… {percent}%",
+  "Running ahead: {at} of {to}": "앞으로 진행하는 중: {to} 중 {at}",
   "The game could not be shown: {message}": "게임을 보여 줄 수 없습니다: {message}",
   "Play": "재생",
   "Playback speed": "재생 속도",

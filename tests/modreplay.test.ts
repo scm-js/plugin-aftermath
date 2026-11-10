@@ -2,9 +2,10 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { readChk } from "../chk";
 import { describe, expect, it } from "vitest";
+import type { DialogSpec } from "@scm-js/plugin-api";
 import { appendModTag, parseReplay, type ModTag } from "@scm-js/replay";
 import { chk, cmds, le16, writeReplay } from "@scm-js/replay/write";
-import { assumedDataSet, assumedTag, dataSetHash, engineReason, engineSentence, folderHashes, gameName, handedReplay, hashLines, hashLinesAsWere, isReplaysMod, isSystemFile, SYSTEM_FILES, modAnalysis, modFolder, modHashPending, modRoot, modSigns, liveLifter, openModOf, pickedModFiles, playsModReplays, pluginNames, REMASTERED_TERRAIN_GROUPS, replayDataSet, safeLink, sha256 } from "../modreplay";
+import { ask, assumedDataSet, assumedTag, dataSetHash, engineReason, engineSentence, folderHashes, gameName, handedReplay, hashLines, hashLinesAsWere, isReplaysMod, isSystemFile, SYSTEM_FILES, modAnalysis, modFolder, modHashPending, modRoot, modSigns, liveLifter, openModOf, pickedModFiles, playsModReplays, pluginNames, REMASTERED_TERRAIN_GROUPS, replayDataSet, safeLink, sha256 } from "../modreplay";
 
 const blob = (s: string) => new Blob([new TextEncoder().encode(s)]);
 const tag = (more: Partial<ModTag> = {}): ModTag => ({
@@ -350,5 +351,43 @@ if (MOD_REPLAY && existsSync(MOD_REPLAY)) describe("a replay a mod's own release
     const signs = modSigns(replay.players, readChk(replay.chk));
     console.log(JSON.stringify(signs));
     expect(signs.length).toBeGreaterThan(0);
+  });
+});
+
+describe("a question whose default is either answer (the replay that names no mod)", () => {
+  /** A dialog that is answered: `press` a button by its label, or null for Escape (the cleanup alone). */
+  const answered = (press: string | null) => {
+    let spec: DialogSpec | null = null;
+    const ui = {
+      dialog: (s: DialogSpec) => { spec = s; return {} as never; },
+      el: () => ({}) as never,
+    };
+    const body = { append() {} } as unknown as HTMLElement;
+    return {
+      ui,
+      answer: async (promise: Promise<boolean>) => {
+        const s = spec as unknown as DialogSpec;
+        const cleanup = s.mount(body, {} as never) as () => void;
+        const button = press === null ? null : s.buttons!.find((b) => b.label === press)!;
+        await button?.run?.({} as never);
+        cleanup();
+        return { yes: await promise, primary: s.buttons!.filter((b) => b.primary).map((b) => b.label) };
+      },
+    };
+  };
+  const o = (prefer: "yes" | "no") => ({ title: "A replay that names no mod", yes: "Watch With Mod", no: "Watch Without", prefer });
+
+  it("makes Watch Without the default where asked, and answers by the button pressed", async () => {
+    let d = answered("Watch Without");
+    expect(await d.answer(ask(d.ui, "?", o("no")))).toEqual({ yes: false, primary: ["Watch Without"] });
+    d = answered("Watch With Mod");
+    expect(await d.answer(ask(d.ui, "?", o("no")))).toEqual({ yes: true, primary: ["Watch Without"] });
+  });
+
+  it("answers no to Escape whichever is the default", async () => {
+    let d = answered(null);
+    expect(await d.answer(ask(d.ui, "?", o("no")))).toEqual({ yes: false, primary: ["Watch Without"] });
+    d = answered(null);
+    expect(await d.answer(ask(d.ui, "?", o("yes")))).toEqual({ yes: false, primary: ["Watch With Mod"] });
   });
 });

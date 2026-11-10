@@ -137,7 +137,9 @@ makers, and the plugins that ran.
 
 A replay recorded by a mod's own release, such as Cosmonarchy's, names no mod. When such a
 replay opens while the editor draws with a mod (opened with the Mod Editor's File ▸ Open a
-Mod…, or chosen as a data set), Aftermath asks whether to watch it with that mod. With it,
+Mod…, or chosen as a data set), Aftermath asks whether to watch it with that mod. When the
+replay shows no sign of a mod (see below), **Watch Without** is the default button; Escape
+answers it too. With it,
 the panel says the mod is the editor's and not the replay's, and the Replay view, the
 analysis and Play From Here play the replay with that mod and its code, from the copy the
 browser keeps. Without it, the replay is taken for a game of StarCraft itself. A game of
@@ -205,8 +207,12 @@ With the scm-sim plugin 0.17.0 and a play page that knows a mod's replays, the R
 plays a mod's replay with its mod too: the view loads with the mod the replay names (from the
 copy the browser keeps), and with `?lift=live` when its code ran. While the mod's plugins run,
 the game cannot be put back to an earlier moment, so going back on the timeline starts the
-replay again from its first frame and plays forward to the moment, which takes a while. With
-older ones the tab of a mod's replay shows the map only.
+replay again from its first frame and plays forward to the moment, which takes a while. A
+drag along the timeline moves the timeline with the pointer and tells the game the moment
+once, when the drag ends or the pointer stops. Until the game gets there, the timeline stays
+at the moment chosen, the strip says how far the game has run (for example "Running ahead:
+1:10 of 2:56"), and Play From Here starts from the moment chosen. With older ones the tab of
+a mod's replay shows the map only.
 
 With the scm-sim plugin 0.18.0 and an engine page that analyses a mod's replays, the
 analysis (the Game and Fights tabs, Analysis, Cast) plays a mod's replay with its mod too: the
