@@ -946,8 +946,39 @@ async function parseReplay(bytes, unzip = inflate) {
   };
 }
 
+// roles.ts
+var GAME_WORKERS = [7, 41, 64];
+var GAME_HALLS = [106, 131, 154];
+var GAME_DEPOTS = [106, 131, 132, 133, 154];
+var UNIT_FLAGS = { building: 1 << 0, worker: 1 << 3, depot: 1 << 12 };
+var WORKERS = new Set(GAME_WORKERS);
+var TOWN_HALLS = new Set(GAME_HALLS);
+var DEPOTS = new Set(GAME_DEPOTS);
+function rolesOf(flags) {
+  if (!flags) return null;
+  const workers = [], halls = [];
+  for (let id = 0; id < flags.length; id++) {
+    const f = flags[id];
+    if (f & UNIT_FLAGS.worker) workers.push(id);
+    if (f & UNIT_FLAGS.depot && f & UNIT_FLAGS.building) halls.push(id);
+  }
+  return workers.length && halls.length ? { workers, halls } : null;
+}
+var fill = (set, ids) => {
+  set.clear();
+  for (const id of ids) set.add(id);
+};
+var same = (set, ids) => set.size === ids.length && ids.every((id) => set.has(id));
+function useRoles(roles) {
+  const workers = roles?.workers ?? GAME_WORKERS, halls = roles?.halls ?? GAME_HALLS, depots = roles?.halls ?? GAME_DEPOTS;
+  if (same(WORKERS, workers) && same(TOWN_HALLS, halls) && same(DEPOTS, depots)) return false;
+  fill(WORKERS, workers);
+  fill(TOWN_HALLS, halls);
+  fill(DEPOTS, depots);
+  return true;
+}
+
 // analysis.ts
-var TOWN_HALLS = /* @__PURE__ */ new Set([106, 131, 154]);
 var FOLD_BUILD_FRAMES = 30 * 24;
 var FOLD_TRAIN_FRAMES = 3 * 24;
 var ATTACK_ORDERS = /* @__PURE__ */ new Set([8, 9, 10, 11, 12, 14, 53, 59]);
@@ -1060,7 +1091,6 @@ function step(list, frame, kind, id) {
   }
   list.push({ frame, kind, id, count: 1 });
 }
-var WORKERS = /* @__PURE__ */ new Set([7, 41, 64]);
 function buildOrderRows(steps, options = {}) {
   const rows = [];
   for (const s of steps) {
@@ -1145,13 +1175,159 @@ function readChk(chk) {
 }
 function likeness(a, b) {
   if (a.width !== b.width || a.height !== b.height || a.tileset !== b.tileset || a.tiles.length === 0) return 0;
-  let same2 = 0;
+  let same3 = 0;
   const n = Math.min(a.tiles.length, b.tiles.length);
-  for (let i = 0; i < n; i++) if (a.tiles[i] === b.tiles[i]) same2++;
-  return n ? same2 / n : 0;
+  for (let i = 0; i < n; i++) if (a.tiles[i] === b.tiles[i]) same3++;
+  return n ? same3 / n : 0;
 }
 function plainText(s) {
   return s.replace(/[\u0000-\u001f\u007f]/g, "").trim();
+}
+
+// races.ts
+var GAME_RACES = 8;
+var RACE_NAME_MAX = 40;
+var isPlayed = (race) => race === 0 || race === 1 || race === 2;
+var tableRace = (race) => race !== void 0 && isPlayed(race) ? race : null;
+function raceRows(value) {
+  if (!Array.isArray(value)) return [];
+  const out = /* @__PURE__ */ new Map();
+  for (const row of value) {
+    if (!row || typeof row !== "object") continue;
+    const r = row;
+    const id = r.id, name = typeof r.name === "string" ? r.name.trim() : "";
+    if (typeof id !== "number" || !Number.isInteger(id) || id < GAME_RACES || id > 255 || out.has(id)) continue;
+    if (!name || name.length > RACE_NAME_MAX) continue;
+    const letter = typeof r.letter === "string" && /^[a-z]$/.test(r.letter) ? r.letter : void 0;
+    const like = r.like === 0 || r.like === 1 || r.like === 2 ? r.like : void 0;
+    out.set(id, { id, name, ...letter ? { letter } : {}, ...like !== void 0 ? { like } : {} });
+  }
+  return [...out.values()].sort((a, b) => a.id - b.id);
+}
+var GAME_RACE_NAMES = ["Zerg", "Terran", "Protoss", "Independent", "Neutral", "User Selectable", "Random", "Inactive"];
+var UNNAMED = /^Race \d+$/;
+function raceView(id, sources = {}) {
+  if (isPlayed(id)) return { id, name: GAME_RACE_NAMES[id], like: id, from: "game" };
+  const tagRow = raceRows(sources.tag).find((r) => r.id === id) ?? null;
+  const editorRow = sources.editor?.find((r) => r.id === id) ?? null;
+  let name = id >= 0 && id < GAME_RACES ? GAME_RACE_NAMES[id] : tagRow?.name ?? editorRow?.name ?? null;
+  if (name === null) {
+    const said = sources.editorName?.(id)?.trim();
+    if (said && !UNNAMED.test(said)) name = said;
+  }
+  const declared = tagRow?.like ?? editorRow?.like;
+  if (declared !== void 0) return { id, name, like: declared, from: "declared" };
+  const worked = sources.units ? workedOutLike(sources.units(), sources.groupFlags) : null;
+  return worked === null ? { id, name, like: null, from: null } : { id, name, like: worked, from: "units" };
+}
+function workedOutLike(units, groupFlags) {
+  if (!groupFlags) return null;
+  const n = [0, 0, 0];
+  for (const type of units) {
+    if (!Number.isInteger(type) || type < 0 || type >= groupFlags.length) continue;
+    const f = groupFlags[type];
+    for (let k = 0; k < 3; k++) if (f & 1 << k) n[k]++;
+  }
+  const best = Math.max(...n);
+  if (best === 0) return null;
+  const at = [0, 1, 2].filter((k) => n[k] === best);
+  return at.length === 1 ? at[0] : null;
+}
+function tblStrings(bytes) {
+  if (!bytes || bytes.length < 2) return null;
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const count = view.getUint16(0, true);
+  if (2 + count * 2 > bytes.length) return null;
+  const out = [];
+  for (let i = 0; i < count; i++) {
+    const at = view.getUint16(2 + i * 2, true);
+    let s = "";
+    for (let j = at; j < bytes.length && bytes[j] !== 0; j++) s += String.fromCharCode(bytes[j]);
+    out.push(s);
+  }
+  return out;
+}
+function nameCandidates(mod, game, taken = []) {
+  const ours = tblStrings(mod), theirs = tblStrings(game);
+  if (!ours || !theirs) return [];
+  const used = new Set(taken.map((s) => s.toLowerCase()));
+  const out = [];
+  for (const raw of ours.slice(theirs.length)) {
+    const s = raw.replace(/[\x00-\x1f\x7f]/g, "").trim();
+    if (!s || s.length > RACE_NAME_MAX || used.has(s.toLowerCase())) continue;
+    used.add(s.toLowerCase());
+    out.push(s);
+  }
+  return out;
+}
+var RACE_LETTERS = [..."abcdefghijklmoqrsuvwxy"];
+var letterFiles = (letter) => [`game\\${letter}console.pcx`, `rez\\statbtn${letter}.bin`];
+function withRace(rows, row) {
+  return [...rows.filter((r) => r.id !== row.id), row].sort((a, b) => a.id - b.id);
+}
+function hintsFrom(answer) {
+  const out = { names: [], letters: [] };
+  if (!answer || typeof answer !== "object") return out;
+  const { names, letters } = answer;
+  if (Array.isArray(names)) for (const n of names) {
+    const s = typeof n === "string" ? n.trim() : "";
+    if (s && s.length <= RACE_NAME_MAX && !out.names.includes(s)) out.names.push(s);
+  }
+  if (Array.isArray(letters)) {
+    for (const l of letters) if (typeof l === "string" && RACE_LETTERS.includes(l) && !out.letters.includes(l)) out.letters.push(l);
+  }
+  return out;
+}
+async function editorHints(editor) {
+  const gd = editor.gameData;
+  if (typeof gd?.raceCandidates !== "function") return null;
+  try {
+    return hintsFrom(await gd.raceCandidates());
+  } catch {
+    return { names: [], letters: [] };
+  }
+}
+function declaredRows(editor) {
+  try {
+    const gd = editor.gameData;
+    const rows = typeof gd?.races === "function" ? gd.races() : gd?.source?.()?.profile?.races;
+    return Array.isArray(rows) ? rows.filter((r) => !!r && typeof r === "object" && typeof r.id === "number") : [];
+  } catch {
+    return [];
+  }
+}
+function editorSources(editor) {
+  const names = editor.names;
+  return {
+    editor: raceRows(declaredRows(editor)),
+    editorName: (id) => {
+      try {
+        return typeof names?.race === "function" ? names.race(id) : null;
+      } catch {
+        return null;
+      }
+    }
+  };
+}
+function canName(view, editor, own) {
+  const profile = editor.gameData?.source?.()?.profile;
+  return view.name === null && view.id >= GAME_RACES && view.id <= 255 && own && typeof editor.gameData?.setRaces === "function" && !!profile && profile.id !== "starcraft";
+}
+function namedRow(id, name, letter, like) {
+  const n = name.trim(), l = letter.trim().toLowerCase();
+  if (!n) return "name";
+  if (n.length > RACE_NAME_MAX) return "long";
+  if (l && (!/^[a-z]$/.test(l) || "ztpn".includes(l))) return "letter";
+  return { id, name: n, ...l ? { letter: l } : {}, ...like === "0" || like === "1" || like === "2" ? { like: Number(like) } : {} };
+}
+function declare(editor, row) {
+  const gd = editor.gameData;
+  if (typeof gd?.setRaces !== "function") return null;
+  return gd.setRaces(withRace(declaredRows(editor), row)) ?? null;
+}
+function labelOf(view, game, unnamed) {
+  if (view.name === null) return unnamed(view.id);
+  return view.id >= 0 && view.id < GAME_RACES ? game(view.name) : view.name;
 }
 
 // modreplay.ts
@@ -1239,7 +1415,7 @@ async function hashLinesAsWere(lines) {
 }
 var pluginLine = (name, sha) => `plugins\\${name.split(/[\\/]/).pop().toLowerCase()}	${sha}`;
 var firegraftLine = (name, sha) => `${name.split(/[\\/]/).pop().toLowerCase()}	${sha}`;
-var same = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
+var same2 = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
 async function folderHashes(folder, under, progress) {
   const changed = [], game = [], code = [], plugins = [];
   let done = 0;
@@ -1249,7 +1425,7 @@ async function folderHashes(folder, under, progress) {
     const line = `${member}	${await sha256(bytes)}`;
     game.push(line);
     const theirs = await under(member);
-    if (!theirs || !same(theirs, bytes)) changed.push(line);
+    if (!theirs || !same2(theirs, bytes)) changed.push(line);
     progress?.(++done, of);
   }
   for (const [name, f] of folder.firegraft) {
@@ -1280,17 +1456,19 @@ var liveLifter = (tag2) => tag2.plugins.length > 0 || tag2.firegraft !== null &&
 function replayDataSet(tag2) {
   if (!tag2) return void 0;
   const url = safeLink(tag2.dataSet.url);
-  return { hash: tag2.dataSet.hash, ...tag2.dataSet.name ? { name: tag2.dataSet.name } : {}, ...url ? { url } : {}, ...liveLifter(tag2) ? { live: true } : {} };
+  const races = raceRows(tag2.dataSet.races);
+  return { hash: tag2.dataSet.hash, ...tag2.dataSet.name ? { name: tag2.dataSet.name } : {}, ...url ? { url } : {}, ...liveLifter(tag2) ? { live: true } : {}, ...races.length ? { races } : {} };
 }
 function openModOf(source) {
   if (!source || source.profile.id === "starcraft" || !source.hash || !/^[0-9a-f]{16}$/.test(source.hash)) return null;
-  return { hash: source.hash, name: source.profile.name, url: safeLink(source.profile.url ?? null) };
+  const races = raceRows(source.profile.races);
+  return { hash: source.hash, name: source.profile.name, url: safeLink(source.profile.url ?? null), ...races.length ? { races } : {} };
 }
 function assumedTag(mod) {
   return { v: 1, dataSet: { hash: mod.hash, name: mod.name, url: mod.url }, plugins: [], firegraft: null, noplugins: false, engine: null, madeBy: "Aftermath" };
 }
 function assumedDataSet(mod) {
-  return { hash: mod.hash, ...mod.name ? { name: mod.name } : {}, ...mod.url ? { url: mod.url } : {}, live: true };
+  return { hash: mod.hash, ...mod.name ? { name: mod.name } : {}, ...mod.url ? { url: mod.url } : {}, live: true, ...mod.races?.length ? { races: mod.races } : {} };
 }
 function handedReplay(bytes, name, dataSet) {
   return { bytes, name, ...dataSet ? { dataSet } : {} };
@@ -1303,7 +1481,6 @@ function modAnalysis(o) {
   return { kind: "waiting" };
 }
 var REMASTERED_TERRAIN_GROUPS = [1979, 2046, 1265, 1418, 2046, 2046, 2039, 2047];
-var GAME_RACES = 8;
 function modSigns(players, map) {
   const signs = [];
   let highest = -1;
@@ -1915,14 +2092,46 @@ var KO = {
   "Played with a mod, and the replay does not say which: the game engine found its map on terrain StarCraft has not got, neither 1.16.1 nor Remastered.": "\uBAA8\uB4DC\uB85C \uD50C\uB808\uC774\uB418\uC5C8\uC9C0\uB9CC \uB9AC\uD50C\uB808\uC774\uC5D0 \uC5B4\uB5A4 \uBAA8\uB4DC\uC778\uC9C0 \uC801\uD600 \uC788\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4: \uAC8C\uC784 \uC5D4\uC9C4\uC774 \uBCF4\uB2C8 \uB9F5\uC774 StarCraft\uC5D0 \uC5C6\uB294 \uC9C0\uD615, 1.16.1\uC5D0\uB3C4 \uB9AC\uB9C8\uC2A4\uD130\uC5D0\uB3C4 \uC5C6\uB294 \uC9C0\uD615\uC73C\uB85C \uB418\uC5B4 \uC788\uC2B5\uB2C8\uB2E4.",
   "A mod's own release writes no name of its mod into a replay. Until the mod is chosen, the Game view and the analysis play it with StarCraft's own data, which is another game. Open the mod with File \u25B8 Open a Mod\u2026 and watch with it here, or pick its folder.": "\uBAA8\uB4DC \uC790\uCCB4 \uBC30\uD3EC\uD310\uC740 \uB9AC\uD50C\uB808\uC774\uC5D0 \uBAA8\uB4DC \uC774\uB984\uC744 \uAE30\uB85D\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uBAA8\uB4DC\uB97C \uACE0\uB974\uAE30 \uC804\uAE4C\uC9C0 \uAC8C\uC784 \uD654\uBA74\uACFC \uBD84\uC11D\uC740 StarCraft \uC790\uCCB4 \uB370\uC774\uD130\uB85C \uC7AC\uC0DD\uD558\uBBC0\uB85C \uB2E4\uB978 \uAC8C\uC784\uC774 \uB429\uB2C8\uB2E4. \uD30C\uC77C \u25B8 \uBAA8\uB4DC \uC5F4\uAE30\u2026\uB85C \uBAA8\uB4DC\uB97C \uC5F4\uACE0 \uC5EC\uAE30\uC11C \uADF8 \uBAA8\uB4DC\uB85C \uBCF4\uAC70\uB098, \uBAA8\uB4DC \uD3F4\uB354\uB97C \uACE0\uB974\uC138\uC694.",
   "The play page has not got {name}'s files, so the replay is not played there. Open the mod with File \u25B8 Open a Mod\u2026, or pick its folder: its files are then handed to the play page, which keeps them.": "\uD50C\uB808\uC774 \uD398\uC774\uC9C0\uC5D0 {name}\uC758 \uD30C\uC77C\uC774 \uC5C6\uC5B4\uC11C \uB9AC\uD50C\uB808\uC774\uB97C \uC7AC\uC0DD\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uD30C\uC77C \u25B8 \uBAA8\uB4DC \uC5F4\uAE30\u2026\uB85C \uBAA8\uB4DC\uB97C \uC5F4\uAC70\uB098 \uBAA8\uB4DC \uD3F4\uB354\uB97C \uACE0\uB974\uC138\uC694. \uADF8\uB7EC\uBA74 \uBAA8\uB4DC\uC758 \uD30C\uC77C\uC774 \uD50C\uB808\uC774 \uD398\uC774\uC9C0\uB85C \uB118\uC5B4\uAC00 \uBCF4\uAD00\uB429\uB2C8\uB2E4.",
-  "{name} has not got this map's terrain either: the replay was played with another mod, or another version of {name}. Open that mod with File \u25B8 Open a Mod\u2026, or pick its folder.": "{name}\uC5D0\uB3C4 \uC774 \uB9F5\uC758 \uC9C0\uD615\uC774 \uC5C6\uC2B5\uB2C8\uB2E4: \uB9AC\uD50C\uB808\uC774\uB294 \uB2E4\uB978 \uBAA8\uB4DC, \uB610\uB294 {name}\uC758 \uB2E4\uB978 \uBC84\uC804\uC73C\uB85C \uD50C\uB808\uC774\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uD30C\uC77C \u25B8 \uBAA8\uB4DC \uC5F4\uAE30\u2026\uB85C \uADF8 \uBAA8\uB4DC\uB97C \uC5F4\uAC70\uB098 \uBAA8\uB4DC \uD3F4\uB354\uB97C \uACE0\uB974\uC138\uC694."
+  "{name} has not got this map's terrain either: the replay was played with another mod, or another version of {name}. Open that mod with File \u25B8 Open a Mod\u2026, or pick its folder.": "{name}\uC5D0\uB3C4 \uC774 \uB9F5\uC758 \uC9C0\uD615\uC774 \uC5C6\uC2B5\uB2C8\uB2E4: \uB9AC\uD50C\uB808\uC774\uB294 \uB2E4\uB978 \uBAA8\uB4DC, \uB610\uB294 {name}\uC758 \uB2E4\uB978 \uBC84\uC804\uC73C\uB85C \uD50C\uB808\uC774\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uD30C\uC77C \u25B8 \uBAA8\uB4DC \uC5F4\uAE30\u2026\uB85C \uADF8 \uBAA8\uB4DC\uB97C \uC5F4\uAC70\uB098 \uBAA8\uB4DC \uD3F4\uB354\uB97C \uACE0\uB974\uC138\uC694.",
+  "Independent": "\uB3C5\uB9BD",
+  "Neutral": "\uC911\uB9BD",
+  "User Selectable": "\uC0AC\uC6A9\uC790 \uC120\uD0DD",
+  "Inactive": "\uBE44\uD65C\uC131",
+  "Race {n}": "\uC885\uC871 {n}",
+  "What this race plays as is not known": "\uC774 \uC885\uC871\uC774 \uC5B4\uB290 \uC885\uC871\uCC98\uB7FC \uD50C\uB808\uC774\uB418\uB294\uC9C0 \uC54C \uC218 \uC5C6\uC2B5\uB2C8\uB2E4",
+  "Plays as {race}, as the data set says": "\uB370\uC774\uD130 \uC138\uD2B8\uC5D0 \uB530\uB974\uBA74 {race|\uC73C\uB85C} \uD50C\uB808\uC774\uB429\uB2C8\uB2E4",
+  "Plays as {race}, by the units it had": "\uAC00\uC9C4 \uC720\uB2DB\uC73C\uB85C \uBCF4\uC544 {race|\uC73C\uB85C} \uD50C\uB808\uC774\uB429\uB2C8\uB2E4",
+  "Give this race a name for the data set in use": "\uC0AC\uC6A9 \uC911\uC778 \uB370\uC774\uD130 \uC138\uD2B8\uC5D0\uC11C \uC774 \uC885\uC871\uC758 \uC774\uB984 \uC815\uD558\uAE30",
+  "Name this race\u2026": "\uC774 \uC885\uC871 \uC774\uB984 \uC815\uD558\uAE30\u2026",
+  "Name": "\uC774\uB984",
+  "None": "\uC5C6\uC74C",
+  "Not known": "\uC54C \uC218 \uC5C6\uC74C",
+  "Name this race": "\uC885\uC871 \uC774\uB984 \uC815\uD558\uAE30",
+  "{player} plays race {n}, which the data set in use adds. A name given here is kept with the data set, and shown for every replay played with it.": "{player|\uC740} \uC0AC\uC6A9 \uC911\uC778 \uB370\uC774\uD130 \uC138\uD2B8\uAC00 \uCD94\uAC00\uD55C \uC885\uC871 {n}\uC744(\uB97C) \uD50C\uB808\uC774\uD569\uB2C8\uB2E4. \uC5EC\uAE30\uC11C \uC815\uD55C \uC774\uB984\uC740 \uB370\uC774\uD130 \uC138\uD2B8\uC640 \uD568\uAED8 \uBCF4\uAD00\uB418\uACE0, \uADF8 \uB370\uC774\uD130 \uC138\uD2B8\uB85C \uD50C\uB808\uC774\uD55C \uBAA8\uB4E0 \uB9AC\uD50C\uB808\uC774\uC5D0 \uD45C\uC2DC\uB429\uB2C8\uB2E4.",
+  "Letter of its files": "\uD30C\uC77C\uC5D0 \uBD99\uB294 \uAE00\uC790",
+  "Plays as": "\uD50C\uB808\uC774 \uBC29\uC2DD",
+  "The names offered are ones the data set's files have past the game's own. They are suggestions: check them.": "\uC81C\uC548\uB41C \uC774\uB984\uC740 \uB370\uC774\uD130 \uC138\uD2B8\uC758 \uD30C\uC77C\uC5D0\uC11C \uAC8C\uC784 \uC790\uCCB4 \uD56D\uBAA9 \uB4A4\uC5D0 \uC788\uB294 \uAC83\uB4E4\uC785\uB2C8\uB2E4. \uC81C\uC548\uC77C \uBFD0\uC774\uB2C8 \uD655\uC778\uD558\uC138\uC694.",
+  "What it plays as is worked out from the units the player had.": "\uC5B4\uB290 \uC885\uC871\uCC98\uB7FC \uD50C\uB808\uC774\uB418\uB294\uC9C0\uB294 \uD50C\uB808\uC774\uC5B4\uAC00 \uAC00\uC9C4 \uC720\uB2DB\uC73C\uB85C \uC54C\uC544\uB0C8\uC2B5\uB2C8\uB2E4.",
+  "A letter is one of a to z, other than z, t, p and n": "\uAE00\uC790\uB294 z, t, p, n\uC744 \uBE80 a\uBD80\uD130 z\uAE4C\uC9C0 \uC911 \uD558\uB098\uC785\uB2C8\uB2E4",
+  "The race could not be named": "\uC885\uC871 \uC774\uB984\uC744 \uC815\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4",
+  "The data set in use keeps no names for races.": "\uC0AC\uC6A9 \uC911\uC778 \uB370\uC774\uD130 \uC138\uD2B8\uB294 \uC885\uC871 \uC774\uB984\uC744 \uBCF4\uAD00\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
+  "{player}'s race is {name} ({race}), which is none of the game's": "{player}\uC758 \uC885\uC871\uC774 {name}({race})\uC778\uB370, \uAC8C\uC784\uC5D0 \uC5C6\uB294 \uC885\uC871\uC785\uB2C8\uB2E4",
+  "What is shown is the players' orders. Workers and town halls are the ones the mod's units table says.": "\uBCF4\uC774\uB294 \uAC83\uC740 \uD50C\uB808\uC774\uC5B4\uB4E4\uC758 \uBA85\uB839\uC785\uB2C8\uB2E4. \uC77C\uAFBC\uACFC \uBCF8\uC9C4\uC740 \uBAA8\uB4DC\uC758 \uC720\uB2DB \uD45C\uAC00 \uB9D0\uD558\uB294 \uAC83\uC744 \uB530\uB985\uB2C8\uB2E4.",
+  "tiers not known": "\uD2F0\uC5B4 \uC54C \uC218 \uC5C6\uC74C",
+  "cannot tell": "\uC54C \uC218 \uC5C6\uC74C",
+  "{name} plays {race}, which is not one of the game's three races. Tiers are known for Zerg, Terran and Protoss only.": "{name|\uC740} \uAC8C\uC784\uC758 \uC138 \uC885\uC871\uC774 \uC544\uB2CC {race|\uC744} \uD50C\uB808\uC774\uD569\uB2C8\uB2E4. \uD2F0\uC5B4\uB294 \uC800\uADF8, \uD14C\uB780, \uD504\uB85C\uD1A0\uC2A4\uC5D0 \uB300\uD574\uC11C\uB9CC \uC54C \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+  "{name} plays {race}, which is not one of the game's three races. Answers are known for Zerg, Terran and Protoss only.": "{name|\uC740} \uAC8C\uC784\uC758 \uC138 \uC885\uC871\uC774 \uC544\uB2CC {race|\uC744} \uD50C\uB808\uC774\uD569\uB2C8\uB2E4. \uB300\uC751\uC740 \uC800\uADF8, \uD14C\uB780, \uD504\uB85C\uD1A0\uC2A4\uC5D0 \uB300\uD574\uC11C\uB9CC \uC54C \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+  "A cast cannot be made of this game. The commentators are told each player's race as Zerg, Terran or Protoss, and what {races} plays as cannot be told.": "\uC774 \uAC8C\uC784\uC73C\uB85C\uB294 \uC911\uACC4\uB97C \uB9CC\uB4E4 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4. \uD574\uC124\uC790\uC5D0\uAC8C\uB294 \uAC01 \uD50C\uB808\uC774\uC5B4\uC758 \uC885\uC871\uC744 \uC800\uADF8, \uD14C\uB780, \uD504\uB85C\uD1A0\uC2A4 \uC911 \uD558\uB098\uB85C \uC54C\uB824 \uC8FC\uB294\uB370, {races|\uC774} \uC5B4\uB290 \uC885\uC871\uCC98\uB7FC \uD50C\uB808\uC774\uB418\uB294\uC9C0 \uC54C \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.",
+  "Name the Race": "\uC774\uB984 \uC815\uD558\uAE30",
+  "Give the race a name.": "\uC885\uC871 \uC774\uB984\uC744 \uC785\uB825\uD558\uC138\uC694.",
+  "A race's name is 40 characters at most.": "\uC885\uC871 \uC774\uB984\uC740 40\uC790\uAE4C\uC9C0\uC785\uB2C8\uB2E4.",
+  "Use {value}": "{value} \uC0AC\uC6A9"
 };
 
 // played.ts
 var NOT_MADE = /* @__PURE__ */ new Set([13, 14, 33, 35, 36, 59, 73, 85, 97, 101, 105, 202]);
 var EGGS = /* @__PURE__ */ new Set([36, 59, 97]);
 var RESOURCES = /* @__PURE__ */ new Set([176, 177, 178, 188]);
-var WORKERS2 = /* @__PURE__ */ new Set([7, 41, 64]);
 var isBuilding = (type) => type >= 106 && type <= 201 && !RESOURCES.has(type);
 var counted = (type) => type >= 0 && type < 203 && !NOT_MADE.has(type) && !RESOURCES.has(type);
 var FOLD_FRAMES = 3 * 24;
@@ -1970,7 +2179,7 @@ function madeRows(t, player, options = {}) {
   rows.sort((a, b) => a.frame - b.frame);
   const out = [];
   for (const r of rows) {
-    if (r.kind === "unit" && !options.workers && WORKERS2.has(r.id)) continue;
+    if (r.kind === "unit" && !options.workers && WORKERS.has(r.id)) continue;
     const last = out[out.length - 1];
     if (last && r.kind === "unit" && last.kind === "unit" && !r.building && last.id === r.id && r.frame - last.frame <= FOLD_FRAMES * last.count) {
       last.count++;
@@ -2094,7 +2303,7 @@ function* presencePoints(t, index) {
   for (let i = 0; i < p.frame.length; i++) {
     for (let r = p.start[i]; r < p.start[i + 1]; r++) {
       const u = p.unit[r], type = index.type[u], owner = index.owner[u];
-      if (owner < 0 || owner > 7 || !counted(type) || WORKERS2.has(type)) continue;
+      if (owner < 0 || owner > 7 || !counted(type) || WORKERS.has(type)) continue;
       yield { frame: p.frame[i], player: owner, x: p.x[r], y: p.y[r] };
     }
   }
@@ -2226,7 +2435,7 @@ function threats(k, player, race, them) {
   const out = [];
   for (const kind of ["cloaked", "air"]) {
     const tells = /* @__PURE__ */ new Set([...THREATS[kind].units, ...THREATS[kind].buildings]);
-    const answers = new Set(ANSWERS[kind][race] ?? []);
+    const answers = new Set(race === null ? [] : ANSWERS[kind][race] ?? []);
     let made = null, seen = null;
     const mine = [];
     for (const [unit, l] of k.lives) {
@@ -2264,7 +2473,6 @@ function unseen(k, t, player, them) {
   return out.sort((a, b) => b.unseenFor - a.unseenFor || a.from - b.from);
 }
 var NOT_ARMY = /* @__PURE__ */ new Set([13, 14, 33, 35, 36, 42, 59, 73, 85, 97, 101, 105, 202]);
-var WORKER = /* @__PURE__ */ new Set([7, 41, 64]);
 function armyInSight(k, t, player, them, cost) {
   const frames = t.samples.frame;
   const total = frames.map(() => 0), seen = frames.map(() => 0);
@@ -2276,7 +2484,7 @@ function armyInSight(k, t, player, them, cost) {
       if (f < l.born) continue;
       if (l.died !== null && f >= l.died) break;
       const st = stateAt(l, f);
-      if (!st || !st.done || NOT_ARMY.has(st.type) || WORKER.has(st.type) || isBuilding(st.type)) continue;
+      if (!st || !st.done || NOT_ARMY.has(st.type) || WORKERS.has(st.type) || isBuilding(st.type)) continue;
       const c = cost(st.type);
       total[i] += c;
       if (seenAt(list, player, f)) seen[i] += c;
@@ -2479,13 +2687,20 @@ function fights(t, cost, index) {
   }
   const costed = t.events.some((e) => e.kind === "died" && cost(e.type) > 0);
   const weigh = (type) => costed ? cost(type) : 1;
-  const races = new Map(t.players.map((p) => [p.slot, p.race]));
+  const workerOf = /* @__PURE__ */ new Map();
+  let anyWorker = null;
+  for (const e of t.events) {
+    if (e.kind !== "born" || !WORKERS.has(e.type)) continue;
+    anyWorker ??= e.type;
+    if (!workerOf.has(e.owner)) workerOf.set(e.owner, e.type);
+  }
+  for (const p of t.players) if (!workerOf.has(p.slot) && WORKER_OF[p.race] !== void 0) workerOf.set(p.slot, WORKER_OF[p.race]);
   const hadAt = (player, frame) => {
     const q = t.samples.players.find((p) => p.slot === player);
     const i = sampleAt(t.samples.frame, frame);
     if (!q || i < 0) return 0;
-    const workers = q.workers[i] ?? 0, worker = WORKER_OF[races.get(player) ?? 1] ?? 7;
-    return costed ? (q.armyValue[i] ?? 0) + workers * cost(worker) : (q.army[i] ?? 0) + workers;
+    const workers = q.workers[i] ?? 0, worker = workerOf.get(player) ?? anyWorker;
+    return costed ? (q.armyValue[i] ?? 0) + (worker === null ? 0 : workers * cost(worker)) : (q.army[i] ?? 0) + workers;
   };
   const out = [];
   for (const f of closed) {
@@ -2509,7 +2724,7 @@ function fights(t, cost, index) {
       value += v;
       weight += wt;
       lostWeight.set(e.owner, (lostWeight.get(e.owner) ?? 0) + wt);
-      if (WORKERS2.has(e.type)) workers += wt;
+      if (WORKERS.has(e.type)) workers += wt;
       else if (isBuilding(e.type)) buildings2 += wt;
       if (e.byOwner !== void 0 && e.byOwner <= 7 && e.byOwner !== e.owner) {
         const k = side(e.byOwner);
@@ -2528,7 +2743,7 @@ function fights(t, cost, index) {
       const i = Math.max(0, sampleAt(p.frame, from));
       for (let r = p.start[i]; r < p.start[i + 1]; r++) {
         const u = p.unit[r], type = index.type[u], owner = index.owner[u];
-        if (owner < 0 || owner > 7 || type < 0 || NOT_MADE.has(type) || WORKERS2.has(type) || isBuilding(type)) continue;
+        if (owner < 0 || owner > 7 || type < 0 || NOT_MADE.has(type) || WORKERS.has(type) || isBuilding(type)) continue;
         if (Math.hypot(p.x[r] - x, p.y[r] - y) > PRESENT) continue;
         const s = sides.get(owner);
         if (s) {
@@ -2638,7 +2853,6 @@ function engagement(f) {
 }
 
 // report.ts
-var HALLS = /* @__PURE__ */ new Set([106, 131, 154]);
 var SITE_RADIUS = 320;
 var SPOT_RADIUS = 480;
 var VISIT_CELL = 128;
@@ -2685,7 +2899,7 @@ function mapReport(games, map) {
   const firstFights = [];
   games.forEach((game, g) => {
     const startOf = /* @__PURE__ */ new Map();
-    for (const b of game.standing) if (b.from === 0 && HALLS.has(b.type) && !startOf.has(b.owner)) startOf.set(b.owner, { x: b.x, y: b.y });
+    for (const b of game.standing) if (b.from === 0 && TOWN_HALLS.has(b.type) && !startOf.has(b.owner)) startOf.set(b.owner, { x: b.x, y: b.y });
     for (const [player, at] of startOf) {
       const s = siteAt(at.x, at.y);
       s.starts++;
@@ -2788,14 +3002,13 @@ var MIN_HOLD = 3;
 var ARMY_HOLD = 8;
 var BETTER = 1.4;
 var MIN_SHOT = 3;
-var HALLS2 = /* @__PURE__ */ new Set([106, 131, 154]);
 function groupsAt(t, index, sample, cost) {
   const p = t.positions;
   if (!p) return [];
   const cells = /* @__PURE__ */ new Map();
   for (let r = p.start[sample]; r < p.start[sample + 1]; r++) {
     const u = p.unit[r], type = index.type[u], owner = index.owner[u];
-    if (owner < 0 || owner > 7 || !counted(type) || WORKERS2.has(type) || isBuilding(type)) continue;
+    if (owner < 0 || owner > 7 || !counted(type) || WORKERS.has(type) || isBuilding(type)) continue;
     const cx = Math.floor(p.x[r] / GROUP_CELL), cy = Math.floor(p.y[r] / GROUP_CELL), k = `${owner}:${cx}:${cy}`;
     let c = cells.get(k);
     if (!c) {
@@ -2841,7 +3054,7 @@ function direct(t, index, fights2, bases2, cost, only) {
   const homes = /* @__PURE__ */ new Map();
   for (const e of t.events) {
     if (e.frame > 0) break;
-    if (e.kind === "born" && HALLS2.has(e.type) && e.owner <= 7 && !homes.has(e.owner)) homes.set(e.owner, { x: e.x, y: e.y });
+    if (e.kind === "born" && TOWN_HALLS.has(e.type) && e.owner <= 7 && !homes.has(e.owner)) homes.set(e.owner, { x: e.x, y: e.y });
   }
   const candidates = (i, frame, previous2) => {
     const out = [];
@@ -2894,20 +3107,20 @@ function direct(t, index, fights2, bases2, cost, only) {
       continue;
     }
     const best = list.reduce((a, b) => b.score > a.score ? b : a);
-    const same2 = cur ? list.find((c) => c.key === cur.key) : void 0;
+    const same3 = cur ? list.find((c) => c.key === cur.key) : void 0;
     let keep = false;
-    if (cur && same2) {
-      const tired = (same2.kind === "army" || same2.kind === "home") && cur.held >= ARMY_HOLD;
-      keep = same2.kind === "fight" ? best.score < same2.score * BETTER || best.kind !== "fight" : cur.held < MIN_HOLD ? best.kind !== "fight" || best.score < same2.score * BETTER : !tired && best.score < same2.score * BETTER;
+    if (cur && same3) {
+      const tired = (same3.kind === "army" || same3.kind === "home") && cur.held >= ARMY_HOLD;
+      keep = same3.kind === "fight" ? best.score < same3.score * BETTER || best.kind !== "fight" : cur.held < MIN_HOLD ? best.kind !== "fight" || best.score < same3.score * BETTER : !tired && best.score < same3.score * BETTER;
     }
-    if (keep && same2 && cur) {
-      cur.shot.path.push({ frame, x: same2.x, y: same2.y });
+    if (keep && same3 && cur) {
+      cur.shot.path.push({ frame, x: same3.x, y: same3.y });
       cur.shot.to = frame;
       cur.held++;
       continue;
     }
     const top = (from) => from.reduce((a, b) => !a || b.score > a.score ? b : a, null);
-    const pick = cur && same2 && (same2.kind === "army" || same2.kind === "home") && best.key === cur.key ? top(list.filter((c) => !c.players.some((pl) => cur.shot.players.includes(pl)))) ?? top(list.filter((c) => c.key !== cur.key)) ?? best : best;
+    const pick = cur && same3 && (same3.kind === "army" || same3.kind === "home") && best.key === cur.key ? top(list.filter((c) => !c.players.some((pl) => cur.shot.players.includes(pl)))) ?? top(list.filter((c) => c.key !== cur.key)) ?? best : best;
     if (cur && pick.key === cur.key) {
       cur.shot.path.push({ frame, x: pick.x, y: pick.y });
       cur.shot.to = frame;
@@ -3056,7 +3269,6 @@ function trackAt(t, frame) {
 }
 
 // story.ts
-var HALLS3 = /* @__PURE__ */ new Set([106, 131, 154]);
 var LEAD2 = 0.1;
 var MIN_LEAD_VALUE2 = 300;
 var MIN_LEAD_UNITS2 = 2;
@@ -3094,7 +3306,7 @@ function leads(t, adv) {
 }
 function bases(standing, minerals, landings = []) {
   const arrivals = [
-    ...standing.filter((b) => HALLS3.has(b.type) && b.owner <= 7 && (b.from === 0 || b.done !== null)).map((b) => ({ player: b.owner, frame: b.from, x: b.x, y: b.y })),
+    ...standing.filter((b) => TOWN_HALLS.has(b.type) && b.owner <= 7 && (b.from === 0 || b.done !== null)).map((b) => ({ player: b.owner, frame: b.from, x: b.x, y: b.y, type: b.type })),
     ...landings
   ].sort((a, b) => a.frame - b.frame);
   const out = [];
@@ -3107,7 +3319,7 @@ function bases(standing, minerals, landings = []) {
     if (mine.has(line)) continue;
     mine.add(line);
     if (a.frame === 0) continue;
-    out.push({ player: a.player, frame: a.frame, x: a.x, y: a.y, line, nth: out.filter((o) => o.player === a.player).length + 2 });
+    out.push({ player: a.player, frame: a.frame, x: a.x, y: a.y, line, nth: out.filter((o) => o.player === a.player).length + 2, ...a.type !== void 0 ? { type: a.type } : {} });
   }
   return out;
 }
@@ -3972,7 +4184,7 @@ function lineSaturation(t, lines, index, players) {
     samplesIn[m]++;
     for (let r = p.start[i]; r < p.start[i + 1]; r++) {
       const u = p.unit[r], owner = index.owner[u];
-      if (!want.has(owner) || !WORKERS2.has(index.type[u])) continue;
+      if (!want.has(owner) || !WORKERS.has(index.type[u])) continue;
       const x = p.x[r], y = p.y[r];
       let best = -1, bestD = LINE_REACH;
       for (let l = 0; l < lines.lines.length; l++) {
@@ -4048,7 +4260,6 @@ var MAX_EVENTS = 60;
 var OPENING_STEPS = 18;
 var OPENING_UNTIL = frameOf(360);
 var BLOCK_SAID = frameOf(6);
-var HALL_TYPES = /* @__PURE__ */ new Set([106, 131, 132, 133, 154]);
 var PRODUCTION = /* @__PURE__ */ new Set([111, 113, 114, 160, 167, 155]);
 var ROUTINE = /* @__PURE__ */ new Set([109, 110, 149, 156, 157, 42]);
 function castSegments(fights2, frames) {
@@ -4107,7 +4318,7 @@ function castCards(game) {
   }
   const firsts = /* @__PURE__ */ new Map();
   for (const e of t.events) {
-    if (e.kind !== "born" && e.kind !== "morph" || e.frame === 0 || !shown.has(e.owner) || !counted(e.type) || WORKERS2.has(e.type) || NOT_MADE.has(e.type) || ROUTINE.has(e.type)) continue;
+    if (e.kind !== "born" && e.kind !== "morph" || e.frame === 0 || !shown.has(e.owner) || !counted(e.type) || WORKERS.has(e.type) || NOT_MADE.has(e.type) || ROUTINE.has(e.type)) continue;
     const k = `${e.owner}:${game.names.unit(e.type).replace(/\s*\([^)]*\)\s*$/, "")}`;
     if (!firsts.has(k)) firsts.set(k, { type: e.type, player: e.owner, start: e.frame, unit: e.unit });
   }
@@ -4122,6 +4333,14 @@ function castCards(game) {
   return out.sort((a, b) => a.start - b.start || a.done - b.done).map((c, i) => ({ ...c, id: `c${i + 1}` }));
 }
 var RACES = ["Zerg", "Terran", "Protoss"];
+var otherRace = (p) => p.raceName ?? `Race ${p.race}`;
+var castRace = (p) => RACES[p.race] ?? (p.like === void 0 || p.like === null ? null : RACES[p.like]);
+var castable = (players) => players.some((p) => castRace(p) !== null);
+function raceWords(p) {
+  if (RACES[p.race]) return RACES[p.race];
+  const like = castRace(p);
+  return like ? `${otherRace(p)}, a race the game does not have, which plays as ${like}` : `${otherRace(p)}, a race the game does not have; what it plays as is not known`;
+}
 var clock = (frame) => {
   const s = Math.round(frame * FRAME_SECONDS);
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
@@ -4145,6 +4364,7 @@ function unitsByType(t, frame) {
   return out;
 }
 function castInput(game, clips, wishes, options) {
+  if (!castable(game.players)) throw new Error("No player's race is Zerg, Terran or Protoss, or plays as one that is known.");
   const t = game.timeline;
   const n = { ...game.names, unit: (id) => game.names.unit(id).replace(/\s*\([^)]*\)\s*$/, "") };
   const nameOf = (index) => game.players.find((p) => p.index === index)?.name ?? `Player ${index + 1}`;
@@ -4157,7 +4377,7 @@ function castInput(game, clips, wishes, options) {
   const firsts = [];
   const seen = /* @__PURE__ */ new Set();
   for (const e of t.events) {
-    if (e.kind !== "born" && e.kind !== "morph" || !shown.has(e.owner) || !counted(e.type) || WORKERS2.has(e.type) || NOT_MADE.has(e.type) || ROUTINE.has(e.type) || e.frame === 0) continue;
+    if (e.kind !== "born" && e.kind !== "morph" || !shown.has(e.owner) || !counted(e.type) || WORKERS.has(e.type) || NOT_MADE.has(e.type) || ROUTINE.has(e.type) || e.frame === 0) continue;
     const k = `${e.owner}:${n.unit(e.type)}`;
     if (seen.has(k)) continue;
     seen.add(k);
@@ -4180,7 +4400,7 @@ function castInput(game, clips, wishes, options) {
       out.push(`${p.name} at ${clock(frame)}: supply ${q.supplyUsed[i] ?? 0}/${q.supplyMax[i] ?? 0}, ${q.workers[i] ?? 0} workers${income}, ${q.minerals[i] ?? 0} minerals and ${q.gas[i] ?? 0} gas in the bank`);
       const have = /* @__PURE__ */ new Map();
       for (const b of built) if (b.owner === p.index && b.done !== null && b.done <= frame && (b.to === null || b.to > frame) && !ROUTINE.has(b.type)) have.set(b.type, (have.get(b.type) ?? 0) + 1);
-      const rank = (type) => HALL_TYPES.has(type) ? 0 : PRODUCTION.has(type) ? 1 : 2;
+      const rank = (type) => DEPOTS.has(type) ? 0 : PRODUCTION.has(type) ? 1 : 2;
       const list = [...have].sort((a, b) => rank(a[0]) - rank(b[0]) || b[1] - a[1]).map(([type, k]) => `${k} ${n.unit(type)}`);
       if (list.length) out.push(`${p.name}'s buildings: ${list.join(", ")}`);
       const levels = /* @__PURE__ */ new Map();
@@ -4189,7 +4409,7 @@ function castInput(game, clips, wishes, options) {
         levels.set(name, Math.max(levels.get(name) ?? 0, r.kind === "tech" ? 0 : r.level));
       }
       out.push(levels.size ? `${p.name}'s upgrades and research: ${[...levels].map(([name, level]) => level > 1 ? `${name} ${level}` : name).join(", ")}` : `${p.name} has no upgrades or research yet`);
-      const army = [...units.get(p.index) ?? /* @__PURE__ */ new Map()].filter(([type]) => !WORKERS2.has(type) && !ROUTINE.has(type)).sort((a, b) => b[1] - a[1]);
+      const army = [...units.get(p.index) ?? /* @__PURE__ */ new Map()].filter(([type]) => !WORKERS.has(type) && !ROUTINE.has(type)).sort((a, b) => b[1] - a[1]);
       const count = army.reduce((k, [, c]) => k + c, 0);
       out.push(army.length ? `${p.name}'s whole army, wherever it stands: ${army.map(([type, k]) => `${k} ${n.unit(type)}`).join(", ")} (${count} units, worth ${worth(q.armyValue[i] ?? 0)})` : `${p.name} has no army`);
     }
@@ -4212,7 +4432,7 @@ function castInput(game, clips, wishes, options) {
     const seenTrain = /* @__PURE__ */ new Set();
     const steps = p.build.filter((s, k, all) => {
       if (s.frame > OPENING_UNTIL) return false;
-      if ((s.kind === "train" || s.kind === "morph") && WORKERS2.has(s.id)) return false;
+      if ((s.kind === "train" || s.kind === "morph") && WORKERS.has(s.id)) return false;
       if (s.kind === "train" || s.kind === "morph" && !isBuilding(s.id)) {
         if (seenTrain.has(s.id)) return false;
         seenTrain.add(s.id);
@@ -4221,7 +4441,7 @@ function castInput(game, clips, wishes, options) {
     }).slice(0, OPENING_STEPS);
     if (!steps.length) return null;
     const what = (s) => s.kind === "upgrade" ? n.upgrade(s.id) : s.kind === "tech" ? n.tech(s.id) : n.unit(s.id);
-    return `${p.name} (${RACES[p.race] ?? "Terran"}), supply and time of each order: ${steps.map((s) => `${q ? `${q.supplyUsed[sample(s.frame)] ?? 0} ` : ""}${what(s)} (${clock(s.frame)})`).join(", ")}`;
+    return `${p.name} (${raceWords(p)}), supply and time of each order: ${steps.map((s) => `${q ? `${q.supplyUsed[sample(s.frame)] ?? 0} ` : ""}${what(s)} (${clock(s.frame)})`).join(", ")}`;
   };
   const happened = (from, to) => {
     const out = [];
@@ -4282,9 +4502,9 @@ function castInput(game, clips, wishes, options) {
       if (!g) groups.set(k, g = { frame: e.frame, player: e.owner, by, byType, types: /* @__PURE__ */ new Map() });
       g.types.set(e.type, (g.types.get(e.type) ?? 0) + 1);
       const first = `${e.owner}:${n.unit(e.type)}`;
-      if (!lostBefore.has(first) && !WORKERS2.has(e.type) && (!isBuilding(e.type) || HALL_TYPES.has(e.type))) {
+      if (!lostBefore.has(first) && !WORKERS.has(e.type) && (!isBuilding(e.type) || DEPOTS.has(e.type))) {
         lostBefore.add(first);
-        out.push({ frame: e.frame, text: HALL_TYPES.has(e.type) ? `${nameOf(e.owner)}'s ${n.unit(e.type)} is destroyed` : `the first ${n.unit(e.type)} ${nameOf(e.owner)} has lost` });
+        out.push({ frame: e.frame, text: DEPOTS.has(e.type) ? `${nameOf(e.owner)}'s ${n.unit(e.type)} is destroyed` : `the first ${n.unit(e.type)} ${nameOf(e.owner)} has lost` });
       }
     }
     for (const g of groups.values()) {
@@ -4333,7 +4553,7 @@ function castInput(game, clips, wishes, options) {
     for (const p of game.players) {
       const q = series2(p.index), trained = /* @__PURE__ */ new Set();
       p.build.forEach((s, k, all) => {
-        if ((s.kind === "train" || s.kind === "morph") && WORKERS2.has(s.id)) return;
+        if ((s.kind === "train" || s.kind === "morph") && WORKERS.has(s.id)) return;
         if (s.kind === "train" || s.kind === "morph" && !isBuilding(s.id)) {
           if (trained.has(s.id)) return;
           trained.add(s.id);
@@ -4352,6 +4572,9 @@ function castInput(game, clips, wishes, options) {
     const at = (frame) => Math.round((Math.max(c.from, frame) - c.from) * FRAME_SECONDS * 10 / speed) / 10;
     const since = i ? clips[i - 1].to : 0;
     const before = [];
+    if (i === 0) {
+      for (const p of game.players) if (!RACES[p.race]) before.push(`${p.name} plays ${raceWords(p)}${castRace(p) ? `; the list of players says ${castRace(p)} for it` : "; the list of players leaves them out"}`);
+    }
     for (const h of [...happened(since, c.from), ...blocks(since, c.from)].sort((a, b) => a.frame - b.frame)) before.push(`${clock(h.frame)} ${h.text}`);
     const state = fast && i > 0 ? [] : standing(c.from);
     const l = lead(c.from);
@@ -4392,10 +4615,11 @@ function castInput(game, clips, wishes, options) {
     game: {
       map: game.map.trim(),
       length: seconds(t.frames),
-      players: game.players.map((p) => ({
+      // (A player whose race is none of the game's three and plays as none known cannot be listed: the moments name them.)
+      players: game.players.filter((p) => castRace(p) !== null).map((p) => ({
         id: p.index,
         name: p.name,
-        race: RACES[p.race] ?? "Terran",
+        race: castRace(p),
         result: game.winner === null ? p.leftAt !== null ? "left" : "unknown" : p.index === game.winner ? "won" : p.leftAt !== null ? "left" : "lost"
       })),
       openings: game.players.map(opening).filter((o) => o !== null)
@@ -5250,7 +5474,7 @@ function researchItems(t, players, time) {
   for (const list of out.values()) list.sort((a, b) => a.done - b.done);
   return out;
 }
-var isArmy = (type) => counted(type) && !isBuilding(type) && !WORKERS2.has(type) && !NOT_ARMY2.has(type);
+var isArmy = (type) => counted(type) && !isBuilding(type) && !WORKERS.has(type) && !NOT_ARMY2.has(type);
 function armyRows(t, players) {
   const minutes = Math.max(1, Math.ceil(t.frames / FRAMES_PER_MINUTE));
   const want = new Set(players);
@@ -5321,7 +5545,7 @@ var TIERS = {
   2: [[163, 155, 167], [165, 169, 170]]
 };
 function tierOf(race, buildings2) {
-  const tiers = TIERS[race];
+  const tiers = race === null ? void 0 : TIERS[race];
   if (!tiers) return null;
   for (const tier of [3, 2]) {
     const item = buildings2.find((b) => tiers[tier - 2].includes(b.id));
@@ -5343,7 +5567,7 @@ function mountTech(body, cx) {
   }
   const shown = cx.players.filter((p) => all.players.some((x) => x.slot === p.slot));
   const of = (slot) => all.players.find((p) => p.slot === slot);
-  const raceOf = (slot) => tl.players.find((p) => p.slot === slot)?.race ?? -1;
+  const raceOf = (slot) => tableRace(cx.players.find((p) => p.slot === slot)?.race?.id ?? tl.players.find((p) => p.slot === slot)?.race);
   const nameOf = (item) => item.kind === "building" ? api.names.unit(item.id) : item.kind === "tech" ? api.names.tech(item.id) : (data.upgrades?.maxRepeats[item.id] ?? item.level) > 1 ? `${api.names.upgrade(item.id)} ${item.level}` : api.names.upgrade(item.id);
   const swatch = (color) => el("span", { className: "afm-tip-swatch", style: `background:${color}` });
   const waiting = [];
@@ -5358,7 +5582,7 @@ function mountTech(body, cx) {
     if (typeof api.graphics.requestIcons === "function") api.graphics.requestIcons();
     if (kind === "unit" && !isBuilding(id)) api.graphics.requestUnit(id);
   };
-  const fill = (slot, kind, id, owner) => {
+  const fill2 = (slot, kind, id, owner) => {
     const pic = picture(kind, id, owner);
     if (!pic || slot.dataset.shown === (pic.icon ? "icon" : "unit")) return pic?.icon ?? false;
     const w2 = 36, h = 34, k = Math.min(w2 / pic.width, h / pic.height, 1);
@@ -5373,7 +5597,7 @@ function mountTech(body, cx) {
     const slot = el("span", { className: `afm-ti${options.small ? " afm-ti-sm" : ""}` });
     slot.dataset.name = options.title;
     const owner = options.owner ?? 0;
-    if (!fill(slot, kind, id, owner)) {
+    if (!fill2(slot, kind, id, owner)) {
       if (!slot.dataset.shown) {
         if (options.text) {
           slot.classList.add("afm-ti-text");
@@ -5399,7 +5623,7 @@ function mountTech(body, cx) {
         "div",
         { className: "afm-it-hero" },
         reached ? formatTime(reached.item.done) : "\u2013",
-        el("span", { className: "afm-it-unit" }, reached ? reached.tier === 3 ? t("third tier") : t("second tier") : t("no second tier"))
+        el("span", { className: "afm-it-unit" }, reached ? reached.tier === 3 ? t("third tier") : t("second tier") : raceOf(p.slot) === null ? t("tiers not known") : t("no second tier"))
       ),
       el("div", { className: "afm-dim afm-it-card-line" }, reached ? nameOf(reached.item) : "\xA0"),
       el("div", { className: "afm-it-card-line" }, t("{levels, plural, one {# upgrade level} other {# upgrade levels}}, {n, plural, one {# technology} other {# technologies}}", { levels, n: abilities })),
@@ -5463,6 +5687,10 @@ function mountTech(body, cx) {
     el("span", { className: "afm-ti-key" }, el("span", { className: "afm-ti-key-bar" }), t("Upgrades and technologies"))
   );
   const notes = [];
+  for (const p of shown) {
+    if (!p.race || isPlayed(p.race.id)) continue;
+    notes.push(el("p", { className: "afm-dim afm-it-note" }, t("{name} plays {race}, which is not one of the game's three races. Tiers are known for Zerg, Terran and Protoss only.", { name: p.name, race: p.race.label })));
+  }
   if (!data.upgrades || !data.techs) notes.push(el("p", { className: "afm-dim afm-it-note" }, t("Without the game's data, research is shown when it was done, not when it began.")));
   const army = w.fold({ text: t("Army over the game"), open: false });
   army.body.append(armyGrid(cx, all, shown, icon));
@@ -5479,7 +5707,7 @@ function mountTech(body, cx) {
   chart.draw();
   if (typeof api.graphics.onImageLoaded === "function") {
     cx.keep(api.graphics.onImageLoaded(() => {
-      for (let i = waiting.length - 1; i >= 0; i--) if (fill(waiting[i].slot, waiting[i].kind, waiting[i].id, waiting[i].owner)) waiting.splice(i, 1);
+      for (let i = waiting.length - 1; i >= 0; i--) if (fill2(waiting[i].slot, waiting[i].kind, waiting[i].id, waiting[i].owner)) waiting.splice(i, 1);
       chart.draw();
     }));
   }
@@ -5490,7 +5718,7 @@ function sayTech(cx, all, shown, raceOf, nameOf) {
   const [a, b] = shown;
   const pa = all.players.find((p) => p.slot === a.slot), pb = all.players.find((p) => p.slot === b.slot);
   const said = [];
-  const mirror = raceOf(a.slot) === raceOf(b.slot);
+  const mirror = raceOf(a.slot) !== null && raceOf(a.slot) === raceOf(b.slot);
   const ta = mirror ? tierOf(raceOf(a.slot), pa.buildings) : null, tb = mirror ? tierOf(raceOf(b.slot), pb.buildings) : null;
   const reachedFirst = (tier, name, other, time) => tier === 3 ? t("{name} reached the third tier {time} before {other}.", { name, other, time }) : t("{name} reached the second tier {time} before {other}.", { name, other, time });
   const reachedOnly = (tier, name, other, building, time) => tier === 3 ? t("{name} reached the third tier ({building}, {time}); {other} did not.", { name, other, building, time }) : t("{name} reached the second tier ({building}, {time}); {other} did not.", { name, other, building, time });
@@ -5642,7 +5870,7 @@ function mountScouting(body, cx) {
   }
   const playing3 = new Set(tl.samples.players.filter((s) => s.supplyMax.some((n) => n > 0)).map((s) => s.slot));
   const shown = cx.players.filter((p) => playing3.has(p.slot));
-  const raceOf = (slot) => tl.players.find((p) => p.slot === slot)?.race ?? -1;
+  const raceOf = (slot) => tableRace(cx.players.find((p) => p.slot === slot)?.race?.id ?? tl.players.find((p) => p.slot === slot)?.race);
   const unit = (type) => api.names.unit(type).replace(/^(Terran|Zerg|Protoss) (?=\S)/, "");
   const swatch = (color) => el("span", { className: "afm-tip-swatch", style: `background:${color}` });
   const percent = (share) => share === null ? "\u2013" : `${Math.round(share * 100)}%`;
@@ -5728,14 +5956,16 @@ function mountScouting(body, cx) {
     const late = th.seen.frame - th.made.frame;
     return go(el("td", {}, `${formatTime(th.seen.frame)} \xB7 ${unit(th.seen.type)}`, el("span", { className: "afm-dim" }, ` \xB7 ${t("{time} later", { time: formatTime(late) })}`)), th.seen.frame);
   };
-  const answerCell = (th) => {
+  const answerCell = (th, known2) => {
+    if (!known2) return el("td", { className: "afm-dim" }, t("cannot tell"));
     const already = th.already ? el("div", { className: "afm-dim" }, t("already had: {name}, {time}", { name: unit(th.already.type), time: formatTime(th.already.frame) })) : null;
     if (!th.answer) return el("td", {}, already ?? el("span", { className: "afm-dim" }, t("none")));
     const when = !th.seen ? "" : th.answer.frame <= th.seen.frame ? t("{time} before seeing", { time: formatTime(th.seen.frame - th.answer.frame) }) : t("{time} after seeing", { time: formatTime(th.answer.frame - th.seen.frame) });
     return go(el("td", {}, el("div", {}, `${formatTime(th.answer.frame)} \xB7 ${unit(th.answer.type)}`, when ? el("span", { className: "afm-dim" }, ` \xB7 ${when}`) : null), already), th.answer.frame);
   };
   const threatRows = shown.flatMap((p) => {
-    const list = threats(k0, p.slot, raceOf(p.slot), cx.opponents(p.slot));
+    const like = raceOf(p.slot);
+    const list = threats(k0, p.slot, like, cx.opponents(p.slot));
     if (!list.length) return [];
     return [
       el("tr", {}, el("th", { scope: "rowgroup", className: "afm-ti-group", colSpan: 4 }, el("span", { className: "afm-it-player" }, swatch(p.color), p.name))),
@@ -5745,14 +5975,16 @@ function mountScouting(body, cx) {
         el("th", { scope: "row" }, kindName(th)),
         go(el("td", {}, `${formatTime(th.made.frame)} \xB7 ${unit(th.made.type)}`), th.made.frame),
         seenCell(th),
-        answerCell(th)
+        answerCell(th, like !== null)
       ))
     ];
   });
+  const raceNotes = shown.filter((p) => p.race && !isPlayed(p.race.id)).map((p) => el("p", { className: "afm-dim afm-it-note" }, t("{name} plays {race}, which is not one of the game's three races. Answers are known for Zerg, Terran and Protoss only.", { name: p.name, race: p.race.label })));
   const threatSection = threatRows.length ? el(
     "section",
     { className: "afm-it-section" },
     el("h3", { className: "afm-sc-h" }, t("Seen and answered")),
+    ...raceNotes,
     el("p", { className: "afm-dim afm-it-note" }, t("For the cloaked and the air units the opponents had: when they first had one (or the building that makes them), when the player first saw one, and the first answer the player started after that: detection against cloaked units, anti-air against air units. An answer started before seeing was guessed at, or scouted some other way. One the player had before the opponents had the threat at all is shown as already had.")),
     el(
       "table",
@@ -5831,7 +6063,7 @@ var InsightView = class {
   shownTimeline = null;
   /** Show `game`, or say why there is nothing to show. */
   show(game, why) {
-    const key = game ? game.players.filter((p) => p.hidden).map((p) => p.slot).join(",") : `none:${why}`;
+    const key = game ? `${game.players.filter((p) => p.hidden).map((p) => p.slot).join(",")}|${game.players.map((p) => p.race ? `${p.race.label}:${p.race.like}` : "").join(",")}` : `none:${why}`;
     if (game?.timeline === this.shownTimeline && key === this.shownKey) return;
     this.shownKey = key;
     this.shownTimeline = game?.timeline ?? null;
@@ -6173,7 +6405,7 @@ var SAME_MAP = 0.9;
 var LANE2 = 16;
 var SENT = /* @__PURE__ */ new Set(["move", "attack", "patrol", "ability"]);
 var msg2 = (text) => text;
-var RACES2 = [msg2("Zerg"), msg2("Terran"), msg2("Protoss")];
+var RACES2 = [msg2("Zerg"), msg2("Terran"), msg2("Protoss"), msg2("Independent"), msg2("Neutral"), msg2("User Selectable"), msg2("Random"), msg2("Inactive")];
 var TILESETS = [msg2("Badlands"), msg2("Space Platform"), msg2("Installation"), msg2("Ash World"), msg2("Jungle"), msg2("Desert"), msg2("Ice"), msg2("Twilight")];
 var GAME_TYPES = {
   2: msg2("Melee"),
@@ -6220,7 +6452,6 @@ var TREND_FRAMES = FRAMES_PER_MINUTE / 6;
 var MOMENT_FRAMES = FRAMES_PER_MINUTE / 30;
 var MAX_MOMENTS = 4;
 var MAX_LOST_TYPES = 6;
-var HALLS4 = { 0: 131, 1: 106, 2: 154 };
 var FIGHT_KINDS = { battle: msg2("Battle"), workers: msg2("Workers killed"), buildings: msg2("Buildings destroyed") };
 function fightMark(f) {
   if (f.turning) return { id: "turn", label: msg2("Turning point"), why: msg2("After this fight the player ahead in army stayed ahead to the end") };
@@ -6372,8 +6603,12 @@ var STYLE = `
 .afm .afm-player { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; gap: 6px; padding: 3px 4px; border-radius: 4px; cursor: pointer; }
 .afm .afm-player:hover { background: var(--hover, rgba(255,255,255,0.06)); }
 .afm .afm-player.afm-off { opacity: 0.4; }
-.afm .afm-player .afm-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.afm .afm-player .afm-race { color: var(--text-dim, #99a2b3); margin-left: 4px; }
+.afm .afm-player .afm-name { display: flex; align-items: baseline; min-width: 0; overflow: hidden; white-space: nowrap; }
+.afm .afm-player .afm-pname { flex: 0 1 auto; min-width: 2em; overflow: hidden; text-overflow: ellipsis; }
+.afm .afm-player .afm-race { flex: none; max-width: calc(100% - 2.5em); overflow: hidden; text-overflow: ellipsis; color: var(--text-dim, #99a2b3); margin-left: 4px; }
+.afm .afm-player .afm-race-act { grid-column: 2 / -1; margin-top: -2px; }
+.afm .afm-player .afm-race-act .afm-link { font-size: 11px; }
+.afm-name-race .afm-choices { display: flex; flex-wrap: wrap; gap: 4px; margin-top: -4px; }
 .afm .afm-player .afm-live { font-variant-numeric: tabular-nums; color: var(--text-dim, #99a2b3); white-space: nowrap; }
 .afm .afm-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
 .afm .afm-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border, #3a4150); }
@@ -6510,6 +6745,135 @@ function activate(api) {
     upgrade: (id) => ownData(current) ? api.names.upgrade(id) : t("Upgrade {id}", { id }),
     tech: (id) => ownData(current) ? api.names.tech(id) : t("Technology {id}", { id })
   };
+  const raceEditor = api;
+  let raceRevision = 0;
+  const raceCache = /* @__PURE__ */ new WeakMap();
+  function raceOf(entry, player) {
+    const key = `${raceRevision}:${entry?.played ? 1 : 0}:${entry?.mod?.dataSet.hash ?? ""}`;
+    let cached = entry ? raceCache.get(entry) : void 0;
+    if (entry && cached?.key !== key) raceCache.set(entry, cached = { key, races: /* @__PURE__ */ new Map() });
+    const hit = cached?.races.get(player.index);
+    if (hit && hit.id === player.race) return hit;
+    const own = ownData(entry);
+    const view = raceView(player.race, {
+      tag: entry?.mod?.dataSet.races,
+      ...own ? editorSources(raceEditor) : {},
+      groupFlags: own ? api.data.units()?.groupFlags ?? null : null,
+      units: () => unitsOf(entry, player.index)
+    });
+    const named = { ...view, label: raceLabel(view) };
+    cached?.races.set(player.index, named);
+    return named;
+  }
+  const raceLabel = (r) => labelOf(r, translate, (n) => t("Race {n}", { n }));
+  const likeLabel = (like) => translate(RACES2[like]);
+  const playsAsText = (r) => r.like === null ? t("What this race plays as is not known") : r.from === "declared" ? t("Plays as {race}, as the data set says", { race: likeLabel(r.like) }) : t("Plays as {race}, by the units it had", { race: likeLabel(r.like) });
+  function* unitsOf(entry, index) {
+    const p = entry?.report.players.find((x) => x.player.index === index);
+    for (const s of p?.build ?? []) if (s.kind === "build" || s.kind === "train" || s.kind === "morph") yield s.id;
+    for (const e of entry?.played?.timeline.events ?? []) if ((e.kind === "born" || e.kind === "morph") && e.owner === index) yield e.type;
+  }
+  const refreshRoles = () => useRoles(ownData(current) ? rolesOf(api.data.units()?.flags) : null);
+  function racesChanged() {
+    raceRevision++;
+    refreshRoles();
+    side?.render();
+    strip?.render();
+    refreshInsight();
+    redraw();
+  }
+  function raceNode(entry, player) {
+    const r = raceOf(entry, player);
+    const node = el("span", { className: "afm-race" }, r.label);
+    if (!isPlayed(r.id)) node.title = `${r.label} \xB7 ${playsAsText(r)}`;
+    return node;
+  }
+  function raceAction(entry, player) {
+    const r = raceOf(entry, player);
+    if (!canName(r, raceEditor, ownData(entry))) return null;
+    const b = el("button", { className: "afm-link", type: "button", title: t("Give this race a name for the data set in use") }, t("Name this race\u2026"));
+    b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      void nameRace(player, r);
+    });
+    return el("div", { className: "afm-race-act" }, b);
+  }
+  async function raceHints(taken) {
+    const offered2 = await editorHints(raceEditor);
+    if (offered2) return offered2;
+    const gd = api.gameData;
+    if (typeof gd?.read !== "function" || typeof gd.storedPath !== "function") return { names: [], letters: [] };
+    const read = (member, under = false) => gd.read(gd.storedPath(member), under ? { under: true } : void 0).catch(() => null);
+    const [mine, game2] = await Promise.all([read("rez\\network.tbl"), read("rez\\network.tbl", true)]);
+    const names2 = nameCandidates(mine, game2, taken.map((r) => r.name));
+    const usedLetters = new Set(taken.map((r) => r.letter).filter(Boolean));
+    const found = await Promise.all(RACE_LETTERS.filter((l) => !usedLetters.has(l)).map(async (l) => {
+      for (const file of letterFiles(l)) if (await read(file)) return l;
+      return null;
+    }));
+    return { names: names2, letters: found.filter((l) => l !== null) };
+  }
+  async function nameRace(player, r) {
+    const hints = await raceHints(editorSources(raceEditor).editor ?? []);
+    const name = w.text({ placeholder: t("Name") });
+    name.maxLength = RACE_NAME_MAX;
+    const letter = w.text({ placeholder: t("None") });
+    letter.maxLength = 1;
+    const plays = w.select([{ value: "", label: t("Not known") }, ...[0, 1, 2].map((k) => ({ value: String(k), label: likeLabel(k) }))], { value: r.like === null ? "" : String(r.like) });
+    const choices = (list, field) => list.length ? { label: "", field: el("div", { className: "afm-choices" }, ...list.map((v) => w.button(v, { className: "sm", title: t("Use {value}", { value: v }), onClick: () => {
+      field.value = v;
+      field.focus();
+    } }))) } : null;
+    api.ui.dialog({
+      title: t("Name this race"),
+      size: "sm",
+      mount: (body) => {
+        body.append(el(
+          "div",
+          { className: "afm-name-race" },
+          el("p", {}, t("{player} plays race {n}, which the data set in use adds. A name given here is kept with the data set, and shown for every replay played with it.", { player: plainText(player.name), n: r.id })),
+          w.form([
+            { label: t("Name"), field: name },
+            choices(hints.names, name),
+            { label: t("Letter of its files"), field: letter },
+            choices(hints.letters, letter),
+            { label: t("Plays as"), field: plays }
+          ]),
+          hints.names.length ? w.hint(t("The names offered are ones the data set's files have past the game's own. They are suggestions: check them.")) : null,
+          r.from === "units" ? w.hint(t("What it plays as is worked out from the units the player had.")) : null
+        ));
+        name.focus();
+      },
+      buttons: [
+        { label: t("Cancel") },
+        {
+          label: t("Name the Race"),
+          primary: true,
+          run: () => {
+            const row = namedRow(r.id, name.value, letter.value, plays.value);
+            if (row === "name" || row === "long") {
+              api.ui.toast({ kind: "warn", title: row === "name" ? t("Give the race a name.") : t("A race's name is 40 characters at most.") });
+              name.focus();
+              return false;
+            }
+            if (row === "letter") {
+              api.ui.toast({ kind: "warn", title: t("A letter is one of a to z, other than z, t, p and n") });
+              letter.focus();
+              return false;
+            }
+            let kept = null;
+            try {
+              kept = declare(raceEditor, row);
+            } catch (err) {
+              api.log("Aftermath: naming a race,", err);
+            }
+            if (!kept) api.ui.toast({ kind: "warn", title: t("The race could not be named"), detail: t("The data set in use keeps no names for races.") });
+            racesChanged();
+          }
+        }
+      ]
+    });
+  }
   let attaching = null;
   async function attachMod(entry) {
     const tag2 = entry.mod;
@@ -6588,8 +6952,9 @@ function activate(api) {
     for (const r of [entry.viewFailed?.reason, entry.failedReason]) if (r === "mod-missing" || r === "mod-terrain") return r;
     return null;
   };
+  const raceNamed = (race) => raceView(race, editorSources(raceEditor)).name;
   function signsText(signs) {
-    return signs.map((sign) => sign.kind === "terrain" ? t("its map uses {tileset} tile group {group}, and the last StarCraft has, in Remastered, is {last}", { tileset: translate(TILESETS[sign.tileset]), group: sign.group, last: sign.last }) : t("{player}'s race is {race}, which is none of the game's", { player: plainText(sign.player), race: sign.race })).join("; ");
+    return signs.map((sign) => sign.kind === "terrain" ? t("its map uses {tileset} tile group {group}, and the last StarCraft has, in Remastered, is {last}", { tileset: translate(TILESETS[sign.tileset]), group: sign.group, last: sign.last }) : raceNamed(sign.race) ? t("{player}'s race is {name} ({race}), which is none of the game's", { player: plainText(sign.player), name: raceNamed(sign.race), race: sign.race }) : t("{player}'s race is {race}, which is none of the game's", { player: plainText(sign.player), race: sign.race })).join("; ");
   }
   function modHashWaited() {
     return new Promise((resolve) => {
@@ -6886,7 +7251,7 @@ function activate(api) {
       if (files.length) api.ui.toast({ kind: "warn", title: t("Not a replay"), detail: t("Aftermath opens StarCraft replays, files ending in .rep.") });
       return;
     }
-    void api.data.load();
+    void api.data.load().then(() => racesChanged());
     void api.graphics.load();
     const batch = [];
     for (const file of reps) {
@@ -6895,6 +7260,7 @@ function activate(api) {
         const replay = await parseReplay(bytes);
         const id = nextId++, map = readChk(replay.chk);
         const group = [...loaded, ...batch].find((l) => likeness(map, l.map) >= SAME_MAP)?.group ?? id;
+        useRoles(!replay.mod || api.gameData?.source?.()?.hash === replay.mod.dataSet.hash ? rolesOf(api.data.units()?.flags) : null);
         batch.push({ id, fileName: file.name, report: analyse(replay), map, bytes, docId: null, group, excluded: false, frame: 0, hidden: /* @__PURE__ */ new Set(), played: null, failed: null, eyes: null, again: null, mod: replay.mod ?? null, ...replay.mod ? { dataSet: replayDataSet(replay.mod) } : {}, signs: replay.mod ? [] : modSigns(replay.players, map) });
       } catch (err) {
         const detail = err instanceof ReplayError ? translate(err.message) : String(err);
@@ -7373,7 +7739,11 @@ function activate(api) {
     return {
       map: plainText(entry.report.replay.header.mapName),
       timeline: done.timeline,
-      players: players.map((p) => ({ index: p.player.index, name: p.player.name, race: p.player.race, leftAt: p.leftAt, build: p.build })),
+      players: players.map((p) => {
+        const r = raceOf(entry, p.player);
+        const other = isPlayed(r.id) ? {} : { raceName: r.name ?? `Race ${r.id}`, like: r.like };
+        return { index: p.player.index, name: p.player.name, race: p.player.race, ...other, leftAt: p.leftAt, build: p.build };
+      }),
       fights: done.fights,
       bases: done.bases,
       winner: winnerOf(players.map((p) => ({ index: p.player.index, left: p.leftAt !== null })), done.standing),
@@ -7388,6 +7758,13 @@ function activate(api) {
       },
       durations
     };
+  }
+  function castBlocked(entry) {
+    const tl = entry.played?.timeline;
+    const players = entry.report.players.filter((p) => !tl || tl.samples.players.some((q) => q.slot === p.player.index));
+    const races = players.map((p) => raceOf(entry, p.player));
+    if (castable(races.map((r) => ({ index: 0, name: "", race: r.id, like: r.like, leftAt: null, build: [] })))) return null;
+    return t("A cast cannot be made of this game. The commentators are told each player's race as Zerg, Terran or Protoss, and what {races} plays as cannot be told.", { races: [...new Set(races.map((r) => r.label))].join(", ") });
   }
   const clipsOf = (entry, format) => format === "game" ? castSegments(entry.played.fights, entry.played.timeline.frames) : highlightClips(entry.played.fights, entry.played.timeline.frames);
   const castSeconds = (entry, format) => clipsOf(entry, format).reduce((n, c) => n + (c.to - c.from) * FRAME_MS / 1e3 / (c.speed ?? 1), 0);
@@ -7443,6 +7820,8 @@ function activate(api) {
       if (!m.script) {
         const clips = clipsOf(entry, options.format);
         if (!clips.length) throw new Error(t("This game has no key moments to cast."));
+        const blocked = castBlocked(entry);
+        if (blocked) throw new Error(blocked);
         const game3 = await castGameOf(entry);
         const input2 = castInput(game3, clips, notes.trim() || void 0, options);
         input2.seed = Math.floor(Math.random() * 2e9);
@@ -7700,8 +8079,8 @@ function activate(api) {
               from: e.making[0],
               to: e.making[1]
             });
-            const same2 = kept.find((k) => k.key === castKey(replay, { format, banter }, voiced, notes));
-            make.textContent = same2 ? t("Make a new one") : t("Make cast");
+            const same3 = kept.find((k) => k.key === castKey(replay, { format, banter }, voiced, notes));
+            make.textContent = same3 ? t("Make a new one") : t("Make cast");
           };
           const formatPick = w.segmented([{ value: "game", label: t("Whole game") }, { value: "highlights", label: t("Key moments") }], { value: format, onChange: (v) => {
             format = v;
@@ -7736,6 +8115,8 @@ function activate(api) {
           const make = w.button(t("Make cast"), { primary: true, onClick: () => {
             void makeCast(entry, { format, banter }, voiced, notes);
           } });
+          const blocked = castBlocked(entry);
+          if (blocked) make.disabled = true;
           const keptRows = kept.map((k) => {
             const label2 = [k.options.format === "game" ? t("Whole game") : t("Key moments"), k.options.banter === "off" ? t("No banter") : k.options.banter === "lots" ? t("Lots of banter") : t("Some banter"), k.voiced ? t("Voiced") : t("Captions only")].join(" \xB7 ");
             const watch = w.button(t("Watch"), { primary: true, onClick: async () => {
@@ -7778,6 +8159,7 @@ function activate(api) {
               ]),
               ...!offer?.speech ? [w.hint(t("This server has no voices set up: the cast is shown as captions."))] : [],
               estimateLine,
+              ...blocked ? [el2("p", { className: "afm-cast-error" }, blocked)] : [],
               w.row(make)
             )
           );
@@ -7942,7 +8324,7 @@ function activate(api) {
   }
   document.addEventListener("fullscreenchange", onFullscreen);
   function musicRace(entry) {
-    const races = [...new Set(entry.report.players.map((p) => p.player.race).filter((r) => r >= 0 && r <= 2))];
+    const races = [...new Set(entry.report.players.map((p) => raceOf(entry, p.player).like).filter((r) => r !== null))];
     return races.length ? races[Math.floor(Math.random() * races.length)] : null;
   }
   const mapTitle = (entry) => plainText(entry.report.replay.header.mapName).split("|").map((x) => x.trim()).filter(Boolean).pop() ?? "";
@@ -7957,7 +8339,7 @@ function activate(api) {
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, h);
     const i = tl ? sampleAt(tl.samples.frame, frame) : -1;
-    const race = (r) => r === 0 ? t("Zerg") : r === 1 ? t("Terran") : t("Protoss");
+    const race = (p) => raceOf(entry, p).label;
     const side2 = (p, right) => {
       const q = tl?.samples.players.find((s) => s.slot === p.player.index);
       const x = right ? W - 24 : 24;
@@ -7970,7 +8352,7 @@ function activate(api) {
       ctx.fillText(p.player.name, x, 25);
       ctx.font = "600 12px system-ui, sans-serif";
       ctx.fillStyle = p.player.color;
-      const stats = q && i >= 0 ? `${race(p.player.race)} \xB7 ${t("Supply {used}/{max}", { used: supplyShown(q.supplyUsed[i] ?? 0), max: supplyShown(q.supplyMax[i] ?? 0) })} \xB7 ${t("{n} workers", { n: q.workers[i] ?? 0 })} \xB7 ${t("army {value}", { value: number(q.armyValue[i] ?? 0) })}` : race(p.player.race);
+      const stats = q && i >= 0 ? `${race(p.player)} \xB7 ${t("Supply {used}/{max}", { used: supplyShown(q.supplyUsed[i] ?? 0), max: supplyShown(q.supplyMax[i] ?? 0) })} \xB7 ${t("{n} workers", { n: q.workers[i] ?? 0 })} \xB7 ${t("army {value}", { value: number(q.armyValue[i] ?? 0) })}` : race(p.player);
       ctx.fillText(stats, x, 45);
     };
     if (players.length >= 1) side2(players[0], false);
@@ -8224,11 +8606,12 @@ function activate(api) {
       });
       await api.data.load();
       const units = api.data.units();
+      useRoles(ownData(entry) ? rolesOf(units?.flags) : null);
       const cost = (type) => units ? ((units.mineralCost[type] ?? 0) + (units.vespeneCost[type] ?? 0)) / (TWINS.has(type) ? 2 : 1) : 0;
       const index = unitIndex(timeline);
       const landings = entry.report.players.flatMap((p) => p.placements.filter((pl) => pl.landed && TOWN_HALLS.has(pl.unit)).map((pl) => {
         const size = api.palette.unitSize(pl.unit);
-        return { player: p.player.index, frame: pl.frame, x: pl.tx * 32 + size.width / 2, y: pl.ty * 32 + size.height / 2 };
+        return { player: p.player.index, frame: pl.frame, x: pl.tx * 32 + size.width / 2, y: pl.ty * 32 + size.height / 2, type: pl.unit };
       }));
       const standing = buildings(timeline), fights2 = fights(timeline, cost, index), taken = bases(standing, mineralLines(timeline), landings);
       entry.played = {
@@ -8455,7 +8838,7 @@ function activate(api) {
         const type = done.index.type[unit];
         const p = byIndex.get(done.index.owner[unit]);
         if (!p || type < 0 || isBuilding(type) || knowing?.them.has(done.index.owner[unit])) return;
-        markUnit(ctx, v.x(ux), v.y(uy), r, p.player.color, WORKERS2.has(type));
+        markUnit(ctx, v.x(ux), v.y(uy), r, p.player.color, WORKERS.has(type));
       });
       if (knowing) {
         const { k, where, placed } = knowingData(done.timeline);
@@ -8470,7 +8853,7 @@ function activate(api) {
             if (it.known === "seen") markBuilding(ctx, x, y, w2, h, colour, it.done ? "built" : "site", img, s);
             else if (it.known === "remembered") markRemembered(ctx, x, y, w2, h, colour, img, s);
             else markUnknown(ctx, x, y, w2, h, colour);
-          } else if (it.known === "seen") markUnit(ctx, v.x(it.x), v.y(it.y), r, colour, WORKERS2.has(it.type));
+          } else if (it.known === "seen") markUnit(ctx, v.x(it.x), v.y(it.y), r, colour, WORKERS.has(it.type));
           else if (it.known === "remembered") markGhost(ctx, v.x(it.x), v.y(it.y), r, colour, 1 - it.age / REMEMBER_FRAMES);
           else markUnknownUnit(ctx, v.x(it.x), v.y(it.y), r, colour);
         }
@@ -8820,8 +9203,7 @@ function activate(api) {
       moment(r.frame, r.player, gameIcon(r.kind, r.id, r.player), r.kind === "upgrade" && r.level > 1 ? t("{name}, level {level}", { name, level: r.level }) : name);
     }
     for (const b of entry.played?.bases ?? []) {
-      const race = byIndex.get(b.player)?.player.race ?? 1;
-      moment(b.frame, b.player, gameIcon("unit", HALLS4[race] ?? 106, b.player), t("Takes base {n}", { n: b.nth }));
+      moment(b.frame, b.player, b.type !== void 0 ? gameIcon("unit", b.type, b.player) : null, t("Takes base {n}", { n: b.nth }));
     }
     for (const line of entry.report.chat) {
       const p = entry.report.players.find((x) => x.player.id === line.player);
@@ -8915,7 +9297,7 @@ function activate(api) {
         lines: insightLines(tl),
         index: entry.played.index,
         map: tl.map,
-        players: entry.report.players.map((p) => ({ slot: p.player.index, name: p.player.name, color: p.player.color, leftAt: p.leftAt, hidden: entry.hidden.has(p.player.id), team: p.player.team }))
+        players: entry.report.players.map((p) => ({ slot: p.player.index, name: p.player.name, color: p.player.color, leftAt: p.leftAt, hidden: entry.hidden.has(p.player.id), team: p.player.team, race: raceOf(entry, p.player) }))
       }
     };
   }
@@ -9118,10 +9500,11 @@ function activate(api) {
       }
       const own = entry.report.replay.unknownCommands;
       if (own > 0) box.append(el("div", { className: "afm-dim" }, t("{n, plural, one {# command block is the mod's own and is not analysed.} other {# command blocks are the mod's own and are not analysed.}}", { n: own })));
-      box.append(w.hint(`${game.playsMods ? t("Play From Here and the Replay view play it with the mod.") : t("Play From Here plays it with the mod on the play page.")} ${this.modAnalysisLine(entry)} ${t("What is shown is the players' orders, and Aftermath's own rules for workers and town halls go by the game's unit ids, which a mod may give other units.")}`));
+      box.append(w.hint(`${game.playsMods ? t("Play From Here and the Replay view play it with the mod.") : t("Play From Here plays it with the mod on the play page.")} ${this.modAnalysisLine(entry)} ${ownData(entry) && rolesOf(api.data.units()?.flags) ? t("What is shown is the players' orders. Workers and town halls are the ones the mod's units table says.") : t("What is shown is the players' orders, and Aftermath's own rules for workers and town halls go by the game's unit ids, which a mod may give other units.")}`));
       this.root.append(box);
     }
     render() {
+      refreshRoles();
       this.root.replaceChildren();
       this.live = [];
       this.steps = [];
@@ -9155,8 +9538,10 @@ function activate(api) {
           "div",
           { className: "afm-player" + (entry.hidden.has(p.player.id) ? " afm-off" : ""), title: entry.hidden.has(p.player.id) ? t("Show {name} on the map", { name: p.player.name }) : t("Hide {name} on the map", { name: p.player.name }) },
           el("span", { className: "afm-swatch", style: `background:${p.player.color}` }),
-          el("span", { className: "afm-name" }, p.player.name, el("span", { className: "afm-race" }, RACES2[p.player.race] ? translate(RACES2[p.player.race]) : t("Random"))),
-          readout
+          // (The name gives way to the race when the panel is narrow: the race is never cut.)
+          el("span", { className: "afm-name" }, el("span", { className: "afm-pname" }, p.player.name), raceNode(entry, p.player)),
+          readout,
+          raceAction(entry, p.player)
         );
         line.addEventListener("click", () => {
           if (entry.hidden.has(p.player.id)) entry.hidden.delete(p.player.id);
@@ -10121,14 +10506,10 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
     redraw();
     strip?.update();
   });
-  api.events.on("language", () => {
-    side?.render();
-    strip?.render();
-  });
+  api.events.on("language", () => racesChanged());
   api.events.on("gameData", () => {
-    side?.render();
-    strip?.render();
-    redraw();
+    racesChanged();
+    void api.data.load().then(() => racesChanged());
   });
   return () => {
     stop();
