@@ -242,8 +242,8 @@ export class GameView {
   get loading(): boolean { return this.wanted !== null; }
 
   /**
-   * The spinner over the game, with `text` beside it; null takes it away. It shows only once the wait has gone on a
-   * moment, so a quick jump does not flash it.
+   * The spinner over the game, with `text` beside it ("" for the spinner alone); null takes it away. It shows only
+   * once the wait has gone on a moment, so a quick jump does not flash it.
    */
   busy(text: string | null): void {
     const box = this.busyBox;
@@ -255,6 +255,8 @@ export class GameView {
       return;
     }
     this.busyLine.textContent = text;
+    // (No words: the spinner alone, the line beside it out of the way.)
+    this.busyLine.hidden = text === "";
     if (!box.hidden || this.busyTimer) return;
     this.busyTimer = setTimeout(() => { this.busyTimer = null; box.hidden = false; }, 200);
   }
@@ -695,13 +697,19 @@ export class GameView {
   /** A seek is on its way (or a drag waits to be sent): the clock is where it was sent, not where the game still shows. */
   get seeking(): boolean { return this.aiming !== null || this.pending !== null; }
   /**
-   * A seek on a view that cannot rewind, once the view has said where it is: the frame it has got to (the frame it
-   * shows, or how far the engine has run) and the one it was sent to. Null otherwise.
+   * The play page says a seek of this replay itself, in a line over the game ("Running ahead to 2:56: 40%"): one that
+   * cannot rewind, or one that is slow (a play page of 2026-11-09 and after). It counts from the moment the engine went
+   * back to, which the view is not told, so nothing here gives a percentage beside it.
+   */
+  get saysSeeks(): boolean { return !this.quickBack || this.slow; }
+  /**
+   * A seek the page says itself (`saysSeeks`), once the view has said where it is: the frame it has got to (the frame
+   * it shows, or how far the engine has run) and the one it was sent to. Null otherwise.
    */
   get runningAhead(): { at: number; to: number } | null {
     const a = this.aiming;
-    // (Past where it goes: the moment a seek back is leaving, before the game starts again.)
-    if (this.quickBack || this.pending || !a || a.shown === null || a.shown > a.frame) return null;
+    // (Past where it goes: the moment a seek back is leaving, before the game starts again or goes back.)
+    if (!this.saysSeeks || this.pending || !a || a.shown === null || a.shown > a.frame) return null;
     return { at: a.shown, to: a.frame };
   }
   /** How far a jump has run, 0 to 1, once the viewer has said; null before (or for a jump with no way to go). */

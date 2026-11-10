@@ -861,17 +861,19 @@ export function activate(api: PluginApi) {
     const entry = current;
     if (!entry || !game.shown) { game.busy(null); return; }
     if (game.loading) { game.busy(gameState); return; }
-    game.busy(game.seeking ? seekLine(entry) : null);
+    // (A seek the play page says in its own line over the game: the spinner alone, not a second line under it.)
+    game.busy(game.seeking ? (game.saysSeeks ? "" : seekLine(entry)) : null);
   }
 
   /**
    * What the game is doing while a seek is on its way, for the timeline's line and the spinner. A view that cannot
-   * rewind runs ahead from where it is (from the first frame, for a seek back), and says how far it has got.
+   * rewind runs ahead from where it is (from the first frame, for a seek back), and a slow one from the moment it
+   * went back to: the line says how far it has got in the game's time, and the percentage is left to the page's line.
    */
   function seekLine(entry: Loaded): string {
     const ahead = game.runningAhead;
     if (ahead) return t("Running ahead: {at} of {to}", { at: formatTime(ahead.at), to: formatTime(ahead.to) });
-    const done = game.seekProgress;
+    const done = game.saysSeeks ? null : game.seekProgress;
     return done === null || done < 0.05 ? t("Going to {time}…", { time: formatTime(entry.frame) }) : t("Going to {time}… {percent}%", { time: formatTime(entry.frame), percent: Math.floor(done * 100) });
   }
 
