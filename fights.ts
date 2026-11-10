@@ -6,7 +6,8 @@
  * that killed the most. Pure, like `played.ts`, and made from a `ReplayTimeline` alone.
  */
 import type { ReplayTimeline, UnitEvent } from "./vendor/scm-sim";
-import { NOT_MADE, WORKERS, isBuilding, sampleAt, type UnitIndex } from "./played";
+import { NOT_MADE, WORKERS, counted, isBuilding, sampleAt, type UnitIndex } from "./played";
+import { KINDS } from "./roles";
 
 /** A death joins a fight whose last death was this recent (ten seconds) and whose middle is this near (fifteen tiles). */
 const GAP_FRAMES = 240;
@@ -44,20 +45,22 @@ const MIN_KEYS = 3;
 const MAX_KEYS = 8;
 const FRAMES_PER_MINUTE = 60_000 / 42;
 
-const RESOURCES = new Set([176, 177, 178, 188]);
-/** High and Dark Templar: two become one Archon, and the one that is not kept leaves the game as a death nobody caused. */
-const MERGES = new Map([[67, 68], [61, 63]]);
-/** The game's worker of each race (0 Zerg, 1 Terran, 2 Protoss), for a player whose own workers the timeline does not show. */
-const WORKER_OF = [41, 7, 64];
-const fell = (e: UnitEvent, ignored: ReadonlySet<number>) => e.kind === "died" && e.owner <= 7 && e.type < 203 && !NOT_MADE.has(e.type) && !RESOURCES.has(e.type) && !ignored.has(e.unit);
+/**
+ * Two units that become one (High and Dark Templar: two become one Archon), and the one that is not kept leaves the
+ * game as a death nobody caused: the game's pairs (`KINDS.merges`), or with a mod's units table, which does not say,
+ * any unit that morphs into another type.
+ */
+const mergesInto = (from: number, to: number) => (KINDS.merges ? KINDS.merges.get(from) === to : from !== to);
+const fell = (e: UnitEvent, ignored: ReadonlySet<number>) => e.kind === "died" && e.owner <= 7 && counted(e.type) && !ignored.has(e.unit);
 
 /** The templars that went into an Archon: a templar gone with no killer where, at that moment, another became an Archon. */
 export function merged(t: ReplayTimeline): Set<number> {
   const out = new Set<number>();
-  const morphs = t.events.filter((e) => e.kind === "morph" && e.from !== undefined && MERGES.get(e.from) === e.type);
+  const morphs = t.events.filter((e) => e.kind === "morph" && e.from !== undefined && mergesInto(e.from, e.type));
   if (!morphs.length) return out;
+  const from = new Set(morphs.map((m) => m.from!));
   for (const e of t.events) {
-    if (e.kind !== "died" || e.by !== undefined || !MERGES.has(e.type)) continue;
+    if (e.kind !== "died" || e.by !== undefined || !from.has(e.type)) continue;
     if (morphs.some((m) => m.from === e.type && m.owner === e.owner && Math.abs(m.frame - e.frame) <= 8 && Math.hypot(m.x - e.x, m.y - e.y) <= 64)) out.add(e.unit);
   }
   return out;
@@ -165,7 +168,8 @@ export function fights(t: ReplayTimeline, cost: (type: number) => number, index:
     anyWorker ??= e.type;
     if (!workerOf.has(e.owner)) workerOf.set(e.owner, e.type);
   }
-  for (const p of t.players) if (!workerOf.has(p.slot) && WORKER_OF[p.race] !== undefined) workerOf.set(p.slot, WORKER_OF[p.race]);
+  // (The game's worker of each race, for a player whose own workers the timeline does not show; not known with a mod's table.)
+  for (const p of t.players) if (!workerOf.has(p.slot) && KINDS.workerOf[p.race] !== undefined) workerOf.set(p.slot, KINDS.workerOf[p.race]);
   /** What a player had in the whole game at a frame: the army and the workers. */
   const hadAt = (player: number, frame: number) => {
     const q = t.samples.players.find((p) => p.slot === player);

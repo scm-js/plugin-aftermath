@@ -11,6 +11,7 @@ import { isBuilding } from "./played";
 import { tech, type ArmyRow, type Durations, type Tech, type TechItem } from "./tech";
 import type { ReplayTimeline } from "./vendor/scm-sim";
 import { isPlayed, tableRace, type NamedRace } from "./races";
+import { KINDS } from "./roles";
 
 /** What the tab needs of the window. */
 export interface TechContext {
@@ -37,9 +38,12 @@ const TIERS: Record<number, [second: number[], third: number[]]> = {
   2: [[163, 155, 167], [165, 169, 170]],
 };
 
-/** The furthest tier a player reached: 3 or 2, the building that took them there; null for neither. */
+/**
+ * The furthest tier a player reached: 3 or 2, the building that took them there; null for neither. The tiers are the
+ * game's buildings, known for the game's own units only (`KINDS.game`): never with a mod's units table.
+ */
 export function tierOf(race: number | null, buildings: readonly TechItem[]): { tier: 2 | 3; item: TechItem } | null {
-  const tiers = race === null ? undefined : TIERS[race];
+  const tiers = race === null || !KINDS.game ? undefined : TIERS[race];
   if (!tiers) return null;
   for (const tier of [3, 2] as const) {
     const item = buildings.find((b) => tiers[tier - 2].includes(b.id));
@@ -51,7 +55,8 @@ export function tierOf(race: number | null, buildings: readonly TechItem[]): { t
 /** A name where room is short: the game names most things after their race ("Zerg Carapace"), which the colour beside it says already. */
 const short = (name: string) => name.replace(/^(Terran|Zerg|Protoss) (?=\S)/, "");
 
-const techs = new WeakMap<ReplayTimeline, Tech>();
+/** Each timeline's tech, with the kinds it was worked out with (`KINDS.revision`). */
+const techs = new WeakMap<ReplayTimeline, { revision: number; tech: Tech }>();
 
 export function mountTech(body: HTMLElement, cx: TechContext): void {
   const { api, t, timeline: tl } = cx;
@@ -60,16 +65,19 @@ export function mountTech(body: HTMLElement, cx: TechContext): void {
   const time: Durations = (kind, id, level) => kind === "unit" ? (data.units?.buildTime[id] ?? null)
     : kind === "upgrade" ? (data.upgrades ? data.upgrades.timeCost[id] + data.upgrades.timeFactor[id] * (level - 1) : null)
     : (data.techs?.researchTime[id] ?? null);
-  let all = techs.get(tl);
+  let all = techs.get(tl)?.revision === KINDS.revision ? techs.get(tl)!.tech : undefined;
   if (!all) {
     all = tech(tl, tl.samples.players.filter((s) => s.supplyMax.some((n) => n > 0)).map((s) => s.slot), time);
     // Kept only when the game's tables were there: without them the starts are not known, and a later look may have them.
-    if (data.units && data.upgrades && data.techs) techs.set(tl, all);
+    if (data.units && data.upgrades && data.techs) techs.set(tl, { revision: KINDS.revision, tech: all });
   }
   const shown = cx.players.filter((p) => all.players.some((x) => x.slot === p.slot));
   const of = (slot: number) => all.players.find((p) => p.slot === slot)!;
-  /** The race the game's own lists go by: 0–2, else null (a race a data set adds has lists of its own, which are not known here). */
-  const raceOf = (slot: number): 0 | 1 | 2 | null => tableRace(cx.players.find((p) => p.slot === slot)?.race?.id ?? tl.players.find((p) => p.slot === slot)?.race);
+  /**
+   * The race the game's own lists go by: 0–2, else null (a race a data set adds has lists of its own, which are not
+   * known here); null for every race with a mod's units table, whose Terran has other buildings than the game's.
+   */
+  const raceOf = (slot: number): 0 | 1 | 2 | null => !KINDS.game ? null : tableRace(cx.players.find((p) => p.slot === slot)?.race?.id ?? tl.players.find((p) => p.slot === slot)?.race);
   const nameOf = (item: TechItem) => item.kind === "building" ? api.names.unit(item.id)
     : item.kind === "tech" ? api.names.tech(item.id)
     : (data.upgrades?.maxRepeats[item.id] ?? item.level) > 1 ? `${api.names.upgrade(item.id)} ${item.level}` : api.names.upgrade(item.id);
@@ -185,8 +193,9 @@ export function mountTech(body: HTMLElement, cx: TechContext): void {
     el("span", { className: "afm-ti-key" }, el("span", { className: "afm-ti-key-bar afm-ti-quiet" }), t("Tech buildings, the first of each")),
     el("span", { className: "afm-ti-key" }, el("span", { className: "afm-ti-key-bar" }), t("Upgrades and technologies")));
   const notes: HTMLElement[] = [];
-  // A race that is none of the game's three has no tiers here, and says why.
-  for (const p of shown) {
+  // A race that is none of the game's three has no tiers here, and says why; with a mod's units table, no race has.
+  if (!KINDS.game) notes.push(el("p", { className: "afm-dim afm-it-note" }, t("Tiers are known for the game's own units only; with a mod's, every building but town halls and defences counts as tech.")));
+  else for (const p of shown) {
     if (!p.race || isPlayed(p.race.id)) continue;
     notes.push(el("p", { className: "afm-dim afm-it-note" }, t("{name} plays {race}, which is not one of the game's three races. Tiers are known for Zerg, Terran and Protoss only.", { name: p.name, race: p.race.label })));
   }

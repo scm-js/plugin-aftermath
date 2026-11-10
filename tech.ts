@@ -12,29 +12,19 @@
 import type { ReplayTimeline } from "./vendor/scm-sim";
 import { FRAMES_PER_MINUTE as MINUTE } from "./analysis";
 import { buildings, counted, isBuilding, WORKERS } from "./played";
+import { KINDS } from "./roles";
 
 /**
- * The buildings that open a race's tech, in the order the race reaches them. Town halls, supply and defences are not
- * here; a Lair and a Hive are, and a race's first gas and its first unit producer, since the timing of those is tech.
+ * The buildings that open a player's tech (`Kinds.tech`): the game's lists, in the order each race reaches them (town
+ * halls, supply and defences are not there; a Lair and a Hive are, and a race's first gas and its first unit producer,
+ * since the timing of those is tech), or with a mod's units table every building but halls, defences and resources.
  */
-export const TECH_BUILDINGS: Readonly<Record<"terran" | "zerg" | "protoss", readonly number[]>> = {
-  // Barracks, Refinery, Academy, Factory, Machine Shop, Engineering Bay, Comsat Station, Starport, Control Tower,
-  // Armory, Science Facility, Covert Ops, Physics Lab, Nuclear Silo.
-  terran: [111, 110, 112, 113, 120, 122, 107, 114, 115, 123, 116, 117, 118, 108],
-  // Spawning Pool, Extractor, Evolution Chamber, Lair, Hydralisk Den, Spire, Queen's Nest, Hive, Defiler Mound,
-  // Ultralisk Cavern, Greater Spire, Nydus Canal.
-  zerg: [142, 149, 139, 132, 135, 141, 138, 133, 136, 140, 137, 134],
-  // Gateway, Assimilator, Forge, Cybernetics Core, Citadel of Adun, Robotics Facility, Observatory, Robotics Support
-  // Bay, Stargate, Templar Archives, Fleet Beacon, Arbiter Tribunal.
-  protoss: [160, 157, 166, 164, 163, 155, 159, 171, 167, 165, 169, 170],
-};
-const TECH = new Set(Object.values(TECH_BUILDINGS).flat());
-export const isTechBuilding = (type: number) => TECH.has(type);
+export const isTechBuilding = (type: number) => KINDS.tech.has(type);
 
-/** Overlords make supply, not an army. */
-const NOT_ARMY = new Set([42]);
-/** A type that is another's in another mode: a sieged tank is a tank. */
-const SAME_AS = new Map([[30, 5]]);
+/** Overlords make supply, not an army (none known with a mod's units table). */
+const NOT_ARMY = KINDS.supplyOnly;
+/** A type that is another's in another mode: a sieged tank is a tank (none known with a mod's units table). */
+const SAME_AS = KINDS.sameAs;
 
 export interface TechItem {
   kind: "building" | "upgrade" | "tech";

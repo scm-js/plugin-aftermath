@@ -11,6 +11,7 @@ import { armyInSight, firstLooks, knowledge, scouts, threats, unseen, type Knowl
 import { isBuilding } from "./played";
 import type { ReplayTimeline } from "./vendor/scm-sim";
 import { isPlayed, tableRace, type NamedRace } from "./races";
+import { answersFor, KINDS } from "./roles";
 
 export interface ScoutContext {
   api: PluginApi;
@@ -147,15 +148,16 @@ export function mountScouting(body: HTMLElement, cx: ScoutContext): void {
       ...list.map((th) => el("tr", {},
         el("th", { scope: "row" }, kindName(th)),
         go(el("td", {}, `${formatTime(th.made.frame)} · ${unit(th.made.type)}`), th.made.frame),
-        seenCell(th), answerCell(th, like !== null))),
+        seenCell(th), answerCell(th, answersFor(th.kind, like) !== null))),
     ];
   });
-  // A race that is none of the game's three has no answers here, and says why.
-  const raceNotes = shown.filter((p) => p.race && !isPlayed(p.race.id)).map((p) =>
+  // A race that is none of the game's three has no answers here, and says why. (A mod's units table names every race's.)
+  const raceNotes = !KINDS.game ? [] : shown.filter((p) => p.race && !isPlayed(p.race.id)).map((p) =>
     el("p", { className: "afm-dim afm-it-note" }, t("{name} plays {race}, which is not one of the game's three races. Answers are known for Zerg, Terran and Protoss only.", { name: p.name, race: p.race!.label })));
   const threatSection = threatRows.length ? el("section", { className: "afm-it-section" },
     el("h3", { className: "afm-sc-h" }, t("Seen and answered")), ...raceNotes,
     el("p", { className: "afm-dim afm-it-note" }, t("For the cloaked and the air units the opponents had: when they first had one (or the building that makes them), when the player first saw one, and the first answer the player started after that: detection against cloaked units, anti-air against air units. An answer started before seeing was guessed at, or scouted some other way. One the player had before the opponents had the threat at all is shown as already had.")),
+    ...(KINDS.game ? [] : [el("p", { className: "afm-dim afm-it-note" }, t("With a mod's units table, a threat is an armed unit that is cloaked, can cloak or flies, and an answer is a detector or anything that can shoot at air, the first of a kind the player had not had before."))]),
     el("table", { className: "afm-it-table afm-ti-table afm-sc-table" },
       el("thead", {}, el("tr", {}, el("th", {}), el("th", { scope: "col" }, t("They had it")), el("th", { scope: "col" }, t("First seen")), el("th", { scope: "col" }, t("First answer")))),
       el("tbody", {}, ...threatRows))) : null;
@@ -185,7 +187,9 @@ export function mountScouting(body: HTMLElement, cx: ScoutContext): void {
 
   // The others' buildings that stood the longest before each player saw them.
   const unseenFold = w.fold({ text: t("Unseen the longest"), open: false });
-  unseenFold.body.append(el("p", { className: "afm-dim afm-it-note" }, t("The opponents' town halls, production and tech buildings that stood the longest before each player saw them, from when they were started. Supply, gas and static defence are left out, and so is what stood from the start.")),
+  unseenFold.body.append(el("p", { className: "afm-dim afm-it-note" }, KINDS.game
+    ? t("The opponents' town halls, production and tech buildings that stood the longest before each player saw them, from when they were started. Supply, gas and static defence are left out, and so is what stood from the start.")
+    : t("The opponents' buildings that stood the longest before each player saw them, from when they were started. Gas and static defence are left out, and so is what stood from the start; a mod's units table does not say which buildings give supply.")),
     el("table", { className: "afm-it-table afm-ti-table afm-sc-table" }, el("tbody", {}, ...shown.flatMap((p) => {
       const list = hidden.get(p.slot)!.slice(0, UNSEEN_SHOWN);
       if (!list.length) return [];

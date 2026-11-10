@@ -240,6 +240,20 @@ export function declaredRows(editor: RaceEditor): { id: number }[] {
   } catch { return []; }
 }
 
+/**
+ * The races the editor keeps for its data set, as it keeps them, when it has the call (`gameData.races()`, November
+ * 2026): a list, empty when it declares none. Null for an editor without the call, which cannot keep race names, or a
+ * call that fails or answers something else.
+ */
+export function keptRaces(editor: RaceEditor): unknown[] | null {
+  try {
+    const gd = editor.gameData;
+    if (typeof gd?.races !== "function") return null;
+    const rows = gd.races();
+    return Array.isArray(rows) ? rows : null;
+  } catch { return null; }
+}
+
 /** What the editor says of races, for `raceView`: its declared rows and its names (an older editor's `Race 12` is not a name). */
 export function editorSources(editor: RaceEditor): Pick<RaceSources, "editor" | "editorName"> {
   const names = editor.names;
