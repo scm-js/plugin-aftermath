@@ -233,26 +233,37 @@ export const liveLifter = (tag: ModTag): boolean => tag.plugins.length > 0 || (t
  * (`liveLifter`, 0.17.0: the page is opened with `?lift=live`). Never its files: a mod is hundreds of megabytes, and the
  * page plays the replay with the copy it keeps under that hash, or asks for the mod's folder with the link. Undefined
  * for a replay of the game itself, which hands nothing more than before.
+ *
+ * `races` follows the tag: its rows when it has a list (an empty one says the mod adds none, which a page that kept
+ * names from before must drop), nothing when it has none (it says nothing about races).
  */
 export function replayDataSet(tag: ModTag | null): ReplayDataSet | undefined {
   if (!tag) return undefined;
   const url = safeLink(tag.dataSet.url);
-  const races = raceRows(tag.dataSet.races);
-  return { hash: tag.dataSet.hash, ...(tag.dataSet.name ? { name: tag.dataSet.name } : {}), ...(url ? { url } : {}), ...(liveLifter(tag) ? { live: true } : {}), ...(races.length ? { races } : {}) };
+  const said = Array.isArray(tag.dataSet.races);
+  return { hash: tag.dataSet.hash, ...(tag.dataSet.name ? { name: tag.dataSet.name } : {}), ...(url ? { url } : {}), ...(liveLifter(tag) ? { live: true } : {}), ...(said ? { races: raceRows(tag.dataSet.races) } : {}) };
 }
 
-/** The mod the editor has open (`api.gameData.source()`), as an untagged replay may be watched with it; `races`, the ones it declares. */
+/**
+ * The mod the editor has open (`api.gameData.source()`), as an untagged replay may be watched with it; `races`, the
+ * ones it declares: an empty list when it keeps race names and has none, absent when it cannot say.
+ */
 export interface OpenMod { hash: string; name: string; url: string | null; races?: DataSetRace[] }
 
 /**
  * The mod the editor draws with, when it is one: a data set with a mod's hash (sixteen hex digits) that is not the
  * game's own (`starcraft`). Null for the game itself, a set with no hash yet (a large mod's is worked out after it
  * opens), or no data at all.
+ *
+ * `kept`: the races the editor keeps for it (`api.gameData.races()`, `keptRaces` in `races.ts`), or null for an editor
+ * without the call, which cannot keep race names. With the call its list goes as it is, empty or not (empty: the person
+ * cleared the names, and the page must not keep the old ones); without it, the profile's races when it has any, else
+ * none at all.
  */
-export function openModOf(source: { hash?: string; profile: { id: string; name: string; url?: string; races?: unknown } } | null | undefined): OpenMod | null {
+export function openModOf(source: { hash?: string; profile: { id: string; name: string; url?: string; races?: unknown } } | null | undefined, kept: readonly unknown[] | null = null): OpenMod | null {
   if (!source || source.profile.id === "starcraft" || !source.hash || !/^[0-9a-f]{16}$/.test(source.hash)) return null;
-  const races = raceRows(source.profile.races);
-  return { hash: source.hash, name: source.profile.name, url: safeLink(source.profile.url ?? null), ...(races.length ? { races } : {}) };
+  const races = raceRows(kept ?? source.profile.races);
+  return { hash: source.hash, name: source.profile.name, url: safeLink(source.profile.url ?? null), ...(kept || races.length ? { races } : {}) };
 }
 
 /**
@@ -269,7 +280,7 @@ export function assumedTag(mod: OpenMod): ModTag {
  * mod's own release ran its plugins. The live lifter plays a mod without code the same, only slower to start.
  */
 export function assumedDataSet(mod: OpenMod): ReplayDataSet {
-  return { hash: mod.hash, ...(mod.name ? { name: mod.name } : {}), ...(mod.url ? { url: mod.url } : {}), live: true, ...(mod.races?.length ? { races: mod.races } : {}) };
+  return { hash: mod.hash, ...(mod.name ? { name: mod.name } : {}), ...(mod.url ? { url: mod.url } : {}), live: true, ...(mod.races ? { races: mod.races } : {}) };
 }
 
 /**

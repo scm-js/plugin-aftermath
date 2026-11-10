@@ -131,6 +131,12 @@ Aftermath reads the files itself, and offers names only where it can read both t
 never fills a name in itself. The name is kept with the mod's data set and shown for every
 replay played with it.
 
+The play page is handed the races too, with the mod, when a replay is watched or analysed
+there: the ones the replay's own mod names, or for a replay watched with the mod open in the
+editor, the ones the editor keeps for it. When the editor can keep race names and the mod has
+none (they were cleared, say), the play page is told there are none; a play page that reads
+this drops the names it kept from before, and an older one keeps them.
+
 It has five tabs:
 
 - **Game**, once the game is analysed. See [Analysis](#analysis).
@@ -246,19 +252,43 @@ replay: it would play it with the game's own files.
 
 Costs and names come from the data set the editor draws with, so attach the mod's folder for
 the mod's own. A mod may send commands of its own, which the game does not have; the panel
-counts their command blocks, and they are left out of the analysis. Workers and town halls
-(the Build tab's choice of workers, its town halls in bold, the bases taken, the analysis)
-are the ones the units table says while the editor draws with the replay's mod: the units
-with the Worker flag, and the buildings with the Resource Depot flag. Otherwise they go by
-the game's own unit numbers, which a mod may give other units.
+counts their command blocks, and they are left out of the analysis.
 
-The Tech tab's tiers and the Scouting tab's answers to cloaked and air units are known for
-Zerg, Terran and Protoss only, by the game's own buildings and units. A race a mod adds has
-its own, so for its player the Tech tab says the tiers are not known and the Scouting tab
-that it cannot tell, each with a sentence saying why. What the race plays as is still used
-for the music and the cast. The cast tells the commentators the race's name and what it
-plays as. When no player's race is Zerg, Terran or Protoss or plays as one that is known, a
-cast cannot be made of the game, and the Cast window says so.
+While the editor draws with the replay's mod, what each unit is comes from the mod's units
+table, units past the game's 228 among them: the workers (the Worker flag), the town halls
+(buildings with the Resource Depot flag), the buildings, the mineral fields and geysers, and
+what a player makes and loses (a unit or a building by its StarEdit group, never a turret,
+an egg or anything invincible, such as a spell). The Build tab, the bases taken, the losses,
+the fights, the army and every tab of the Analysis window go by it. Otherwise they go by the
+game's own unit numbers, which a mod may give other units. A mod whose units table matches
+the game's in every column that says what a unit is (one that changes only costs, hit points
+or build times) is read as the game.
+
+Some of what Aftermath knows is the game's own and is not in any units table: the Tech tab's
+tiers and the buildings it counts as tech, the Scouting tab's threats and answers, which
+buildings give supply, that an Overlord is not an army and a sieged tank is a tank. With a
+mod's units table these are not used, even for a Zerg, Terran or Protoss player, since the
+mod's races have buildings and units of their own:
+
+- The Tech tab says the tiers are not known, and counts every building but town halls and
+  defences as tech.
+- The Scouting tab reads threats and answers from the table, for every race: a threat is an
+  armed unit that is cloaked or can cloak, or an armed flyer; an answer is a detector, or a
+  unit or building that can shoot at air. The first answer is the first of a kind the player
+  had not had before, and what they had already shows as *already had*. A Carrier, which
+  fights by what it launches, is no threat to the table, and no building warns of one.
+  **Unseen the longest** leaves out gas and static defence, and lists supply buildings with
+  the rest.
+- A Spider Mine or an Interceptor is a unit to the table and is counted as one, and a unit
+  that only gives supply counts as army.
+
+Each tab says so in a sentence. With the game's own units, the tiers and the answers are
+known for Zerg, Terran and Protoss only: for a race a mod adds, the Tech tab says the tiers
+are not known and the Scouting tab that it cannot tell, each with a sentence saying why.
+What the race plays as is still used for the music and the cast. The cast tells the
+commentators the race's name and what it plays as. When no player's race is Zerg, Terran or
+Protoss or plays as one that is known, a cast cannot be made of the game, and the Cast window
+says so.
 
 ### On the map
 

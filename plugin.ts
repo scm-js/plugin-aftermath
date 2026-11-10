@@ -51,8 +51,8 @@ import { Reel } from "./castplay";
 import { CastStore, KEEP_BYTES, KEEP_CASTS, batches, castKey, estimate as castEstimate, readStream, replayKey, writingProgress, type KeptCast, type Writing } from "./castmake";
 import type { ScmjsAccountService } from "./vendor/scmjs-dev";
 import { InsightView, type InsightGame, type Metric as InsightMetric, type Resource } from "./insight";
-import { canName, declare, editorHints, editorSources, isPlayed, labelOf, letterFiles, nameCandidates, namedRow, RACE_LETTERS, RACE_NAME_MAX, raceView, type DataSetRace, type NamedRace, type RaceEditor, type RaceHints, type RaceView } from "./races";
-import { rolesOf, useRoles } from "./roles";
+import { canName, declare, editorHints, editorSources, isPlayed, keptRaces, labelOf, letterFiles, nameCandidates, namedRow, RACE_LETTERS, RACE_NAME_MAX, raceView, type DataSetRace, type NamedRace, type RaceEditor, type RaceHints, type RaceView } from "./races";
+import { KINDS, rolesOf, useRoles } from "./roles";
 
 /* ── State ──────────────────────────────────────────────── */
 
@@ -181,8 +181,8 @@ interface Played {
 const FRONT_FRAMES = 120;
 /** How long before a fight's first death going to it lands: two seconds. */
 const FIGHT_LEAD = 48;
-/** Zergling and Scourge: two from one egg. */
-const TWINS = new Set([37, 47]);
+/** Zergling and Scourge, or a mod's units table's `TwoUnitsInOneEgg`: two from one egg. */
+const TWINS = KINDS.twins;
 /** How long a click stays on the map behind the timeline. */
 const TRAIL_FRAMES = 8 * 24;
 /** How long a kill's line stays on the map. */
@@ -586,11 +586,15 @@ export function activate(api: PluginApi) {
     for (const e of entry?.played?.timeline.events ?? []) if ((e.kind === "born" || e.kind === "morph") && e.owner === index) yield e.type;
   }
   /** The workers and halls by the units table when the editor has the replay's own, else the game's. True when they changed. */
-  const refreshRoles = () => useRoles(ownData(current) ? rolesOf(api.data.units()?.flags) : null);
+  const refreshRoles = () => useRoles(ownData(current) ? rolesOf(api.data.units()) : null);
   /** Something a race is shown by may have changed: the views show it again. */
   function racesChanged(): void {
     raceRevision++;
     refreshRoles();
+    // A replay watched with the mod open in the editor hands the play page the races the editor keeps now: named since,
+    // or cleared (an empty list, which tells the page to drop the names it kept).
+    const open = openModOf(api.gameData?.source?.(), keptRaces(raceEditor));
+    for (const e of loaded) if (e.assumed && open && e.dataSet?.hash === open.hash) e.dataSet = assumedDataSet(open);
     side?.render();
     strip?.render();
     refreshInsight();
@@ -805,7 +809,7 @@ export function activate(api: PluginApi) {
       const end = (mod: OpenMod | null) => { if (done) return; done = true; sub?.dispose(); clearInterval(timer); resolve(mod); };
       const check = () => {
         const source = api.gameData?.source?.();
-        const mod = openModOf(source);
+        const mod = openModOf(source, keptRaces(raceEditor));
         if (mod) end(mod); else if (!modHashPending(source)) end(null);
       };
       sub = api.events.on("gameData", check);
@@ -986,7 +990,8 @@ export function activate(api: PluginApi) {
       case "upgrade": return t("Upgrading {name}", { name: names.upgrade(u.workId) });
       case "morph": return t("Morphing into {name}", { name: names.unit(u.workId) });
       case "addon": return t("Building {name}", { name: names.unit(u.workId) });
-      case "nuke": return u.type === 108 ? t("Nuclear missile ready") : t("Calling down a nuclear strike");
+      // (A building with a nuke is a silo; a unit calls one down.)
+      case "nuke": return isBuilding(u.type) ? t("Nuclear missile ready") : t("Calling down a nuclear strike");
       default: return u.completed ? null : t("Under construction");
     }
   }
@@ -1115,7 +1120,7 @@ export function activate(api: PluginApi) {
         const id = nextId++, map = readChk(replay.chk);
         const group = [...loaded, ...batch].find((l) => likeness(map, l.map) >= SAME_MAP)?.group ?? id;
         // (The bases its orders took go by the halls of the units table it was played with, where the editor has it loaded.)
-        useRoles(!replay.mod || api.gameData?.source?.()?.hash === replay.mod.dataSet.hash ? rolesOf(api.data.units()?.flags) : null);
+        useRoles(!replay.mod || api.gameData?.source?.()?.hash === replay.mod.dataSet.hash ? rolesOf(api.data.units()) : null);
         batch.push({ id, fileName: file.name, report: analyse(replay), map, bytes, docId: null, group, excluded: false, frame: 0, hidden: new Set(), played: null, failed: null, eyes: null, again: null, mod: replay.mod ?? null, ...(replay.mod ? { dataSet: replayDataSet(replay.mod) } : {}), signs: replay.mod ? [] : modSigns(replay.players, map) });
       } catch (err) {
         const detail = err instanceof ReplayError ? translate(err.message) : String(err);
@@ -1130,7 +1135,7 @@ export function activate(api: PluginApi) {
     // none open, a replay whose own content says it was played with a mod (`modSigns`) says so, and its folder can be
     // picked. Without, it plays with the game's own data.
     const untagged = batch.filter((e) => !e.mod);
-    let open = untagged.length ? openModOf(api.gameData?.source?.()) : null;
+    let open = untagged.length ? openModOf(api.gameData?.source?.(), keptRaces(raceEditor)) : null;
     if (untagged.length && !open && modHashPending(api.gameData?.source?.())) open = await modHashWaited();
     const signed = untagged.filter((e) => e.signs.length);
     if (open) {
@@ -2457,8 +2462,8 @@ export function activate(api: PluginApi) {
       // (The costs come from the game's unit table, when the editor has the game's data.)
       await api.data.load();
       const units = api.data.units();
-      // (Workers and halls by the units table the replay was played with, where the editor has it.)
-      useRoles(ownData(entry) ? rolesOf(units?.flags) : null);
+      // (What each unit is, workers and halls among it, by the units table the replay was played with, where the editor has it.)
+      useRoles(ownData(entry) ? rolesOf(units) : null);
       // A Zergling or a Scourge is half of what units.dat asks, which is the price of the pair from one egg.
       const cost = (type: number) => (units ? ((units.mineralCost[type] ?? 0) + (units.vespeneCost[type] ?? 0)) / (TWINS.has(type) ? 2 : 1) : 0);
       const index = unitIndex(timeline);
@@ -3323,7 +3328,7 @@ export function activate(api: PluginApi) {
     /** "Watch With" the mod open in the editor (not the one `except` names), and "Pick the Mod's Folder…"; or how far the folder is read. */
     private modActions(entry: Loaded, box: HTMLElement, except: string | null): void {
       if (attaching?.entry === entry) { box.append(el("div", { className: "afm-dim" }, t("Reading the mod: {done} of {n} files…", { done: attaching.done, n: attaching.of }))); return; }
-      const open = openModOf(api.gameData?.source?.());
+      const open = openModOf(api.gameData?.source?.(), keptRaces(raceEditor));
       const acts = el("div", { className: "afm-acts" });
       if (open && open.hash !== except) acts.append(w.button(t("Watch With {name}", { name: open.name || open.hash }), { className: "sm", onClick: () => { assume([entry], open); } }));
       // (A replay that names its mod: its folder is checked against the tag first. One that does not: the folder is the mod.)
@@ -3361,7 +3366,7 @@ export function activate(api: PluginApi) {
       if (own > 0) box.append(el("div", { className: "afm-dim" }, t("{n, plural, one {# command block is the mod's own and is not analysed.} other {# command blocks are the mod's own and are not analysed.}}", { n: own })));
       // (Play From Here and the Replay view play it with the mod, given the mod's hash and `live` (scm-sim 0.17.0); the
       // analysis too where the engine's page says "modAnalysis" (0.18.0), and its timeline says what it played with.)
-      box.append(w.hint(`${game.playsMods ? t("Play From Here and the Replay view play it with the mod.") : t("Play From Here plays it with the mod on the play page.")} ${this.modAnalysisLine(entry)} ${ownData(entry) && rolesOf(api.data.units()?.flags) ? t("What is shown is the players' orders. Workers and town halls are the ones the mod's units table says.") : t("What is shown is the players' orders, and Aftermath's own rules for workers and town halls go by the game's unit ids, which a mod may give other units.")}`));
+      box.append(w.hint(`${game.playsMods ? t("Play From Here and the Replay view play it with the mod.") : t("Play From Here plays it with the mod on the play page.")} ${this.modAnalysisLine(entry)} ${ownData(entry) && rolesOf(api.data.units()?.flags) ? t("What is shown is the players' orders. What each unit is (a worker, a town hall, a building, a threat) is what the mod's units table says.") : t("What is shown is the players' orders, and Aftermath's own rules for what each unit is go by the game's unit ids, which a mod may give other units.")}`));
       this.root.append(box);
     }
 

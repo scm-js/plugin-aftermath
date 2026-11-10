@@ -10,6 +10,7 @@
  * - `armyInSight`: at each sample, the share of their opponents' army (by cost) the player could see.
  */
 import { isBuilding, WORKERS } from "./played";
+import { answersFor, KINDS, type ThreatKind } from "./roles";
 import type { ReplayTimeline } from "./vendor/scm-sim";
 
 /** One stretch of a player seeing a unit, frames from–to; `by`, the player's unit that saw it first (null: none found). */
@@ -135,24 +136,7 @@ export function firstLooks(k: Knowledge, player: number, them: ReadonlySet<numbe
 
 /* ── Threats and answers ── */
 
-export type ThreatKind = "cloaked" | "air";
-
-/** What makes a threat of each kind: its units, and the buildings that make them (seeing one is warning enough). */
-export const THREATS: Record<ThreatKind, { units: readonly number[]; buildings: readonly number[] }> = {
-  // Dark Templar, Lurker and its egg, Arbiter; Templar Archives (Dark Templar), none for the Lurker (a Hydralisk Den is not one).
-  cloaked: { units: [61, 103, 97, 71], buildings: [165, 170] },
-  // Mutalisk, Guardian, Devourer, Wraith, Battlecruiser, Carrier, Scout, Arbiter; Spire, Greater Spire, Stargate, Fleet Beacon, Physics Lab.
-  air: { units: [43, 44, 62, 8, 12, 72, 70, 71], buildings: [141, 137, 167, 169, 118] },
-};
-
-/** The answers a race starts to each kind of threat, by race (0 Zerg, 1 Terran, 2 Protoss). */
-export const ANSWERS: Record<ThreatKind, Record<number, readonly number[]>> = {
-  // Spore Colony; Missile Turret, Comsat Station, Science Vessel; Photon Cannon, Observatory, Observer.
-  cloaked: { 0: [144], 1: [124, 107, 9], 2: [162, 159, 84] },
-  // Spore Colony, Hydralisk Den, Hydralisk, Scourge, Spire, Mutalisk; Missile Turret, Armory, Goliath, Valkyrie, Wraith;
-  // Photon Cannon, Stargate, Corsair, Scout, Archon.
-  air: { 0: [144, 135, 38, 47, 141, 43], 1: [124, 123, 3, 58, 8], 2: [162, 167, 60, 70, 68] },
-};
+export type { ThreatKind };
 
 export interface Threat {
   kind: ThreatKind;
@@ -169,12 +153,18 @@ export interface Threat {
 /**
  * Each kind of threat their opponents had, as `player` met it. `race`: the player's (0 Zerg, 1 Terran, 2 Protoss),
  * whose answers are looked for; null for any other (a race a data set adds has answers of its own), and none is found.
+ *
+ * What a threat is and what answers it are the data set's (`roles.ts`): the game's lists, or what a mod's units table
+ * says. A table's answers are every race's and take in the plain units a player makes all game (a unit that shoots at
+ * air and ground alike), so with them the first answer is the first of a kind the player had not had before the threat,
+ * and what they had of it, from the start on, is the answer they already had.
  */
 export function threats(k: Knowledge, player: number, race: number | null, them: ReadonlySet<number>): Threat[] {
   const out: Threat[] = [];
   for (const kind of ["cloaked", "air"] as ThreatKind[]) {
-    const tells = new Set([...THREATS[kind].units, ...THREATS[kind].buildings]);
-    const answers = new Set(race === null ? [] : ANSWERS[kind][race] ?? []);
+    const tells = new Set([...KINDS.threats[kind].units, ...KINDS.threats[kind].buildings]);
+    const answers = new Set(answersFor(kind, race) ?? []);
+    const newKinds = !KINDS.game;
     let made: Threat["made"] | null = null, seen: Threat["seen"] = null;
     const mine: { frame: number; type: number }[] = [];
     for (const [unit, l] of k.lives) {
@@ -185,13 +175,14 @@ export function threats(k: Knowledge, player: number, race: number | null, them:
           const s = firstSeen(k.sights.get(unit), player, st.from, st.to);
           if (s !== null && (!seen || s < seen.frame)) seen = { frame: s, type: st.type };
         }
-        if (l.owner === player && answers.has(st.type) && st.from > 0) mine.push({ frame: st.from, type: st.type });
+        if (l.owner === player && answers.has(st.type) && (st.from > 0 || newKinds)) mine.push({ frame: st.from, type: st.type });
       }
     }
     if (!made) continue;
     mine.sort((a, b) => a.frame - b.frame);
     const from = made.frame;
-    out.push({ kind, made, seen, answer: mine.find((a) => a.frame >= from) ?? null, already: mine.find((a) => a.frame < from) ?? null });
+    const before = mine.filter((a) => a.frame < from), had = new Set(before.map((a) => a.type));
+    out.push({ kind, made, seen, answer: mine.find((a) => a.frame >= from && !(newKinds && had.has(a.type))) ?? null, already: before[0] ?? null });
   }
   return out;
 }
@@ -214,9 +205,10 @@ export interface Unseen {
 
 /**
  * Buildings that say little by standing unseen: supply (Pylon, Supply Depot), gas (Refinery, Extractor, Assimilator),
- * the Creep Colony, and static defence (Missile Turret, Bunker, Photon Cannon, Sunken and Spore Colony).
+ * the Creep Colony, and static defence (Missile Turret, Bunker, Photon Cannon, Sunken and Spore Colony). With a mod's
+ * units table, gas and static defence: the table does not say which buildings give supply.
  */
-const QUIET_BUILDINGS = new Set([156, 109, 110, 149, 157, 143, 124, 125, 162, 146, 144]);
+const QUIET_BUILDINGS = KINDS.quiet;
 
 /**
  * The opponents' buildings by how long they stood before `player` saw them, longest first: town halls, production and
@@ -241,7 +233,7 @@ export function unseen(k: Knowledge, t: ReplayTimeline, player: number, them: Re
 /* ── The army in sight ── */
 
 /** Not an army: larva, eggs, cocoon, what is fired or laid, spells that are units, and the Overlord (supply, not a fighter). */
-const NOT_ARMY = new Set([13, 14, 33, 35, 36, 42, 59, 73, 85, 97, 101, 105, 202]);
+const notArmy = (type: number) => KINDS.notMade.has(type) || KINDS.supplyOnly.has(type);
 
 export interface ArmyInSight {
   frames: number[];
@@ -264,7 +256,7 @@ export function armyInSight(k: Knowledge, t: ReplayTimeline, player: number, the
       if (f < l.born) continue;
       if (l.died !== null && f >= l.died) break;
       const st = stateAt(l, f);
-      if (!st || !st.done || NOT_ARMY.has(st.type) || WORKERS.has(st.type) || isBuilding(st.type)) continue;
+      if (!st || !st.done || notArmy(st.type) || WORKERS.has(st.type) || isBuilding(st.type)) continue;
       const c = cost(st.type);
       total[i] += c;
       if (seenAt(list, player, f)) seen[i] += c;

@@ -12,7 +12,7 @@ import { NOT_MADE, WORKERS, buildings, counted, isBuilding } from "./played";
 import { incomeRate, supplyBlocks } from "./economy";
 import type { Durations } from "./tech";
 import type { Base } from "./story";
-import { DEPOTS } from "./roles";
+import { DEPOTS, KINDS } from "./roles";
 
 export const FRAME_SECONDS = 0.042;
 const seconds = (frame: number) => Math.round(frame * FRAME_SECONDS * 10) / 10;
@@ -45,10 +45,13 @@ const OPENING_STEPS = 18;
 const OPENING_UNTIL = frameOf(360);
 /** A supply block worth saying lasted this long (six seconds). */
 const BLOCK_SAID = frameOf(6);
-/** What makes units: Barracks, Factory, Starport, Gateway, Stargate, Robotics Facility. (The halls, Lair and Hive among them, are `DEPOTS`.) */
-const PRODUCTION = new Set([111, 113, 114, 160, 167, 155]);
-/** Supply Depot, Refinery, Extractor, Pylon, Assimilator, Overlord: not news when the first goes down. */
-const ROUTINE = new Set([109, 110, 149, 156, 157, 42]);
+/**
+ * What makes units: Barracks, Factory, Starport, Gateway, Stargate, Robotics Facility, or a mod's units table's
+ * buildings that produce units. (The halls, Lair and Hive among them, are `DEPOTS`.)
+ */
+const PRODUCTION = KINDS.production;
+/** Supply Depot, Refinery, Extractor, Pylon, Assimilator, Overlord (with a mod's units table, gas): not news when the first goes down. */
+const ROUTINE = KINDS.routine;
 
 /* ── What the server is sent, and what it answers (ai-server `src/protocol.ts`) ── */
 

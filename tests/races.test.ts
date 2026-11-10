@@ -10,7 +10,7 @@ import { tierOf } from "../techview";
 import { assumedDataSet, modSigns, openModOf, replayDataSet } from "../modreplay";
 import { WORKERS as PLAYED_WORKERS } from "../played";
 import { TOWN_HALLS as ANALYSIS_HALLS, WORKERS as ANALYSIS_WORKERS } from "../analysis";
-import { canName, declare, declaredRows, editorHints, editorSources, hintsFrom, labelOf, tableRace, letterFiles, nameCandidates, namedRow, RACE_LETTERS, raceRows, raceView, tblStrings, withRace, workedOutLike, type DataSetRace, type RaceEditor } from "../races";
+import { canName, declare, declaredRows, editorHints, editorSources, hintsFrom, keptRaces, labelOf, tableRace, letterFiles, nameCandidates, namedRow, RACE_LETTERS, raceRows, raceView, tblStrings, withRace, workedOutLike, type DataSetRace, type RaceEditor } from "../races";
 import { DEPOTS, GAME_DEPOTS, GAME_HALLS, GAME_WORKERS, rolesOf, TOWN_HALLS, UNIT_FLAGS, useRoles, WORKERS } from "../roles";
 import type { ReplayTimeline } from "../vendor/scm-sim";
 
@@ -353,6 +353,23 @@ describe("a mod's races handed on", () => {
     expect(open.races).toEqual([ASKOSI]);
     expect(assumedDataSet(open)).toEqual({ hash: "0123456789abcdef", name: "Mod", live: true, races: [ASKOSI] });
     expect(openModOf({ hash: "0123456789abcdef", profile: { id: "mod", name: "Mod" } })).toEqual({ hash: "0123456789abcdef", name: "Mod", url: null });
+  });
+
+  it("says none with an empty list where the editor keeps race names, and says nothing where it cannot", () => {
+    // A tag follows itself: an empty list is "none", no list at all says nothing.
+    expect(replayDataSet({ ...tag, dataSet: { ...tag.dataSet, races: [] } })).toEqual({ hash: "0123456789abcdef", name: "Mod", races: [] });
+    expect(replayDataSet({ ...tag, dataSet: { hash: "0123456789abcdef", name: "Mod", url: null } })).toEqual({ hash: "0123456789abcdef", name: "Mod" });
+    // The editor's open mod: the race calls with none declared (the names were cleared) hand an empty list on.
+    const source = { hash: "0123456789abcdef", profile: { id: "mod", name: "Mod", races: [ASKOSI] } };
+    expect(keptRaces(editor("new", []))).toEqual([]);
+    expect(keptRaces(editor("old"))).toBeNull();
+    const cleared = openModOf(source, keptRaces(editor("new", [])))!;
+    expect(cleared.races).toEqual([]);
+    expect(assumedDataSet(cleared)).toEqual({ hash: "0123456789abcdef", name: "Mod", live: true, races: [] });
+    expect(openModOf(source, keptRaces(editor("new", [ASKOSI])))!.races).toEqual([ASKOSI]);
+    // An editor without the calls: what its profile says when it says any, else no field.
+    expect(openModOf(source, keptRaces(editor("old")))!.races).toEqual([ASKOSI]);
+    expect(assumedDataSet(openModOf({ hash: "0123456789abcdef", profile: { id: "mod", name: "Mod" } }, keptRaces(editor("old")))!)).not.toHaveProperty("races");
   });
 
   it("does not stop a race past 7 being a sign of a mod", () => {
