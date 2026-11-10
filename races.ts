@@ -184,6 +184,39 @@ export function withRace<T extends { id: number }>(rows: readonly T[], row: T): 
   return [...rows.filter((r) => r.id !== row.id), row].sort((a, b) => a.id - b.id);
 }
 
+/** Hints for naming a race: names and letters a person may pick. */
+export interface RaceHints {
+  names: string[];
+  letters: string[];
+}
+
+/**
+ * The editor's answer to `gameData.raceCandidates()` as hints: names of 1–40 characters once trimmed, letters that are
+ * one of `RACE_LETTERS` (a to y, not t, p or n), each once. Anything else in it is dropped; an answer of another shape
+ * is no hints.
+ */
+export function hintsFrom(answer: unknown): RaceHints {
+  const out: RaceHints = { names: [], letters: [] };
+  if (!answer || typeof answer !== "object") return out;
+  const { names, letters } = answer as { names?: unknown; letters?: unknown };
+  if (Array.isArray(names)) for (const n of names) {
+    const s = typeof n === "string" ? n.trim() : "";
+    if (s && s.length <= RACE_NAME_MAX && !out.names.includes(s)) out.names.push(s);
+  }
+  if (Array.isArray(letters)) for (const l of letters) if (typeof l === "string" && RACE_LETTERS.includes(l) && !out.letters.includes(l)) out.letters.push(l);
+  return out;
+}
+
+/**
+ * The hints the editor offers for naming a race (`gameData.raceCandidates`), or null when it has not got the call and
+ * the plugin is to read the data set's files itself. A call that fails, or answers something else, is no hints.
+ */
+export async function editorHints(editor: RaceEditor): Promise<RaceHints | null> {
+  const gd = editor.gameData;
+  if (typeof gd?.raceCandidates !== "function") return null;
+  try { return hintsFrom(await gd.raceCandidates()); } catch { return { names: [], letters: [] }; }
+}
+
 /* ── The editor's side ── */
 
 /** What of the editor's plugin API a race is named by: loose, since an editor from before November 2026 has not got the race calls. */
@@ -192,6 +225,8 @@ export interface RaceEditor {
     races?: () => unknown;
     setRaces?: (races: readonly DataSetRace[], id?: string) => unknown;
     source?: () => { profile?: { id?: string; races?: unknown } } | null;
+    /** What the data set suggests for naming its races (names and letters, those declared left out): an editor from November 2026 on. */
+    raceCandidates?: () => Promise<unknown>;
   };
   names?: { race?: (value: number) => string };
 }

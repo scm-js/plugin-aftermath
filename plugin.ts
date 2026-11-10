@@ -51,7 +51,7 @@ import { Reel } from "./castplay";
 import { CastStore, KEEP_BYTES, KEEP_CASTS, batches, castKey, estimate as castEstimate, readStream, replayKey, writingProgress, type KeptCast, type Writing } from "./castmake";
 import type { ScmjsAccountService } from "./vendor/scmjs-dev";
 import { InsightView, type InsightGame, type Metric as InsightMetric, type Resource } from "./insight";
-import { canName, declare, editorSources, isPlayed, labelOf, letterFiles, nameCandidates, namedRow, RACE_LETTERS, RACE_NAME_MAX, raceView, type DataSetRace, type NamedRace, type RaceEditor, type RaceView } from "./races";
+import { canName, declare, editorHints, editorSources, isPlayed, labelOf, letterFiles, nameCandidates, namedRow, RACE_LETTERS, RACE_NAME_MAX, raceView, type DataSetRace, type NamedRace, type RaceEditor, type RaceHints, type RaceView } from "./races";
 import { rolesOf, useRoles } from "./roles";
 
 /* ── State ──────────────────────────────────────────────── */
@@ -610,9 +610,13 @@ export function activate(api: PluginApi) {
 
   /**
    * Names the data set's files hint at for a race (`races.ts`): strings its `rez\network.tbl` has past the game's own,
-   * and letters its per-race files go by. No names when the game's own table cannot be read beside the data set's.
+   * and letters its per-race files go by. The editor's own (`gameData.raceCandidates`) where it has the call: it knows
+   * the game's table even where the plugin cannot read it. Else read here, with no names when the game's own table
+   * cannot be read beside the data set's.
    */
-  async function raceHints(taken: readonly DataSetRace[]): Promise<{ names: string[]; letters: string[] }> {
+  async function raceHints(taken: readonly DataSetRace[]): Promise<RaceHints> {
+    const offered = await editorHints(raceEditor);
+    if (offered) return offered;
     const gd = api.gameData;
     if (typeof gd?.read !== "function" || typeof gd.storedPath !== "function") return { names: [], letters: [] };
     const read = (member: string, under = false) => gd.read(gd.storedPath(member), under ? { under: true } : undefined).catch(() => null);

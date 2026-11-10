@@ -123,10 +123,12 @@ scmJS's play page can carry the mod's races), else by what the editor's data set
 otherwise shows it as `Race 12`, never as Random or Terran. Point at the race for what it
 plays as: what the data set says, or else what most of the player's units are (by the Zerg,
 Terran and Protoss groups of the units table), or that it cannot be told. With a mod open,
-when the editor in use can keep race names, **Name this race…** beside
-`Race 12` asks for a name, the letter of its files, and what it plays as. It offers the
-names the mod's `rez\network.tbl` has past the game's own, when the editor can read both,
-but never fills one in itself. The name is kept with the mod's data set and shown for every
+when the editor in use can keep race names, **Name this race…** beside `Race 12` asks for a
+name, the letter of its files, and what it plays as. It offers the names the mod's
+`rez\network.tbl` has past the game's own, and the letters of the mod's own console and
+button files, as the editor suggests them. With an editor that does not suggest any,
+Aftermath reads the files itself, and offers names only where it can read both tables. It
+never fills a name in itself. The name is kept with the mod's data set and shown for every
 replay played with it.
 
 It has five tabs:

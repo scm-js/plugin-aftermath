@@ -10,7 +10,7 @@ import { tierOf } from "../techview";
 import { assumedDataSet, modSigns, openModOf, replayDataSet } from "../modreplay";
 import { WORKERS as PLAYED_WORKERS } from "../played";
 import { TOWN_HALLS as ANALYSIS_HALLS, WORKERS as ANALYSIS_WORKERS } from "../analysis";
-import { canName, declare, declaredRows, editorSources, labelOf, tableRace, letterFiles, nameCandidates, namedRow, RACE_LETTERS, raceRows, raceView, tblStrings, withRace, workedOutLike, type DataSetRace, type RaceEditor } from "../races";
+import { canName, declare, declaredRows, editorHints, editorSources, hintsFrom, labelOf, tableRace, letterFiles, nameCandidates, namedRow, RACE_LETTERS, raceRows, raceView, tblStrings, withRace, workedOutLike, type DataSetRace, type RaceEditor } from "../races";
 import { DEPOTS, GAME_DEPOTS, GAME_HALLS, GAME_WORKERS, rolesOf, TOWN_HALLS, UNIT_FLAGS, useRoles, WORKERS } from "../roles";
 import type { ReplayTimeline } from "../vendor/scm-sim";
 
@@ -173,6 +173,23 @@ describe("names to offer for a race", () => {
     expect(nameCandidates(null, theGame)).toEqual([]);
     expect(nameCandidates(mod, new Uint8Array([9]))).toEqual([]);
     expect(nameCandidates(mod, mod)).toEqual([]);
+  });
+
+  it("are the editor's own where it offers them, checked: names of 1–40 characters, letters a to y other than t, p and n", () => {
+    expect(hintsFrom({ names: [" Askosi ", "Kogri", "Kogri", "", "x".repeat(41), 7, null], letters: ["a", "k", "t", "p", "n", "z", "B", "ab", 1, "a"] }))
+      .toEqual({ names: ["Askosi", "Kogri"], letters: ["a", "k"] });
+    for (const bad of [null, undefined, "Askosi", 3, [], { names: "Askosi", letters: "a" }]) expect(hintsFrom(bad)).toEqual({ names: [], letters: [] });
+  });
+
+  it("are asked of the editor when it has the call, and read by the plugin only when it has not", async () => {
+    const offers = (answer: () => Promise<unknown>): RaceEditor => ({ gameData: { raceCandidates: answer } });
+    expect(await editorHints(offers(async () => ({ names: ["Askosi", "Bloodsummon"], letters: ["a", "b"] })))).toEqual({ names: ["Askosi", "Bloodsummon"], letters: ["a", "b"] });
+    // A rejection, or an answer of another shape, is no hints (not the plugin's own reading).
+    expect(await editorHints(offers(async () => { throw new Error("no"); }))).toEqual({ names: [], letters: [] });
+    expect(await editorHints(offers(async () => "Askosi"))).toEqual({ names: [], letters: [] });
+    // An editor without the call: null, and the plugin reads the files itself.
+    expect(await editorHints(editor("old"))).toBeNull();
+    expect(await editorHints({})).toBeNull();
   });
 
   it("offer letters other than the game's, by its per-race files", () => {
