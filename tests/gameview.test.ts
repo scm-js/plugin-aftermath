@@ -34,6 +34,7 @@ describe("the Game view opening a replay", () => {
   /** The seeks the page was sent, and whether the replay loaded says a seek back is quick. */
   let seeks: number[];
   let rewinds: boolean;
+  let slow: boolean | undefined;
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -53,9 +54,10 @@ describe("the Game view opening a replay", () => {
     fogAsked = [];
     seeks = [];
     rewinds = false;
+    slow = undefined;
     const none = { dispose() {} };
     const view = {
-      load: () => new Promise((resolve) => { finishLoad = () => resolve({ name: "", frames: 100, players: [], map: { width: 128, height: 128 }, rewinds, looks: {}, follows: false }); }),
+      load: () => new Promise((resolve) => { finishLoad = () => resolve({ name: "", frames: 100, players: [], map: { width: 128, height: 128 }, rewinds, ...(slow === undefined ? {} : { slow }), looks: {}, follows: false }); }),
       camera: (x: number, y: number, height?: number) => { sent.push({ x, y, height }); },
       play() {}, speed() {}, seek: (f: number) => { seeks.push(f); }, player() {}, follow() {},
       options: () => Promise.resolve({}),
@@ -250,6 +252,30 @@ describe("the Game view opening a replay", () => {
       for (const f of [1000, 1400, 2200]) game.drag(f);
       game.dragEnd();
       expect(seeks).toEqual([1000, 1400, 2200]);
+    });
+
+    it("tells a slow view (a mod's plugins run) a drag once, though it rewinds", async () => {
+      rewinds = true;
+      slow = true;
+      await loaded();
+      expect(game.rewinds).toBe(true);
+      for (const f of [1000, 1400, 2200]) { game.drag(f); vi.advanceTimersByTime(30); }
+      expect(seeks).toEqual([]);
+      expect(game.seeking).toBe(true);
+      game.dragEnd();
+      expect(seeks).toEqual([2200]);
+      // Standing still a moment sends it too.
+      game.drag(3000);
+      vi.advanceTimersByTime(250);
+      expect(seeks).toEqual([2200, 3000]);
+    });
+
+    it("seeks a view that rewinds and says it is not slow at every move of a drag", async () => {
+      rewinds = true;
+      slow = false;
+      await loaded();
+      for (const f of [1000, 1400]) game.drag(f);
+      expect(seeks).toEqual([1000, 1400]);
     });
 
     it("holds the clock where it was sent while a view that cannot rewind starts the game again, and says how far it has run", async () => {
