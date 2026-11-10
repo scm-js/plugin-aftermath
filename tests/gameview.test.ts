@@ -278,6 +278,32 @@ describe("the Game view opening a replay", () => {
       expect(seeks).toEqual([1000, 1400]);
     });
 
+    it("leaves the words of a seek to the page that says them: a view that cannot rewind, or a slow one", async () => {
+      rewinds = true;
+      await loaded();
+      expect(game.saysSeeks).toBe(false);
+      // A quick view that rewinds says nothing of its seeks: the percentage is from here.
+      game.seek(8000);
+      say({ frame: 0, playing: false, seeking: 2000 });
+      say({ frame: 0, playing: false, seeking: 5000 });
+      expect(game.runningAhead).toBe(null);
+      expect(game.seekProgress).toBe(0.5);
+    });
+
+    it("says how far a slow view has run from the moment it went back to, in the game's time", async () => {
+      rewinds = true;
+      slow = true;
+      await loaded();
+      expect(game.saysSeeks).toBe(true);
+      game.seek(4000);
+      // The moment it is leaving, past where it goes: nothing to say yet.
+      say({ frame: 6000, playing: false, seeking: 6000, target: 4000 } as ViewFrame);
+      expect(game.runningAhead).toBe(null);
+      // It went back to a kept moment and runs ahead from there.
+      say({ frame: 6000, playing: false, seeking: 3400, target: 4000 } as ViewFrame);
+      expect(game.runningAhead).toEqual({ at: 3400, to: 4000 });
+    });
+
     it("holds the clock where it was sent while a view that cannot rewind starts the game again, and says how far it has run", async () => {
       await loaded();
       game.seek(8000);
