@@ -1331,6 +1331,29 @@ var engineSentence = (err) => {
   const plain = text.replace(/^(Error: )+/, "");
   return plain ? plain[0].toUpperCase() + plain.slice(1) : plain;
 };
+function ask(ui, text, o) {
+  return new Promise((resolve) => {
+    let answer = false, settle = () => resolve(answer);
+    ui.dialog({
+      title: o.title,
+      size: "sm",
+      mount: (body) => {
+        body.append(ui.el("div", { style: "white-space:pre-wrap;max-width:52ch" }, text));
+        return () => {
+          settle();
+          settle = () => {
+          };
+        };
+      },
+      buttons: [
+        { label: o.no, primary: o.prefer === "no" },
+        { label: o.yes, primary: o.prefer === "yes", run: () => {
+          answer = true;
+        } }
+      ]
+    });
+  });
+}
 
 // ko.ts
 var KO = {
@@ -1362,6 +1385,7 @@ var KO = {
   "Loading {name}\u2026": "{name} \uBD88\uB7EC\uC624\uB294 \uC911\u2026",
   "Going to {time}\u2026": "{time}(\uC73C)\uB85C \uAC00\uB294 \uC911\u2026",
   "Going to {time}\u2026 {percent}%": "{time}(\uC73C)\uB85C \uAC00\uB294 \uC911\u2026 {percent}%",
+  "Running ahead: {at} of {to}": "\uC55E\uC73C\uB85C \uC9C4\uD589\uD558\uB294 \uC911: {to} \uC911 {at}",
   "The game could not be shown: {message}": "\uAC8C\uC784\uC744 \uBCF4\uC5EC \uC904 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4: {message}",
   "Play": "\uC7AC\uC0DD",
   "Playback speed": "\uC7AC\uC0DD \uC18D\uB3C4",
@@ -3149,6 +3173,17 @@ function hardestHit(f) {
 // gameview.ts
 var SEEK_GIVE_UP_MS = 2500;
 var SEEK_STALL_MS = 4e3;
+var SEEK_RESTART_MS = 6e4;
+var SEEK_NEAR = 48;
+var DRAG_STILL_MS = 250;
+function seekTargetOf(f) {
+  const o = f;
+  for (const name of ["target", "seekTarget", "seekingTo", "toward", "to"]) {
+    const v = o[name];
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+  }
+  return null;
+}
 var MINIMAP_MS = 66;
 var SETTLE_MS = 600;
 var GAME_ROWS = 480;
@@ -3178,6 +3213,13 @@ var GameView = class {
    * it is leaving (it reports the frame on screen while it runs ahead), which is not the clock any more.
    */
   aiming = null;
+  /**
+   * A drag of the timeline not yet sent to a view that cannot rewind (`drag`): the frame the pointer stands at, sent
+   * once the drag ends or stands still. Until then nothing the view says moves the clock.
+   */
+  pending = null;
+  /** A seek back is quick (the replay loaded said so; a page from before it said is taken as one that rewinds). */
+  quickBack = true;
   /** The viewer's last word on the frame, and when (performance.now): what a seek that never arrives settles for. */
   heard = null;
   /**
@@ -3481,19 +3523,30 @@ var GameView = class {
       view.onFrame((f) => {
         if (this.holding === null || this.wanted !== null) return;
         this.heard = { f, at: performance.now() };
+        if (this.pending) return;
         const a = this.aiming;
         if (a) {
+          const target = seekTargetOf(f);
+          if (target !== null && Math.abs(target - a.frame) > 1) {
+            this.hooks.seeking();
+            return;
+          }
           if (f.seeking !== null) {
             if (f.seeking !== a.at) a.moved = performance.now();
             a.sawSeeking = true;
             a.from ??= f.seeking;
             a.at = f.seeking;
+            a.shown = f.seeking;
             this.hooks.seeking();
             return;
           }
-          const near = Math.abs(f.frame - a.frame) <= 48;
-          const ended = a.sawSeeking && a.at !== null && f.frame >= a.at && f.frame <= a.frame + 48;
-          if (!near && !ended) return;
+          const near = Math.abs(f.frame - a.frame) <= SEEK_NEAR;
+          const ended = a.sawSeeking && a.at !== null && f.frame >= a.at && f.frame <= a.frame + SEEK_NEAR && !this.atStart(f.frame, a.frame);
+          if (!near && !ended) {
+            a.shown = f.frame;
+            this.hooks.seeking();
+            return;
+          }
           this.arrived();
         }
         this.said = { frame: f.frame, at: performance.now(), playing: f.playing };
@@ -3547,12 +3600,15 @@ var GameView = class {
       this.hooks.hover(null);
       this.handle.redrawMinimap?.();
       this.hooks.state(this.words.loading(entry.fileName));
+      this.dropDrag();
+      this.arrived();
       this.sent = null;
       this.said = null;
       this.settle(true);
       try {
         const viewed = await view.load(entry.bytes, entry.fileName, entry.dataSet ?? null);
         this.tracks = viewed.follows === true && typeof view.follow === "function";
+        this.quickBack = viewed.rewinds !== false;
       } catch (err) {
         if (this.wanted !== entry.id) return false;
         this.wanted = null;
@@ -3694,15 +3750,60 @@ var GameView = class {
   speed(multiplier) {
     this.view?.speed(multiplier);
   }
+  /**
+   * Whether a seek back is quick: the engine keeps moments of the game as it goes. One that cannot (a mod's plugins
+   * run) starts the game again from its first frame and runs ahead to the frame, at about the game's own pace.
+   */
+  get rewinds() {
+    return this.quickBack;
+  }
+  /** A frame near the start, said while a seek went further: a view that cannot rewind starting the game again. */
+  atStart(f, target) {
+    return f <= SEEK_NEAR && target > SEEK_NEAR;
+  }
+  /**
+   * Where a drag of the timeline stands. A view that rewinds goes there at once, as `seek`. One that cannot is told
+   * once, the last frame, when the drag ends (`dragEnd`) or the pointer has stood still a moment: each seek of its runs
+   * the game ahead (and a seek back starts it again), so one for every move of the pointer would never arrive.
+   */
+  drag(frame) {
+    if (!this.view) return;
+    if (this.quickBack) {
+      this.seek(frame);
+      return;
+    }
+    const f = Math.round(frame);
+    if (this.pending) clearTimeout(this.pending.timer);
+    else if (this.aiming?.frame === f) return;
+    this.pending = { frame: f, timer: setTimeout(() => this.dragEnd(), DRAG_STILL_MS) };
+  }
+  /** The drag of the timeline ended: the frame it stood at goes to the game, unless it was sent already. */
+  dragEnd() {
+    const p = this.pending;
+    if (!p) return;
+    this.dropDrag();
+    if (this.aiming?.frame === p.frame) return;
+    this.seek(p.frame);
+  }
+  dropDrag() {
+    if (this.pending) clearTimeout(this.pending.timer);
+    this.pending = null;
+  }
   seek(frame) {
     if (!this.view) return;
+    this.dropDrag();
     this.arrived();
     const sent = performance.now();
-    const a = { frame: Math.round(frame), sawSeeking: false, from: null, at: null, sent, moved: sent, timer: 0 };
+    const a = { frame: Math.round(frame), sawSeeking: false, from: null, at: null, sent, moved: sent, timer: 0, shown: null };
     a.timer = window.setInterval(() => {
       const h = this.heard, now = performance.now();
-      if (this.aiming !== a || !h || h.at < a.sent || now - a.sent < SEEK_GIVE_UP_MS) return;
-      if (h.f.seeking !== null ? now - a.moved < SEEK_STALL_MS : !h.f.playing && now - h.at < 1e3) return;
+      if (this.aiming !== a || this.pending || !h || h.at < a.sent || now - a.sent < SEEK_GIVE_UP_MS) return;
+      const target = seekTargetOf(h.f);
+      const elsewhere = target !== null && Math.abs(target - a.frame) > 1;
+      const restarting = !this.quickBack && (elsewhere || this.atStart(h.f.seeking ?? h.f.frame, a.frame));
+      if (restarting) {
+        if (now - a.moved < SEEK_RESTART_MS) return;
+      } else if (h.f.seeking !== null ? now - a.moved < SEEK_STALL_MS : !h.f.playing && now - h.at < 1e3) return;
       this.arrived();
       const f = { ...h.f, seeking: null };
       this.said = { frame: f.frame, at: now, playing: f.playing };
@@ -3716,14 +3817,23 @@ var GameView = class {
     if (this.aiming) clearInterval(this.aiming.timer);
     this.aiming = null;
   }
-  /** A seek is on its way: the clock is where it was sent, not where the game still shows. */
+  /** A seek is on its way (or a drag waits to be sent): the clock is where it was sent, not where the game still shows. */
   get seeking() {
-    return this.aiming !== null;
+    return this.aiming !== null || this.pending !== null;
+  }
+  /**
+   * A seek on a view that cannot rewind, once the view has said where it is: the frame it has got to (the frame it
+   * shows, or how far the engine has run) and the one it was sent to. Null otherwise.
+   */
+  get runningAhead() {
+    const a = this.aiming;
+    if (this.quickBack || this.pending || !a || a.shown === null || a.shown > a.frame) return null;
+    return { at: a.shown, to: a.frame };
   }
   /** How far a jump has run, 0 to 1, once the viewer has said; null before (or for a jump with no way to go). */
   get seekProgress() {
     const a = this.aiming;
-    if (!a || a.from === null || a.at === null || a.frame <= a.from) return null;
+    if (!a || this.pending || a.from === null || a.at === null || a.frame <= a.from) return null;
     return Math.max(0, Math.min(1, (a.at - a.from) / (a.frame - a.from)));
   }
   /** Look at a point of the map, in pixels. (The game lets go of a track for it.) */
@@ -3757,6 +3867,14 @@ var GameView = class {
     if (!s.playing) return s.frame;
     return s.frame + Math.min(200, performance.now() - s.at) / FRAME_MS * speed;
   }
+  /**
+   * The frame the game is at for the clock: `frameNow`, or null while a seek is on its way (or a drag waits), when the
+   * clock is where it was sent and what the game still shows is the moment it is leaving, or the first frame of a
+   * restart.
+   */
+  clockFrame(speed) {
+    return this.seeking ? null : this.frameNow(speed);
+  }
   /** How much of the map the game shows, pixels, once it has said. */
   get viewSize() {
     return this.loaded ? this.shows : null;
@@ -3775,6 +3893,7 @@ var GameView = class {
     else this.telling = setTimeout(tell, wait);
   }
   dispose() {
+    this.dropDrag();
     this.arrived();
     if (this.busyTimer) clearTimeout(this.busyTimer);
     if (this.telling) clearTimeout(this.telling);
@@ -5219,7 +5338,7 @@ function mountTech(body, cx) {
     const unit = api.graphics.unitImage(id, { owner });
     return unit ? { ...unit, icon: false } : null;
   };
-  const ask = (kind, id) => {
+  const ask2 = (kind, id) => {
     if (typeof api.graphics.requestIcons === "function") api.graphics.requestIcons();
     if (kind === "unit" && !isBuilding(id)) api.graphics.requestUnit(id);
   };
@@ -5247,7 +5366,7 @@ function mountTech(body, cx) {
       }
       if (options.wait ?? true) {
         waiting.push({ slot, kind, id, owner });
-        ask(kind, id);
+        ask2(kind, id);
       }
     }
     return slot;
@@ -6695,12 +6814,13 @@ function activate(api) {
       game.busy(gameState);
       return;
     }
-    if (game.seeking) {
-      const done = game.seekProgress;
-      game.busy(done === null || done < 0.05 ? t("Going to {time}\u2026", { time: formatTime(entry.frame) }) : t("Going to {time}\u2026 {percent}%", { time: formatTime(entry.frame), percent: Math.floor(done * 100) }));
-      return;
-    }
-    game.busy(null);
+    game.busy(game.seeking ? seekLine(entry) : null);
+  }
+  function seekLine(entry) {
+    const ahead = game.runningAhead;
+    if (ahead) return t("Running ahead: {at} of {to}", { at: formatTime(ahead.at), to: formatTime(ahead.to) });
+    const done = game.seekProgress;
+    return done === null || done < 0.05 ? t("Going to {time}\u2026", { time: formatTime(entry.frame) }) : t("Going to {time}\u2026 {percent}%", { time: formatTime(entry.frame), percent: Math.floor(done * 100) });
   }
   function letGo() {
     if (!cam.following || lensOf() === "map") return;
@@ -6773,9 +6893,10 @@ function activate(api) {
     const signed = untagged.filter((e) => e.signs.length);
     if (open) {
       const name = open.name || open.hash;
-      const withMod = await api.ui.confirm(
+      const withMod = await ask(
+        api.ui,
         signed.length ? t("{n, plural, one {This replay was played with a mod, and does not say which} other {# of these replays were played with a mod, and do not say which}}: {signs}. A mod's own release writes no name of its mod into a replay. The editor has {name} open. Watch with {name}?", { n: signed.length, signs: signsText(signed[0].signs), name }) : t("{n, plural, one {This replay names no mod.} other {# of these replays name no mod.}} A game played with StarCraft's own data names none, and so does one played with a mod's own release, which does not write which mod it was. The editor has {name} open. Watch with {name}?", { n: untagged.length, name }),
-        { title: t("A replay that names no mod"), confirmLabel: t("Watch With {name}", { name }), cancelLabel: t("Watch Without") }
+        { title: t("A replay that names no mod"), yes: t("Watch With {name}", { name }), no: t("Watch Without"), prefer: signed.length ? "yes" : "no" }
       );
       if (withMod) assume(untagged, open);
     } else if (signed.length) {
@@ -6907,11 +7028,14 @@ function activate(api) {
     strip?.render();
     redraw();
   }
-  function seek(f) {
+  function seek(f, drag = false) {
     if (!current) return;
     if (lensOf() === "map") showStats(false);
     current.frame = Math.max(0, Math.min(current.report.frames, Math.round(f)));
-    if (gameClock()) game.seek(current.frame);
+    if (gameClock()) {
+      if (drag) game.drag(current.frame);
+      else game.seek(current.frame);
+    }
     tick();
     showBusy();
   }
@@ -7396,7 +7520,7 @@ function activate(api) {
     cinema.banner = null;
     setFollowing(true);
     casting.reel = new Reel({
-      frame: () => gameClock() ? game.seeking ? null : game.frameNow(settings.speed) : current?.frame ?? null,
+      frame: () => gameClock() ? game.clockFrame(settings.speed) : current?.frame ?? null,
       seek: (f) => seek(f),
       // (The strip is drawn again so its speed menu says the speed the stretch plays at.)
       speed: (n) => {
@@ -9602,7 +9726,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
         className: "sm",
         title: modSays ? `${t("Open this replay on the play page at this moment and play on from there: as one of its players, alone, against a community bot, or with others")}. ${modSays}` : t("Open this replay on the play page at this moment and play on from there: as one of its players, alone, against a community bot, or with others"),
         onClick: () => {
-          const frame = Math.round((gameClock() ? game.frameNow(settings.speed) : null) ?? entry.frame);
+          const frame = Math.round((gameClock() ? game.clockFrame(settings.speed) : null) ?? entry.frame);
           if (playing3) stop();
           const player = entry.eyes ?? entry.report.players[0]?.player.slot;
           sim.playReplay(handedReplay(entry.bytes, entry.fileName, entry.dataSet), { frame, ...player !== void 0 ? { player } : {} }).catch((err) => api.ui.toast({ kind: "error", title: t("The play page could not open the replay"), detail: err instanceof Error ? err.message : String(err) }));
@@ -9661,13 +9785,14 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
       this.tip = tooltip(canvas, (at) => this.tipAt(at.offsetX, at.offsetY));
       const seekTo = (e) => {
         const r = canvas.getBoundingClientRect();
-        if (current) seek((e.clientX - r.left) / Math.max(1, r.width) * current.report.frames);
+        if (current) seek((e.clientX - r.left) / Math.max(1, r.width) * current.report.frames, true);
       };
       canvas.addEventListener("pointerdown", (e) => {
         if (e.button !== 0) return;
         canvas.setPointerCapture(e.pointerId);
         seekTo(e);
       });
+      canvas.addEventListener("lostpointercapture", () => game.dragEnd());
       canvas.addEventListener("pointermove", (e) => {
         if (canvas.hasPointerCapture(e.pointerId)) seekTo(e);
         this.hover = e.clientX - canvas.getBoundingClientRect().left;
@@ -9693,8 +9818,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
       if (gameState && game.shown) {
         line = gameState;
       } else if (game.shown && game.seeking) {
-        const done = game.seekProgress;
-        line = done === null || done < 0.05 ? t("Going to {time}\u2026", { time: formatTime(entry.frame) }) : t("Going to {time}\u2026 {percent}%", { time: formatTime(entry.frame), percent: Math.floor(done * 100) });
+        line = seekLine(entry);
       } else if (running?.entry === entry) {
         line = running.fraction < 0 ? t("Analysing the game\u2026") : t("Analysing the game: {percent}%", { percent: Math.floor(running.fraction * 100) });
         why = t("The game engine plays the replay through in the background to see what really happened: the armies, the fights, what was lost. You can watch the replay meanwhile.");
