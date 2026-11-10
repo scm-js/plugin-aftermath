@@ -957,7 +957,11 @@ export interface LiveFile { path: string; bytes: Uint8Array }
  * edits were written (`firegraft` named and the engine a lifter, not "shipped") — so the page is opened with its live
  * lifter (`?lift=live`).
  */
-export interface ReplayDataSet { hash: string; name?: string; url?: string; files?: LiveFile[] | ModSource; live?: boolean }
+export interface ReplayDataSet {
+  hash: string; name?: string; url?: string; files?: LiveFile[] | ModSource; live?: boolean;
+  /** The races the mod adds, by the shared contract (`DataSetRace`, November 2026): a page from before ignores them. */
+  races?: { id: number; name: string; letter?: string; like?: 0 | 1 | 2 }[];
+}
 
 /** A file of a mod by the game's path (`arr/weapons.dat`), or by its path in the mod's folder (`Release/mpq/arr/weapons.dat`, `plugins/gptp.qdp`): the page reads a folder's layout as it reads a dropped one. */
 export interface ModSourceFile { path: string; file: File }

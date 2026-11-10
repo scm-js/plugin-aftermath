@@ -10,6 +10,7 @@ import { GanttChart, type ChartHost, type GanttBar } from "./charts";
 import { isBuilding } from "./played";
 import { tech, type ArmyRow, type Durations, type Tech, type TechItem } from "./tech";
 import type { ReplayTimeline } from "./vendor/scm-sim";
+import { isPlayed, tableRace, type NamedRace } from "./races";
 
 /** What the tab needs of the window. */
 export interface TechContext {
@@ -17,8 +18,8 @@ export interface TechContext {
   t: (text: string, params?: Record<string, string | number>) => string;
   host: ChartHost;
   timeline: ReplayTimeline;
-  /** The players shown, by slot, in the window's order. */
-  players: { slot: number; name: string; color: string }[];
+  /** The players shown, by slot, in the window's order, with their race as the plugin names it. */
+  players: { slot: number; name: string; color: string; race?: NamedRace }[];
   seek(frame: number): void;
   /** Keep a chart, so the window moves its replay line and disposes it. */
   chart(c: GanttChart): void;
@@ -37,8 +38,8 @@ const TIERS: Record<number, [second: number[], third: number[]]> = {
 };
 
 /** The furthest tier a player reached: 3 or 2, the building that took them there; null for neither. */
-export function tierOf(race: number, buildings: readonly TechItem[]): { tier: 2 | 3; item: TechItem } | null {
-  const tiers = TIERS[race];
+export function tierOf(race: number | null, buildings: readonly TechItem[]): { tier: 2 | 3; item: TechItem } | null {
+  const tiers = race === null ? undefined : TIERS[race];
   if (!tiers) return null;
   for (const tier of [3, 2] as const) {
     const item = buildings.find((b) => tiers[tier - 2].includes(b.id));
@@ -67,7 +68,8 @@ export function mountTech(body: HTMLElement, cx: TechContext): void {
   }
   const shown = cx.players.filter((p) => all.players.some((x) => x.slot === p.slot));
   const of = (slot: number) => all.players.find((p) => p.slot === slot)!;
-  const raceOf = (slot: number) => tl.players.find((p) => p.slot === slot)?.race ?? -1;
+  /** The race the game's own lists go by: 0–2, else null (a race a data set adds has lists of its own, which are not known here). */
+  const raceOf = (slot: number): 0 | 1 | 2 | null => tableRace(cx.players.find((p) => p.slot === slot)?.race?.id ?? tl.players.find((p) => p.slot === slot)?.race);
   const nameOf = (item: TechItem) => item.kind === "building" ? api.names.unit(item.id)
     : item.kind === "tech" ? api.names.tech(item.id)
     : (data.upgrades?.maxRepeats[item.id] ?? item.level) > 1 ? `${api.names.upgrade(item.id)} ${item.level}` : api.names.upgrade(item.id);
@@ -129,7 +131,7 @@ export function mountTech(body: HTMLElement, cx: TechContext): void {
     return el("div", { className: "afm-it-card", style: `border-top-color:${p.color}` },
       el("div", { className: "afm-it-card-name" }, swatch(p.color), el("span", { className: "afm-gt-name" }, p.name)),
       el("div", { className: "afm-it-hero" }, reached ? formatTime(reached.item.done) : "–",
-        el("span", { className: "afm-it-unit" }, reached ? (reached.tier === 3 ? t("third tier") : t("second tier")) : t("no second tier"))),
+        el("span", { className: "afm-it-unit" }, reached ? (reached.tier === 3 ? t("third tier") : t("second tier")) : raceOf(p.slot) === null ? t("tiers not known") : t("no second tier"))),
       el("div", { className: "afm-dim afm-it-card-line" }, reached ? nameOf(reached.item) : "\u00a0"),
       el("div", { className: "afm-it-card-line" }, t("{levels, plural, one {# upgrade level} other {# upgrade levels}}, {n, plural, one {# technology} other {# technologies}}", { levels, n: abilities })),
       el("div", { className: "afm-ti-path" }, ...pt.buildings.map((b) => icon("unit", b.id, { title: `${nameOf(b)} · ${formatTime(b.done)}`, text: short(nameOf(b)), small: true, owner: p.slot }))),
@@ -183,6 +185,11 @@ export function mountTech(body: HTMLElement, cx: TechContext): void {
     el("span", { className: "afm-ti-key" }, el("span", { className: "afm-ti-key-bar afm-ti-quiet" }), t("Tech buildings, the first of each")),
     el("span", { className: "afm-ti-key" }, el("span", { className: "afm-ti-key-bar" }), t("Upgrades and technologies")));
   const notes: HTMLElement[] = [];
+  // A race that is none of the game's three has no tiers here, and says why.
+  for (const p of shown) {
+    if (!p.race || isPlayed(p.race.id)) continue;
+    notes.push(el("p", { className: "afm-dim afm-it-note" }, t("{name} plays {race}, which is not one of the game's three races. Tiers are known for Zerg, Terran and Protoss only.", { name: p.name, race: p.race.label })));
+  }
   if (!data.upgrades || !data.techs) notes.push(el("p", { className: "afm-dim afm-it-note" }, t("Without the game's data, research is shown when it was done, not when it began.")));
 
   const army = w.fold({ text: t("Army over the game"), open: false });
@@ -204,14 +211,14 @@ export function mountTech(body: HTMLElement, cx: TechContext): void {
 }
 
 /** A sentence or two comparing two players' tech; null for another number of players or nothing to say. */
-function sayTech(cx: TechContext, all: Tech, shown: TechContext["players"], raceOf: (slot: number) => number, nameOf: (i: TechItem) => string): string | null {
+function sayTech(cx: TechContext, all: Tech, shown: TechContext["players"], raceOf: (slot: number) => 0 | 1 | 2 | null, nameOf: (i: TechItem) => string): string | null {
   const { t } = cx;
   if (shown.length !== 2) return null;
   const [a, b] = shown;
   const pa = all.players.find((p) => p.slot === a.slot)!, pb = all.players.find((p) => p.slot === b.slot)!;
   const said: string[] = [];
   // Tiers are compared only between players of one race: a Templar Archives and a Hive are not the same step.
-  const mirror = raceOf(a.slot) === raceOf(b.slot);
+  const mirror = raceOf(a.slot) !== null && raceOf(a.slot) === raceOf(b.slot);
   const ta = mirror ? tierOf(raceOf(a.slot), pa.buildings) : null, tb = mirror ? tierOf(raceOf(b.slot), pb.buildings) : null;
   const reachedFirst = (tier: 2 | 3, name: string, other: string, time: string) => tier === 3
     ? t("{name} reached the third tier {time} before {other}.", { name, other, time })

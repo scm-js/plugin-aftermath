@@ -13,14 +13,15 @@ import type { MineralLines, UnitIndex } from "./played";
 import { mountTech } from "./techview";
 import { mountScouting } from "./scoutview";
 import type { ReplayTimeline } from "./vendor/scm-sim";
+import type { NamedRace } from "./races";
 
 /** One played game, as the window reads it. */
 export interface InsightGame {
   timeline: ReplayTimeline;
   lines: MineralLines;
   index: UnitIndex;
-  /** The players by slot, observers among them (the economy leaves those out). */
-  players: { slot: number; name: string; color: string; leftAt: number | null; hidden: boolean; team: number }[];
+  /** The players by slot, observers among them (the economy leaves those out), with their race as the plugin names it. */
+  players: { slot: number; name: string; color: string; leftAt: number | null; hidden: boolean; team: number; race?: NamedRace }[];
   map: { width: number; height: number };
 }
 
@@ -66,7 +67,8 @@ export class InsightView implements ChartHost {
 
   /** Show `game`, or say why there is nothing to show. */
   show(game: InsightGame | null, why: string): void {
-    const key = game ? game.players.filter((p) => p.hidden).map((p) => p.slot).join(",") : `none:${why}`;
+    // (A race named, or found to play as something, shows again too.)
+    const key = game ? `${game.players.filter((p) => p.hidden).map((p) => p.slot).join(",")}|${game.players.map((p) => (p.race ? `${p.race.label}:${p.race.like}` : "")).join(",")}` : `none:${why}`;
     if (game?.timeline === this.shownTimeline && key === this.shownKey) return;
     this.shownKey = key;
     this.shownTimeline = game?.timeline ?? null;

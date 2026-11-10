@@ -11,6 +11,7 @@
  * Pure: no editor, no DOM. `plugin.ts` turns it into the panel and the overlay.
  */
 import { FRAME_MS, type Command, type Replay, type ReplayPlayer } from "@scm-js/replay";
+import { TOWN_HALLS, WORKERS } from "./roles";
 
 export type ClickKind = "move" | "attack" | "patrol" | "rally" | "ability" | "ping";
 
@@ -82,8 +83,8 @@ export interface ReplayReport {
   chat: ChatLine[];
 }
 
-/** Command Center, Hatchery, Nexus. */
-export const TOWN_HALLS = new Set([106, 131, 154]);
+/** The halls a base is taken with, and the workers: the game's, or the data set's by its units table (`roles.ts`). */
+export { TOWN_HALLS, WORKERS };
 
 /**
  * How far apart identical orders may be and still read as one: a building ordered onto
@@ -197,9 +198,6 @@ function step(list: BuildStep[], frame: number, kind: BuildStepKind, id: number)
   }
   list.push({ frame, kind, id, count: 1 });
 }
-
-/** SCV, Drone, Probe. */
-export const WORKERS = new Set([7, 41, 64]);
 
 /**
  * The build order as a list reads best: workers left out unless asked for, and

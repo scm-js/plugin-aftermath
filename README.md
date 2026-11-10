@@ -117,6 +117,20 @@ that wrote it) and the players. Each player's line shows colour, name, race and 
 minute, with supply once the game is analysed, or when they left. Click a player to hide
 them on the map and the graph, and again to bring them back.
 
+A mod can add races of its own, and a replay of such a game gives the player a race number
+StarCraft has not got. Aftermath names it by what the replay's mod says (a replay saved by
+scmJS's play page can carry the mod's races), else by what the editor's data set says, and
+otherwise shows it as `Race 12`, never as Random or Terran. Point at the race for what it
+plays as: what the data set says, or else what most of the player's units are (by the Zerg,
+Terran and Protoss groups of the units table), or that it cannot be told. With a mod open,
+when the editor in use can keep race names, **Name this race…** beside `Race 12` asks for a
+name, the letter of its files, and what it plays as. It offers the names the mod's
+`rez\network.tbl` has past the game's own, and the letters of the mod's own console and
+button files, as the editor suggests them. With an editor that does not suggest any,
+Aftermath reads the files itself, and offers names only where it can read both tables. It
+never fills a name in itself. The name is kept with the mod's data set and shown for every
+replay played with it.
+
 It has five tabs:
 
 - **Game**, once the game is analysed. See [Analysis](#analysis).
@@ -232,9 +246,19 @@ replay: it would play it with the game's own files.
 
 Costs and names come from the data set the editor draws with, so attach the mod's folder for
 the mod's own. A mod may send commands of its own, which the game does not have; the panel
-counts their command blocks, and they are left out of the analysis. The Build tab's choice
-of workers and town halls goes by the game's own unit numbers, which a mod may give other
-units.
+counts their command blocks, and they are left out of the analysis. Workers and town halls
+(the Build tab's choice of workers, its town halls in bold, the bases taken, the analysis)
+are the ones the units table says while the editor draws with the replay's mod: the units
+with the Worker flag, and the buildings with the Resource Depot flag. Otherwise they go by
+the game's own unit numbers, which a mod may give other units.
+
+The Tech tab's tiers and the Scouting tab's answers to cloaked and air units are known for
+Zerg, Terran and Protoss only, by the game's own buildings and units. A race a mod adds has
+its own, so for its player the Tech tab says the tiers are not known and the Scouting tab
+that it cannot tell, each with a sentence saying why. What the race plays as is still used
+for the music and the cast. The cast tells the commentators the race's name and what it
+plays as. When no player's race is Zerg, Terran or Protoss or plays as one that is known, a
+cast cannot be made of the game, and the Cast window says so.
 
 ### On the map
 
@@ -377,7 +401,7 @@ The **Tech** tab:
 - A card for each player: the furthest tier they reached and when, how many upgrade levels
   and technologies they finished, and their tech buildings in order, as the game's icons.
   In a game of two, a sentence compares the players. Tier timings are compared only between
-  players of the same race.
+  players of the same race, and only for Zerg, Terran and Protoss.
 - A chart with a lane per player: a bar for the first of each tech building, from site to
   finish, and a bar for each upgrade level and technology, from start to done. Point at a
   bar for its times, or between bars for what each player had under way.
@@ -483,7 +507,7 @@ on the action, with a play-by-play caster and an analyst talking over it. The sc
 writes what they say from what the engine measured, and the server reads it aloud where it
 has voices set up. The lines are shown as captions too. The commentators know only the
 measured facts. They don't see micro or spells, and say nothing about the players beyond
-their play.
+their play. A race a mod adds is told to them by its name and the race it plays as.
 
 **Cast…** opens a window with the choices:
 
@@ -522,7 +546,8 @@ Where the game itself is shown, **Cinematic** on the timeline takes it full scre
 the editor. It has a broadcast bar with each player's supply, workers, army and the clock, a
 title card, and the minimap (press or drag on it to look there). Move the pointer for the
 controls: play and pause, the speed, **Follow**, **Minimap**, and the cast. The music is
-the game's own, for one of the races in the game. Esc leaves.
+the game's own, for one of the races in the game (for a race a mod adds, the race it plays
+as). Esc leaves.
 
 With a cast made for the replay, **Watch cast** starts it inside the view, at normal speed
 with the camera following the action. It adds larger

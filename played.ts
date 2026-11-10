@@ -6,13 +6,15 @@
  * A player is named by the game's player number, which is `ReplayPlayer.index`.
  */
 import type { ReplayTimeline } from "./vendor/scm-sim";
+import { WORKERS } from "./roles";
 
 /** Larva, egg, cocoon, lurker egg, what is fired or laid, and the spells that are units: never a line of what was made. */
 export const NOT_MADE = new Set([13, 14, 33, 35, 36, 59, 73, 85, 97, 101, 105, 202]);
 const EGGS = new Set([36, 59, 97]);
 /** Mineral fields and the geyser. */
 const RESOURCES = new Set([176, 177, 178, 188]);
-export const WORKERS = new Set([7, 41, 64]);
+/** The workers: the game's three, or the data set's (`roles.ts`). */
+export { WORKERS };
 export const isBuilding = (type: number) => type >= 106 && type <= 201 && !RESOURCES.has(type);
 export const counted = (type: number) => type >= 0 && type < 203 && !NOT_MADE.has(type) && !RESOURCES.has(type);
 
