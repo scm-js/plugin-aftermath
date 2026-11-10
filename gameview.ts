@@ -27,6 +27,29 @@ import { engineReason, engineSentence, type EngineReason } from "./modreplay";
 const SEEK_GIVE_UP_MS = 2500;
 /** A seek whose progress has not moved for this long is taken as over where it stopped (a game that ended short of it). */
 const SEEK_STALL_MS = 4000;
+/**
+ * A view that cannot rewind starts the game again from frame 0 for a seek back (a mod's plugins: about 13 seconds for
+ * Cosmonarchy before it runs ahead), saying frame 0 meanwhile; that is waited on this long before the seek is taken as
+ * lost and the clock goes where the game is.
+ */
+const SEEK_RESTART_MS = 60000;
+/** Frames either side of where a seek was sent that count as there (two seconds: the game moves on while the answer comes). */
+const SEEK_NEAR = 48;
+/** A drag of the timeline over a view that cannot rewind is sent to the game once the pointer has stood still this long. */
+const DRAG_STILL_MS = 250;
+
+/**
+ * The frame a seek reported by the view is going to, where the page says it (an addition to `scmjs.view.frame` whose
+ * name was not settled when this was written, so each likely name is read); null when it does not say.
+ */
+export function seekTargetOf(f: ViewFrame): number | null {
+  const o = f as unknown as Record<string, unknown>;
+  for (const name of ["target", "seekTarget", "seekingTo", "toward", "to"]) {
+    const v = o[name];
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+  }
+  return null;
+}
 
 /** The editor's minimap follows the game's camera at most this often (each move redraws it). */
 const MINIMAP_MS = 66;
@@ -98,7 +121,14 @@ export class GameView {
    * A seek asked for and not yet arrived: until the viewer shows a frame there, what it says it shows is the moment
    * it is leaving (it reports the frame on screen while it runs ahead), which is not the clock any more.
    */
-  private aiming: { frame: number; sawSeeking: boolean; from: number | null; at: number | null; sent: number; moved: number; timer: number } | null = null;
+  private aiming: { frame: number; sawSeeking: boolean; from: number | null; at: number | null; sent: number; moved: number; timer: number; shown: number | null } | null = null;
+  /**
+   * A drag of the timeline not yet sent to a view that cannot rewind (`drag`): the frame the pointer stands at, sent
+   * once the drag ends or stands still. Until then nothing the view says moves the clock.
+   */
+  private pending: { frame: number; timer: ReturnType<typeof setTimeout> } | null = null;
+  /** A seek back is quick (the replay loaded said so; a page from before it said is taken as one that rewinds). */
+  private quickBack = true;
   /** The viewer's last word on the frame, and when (performance.now): what a seek that never arrives settles for. */
   private heard: { f: ViewFrame; at: number } | null = null;
   /**
@@ -372,16 +402,22 @@ export class GameView {
       view.onFrame((f) => {
         if (this.holding === null || this.wanted !== null) return;
         this.heard = { f, at: performance.now() };
+        // (A drag not yet sent: the clock is the pointer's.)
+        if (this.pending) return;
         const a = this.aiming;
         if (a) {
+          // (A page that says where its seek goes: one going elsewhere is an older seek, nothing of this one's.)
+          const target = seekTargetOf(f);
+          if (target !== null && Math.abs(target - a.frame) > 1) { this.hooks.seeking(); return; }
           // (On its way the viewer says how far the engine has run: `seeking` is that frame.)
-          if (f.seeking !== null) { if (f.seeking !== a.at) a.moved = performance.now(); a.sawSeeking = true; a.from ??= f.seeking; a.at = f.seeking; this.hooks.seeking(); return; }
+          if (f.seeking !== null) { if (f.seeking !== a.at) a.moved = performance.now(); a.sawSeeking = true; a.from ??= f.seeking; a.at = f.seeking; a.shown = f.seeking; this.hooks.seeking(); return; }
           // There (within two seconds: the game moves on while the answer comes), or a seek that ended elsewhere: past
           // the end, short of where it was sent and no nearer the start than the engine had run. A frame that says the
-          // seek is over while it still shows where the seek began is not the end of it.
-          const near = Math.abs(f.frame - a.frame) <= 48;
-          const ended = a.sawSeeking && a.at !== null && f.frame >= a.at && f.frame <= a.frame + 48;
-          if (!near && !ended) return;
+          // seek is over while it still shows where the seek began is not the end of it, and neither is the first frame
+          // while the seek went further: a view that cannot rewind says it while it starts the game again.
+          const near = Math.abs(f.frame - a.frame) <= SEEK_NEAR;
+          const ended = a.sawSeeking && a.at !== null && f.frame >= a.at && f.frame <= a.frame + SEEK_NEAR && !this.atStart(f.frame, a.frame);
+          if (!near && !ended) { a.shown = f.frame; this.hooks.seeking(); return; }
           this.arrived();
         }
         this.said = { frame: f.frame, at: performance.now(), playing: f.playing };
@@ -430,6 +466,8 @@ export class GameView {
       this.hooks.hover(null);
       this.handle.redrawMinimap?.();
       this.hooks.state(this.words.loading(entry.fileName));
+      this.dropDrag();
+      this.arrived();
       this.sent = null;
       this.said = null;
       this.settle(true);
@@ -437,6 +475,7 @@ export class GameView {
         // (A mod's replay with its mod: the view loads at the address that plays it, `?view&mod=…`, first.)
         const viewed = await view.load(entry.bytes, entry.fileName, entry.dataSet ?? null);
         this.tracks = viewed.follows === true && typeof view.follow === "function";
+        this.quickBack = viewed.rewinds !== false;
       } catch (err) {
         // A load replaced by another is that one's to finish.
         if (this.wanted !== entry.id) return false;
@@ -573,11 +612,48 @@ export class GameView {
   /** The element the game and what is drawn over it live in: what the cinematic view takes full screen. */
   get root(): HTMLElement | null { return this.element ?? null; }
   speed(multiplier: number): void { this.view?.speed(multiplier); }
+  /**
+   * Whether a seek back is quick: the engine keeps moments of the game as it goes. One that cannot (a mod's plugins
+   * run) starts the game again from its first frame and runs ahead to the frame, at about the game's own pace.
+   */
+  get rewinds(): boolean { return this.quickBack; }
+
+  /** A frame near the start, said while a seek went further: a view that cannot rewind starting the game again. */
+  private atStart(f: number, target: number): boolean { return f <= SEEK_NEAR && target > SEEK_NEAR; }
+
+  /**
+   * Where a drag of the timeline stands. A view that rewinds goes there at once, as `seek`. One that cannot is told
+   * once, the last frame, when the drag ends (`dragEnd`) or the pointer has stood still a moment: each seek of its runs
+   * the game ahead (and a seek back starts it again), so one for every move of the pointer would never arrive.
+   */
+  drag(frame: number): void {
+    if (!this.view) return;
+    if (this.quickBack) { this.seek(frame); return; }
+    const f = Math.round(frame);
+    if (this.pending) clearTimeout(this.pending.timer);
+    // (Back where the seek in hand goes: nothing new to send.)
+    else if (this.aiming?.frame === f) return;
+    this.pending = { frame: f, timer: setTimeout(() => this.dragEnd(), DRAG_STILL_MS) };
+  }
+  /** The drag of the timeline ended: the frame it stood at goes to the game, unless it was sent already. */
+  dragEnd(): void {
+    const p = this.pending;
+    if (!p) return;
+    this.dropDrag();
+    if (this.aiming?.frame === p.frame) return;
+    this.seek(p.frame);
+  }
+  private dropDrag(): void {
+    if (this.pending) clearTimeout(this.pending.timer);
+    this.pending = null;
+  }
+
   seek(frame: number): void {
     if (!this.view) return;
+    this.dropDrag();
     this.arrived();
     const sent = performance.now();
-    const a = { frame: Math.round(frame), sawSeeking: false, from: null, at: null, sent, moved: sent, timer: 0 };
+    const a = { frame: Math.round(frame), sawSeeking: false, from: null, at: null, sent, moved: sent, timer: 0, shown: null };
     // A seek is never waited on for good. Taken as over at the frame the game shows:
     // - one the viewer says is over without showing a frame near where it was sent: a play page from before
     //   2026-10-16 showed an old frame for a seek that took no step (to 0:00, or to where the game stood), and paused,
@@ -588,8 +664,14 @@ export class GameView {
     //   was over.
     a.timer = window.setInterval(() => {
       const h = this.heard, now = performance.now();
-      if (this.aiming !== a || !h || h.at < a.sent || now - a.sent < SEEK_GIVE_UP_MS) return;
-      if (h.f.seeking !== null ? now - a.moved < SEEK_STALL_MS : !h.f.playing && now - h.at < 1000) return;
+      if (this.aiming !== a || this.pending || !h || h.at < a.sent || now - a.sent < SEEK_GIVE_UP_MS) return;
+      // (A page that says its seek goes elsewhere has not taken this one yet.)
+      const target = seekTargetOf(h.f);
+      const elsewhere = target !== null && Math.abs(target - a.frame) > 1;
+      // A view that cannot rewind starting the game again says the first frame (or a seek at it) for a long while.
+      const restarting = !this.quickBack && (elsewhere || this.atStart(h.f.seeking ?? h.f.frame, a.frame));
+      if (restarting) { if (now - a.moved < SEEK_RESTART_MS) return; }
+      else if (h.f.seeking !== null ? now - a.moved < SEEK_STALL_MS : !h.f.playing && now - h.at < 1000) return;
       this.arrived();
       const f = { ...h.f, seeking: null };
       this.said = { frame: f.frame, at: now, playing: f.playing };
@@ -603,12 +685,22 @@ export class GameView {
     if (this.aiming) clearInterval(this.aiming.timer);
     this.aiming = null;
   }
-  /** A seek is on its way: the clock is where it was sent, not where the game still shows. */
-  get seeking(): boolean { return this.aiming !== null; }
+  /** A seek is on its way (or a drag waits to be sent): the clock is where it was sent, not where the game still shows. */
+  get seeking(): boolean { return this.aiming !== null || this.pending !== null; }
+  /**
+   * A seek on a view that cannot rewind, once the view has said where it is: the frame it has got to (the frame it
+   * shows, or how far the engine has run) and the one it was sent to. Null otherwise.
+   */
+  get runningAhead(): { at: number; to: number } | null {
+    const a = this.aiming;
+    // (Past where it goes: the moment a seek back is leaving, before the game starts again.)
+    if (this.quickBack || this.pending || !a || a.shown === null || a.shown > a.frame) return null;
+    return { at: a.shown, to: a.frame };
+  }
   /** How far a jump has run, 0 to 1, once the viewer has said; null before (or for a jump with no way to go). */
   get seekProgress(): number | null {
     const a = this.aiming;
-    if (!a || a.from === null || a.at === null || a.frame <= a.from) return null;
+    if (!a || this.pending || a.from === null || a.at === null || a.frame <= a.from) return null;
     return Math.max(0, Math.min(1, (a.at - a.from) / (a.frame - a.from)));
   }
   /** Look at a point of the map, in pixels. (The game lets go of a track for it.) */
@@ -633,6 +725,12 @@ export class GameView {
     if (!s.playing) return s.frame;
     return s.frame + (Math.min(200, performance.now() - s.at) / FRAME_MS) * speed;
   }
+  /**
+   * The frame the game is at for the clock: `frameNow`, or null while a seek is on its way (or a drag waits), when the
+   * clock is where it was sent and what the game still shows is the moment it is leaving, or the first frame of a
+   * restart.
+   */
+  clockFrame(speed: number): number | null { return this.seeking ? null : this.frameNow(speed); }
   /** How much of the map the game shows, pixels, once it has said. */
   get viewSize(): { width: number; height: number } | null { return this.loaded ? this.shows : null; }
 
@@ -648,6 +746,7 @@ export class GameView {
   }
 
   dispose(): void {
+    this.dropDrag();
     this.arrived();
     if (this.busyTimer) clearTimeout(this.busyTimer);
     if (this.telling) clearTimeout(this.telling);

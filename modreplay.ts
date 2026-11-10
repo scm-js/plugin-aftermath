@@ -18,6 +18,7 @@
  * over, the older folder input does. Until 2026-11-09 they had lines; a replay tagged then names the mod by a hash
  * with them, which is matched as an older form when the picked folder shows the files (`FolderHashes.older`).
  */
+import type { PluginApi } from "@scm-js/plugin-api";
 import type { ModTag } from "@scm-js/replay";
 import type { AnalysedMod, ReplayDataSet } from "./vendor/scm-sim";
 
@@ -373,3 +374,27 @@ export const engineSentence = (err: unknown): string => {
   const plain = text.replace(/^(Error: )+/, "");
   return plain ? plain[0].toUpperCase() + plain.slice(1) : plain;
 };
+
+/**
+ * A yes-or-no question whose default (the highlighted button) is either answer: `api.ui.confirm` always makes it yes.
+ * Escape, the × and the backdrop answer no whichever is the default. The buttons stand no then yes, left to right, as
+ * the editor's own confirm has them.
+ */
+export function ask(ui: Pick<PluginApi["ui"], "dialog" | "el">, text: string, o: { title: string; yes: string; no: string; prefer: "yes" | "no" }): Promise<boolean> {
+  return new Promise((resolve) => {
+    let answer = false, settle = () => resolve(answer);
+    ui.dialog({
+      title: o.title,
+      size: "sm",
+      mount: (body) => {
+        body.append(ui.el("div", { style: "white-space:pre-wrap;max-width:52ch" }, text));
+        // (However the dialog goes, its cleanup runs once: that settles the answer.)
+        return () => { settle(); settle = () => {}; };
+      },
+      buttons: [
+        { label: o.no, primary: o.prefer === "no" },
+        { label: o.yes, primary: o.prefer === "yes", run: () => { answer = true; } },
+      ],
+    });
+  });
+}

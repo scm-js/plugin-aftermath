@@ -34,7 +34,7 @@ import type { Disposable, MapView, OverlayHandle, PanelHandle, PluginApi, Plugin
 import { analyse, buildOrderRows, formatTime, FRAMES_PER_MINUTE, heat, TOWN_HALLS, type ClickKind, type HeatGrid, type PlayerReport, type ReplayReport } from "./analysis";
 import { likeness, plainText, readChk, type ChkInfo } from "./chk";
 import { FRAME_MS, parseReplay, ReplayError, type ModTag } from "@scm-js/replay";
-import { assumedDataSet, assumedTag, engineReason, engineSentence, folderHashes, handedReplay, isReplaysMod, modAnalysis, modFolder, modHashPending, modSigns, openModOf, pickedModFiles, playsModReplays, pluginNames, replayDataSet, safeLink, type EngineReason, type ModFolder, type ModSign, type OpenMod, type PickedFile } from "./modreplay";
+import { ask, assumedDataSet, assumedTag, engineReason, engineSentence, folderHashes, handedReplay, isReplaysMod, modAnalysis, modFolder, modHashPending, modSigns, openModOf, pickedModFiles, playsModReplays, pluginNames, replayDataSet, safeLink, type EngineReason, type ModFolder, type ModSign, type OpenMod, type PickedFile } from "./modreplay";
 import { KO } from "./ko";
 import { buildings as standingBuildings, isBuilding, losses, lossPoints, madeRows, mineralLines, presencePoints, sampleAt, series, unitIndex, unitsAt, WORKERS, type Metric, type Point, type Standing, type UnitIndex } from "./played";
 import { knowledge, knownAt, placedBuildings, REMEMBER_FRAMES, trails, type Knowledge, type Trail } from "./knew";
@@ -861,12 +861,18 @@ export function activate(api: PluginApi) {
     const entry = current;
     if (!entry || !game.shown) { game.busy(null); return; }
     if (game.loading) { game.busy(gameState); return; }
-    if (game.seeking) {
-      const done = game.seekProgress;
-      game.busy(done === null || done < 0.05 ? t("Going to {time}…", { time: formatTime(entry.frame) }) : t("Going to {time}… {percent}%", { time: formatTime(entry.frame), percent: Math.floor(done * 100) }));
-      return;
-    }
-    game.busy(null);
+    game.busy(game.seeking ? seekLine(entry) : null);
+  }
+
+  /**
+   * What the game is doing while a seek is on its way, for the timeline's line and the spinner. A view that cannot
+   * rewind runs ahead from where it is (from the first frame, for a seek back), and says how far it has got.
+   */
+  function seekLine(entry: Loaded): string {
+    const ahead = game.runningAhead;
+    if (ahead) return t("Running ahead: {at} of {to}", { at: formatTime(ahead.at), to: formatTime(ahead.to) });
+    const done = game.seekProgress;
+    return done === null || done < 0.05 ? t("Going to {time}…", { time: formatTime(entry.frame) }) : t("Going to {time}… {percent}%", { time: formatTime(entry.frame), percent: Math.floor(done * 100) });
   }
 
   /** Spectate's camera lets go: the person moved the view. */
@@ -965,11 +971,13 @@ export function activate(api: PluginApi) {
     const signed = untagged.filter((e) => e.signs.length);
     if (open) {
       const name = open.name || open.hash;
-      const withMod = await api.ui.confirm(
+      // (A replay with no sign of a mod is most likely a game of StarCraft itself, which played with the mod's code takes
+      // minutes to analyse and is another game: without the mod is the default there, and Escape is without either way.)
+      const withMod = await ask(api.ui,
         signed.length
           ? t("{n, plural, one {This replay was played with a mod, and does not say which} other {# of these replays were played with a mod, and do not say which}}: {signs}. A mod's own release writes no name of its mod into a replay. The editor has {name} open. Watch with {name}?", { n: signed.length, signs: signsText(signed[0].signs), name })
           : t("{n, plural, one {This replay names no mod.} other {# of these replays name no mod.}} A game played with StarCraft's own data names none, and so does one played with a mod's own release, which does not write which mod it was. The editor has {name} open. Watch with {name}?", { n: untagged.length, name }),
-        { title: t("A replay that names no mod"), confirmLabel: t("Watch With {name}", { name }), cancelLabel: t("Watch Without") },
+        { title: t("A replay that names no mod"), yes: t("Watch With {name}", { name }), no: t("Watch Without"), prefer: signed.length ? "yes" : "no" },
       );
       if (withMod) assume(untagged, open);
     } else if (signed.length) {
@@ -1115,12 +1123,16 @@ export function activate(api: PluginApi) {
 
   /* ── Playback ── */
 
-  function seek(f: number): void {
+  /**
+   * Move the clock to `f`. `drag` is a drag of the timeline: the clock follows the pointer, and the game is told as its
+   * view can take it (`GameView.drag`: a view that cannot rewind once, when the drag ends or stands still).
+   */
+  function seek(f: number, drag = false): void {
     if (!current) return;
     // The clock is one game's: moving it brings that game back from Map stats.
     if (lensOf() === "map") showStats(false);
     current.frame = Math.max(0, Math.min(current.report.frames, Math.round(f)));
-    if (gameClock()) game.seek(current.frame);
+    if (gameClock()) { if (drag) game.drag(current.frame); else game.seek(current.frame); }
     tick();
     showBusy();
   }
@@ -1647,7 +1659,7 @@ export function activate(api: PluginApi) {
     cinema.banner = null;
     setFollowing(true);
     casting.reel = new Reel({
-      frame: () => (gameClock() ? (game.seeking ? null : game.frameNow(settings.speed)) : current?.frame ?? null),
+      frame: () => (gameClock() ? game.clockFrame(settings.speed) : current?.frame ?? null),
       seek: (f) => seek(f),
       // (The strip is drawn again so its speed menu says the speed the stretch plays at.)
       speed: (n) => { settings.speed = n; if (gameClock()) game.speed(n); strip?.render(); },
@@ -3748,7 +3760,9 @@ export function activate(api: PluginApi) {
             ? `${t("Open this replay on the play page at this moment and play on from there: as one of its players, alone, against a community bot, or with others")}. ${modSays}`
             : t("Open this replay on the play page at this moment and play on from there: as one of its players, alone, against a community bot, or with others"),
           onClick: () => {
-            const frame = Math.round((gameClock() ? game.frameNow(settings.speed) : null) ?? entry.frame);
+            // The clock's frame: while a seek is on its way (a view that cannot rewind starting the game again says
+            // frame 0 all the while) the one asked for, never one the game showed on its way there.
+            const frame = Math.round((gameClock() ? game.clockFrame(settings.speed) : null) ?? entry.frame);
             if (playing) stop();
             const player = entry.eyes ?? entry.report.players[0]?.player.slot;
             sim!.playReplay!(handedReplay(entry.bytes, entry.fileName, entry.dataSet), { frame, ...(player !== undefined ? { player } : {}) })
@@ -3789,9 +3803,11 @@ export function activate(api: PluginApi) {
       this.tip = tooltip(canvas, (at) => this.tipAt(at.offsetX, at.offsetY));
       const seekTo = (e: PointerEvent) => {
         const r = canvas.getBoundingClientRect();
-        if (current) seek(((e.clientX - r.left) / Math.max(1, r.width)) * current.report.frames);
+        if (current) seek(((e.clientX - r.left) / Math.max(1, r.width)) * current.report.frames, true);
       };
+      // (A press is a drag that has not moved: a view that cannot rewind is told once, when it is let go.)
       canvas.addEventListener("pointerdown", (e) => { if (e.button !== 0) return; canvas.setPointerCapture(e.pointerId); seekTo(e); });
+      canvas.addEventListener("lostpointercapture", () => game.dragEnd());
       canvas.addEventListener("pointermove", (e) => {
         if (canvas.hasPointerCapture(e.pointerId)) seekTo(e);
         this.hover = e.clientX - canvas.getBoundingClientRect().left;
@@ -3817,8 +3833,7 @@ export function activate(api: PluginApi) {
       } else if (game.shown && game.seeking) {
         // (A jump starts from the nearest moment kept, the analysis's or the viewer's own, and plays on from there: a
         // long one before the analysis has been that far shows how far it has got.)
-        const done = game.seekProgress;
-        line = done === null || done < 0.05 ? t("Going to {time}…", { time: formatTime(entry.frame) }) : t("Going to {time}… {percent}%", { time: formatTime(entry.frame), percent: Math.floor(done * 100) });
+        line = seekLine(entry);
       } else if (running?.entry === entry) {
         line = running.fraction < 0 ? t("Analysing the game…") : t("Analysing the game: {percent}%", { percent: Math.floor(running.fraction * 100) });
         why = t("The game engine plays the replay through in the background to see what really happened: the armies, the fights, what was lost. You can watch the replay meanwhile.");

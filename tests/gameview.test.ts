@@ -31,6 +31,9 @@ describe("the Game view opening a replay", () => {
   let painted: number;
   let pointerListeners: ((p: { x: number; y: number } | null) => void)[];
   let fogAsked: boolean[];
+  /** The seeks the page was sent, and whether the replay loaded says a seek back is quick. */
+  let seeks: number[];
+  let rewinds: boolean;
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -48,11 +51,13 @@ describe("the Game view opening a replay", () => {
     painted = 0;
     pointerListeners = [];
     fogAsked = [];
+    seeks = [];
+    rewinds = false;
     const none = { dispose() {} };
     const view = {
-      load: () => new Promise((resolve) => { finishLoad = () => resolve({ name: "", frames: 100, players: [], map: { width: 128, height: 128 }, rewinds: false, looks: {}, follows: false }); }),
+      load: () => new Promise((resolve) => { finishLoad = () => resolve({ name: "", frames: 100, players: [], map: { width: 128, height: 128 }, rewinds, looks: {}, follows: false }); }),
       camera: (x: number, y: number, height?: number) => { sent.push({ x, y, height }); },
-      play() {}, speed() {}, seek() {}, player() {}, follow() {},
+      play() {}, speed() {}, seek: (f: number) => { seeks.push(f); }, player() {}, follow() {},
       options: () => Promise.resolve({}),
       onFrame: (l: (f: ViewFrame) => void) => { frames.push(l); return none; }, onKey: () => none, onUnits: () => none,
       onCamera: (l: (c: ViewCamera) => void) => { cameras.push(l); return none; },
@@ -201,6 +206,108 @@ describe("the Game view opening a replay", () => {
         vi.advanceTimersByTime(1000);
       }
       expect(game.seeking).toBe(true);
+    });
+
+    it("tells a view that cannot rewind a drag once, the last frame, when it ends", async () => {
+      await loaded();
+      expect(game.rewinds).toBe(false);
+      for (const f of [1000, 1400, 2200, 3100]) { game.drag(f); vi.advanceTimersByTime(30); }
+      expect(seeks).toEqual([]);
+      // The clock is the pointer's meanwhile: the game, playing on, moves nothing.
+      expect(game.seeking).toBe(true);
+      say({ frame: 600, playing: true, seeking: null });
+      expect(told).toEqual([]);
+      game.dragEnd();
+      expect(seeks).toEqual([3100]);
+      // Let go once more (the pointer's capture ends after the press's own end): nothing new.
+      game.dragEnd();
+      expect(seeks).toEqual([3100]);
+    });
+
+    it("tells a view that cannot rewind where the pointer stood still, and not again where it already went", async () => {
+      await loaded();
+      game.drag(1000);
+      vi.advanceTimersByTime(100);
+      game.drag(2000);
+      vi.advanceTimersByTime(250);
+      expect(seeks).toEqual([2000]);
+      // Back to where the seek in hand goes, then let go: that seek stands.
+      game.drag(2600);
+      game.drag(2000);
+      game.dragEnd();
+      expect(seeks).toEqual([2000]);
+      // A key or a click is a seek of its own, at once, and drops a drag not yet sent.
+      game.drag(5000);
+      game.seek(4000);
+      vi.advanceTimersByTime(1000);
+      expect(seeks).toEqual([2000, 4000]);
+    });
+
+    it("seeks a view that rewinds at every move of a drag, as before", async () => {
+      rewinds = true;
+      await loaded();
+      expect(game.rewinds).toBe(true);
+      for (const f of [1000, 1400, 2200]) game.drag(f);
+      game.dragEnd();
+      expect(seeks).toEqual([1000, 1400, 2200]);
+    });
+
+    it("holds the clock where it was sent while a view that cannot rewind starts the game again, and says how far it has run", async () => {
+      await loaded();
+      game.seek(8000);
+      // Today's page starting the game again says frame 0, no seek, for a long while.
+      for (let i = 0; i < 25; i++) {
+        say({ frame: 0, playing: false, seeking: null });
+        vi.advanceTimersByTime(1000);
+      }
+      expect(told).toEqual([]);
+      expect(game.seeking).toBe(true);
+      expect(game.clockFrame(1)).toBe(null);
+      expect(game.runningAhead).toEqual({ at: 0, to: 8000 });
+      // Then it runs ahead, saying how far.
+      say({ frame: 0, playing: false, seeking: 4200 });
+      expect(game.runningAhead).toEqual({ at: 4200, to: 8000 });
+      expect(told).toEqual([]);
+      say({ frame: 8000, playing: false, seeking: null });
+      expect(game.seeking).toBe(false);
+      expect(told).toEqual([{ frame: 8000, playing: false, seeking: null }]);
+      expect(game.clockFrame(1)).toBe(8000);
+    });
+
+    it("holds the clock through a restart that says it is seeking (the page as fixed), even with no progress for long", async () => {
+      await loaded();
+      game.seek(8000);
+      for (let i = 0; i < 20; i++) {
+        say({ frame: 0, playing: true, seeking: 0 });
+        vi.advanceTimersByTime(1000);
+      }
+      // A frame 0 with no seek after progress at 0 is not where the seek ended either.
+      say({ frame: 0, playing: true, seeking: null });
+      vi.advanceTimersByTime(3000);
+      expect(told).toEqual([]);
+      expect(game.seeking).toBe(true);
+    });
+
+    it("takes a seek a view that cannot rewind lost as over where the game is, after a long while", async () => {
+      await loaded();
+      game.seek(8000);
+      for (let i = 0; i < 61; i++) {
+        say({ frame: 0, playing: false, seeking: null });
+        vi.advanceTimersByTime(1000);
+      }
+      expect(game.seeking).toBe(false);
+      expect(told.at(-1)?.frame).toBe(0);
+    });
+
+    it("leaves out what the page says of a seek going elsewhere, where it names the seek's target", async () => {
+      await loaded();
+      game.seek(8000);
+      say({ frame: 3000, playing: false, seeking: 3500, target: 6000 } as ViewFrame);
+      expect(game.runningAhead).toBe(null);
+      say({ frame: 3000, playing: false, seeking: 3600, target: 8000 } as ViewFrame);
+      expect(game.runningAhead).toEqual({ at: 3600, to: 8000 });
+      say({ frame: 8000, playing: false, seeking: null, target: 8000 } as ViewFrame);
+      expect(told.at(-1)?.frame).toBe(8000);
     });
 
     it("is over when, playing, it lands and plays on past the frame before the viewer says so", async () => {
