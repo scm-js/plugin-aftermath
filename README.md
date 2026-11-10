@@ -211,8 +211,11 @@ replay again from its first frame and plays forward to the moment, which takes a
 drag along the timeline moves the timeline with the pointer and tells the game the moment
 once, when the drag ends or the pointer stops. Until the game gets there, the timeline stays
 at the moment chosen, the strip says how far the game has run (for example "Running ahead:
-1:10 of 2:56"), and Play From Here starts from the moment chosen. With older ones the tab of
-a mod's replay shows the map only.
+1:10 of 2:56"), and Play From Here starts from the moment chosen. A drag is told once for a
+mod's replay whether or not the game can go back: a play page with the scm-sim plugin 0.19.2
+can, and says the replay is slow, since it still plays forward at about 60 frames a second.
+With a plugin older than 0.17.0, or a play page that does not know a mod's replays, the tab
+of a mod's replay shows the map only.
 
 With the scm-sim plugin 0.18.0 and an engine page that analyses a mod's replays, the
 analysis (the Game and Fights tabs, Analysis, Cast) plays a mod's replay with its mod too: the

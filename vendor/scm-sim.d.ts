@@ -580,6 +580,12 @@ export interface ViewedReplay {
   map: { width: number; height: number };
   /** Whether a seek backwards is quick (the engine keeps moments of the game as it goes); otherwise it starts the game again. */
   rewinds: boolean;
+  /**
+   * True when the replay runs ahead slowly, a mod's plugins running (about 60 frames a second, where the game's own
+   * replays run at more than a thousand): even a seek back to a kept moment takes a while, so send a drag's seeks
+   * sparingly (one when it ends). Left out otherwise, and by a page from before 0.19.2.
+   */
+  slow?: boolean;
   looks: ViewLooks;
   /** Whether the page plays a camera track (`ScmSimView.follow`); a page from before tracks ignores one. */
   follows: boolean;
