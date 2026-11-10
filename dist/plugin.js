@@ -3214,12 +3214,17 @@ var GameView = class {
    */
   aiming = null;
   /**
-   * A drag of the timeline not yet sent to a view that cannot rewind (`drag`): the frame the pointer stands at, sent
+   * A drag of the timeline not yet sent to a view that cannot rewind or is slow (`drag`): the frame the pointer stands at, sent
    * once the drag ends or stands still. Until then nothing the view says moves the clock.
    */
   pending = null;
   /** A seek back is quick (the replay loaded said so; a page from before it said is taken as one that rewinds). */
   quickBack = true;
+  /**
+   * The replay runs ahead slowly (a mod's plugins run, about 60 frames a second): even a seek back to a kept moment
+   * takes a while, so a drag is sent once, as to a view that cannot rewind. False for a page from before it said.
+   */
+  slow = false;
   /** The viewer's last word on the frame, and when (performance.now): what a seek that never arrives settles for. */
   heard = null;
   /**
@@ -3609,6 +3614,7 @@ var GameView = class {
         const viewed = await view.load(entry.bytes, entry.fileName, entry.dataSet ?? null);
         this.tracks = viewed.follows === true && typeof view.follow === "function";
         this.quickBack = viewed.rewinds !== false;
+        this.slow = viewed.slow === true;
       } catch (err) {
         if (this.wanted !== entry.id) return false;
         this.wanted = null;
@@ -3762,13 +3768,14 @@ var GameView = class {
     return f <= SEEK_NEAR && target > SEEK_NEAR;
   }
   /**
-   * Where a drag of the timeline stands. A view that rewinds goes there at once, as `seek`. One that cannot is told
-   * once, the last frame, when the drag ends (`dragEnd`) or the pointer has stood still a moment: each seek of its runs
-   * the game ahead (and a seek back starts it again), so one for every move of the pointer would never arrive.
+   * Where a drag of the timeline stands. A view that rewinds goes there at once, as `seek`. One that cannot, or whose
+   * replay is slow (a mod's plugins run), is told once, the last frame, when the drag ends (`dragEnd`) or the pointer
+   * has stood still a moment: each seek of its runs the game ahead (and a seek back starts it again, or goes back to a
+   * kept moment and runs ahead from there slowly), so one for every move of the pointer would never arrive.
    */
   drag(frame) {
     if (!this.view) return;
-    if (this.quickBack) {
+    if (this.quickBack && !this.slow) {
       this.seek(frame);
       return;
     }
