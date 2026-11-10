@@ -3348,8 +3348,8 @@ var GameView = class {
     return this.wanted !== null;
   }
   /**
-   * The spinner over the game, with `text` beside it; null takes it away. It shows only once the wait has gone on a
-   * moment, so a quick jump does not flash it.
+   * The spinner over the game, with `text` beside it ("" for the spinner alone); null takes it away. It shows only
+   * once the wait has gone on a moment, so a quick jump does not flash it.
    */
   busy(text) {
     const box = this.busyBox;
@@ -3361,6 +3361,7 @@ var GameView = class {
       return;
     }
     this.busyLine.textContent = text;
+    this.busyLine.hidden = text === "";
     if (!box.hidden || this.busyTimer) return;
     this.busyTimer = setTimeout(() => {
       this.busyTimer = null;
@@ -3829,12 +3830,20 @@ var GameView = class {
     return this.aiming !== null || this.pending !== null;
   }
   /**
-   * A seek on a view that cannot rewind, once the view has said where it is: the frame it has got to (the frame it
-   * shows, or how far the engine has run) and the one it was sent to. Null otherwise.
+   * The play page says a seek of this replay itself, in a line over the game ("Running ahead to 2:56: 40%"): one that
+   * cannot rewind, or one that is slow (a play page of 2026-11-09 and after). It counts from the moment the engine went
+   * back to, which the view is not told, so nothing here gives a percentage beside it.
+   */
+  get saysSeeks() {
+    return !this.quickBack || this.slow;
+  }
+  /**
+   * A seek the page says itself (`saysSeeks`), once the view has said where it is: the frame it has got to (the frame
+   * it shows, or how far the engine has run) and the one it was sent to. Null otherwise.
    */
   get runningAhead() {
     const a = this.aiming;
-    if (this.quickBack || this.pending || !a || a.shown === null || a.shown > a.frame) return null;
+    if (!this.saysSeeks || this.pending || !a || a.shown === null || a.shown > a.frame) return null;
     return { at: a.shown, to: a.frame };
   }
   /** How far a jump has run, 0 to 1, once the viewer has said; null before (or for a jump with no way to go). */
@@ -6821,12 +6830,12 @@ function activate(api) {
       game.busy(gameState);
       return;
     }
-    game.busy(game.seeking ? seekLine(entry) : null);
+    game.busy(game.seeking ? game.saysSeeks ? "" : seekLine(entry) : null);
   }
   function seekLine(entry) {
     const ahead = game.runningAhead;
     if (ahead) return t("Running ahead: {at} of {to}", { at: formatTime(ahead.at), to: formatTime(ahead.to) });
-    const done = game.seekProgress;
+    const done = game.saysSeeks ? null : game.seekProgress;
     return done === null || done < 0.05 ? t("Going to {time}\u2026", { time: formatTime(entry.frame) }) : t("Going to {time}\u2026 {percent}%", { time: formatTime(entry.frame), percent: Math.floor(done * 100) });
   }
   function letGo() {
