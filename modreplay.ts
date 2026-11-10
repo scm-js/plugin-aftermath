@@ -21,6 +21,7 @@
 import type { PluginApi } from "@scm-js/plugin-api";
 import type { ModTag } from "@scm-js/replay";
 import type { AnalysedMod, ReplayDataSet } from "./vendor/scm-sim";
+import { GAME_RACES, raceRows, type DataSetRace } from "./races";
 
 /** A file of a picked folder, as `api.ui.pickFiles({ directory: true })` gives them: the path from the folder's parent. */
 export interface PickedFile {
@@ -236,20 +237,22 @@ export const liveLifter = (tag: ModTag): boolean => tag.plugins.length > 0 || (t
 export function replayDataSet(tag: ModTag | null): ReplayDataSet | undefined {
   if (!tag) return undefined;
   const url = safeLink(tag.dataSet.url);
-  return { hash: tag.dataSet.hash, ...(tag.dataSet.name ? { name: tag.dataSet.name } : {}), ...(url ? { url } : {}), ...(liveLifter(tag) ? { live: true } : {}) };
+  const races = raceRows(tag.dataSet.races);
+  return { hash: tag.dataSet.hash, ...(tag.dataSet.name ? { name: tag.dataSet.name } : {}), ...(url ? { url } : {}), ...(liveLifter(tag) ? { live: true } : {}), ...(races.length ? { races } : {}) };
 }
 
-/** The mod the editor has open (`api.gameData.source()`), as an untagged replay may be watched with it. */
-export interface OpenMod { hash: string; name: string; url: string | null }
+/** The mod the editor has open (`api.gameData.source()`), as an untagged replay may be watched with it; `races`, the ones it declares. */
+export interface OpenMod { hash: string; name: string; url: string | null; races?: DataSetRace[] }
 
 /**
  * The mod the editor draws with, when it is one: a data set with a mod's hash (sixteen hex digits) that is not the
  * game's own (`starcraft`). Null for the game itself, a set with no hash yet (a large mod's is worked out after it
  * opens), or no data at all.
  */
-export function openModOf(source: { hash?: string; profile: { id: string; name: string; url?: string } } | null | undefined): OpenMod | null {
+export function openModOf(source: { hash?: string; profile: { id: string; name: string; url?: string; races?: unknown } } | null | undefined): OpenMod | null {
   if (!source || source.profile.id === "starcraft" || !source.hash || !/^[0-9a-f]{16}$/.test(source.hash)) return null;
-  return { hash: source.hash, name: source.profile.name, url: safeLink(source.profile.url ?? null) };
+  const races = raceRows(source.profile.races);
+  return { hash: source.hash, name: source.profile.name, url: safeLink(source.profile.url ?? null), ...(races.length ? { races } : {}) };
 }
 
 /**
@@ -266,7 +269,7 @@ export function assumedTag(mod: OpenMod): ModTag {
  * mod's own release ran its plugins. The live lifter plays a mod without code the same, only slower to start.
  */
 export function assumedDataSet(mod: OpenMod): ReplayDataSet {
-  return { hash: mod.hash, ...(mod.name ? { name: mod.name } : {}), ...(mod.url ? { url: mod.url } : {}), live: true };
+  return { hash: mod.hash, ...(mod.name ? { name: mod.name } : {}), ...(mod.url ? { url: mod.url } : {}), live: true, ...(mod.races?.length ? { races: mod.races } : {}) };
 }
 
 /**
@@ -311,13 +314,12 @@ export function modAnalysis(o: { played: AnalysedMod | null | undefined; engine:
  * game has: a map on a group past its tileset's was made with a mod's longer table.
  */
 export const REMASTERED_TERRAIN_GROUPS = [1979, 2046, 1265, 1418, 2046, 2046, 2039, 2047] as const;
-/** The race bytes the game writes for a player (0 Zerg, 1 Terran, 2 Protoss, 3 to 5 the game's others, 6 Random, 7 none). */
-const GAME_RACES = 8;
 
 /**
  * A sign, read from the replay itself, that its game was played with a mod. Each is certain: StarCraft cannot make it.
  * - `terrain`: the map uses tile group `group` of `tileset`, past the last Remastered has (`last`).
- * - `race`: a player's race byte is none of the game's.
+ * - `race`: a player's race byte is none of the game's eight (0 Zerg, 1 Terran, 2 Protoss, 3 to 5 the game's others,
+ *   6 Random, 7 none): a race the mod adds. Its name, where one is known, is the plugin's to say (`races.ts`).
  */
 export type ModSign =
   | { kind: "terrain"; tileset: number; group: number; last: number }

@@ -10,14 +10,15 @@ import { LineChart, nearest, type ChartHost } from "./charts";
 import { armyInSight, firstLooks, knowledge, scouts, threats, unseen, type Knowledge, type Scout, type Threat } from "./knew";
 import { isBuilding } from "./played";
 import type { ReplayTimeline } from "./vendor/scm-sim";
+import { isPlayed, tableRace, type NamedRace } from "./races";
 
 export interface ScoutContext {
   api: PluginApi;
   t: (text: string, params?: Record<string, string | number>) => string;
   host: ChartHost;
   timeline: ReplayTimeline;
-  /** The players shown, by slot, in the window's order. */
-  players: { slot: number; name: string; color: string }[];
+  /** The players shown, by slot, in the window's order, with their race as the plugin names it. */
+  players: { slot: number; name: string; color: string; race?: NamedRace }[];
   /** A player's opponents, by slot. */
   opponents(slot: number): ReadonlySet<number>;
   /** A unit's cost by units.dat id (minerals and gas; a pair's half for Zerglings and Scourge). */
@@ -47,7 +48,8 @@ export function mountScouting(body: HTMLElement, cx: ScoutContext): void {
   }
   const playing = new Set(tl.samples.players.filter((s) => s.supplyMax.some((n) => n > 0)).map((s) => s.slot));
   const shown = cx.players.filter((p) => playing.has(p.slot));
-  const raceOf = (slot: number) => tl.players.find((p) => p.slot === slot)?.race ?? -1;
+  /** The race the game's own lists go by: 0–2, else null (a race a data set adds has lists of its own, which are not known here). */
+  const raceOf = (slot: number): 0 | 1 | 2 | null => tableRace(cx.players.find((p) => p.slot === slot)?.race?.id ?? tl.players.find((p) => p.slot === slot)?.race);
   const unit = (type: number) => api.names.unit(type).replace(/^(Terran|Zerg|Protoss) (?=\S)/, "");
   const swatch = (color: string) => el("span", { className: "afm-tip-swatch", style: `background:${color}` });
   const percent = (share: number | null) => (share === null ? "–" : `${Math.round(share * 100)}%`);
@@ -129,25 +131,30 @@ export function mountScouting(body: HTMLElement, cx: ScoutContext): void {
     const late = th.seen.frame - th.made.frame;
     return go(el("td", {}, `${formatTime(th.seen.frame)} · ${unit(th.seen.type)}`, el("span", { className: "afm-dim" }, ` · ${t("{time} later", { time: formatTime(late) })}`)), th.seen.frame);
   };
-  const answerCell = (th: Threat) => {
+  const answerCell = (th: Threat, known: boolean) => {
+    if (!known) return el("td", { className: "afm-dim" }, t("cannot tell"));
     const already = th.already ? el("div", { className: "afm-dim" }, t("already had: {name}, {time}", { name: unit(th.already.type), time: formatTime(th.already.frame) })) : null;
     if (!th.answer) return el("td", {}, already ?? el("span", { className: "afm-dim" }, t("none")));
     const when = !th.seen ? "" : th.answer.frame <= th.seen.frame ? t("{time} before seeing", { time: formatTime(th.seen.frame - th.answer.frame) }) : t("{time} after seeing", { time: formatTime(th.answer.frame - th.seen.frame) });
     return go(el("td", {}, el("div", {}, `${formatTime(th.answer.frame)} · ${unit(th.answer.type)}`, when ? el("span", { className: "afm-dim" }, ` · ${when}`) : null), already), th.answer.frame);
   };
   const threatRows = shown.flatMap((p) => {
-    const list = threats(k0, p.slot, raceOf(p.slot), cx.opponents(p.slot));
+    const like = raceOf(p.slot);
+    const list = threats(k0, p.slot, like, cx.opponents(p.slot));
     if (!list.length) return [];
     return [
       el("tr", {}, el("th", { scope: "rowgroup", className: "afm-ti-group", colSpan: 4 }, el("span", { className: "afm-it-player" }, swatch(p.color), p.name))),
       ...list.map((th) => el("tr", {},
         el("th", { scope: "row" }, kindName(th)),
         go(el("td", {}, `${formatTime(th.made.frame)} · ${unit(th.made.type)}`), th.made.frame),
-        seenCell(th), answerCell(th))),
+        seenCell(th), answerCell(th, like !== null))),
     ];
   });
+  // A race that is none of the game's three has no answers here, and says why.
+  const raceNotes = shown.filter((p) => p.race && !isPlayed(p.race.id)).map((p) =>
+    el("p", { className: "afm-dim afm-it-note" }, t("{name} plays {race}, which is not one of the game's three races. Answers are known for Zerg, Terran and Protoss only.", { name: p.name, race: p.race!.label })));
   const threatSection = threatRows.length ? el("section", { className: "afm-it-section" },
-    el("h3", { className: "afm-sc-h" }, t("Seen and answered")),
+    el("h3", { className: "afm-sc-h" }, t("Seen and answered")), ...raceNotes,
     el("p", { className: "afm-dim afm-it-note" }, t("For the cloaked and the air units the opponents had: when they first had one (or the building that makes them), when the player first saw one, and the first answer the player started after that: detection against cloaked units, anti-air against air units. An answer started before seeing was guessed at, or scouted some other way. One the player had before the opponents had the threat at all is shown as already had.")),
     el("table", { className: "afm-it-table afm-ti-table afm-sc-table" },
       el("thead", {}, el("tr", {}, el("th", {}), el("th", { scope: "col" }, t("They had it")), el("th", { scope: "col" }, t("First seen")), el("th", { scope: "col" }, t("First answer")))),

@@ -12,6 +12,7 @@ import { NOT_MADE, WORKERS, buildings, counted, isBuilding } from "./played";
 import { incomeRate, supplyBlocks } from "./economy";
 import type { Durations } from "./tech";
 import type { Base } from "./story";
+import { DEPOTS } from "./roles";
 
 export const FRAME_SECONDS = 0.042;
 const seconds = (frame: number) => Math.round(frame * FRAME_SECONDS * 10) / 10;
@@ -44,8 +45,7 @@ const OPENING_STEPS = 18;
 const OPENING_UNTIL = frameOf(360);
 /** A supply block worth saying lasted this long (six seconds). */
 const BLOCK_SAID = frameOf(6);
-/** Command Center, Hatchery, Lair, Hive, Nexus; and what makes units: Barracks, Factory, Starport, Gateway, Stargate, Robotics Facility. */
-const HALL_TYPES = new Set([106, 131, 132, 133, 154]);
+/** What makes units: Barracks, Factory, Starport, Gateway, Stargate, Robotics Facility. (The halls, Lair and Hive among them, are `DEPOTS`.) */
 const PRODUCTION = new Set([111, 113, 114, 160, 167, 155]);
 /** Supply Depot, Refinery, Extractor, Pylon, Assimilator, Overlord: not news when the first goes down. */
 const ROUTINE = new Set([109, 110, 149, 156, 157, 42]);
@@ -186,8 +186,11 @@ export interface CastPlayer {
   /** The game's player number (`ReplayPlayer.index`), as the timeline names a player. */
   index: number;
   name: string;
-  /** 0 Zerg, 1 Terran, 2 Protoss. */
+  /** The race byte: 0 Zerg, 1 Terran, 2 Protoss; any other is one the game does not play (a mod's, say). */
   race: number;
+  /** A race that is not the game's three: its name (`Race 12` when it has none), and what it plays as (null: not known). */
+  raceName?: string;
+  like?: 0 | 1 | 2 | null;
   /** The frame the player left on, or null. */
   leftAt: number | null;
   /** The opening as ordered: units.dat ids of what was built, trained or morphed, research ids, in order. */
@@ -237,6 +240,22 @@ export function castCards(game: CastGame): CastCard[] {
 }
 
 const RACES = ["Zerg", "Terran", "Protoss"] as const;
+/** A race that is not one of the game's three, as the commentators are told it: its true name and what it plays as. */
+const otherRace = (p: CastPlayer) => p.raceName ?? `Race ${p.race}`;
+/** The race the server's list of players takes (it knows the game's three only): the race itself, or what it plays as; null when neither is known. */
+export const castRace = (p: CastPlayer): (typeof RACES)[number] | null => RACES[p.race] ?? (p.like === undefined || p.like === null ? null : RACES[p.like]);
+/**
+ * Whether the server can be sent a cast of a game with these players: its list of players takes Zerg, Terran or
+ * Protoss only, so at least one player's race must be one of them or play as one known.
+ */
+export const castable = (players: readonly CastPlayer[]): boolean => players.some((p) => castRace(p) !== null);
+
+/** A player's race in words: "Terran", or "Vorn, a race the game does not have, which plays as Terran". */
+export function raceWords(p: CastPlayer): string {
+  if (RACES[p.race]) return RACES[p.race];
+  const like = castRace(p);
+  return like ? `${otherRace(p)}, a race the game does not have, which plays as ${like}` : `${otherRace(p)}, a race the game does not have; what it plays as is not known`;
+}
 const clock = (frame: number) => { const s = Math.round(frame * FRAME_SECONDS); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 const plural = (n: number, word: string) => (n === 1 ? `1 ${word}` : `${n} ${word}`);
 const worth = (v: number) => (v >= 1000 ? `${(Math.round(v / 100) / 10).toFixed(1)}k` : String(Math.round(v / 10) * 10));
@@ -261,6 +280,8 @@ export function unitsByType(t: ReplayTimeline, frame: number): Map<number, Map<n
 
 /** The facts of a moment and the ones before it, written for the commentators. */
 export function castInput(game: CastGame, clips: readonly Clip[], wishes?: string, options?: CastOptions): CastInput {
+  // (The server refuses an empty list of players: the plugin says why before it gets here, `castable`.)
+  if (!castable(game.players)) throw new Error("No player's race is Zerg, Terran or Protoss, or plays as one that is known.");
   const t = game.timeline;
   // One name for a unit whatever mode it is in: a Siege Tank is a Siege Tank, sieged or not.
   const n: CastNames = { ...game.names, unit: (id) => game.names.unit(id).replace(/\s*\([^)]*\)\s*$/, "") };
@@ -300,7 +321,7 @@ export function castInput(game: CastGame, clips: readonly Clip[], wishes?: strin
       out.push(`${p.name} at ${clock(frame)}: supply ${q.supplyUsed[i] ?? 0}/${q.supplyMax[i] ?? 0}, ${q.workers[i] ?? 0} workers${income}, ${q.minerals[i] ?? 0} minerals and ${q.gas[i] ?? 0} gas in the bank`);
       const have = new Map<number, number>();
       for (const b of built) if (b.owner === p.index && b.done !== null && b.done <= frame && (b.to === null || b.to > frame) && !ROUTINE.has(b.type)) have.set(b.type, (have.get(b.type) ?? 0) + 1);
-      const rank = (type: number) => (HALL_TYPES.has(type) ? 0 : PRODUCTION.has(type) ? 1 : 2);
+      const rank = (type: number) => (DEPOTS.has(type) ? 0 : PRODUCTION.has(type) ? 1 : 2);
       const list = [...have].sort((a, b) => rank(a[0]) - rank(b[0]) || b[1] - a[1]).map(([type, k]) => `${k} ${n.unit(type)}`);
       if (list.length) out.push(`${p.name}'s buildings: ${list.join(", ")}`);
       const levels = new Map<string, number>();
@@ -342,7 +363,7 @@ export function castInput(game: CastGame, clips: readonly Clip[], wishes?: strin
     }).slice(0, OPENING_STEPS);
     if (!steps.length) return null;
     const what = (s: CastPlayer["build"][number]) => (s.kind === "upgrade" ? n.upgrade(s.id) : s.kind === "tech" ? n.tech(s.id) : n.unit(s.id));
-    return `${p.name} (${RACES[p.race] ?? "Terran"}), supply and time of each order: ${steps.map((s) => `${q ? `${q.supplyUsed[sample(s.frame)] ?? 0} ` : ""}${what(s)} (${clock(s.frame)})`).join(", ")}`;
+    return `${p.name} (${raceWords(p)}), supply and time of each order: ${steps.map((s) => `${q ? `${q.supplyUsed[sample(s.frame)] ?? 0} ` : ""}${what(s)} (${clock(s.frame)})`).join(", ")}`;
   };
 
   const happened = (from: number, to: number) => {
@@ -411,9 +432,9 @@ export function castInput(game: CastGame, clips: readonly Clip[], wishes?: strin
       if (!g) groups.set(k, (g = { frame: e.frame, player: e.owner, by, byType, types: new Map() }));
       g.types.set(e.type, (g.types.get(e.type) ?? 0) + 1);
       const first = `${e.owner}:${n.unit(e.type)}`;
-      if (!lostBefore.has(first) && !WORKERS.has(e.type) && (!isBuilding(e.type) || HALL_TYPES.has(e.type))) {
+      if (!lostBefore.has(first) && !WORKERS.has(e.type) && (!isBuilding(e.type) || DEPOTS.has(e.type))) {
         lostBefore.add(first);
-        out.push({ frame: e.frame, text: HALL_TYPES.has(e.type) ? `${nameOf(e.owner)}'s ${n.unit(e.type)} is destroyed` : `the first ${n.unit(e.type)} ${nameOf(e.owner)} has lost` });
+        out.push({ frame: e.frame, text: DEPOTS.has(e.type) ? `${nameOf(e.owner)}'s ${n.unit(e.type)} is destroyed` : `the first ${n.unit(e.type)} ${nameOf(e.owner)} has lost` });
       }
     }
     for (const g of groups.values()) {
@@ -483,6 +504,8 @@ export function castInput(game: CastGame, clips: readonly Clip[], wishes?: strin
     const at = (frame: number) => Math.round(((Math.max(c.from, frame) - c.from) * FRAME_SECONDS * 10) / speed) / 10;
     const since = i ? clips[i - 1].to : 0;
     const before: string[] = [];
+    // (The players' list says the game's three races only: a race that is none of them is told here, at the start.)
+    if (i === 0) for (const p of game.players) if (!RACES[p.race]) before.push(`${p.name} plays ${raceWords(p)}${castRace(p) ? `; the list of players says ${castRace(p)} for it` : "; the list of players leaves them out"}`);
     for (const h of [...happened(since, c.from), ...blocks(since, c.from)].sort((a, b) => a.frame - b.frame)) before.push(`${clock(h.frame)} ${h.text}`);
     const state = fast && i > 0 ? [] : standing(c.from);
     const l = lead(c.from);
@@ -521,8 +544,9 @@ export function castInput(game: CastGame, clips: readonly Clip[], wishes?: strin
     game: {
       map: game.map.trim(),
       length: seconds(t.frames),
-      players: game.players.map((p) => ({
-        id: p.index, name: p.name, race: RACES[p.race] ?? "Terran",
+      // (A player whose race is none of the game's three and plays as none known cannot be listed: the moments name them.)
+      players: game.players.filter((p) => castRace(p) !== null).map((p) => ({
+        id: p.index, name: p.name, race: castRace(p)!,
         result: game.winner === null ? (p.leftAt !== null ? "left" : "unknown") : p.index === game.winner ? "won" : p.leftAt !== null ? "left" : "lost",
       })),
       openings: game.players.map(opening).filter((o): o is string => o !== null),

@@ -12,6 +12,7 @@ import type { ReplayTimeline } from "./vendor/scm-sim";
 import type { Fight } from "./fights";
 import { WORKERS, counted, isBuilding, type UnitIndex } from "./played";
 import type { Base } from "./story";
+import { TOWN_HALLS } from "./roles";
 
 /** Units this near each other are one group (eight tiles, by squares of that size touching). */
 const GROUP_CELL = 256;
@@ -34,8 +35,6 @@ const ARMY_HOLD = 8;
 const BETTER = 1.4;
 /** A shot shorter than this many samples is left out: the camera goes straight to the next. */
 const MIN_SHOT = 3;
-/** Command Center, Hatchery, Nexus. */
-const HALLS = new Set([106, 131, 154]);
 
 export type ShotKind = "fight" | "meeting" | "base" | "army" | "home";
 
@@ -117,7 +116,7 @@ export function direct(t: ReplayTimeline, index: UnitIndex, fights: readonly Fig
   const homes = new Map<number, { x: number; y: number }>();
   for (const e of t.events) {
     if (e.frame > 0) break;
-    if (e.kind === "born" && HALLS.has(e.type) && e.owner <= 7 && !homes.has(e.owner)) homes.set(e.owner, { x: e.x, y: e.y });
+    if (e.kind === "born" && TOWN_HALLS.has(e.type) && e.owner <= 7 && !homes.has(e.owner)) homes.set(e.owner, { x: e.x, y: e.y });
   }
 
   const candidates = (i: number, frame: number, previous: Map<number, Group>): Candidate[] => {

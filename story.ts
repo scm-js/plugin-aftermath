@@ -8,9 +8,8 @@
 import type { PlayerSeries, ReplayTimeline } from "./vendor/scm-sim";
 import { merged, type Fight } from "./fights";
 import { counted, lineAt, type MineralLines, type Standing } from "./played";
+import { TOWN_HALLS } from "./roles";
 
-/** Command Center, Hatchery, Nexus. */
-const HALLS = new Set([106, 131, 154]);
 /** A player leads once ahead by this share of the bigger army, and by at least this much (or this many units). */
 const LEAD = 0.1;
 const MIN_LEAD_VALUE = 300;
@@ -78,10 +77,12 @@ export interface Base {
   line: number;
   /** Which base it was for the player: 2 is the first after the start. */
   nth: number;
+  /** The hall it was taken with, by units.dat id, where known. */
+  type?: number;
 }
 
 /** A Command Center the replay's orders landed: where its middle came down, and when the order was given. */
-export interface Landing { player: number; frame: number; x: number; y: number }
+export interface Landing { player: number; frame: number; x: number; y: number; type?: number }
 
 /**
  * The bases each player took after the start: the first time they had a hall at a mineral line that was not their
@@ -90,7 +91,7 @@ export interface Landing { player: number; frame: number; x: number; y: number }
  */
 export function bases(standing: readonly Standing[], minerals: MineralLines, landings: readonly Landing[] = []): Base[] {
   const arrivals = [
-    ...standing.filter((b) => HALLS.has(b.type) && b.owner <= 7 && (b.from === 0 || b.done !== null)).map((b) => ({ player: b.owner, frame: b.from, x: b.x, y: b.y })),
+    ...standing.filter((b) => TOWN_HALLS.has(b.type) && b.owner <= 7 && (b.from === 0 || b.done !== null)).map((b): Landing => ({ player: b.owner, frame: b.from, x: b.x, y: b.y, type: b.type })),
     ...landings,
   ].sort((a, b) => a.frame - b.frame);
   const out: Base[] = [];
@@ -103,7 +104,7 @@ export function bases(standing: readonly Standing[], minerals: MineralLines, lan
     if (mine.has(line)) continue;
     mine.add(line);
     if (a.frame === 0) continue;
-    out.push({ player: a.player, frame: a.frame, x: a.x, y: a.y, line, nth: out.filter((o) => o.player === a.player).length + 2 });
+    out.push({ player: a.player, frame: a.frame, x: a.x, y: a.y, line, nth: out.filter((o) => o.player === a.player).length + 2, ...(a.type !== undefined ? { type: a.type } : {}) });
   }
   return out;
 }

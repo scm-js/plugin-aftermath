@@ -45,12 +45,14 @@ import { cameraTrack, trackAt, type CameraTrack } from "./camera";
 import { advantage, bases as takenBases, hardestHit, leads, story, totals, type Advantage, type Base, type PlayerTotals } from "./story";
 import type { FightResult, ReplayDataSet, ReplayTimeline, ScmSimService, ViewHover, ViewHoverUnit } from "./vendor/scm-sim";
 import { GameView } from "./gameview";
-import { castCards, castInput, castSegments, estimate, highlightClips, schedule, type CastCard, type CastGame, type CastInput, type CastLine, type CastOptions, type Schedule } from "./cast";
+import { castable, castCards, castInput, castSegments, estimate, highlightClips, schedule, type CastCard, type CastGame, type CastInput, type CastLine, type CastOptions, type Schedule } from "./cast";
 import type { Durations } from "./tech";
 import { Reel } from "./castplay";
 import { CastStore, KEEP_BYTES, KEEP_CASTS, batches, castKey, estimate as castEstimate, readStream, replayKey, writingProgress, type KeptCast, type Writing } from "./castmake";
 import type { ScmjsAccountService } from "./vendor/scmjs-dev";
 import { InsightView, type InsightGame, type Metric as InsightMetric, type Resource } from "./insight";
+import { canName, declare, editorSources, isPlayed, labelOf, letterFiles, nameCandidates, namedRow, RACE_LETTERS, RACE_NAME_MAX, raceView, type DataSetRace, type NamedRace, type RaceEditor, type RaceView } from "./races";
+import { rolesOf, useRoles } from "./roles";
 
 /* ── State ──────────────────────────────────────────────── */
 
@@ -199,7 +201,8 @@ const SENT: ReadonlySet<ClickKind> = new Set(["move", "attack", "patrol", "abili
 /** Marks English kept in a table or registered with the editor, for `tests/ko.test.ts` to find; it is translated where shown. */
 const msg = (text: string) => text;
 
-const RACES = [msg("Zerg"), msg("Terran"), msg("Protoss")];
+/** The game's eight race bytes (`races.ts`'s `GAME_RACE_NAMES`): 0–2 the races it plays, then its others. */
+const RACES = [msg("Zerg"), msg("Terran"), msg("Protoss"), msg("Independent"), msg("Neutral"), msg("User Selectable"), msg("Random"), msg("Inactive")];
 /** The tilesets by the map's ERA number, for the signs of a mod's terrain. */
 const TILESETS = [msg("Badlands"), msg("Space Platform"), msg("Installation"), msg("Ash World"), msg("Jungle"), msg("Desert"), msg("Ice"), msg("Twilight")];
 
@@ -240,8 +243,6 @@ const MOMENT_FRAMES = FRAMES_PER_MINUTE / 30;
 const MAX_MOMENTS = 4;
 /** What a side lost, by type, the most first: this many icons, then a count of the rest. */
 const MAX_LOST_TYPES = 6;
-/** A race's town hall, for a base taken: Hatchery, Command Center, Nexus. */
-const HALLS: Record<number, number> = { 0: 131, 1: 106, 2: 154 };
 
 const FIGHT_KINDS: Record<FightKind, string> = { battle: msg("Battle"), workers: msg("Workers killed"), buildings: msg("Buildings destroyed") };
 
@@ -399,6 +400,8 @@ const STYLE = `
 .afm .afm-player.afm-off { opacity: 0.4; }
 .afm .afm-player .afm-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .afm .afm-player .afm-race { color: var(--text-dim, #99a2b3); margin-left: 4px; }
+.afm .afm-player .afm-race .afm-link { margin-left: 6px; font-size: 11px; }
+.afm-name-race .afm-choices { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
 .afm .afm-player .afm-live { font-variant-numeric: tabular-nums; color: var(--text-dim, #99a2b3); white-space: nowrap; }
 .afm .afm-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
 .afm .afm-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border, #3a4150); }
@@ -538,6 +541,143 @@ export function activate(api: PluginApi) {
     upgrade: (id: number) => (ownData(current) ? api.names.upgrade(id) : t("Upgrade {id}", { id })),
     tech: (id: number) => (ownData(current) ? api.names.tech(id) : t("Technology {id}", { id })),
   };
+  /*
+   * A player's race: the replay's own tag names a race its data set adds, else the editor's data set does (when it is
+   * the replay's), else it reads "Race 12". What it plays as is declared beside the name, or worked out from the
+   * player's units by the units table's group flags (`races.ts`).
+   */
+  /** The editor as a race is named by: its race calls, which an editor from before November 2026 has not got, are looked for. */
+  const raceEditor = api as unknown as RaceEditor;
+  /** Bumped when a race may be named or play as something else: the data set changed, a race was named, the language. */
+  let raceRevision = 0;
+  const raceCache = new WeakMap<Loaded, { key: string; races: Map<number, NamedRace> }>();
+  /** A player's race in `entry` (`index`: the player's number), named and with what it plays as. */
+  function raceOf(entry: Loaded | null, player: { index: number; race: number }): NamedRace {
+    const key = `${raceRevision}:${entry?.played ? 1 : 0}:${entry?.mod?.dataSet.hash ?? ""}`;
+    let cached = entry ? raceCache.get(entry) : undefined;
+    if (entry && cached?.key !== key) raceCache.set(entry, (cached = { key, races: new Map() }));
+    const hit = cached?.races.get(player.index);
+    if (hit && hit.id === player.race) return hit;
+    const own = ownData(entry);
+    const view = raceView(player.race, {
+      tag: entry?.mod?.dataSet.races,
+      ...(own ? editorSources(raceEditor) : {}),
+      groupFlags: own ? api.data.units()?.groupFlags ?? null : null,
+      units: () => unitsOf(entry, player.index),
+    });
+    const named: NamedRace = { ...view, label: raceLabel(view) };
+    cached?.races.set(player.index, named);
+    return named;
+  }
+  /** A race as shown: the game's names translated, a declared one as it is, else "Race 12". */
+  const raceLabel = (r: RaceView) => labelOf(r, translate, (n) => t("Race {n}", { n }));
+  /** What the game's race `like` is called, translated. */
+  const likeLabel = (like: 0 | 1 | 2) => translate(RACES[like]);
+  /** What a race that is not one of the game's three plays as, in a few words, and how that is known. */
+  const playsAsText = (r: RaceView) => r.like === null ? t("What this race plays as is not known")
+    : r.from === "declared" ? t("Plays as {race}, as the data set says", { race: likeLabel(r.like) })
+    : t("Plays as {race}, by the units it had", { race: likeLabel(r.like) });
+  /** The units a player built, trained or morphed by their orders, and once played through, every unit they had. */
+  function* unitsOf(entry: Loaded | null, index: number): Generator<number> {
+    const p = entry?.report.players.find((x) => x.player.index === index);
+    for (const s of p?.build ?? []) if (s.kind === "build" || s.kind === "train" || s.kind === "morph") yield s.id;
+    for (const e of entry?.played?.timeline.events ?? []) if ((e.kind === "born" || e.kind === "morph") && e.owner === index) yield e.type;
+  }
+  /** The workers and halls by the units table when the editor has the replay's own, else the game's. True when they changed. */
+  const refreshRoles = () => useRoles(ownData(current) ? rolesOf(api.data.units()?.flags) : null);
+  /** Something a race is shown by may have changed: the views show it again. */
+  function racesChanged(): void {
+    raceRevision++;
+    refreshRoles();
+    side?.render();
+    strip?.render();
+    refreshInsight();
+    redraw();
+  }
+
+  /** A player's race beside their name: one the game does not play says what it plays as, and one with no name offers to be named. */
+  function raceNode(entry: Loaded, player: { index: number; race: number; name: string }): HTMLElement {
+    const r = raceOf(entry, player);
+    const node = el("span", { className: "afm-race" }, r.label);
+    if (!isPlayed(r.id)) node.title = playsAsText(r);
+    if (canName(r, raceEditor, ownData(entry))) {
+      const b = el("button", { className: "afm-link", type: "button", title: t("Give this race a name for the data set in use") }, t("Name this race…"));
+      b.addEventListener("click", (e) => { e.stopPropagation(); void nameRace(player, r); });
+      node.append(b);
+    }
+    return node;
+  }
+
+  /**
+   * Names the data set's files hint at for a race (`races.ts`): strings its `rez\network.tbl` has past the game's own,
+   * and letters its per-race files go by. No names when the game's own table cannot be read beside the data set's.
+   */
+  async function raceHints(taken: readonly DataSetRace[]): Promise<{ names: string[]; letters: string[] }> {
+    const gd = api.gameData;
+    if (typeof gd?.read !== "function" || typeof gd.storedPath !== "function") return { names: [], letters: [] };
+    const read = (member: string, under = false) => gd.read(gd.storedPath(member), under ? { under: true } : undefined).catch(() => null);
+    const [mine, game] = await Promise.all([read("rez\\network.tbl"), read("rez\\network.tbl", true)]);
+    const names = nameCandidates(mine, game, taken.map((r) => r.name));
+    const usedLetters = new Set(taken.map((r) => r.letter).filter(Boolean));
+    const found = await Promise.all(RACE_LETTERS.filter((l) => !usedLetters.has(l)).map(async (l) => {
+      for (const file of letterFiles(l)) if (await read(file)) return l;
+      return null;
+    }));
+    return { names, letters: found.filter((l): l is string => l !== null) };
+  }
+
+  /**
+   * Ask the person to name a race the data set in use adds: a name (the data set's hints one click away), its letter,
+   * and what it plays as (what its units say, to start with). Kept with the data set by `gameData.setRaces`; nothing is
+   * named unless the person confirms.
+   */
+  async function nameRace(player: { race: number; name: string }, r: RaceView): Promise<void> {
+    const hints = await raceHints(editorSources(raceEditor).editor ?? []);
+    const name = w.text({ placeholder: t("Name") });
+    name.maxLength = RACE_NAME_MAX;
+    const letter = w.text({ placeholder: t("None") });
+    letter.maxLength = 1;
+    const plays = w.select([{ value: "", label: t("Not known") }, ...([0, 1, 2] as const).map((k) => ({ value: String(k), label: likeLabel(k) }))], { value: r.like === null ? "" : String(r.like) });
+    const choices = (list: readonly string[], field: HTMLInputElement) => list.length
+      ? el("div", { className: "afm-choices" }, ...list.map((v) => w.button(v, { ghost: true, onClick: () => { field.value = v; field.focus(); } })))
+      : null;
+    api.ui.dialog({
+      title: t("Name this race"),
+      size: "sm",
+      mount: (body) => {
+        body.append(el("div", { className: "afm-name-race" },
+          el("p", {}, t("{player} plays race {n}, which the data set in use adds. A name given here is kept with the data set, and shown for every replay played with it.", { player: plainText(player.name), n: r.id })),
+          w.form([
+            { label: t("Name"), field: el("div", {}, name, choices(hints.names, name)) },
+            { label: t("Letter of its files"), field: el("div", {}, letter, choices(hints.letters, letter)) },
+            { label: t("Plays as"), field: plays },
+          ]),
+          hints.names.length ? w.hint(t("The names offered are ones the data set's files have past the game's own. They are suggestions: check them.")) : null,
+          r.from === "units" ? w.hint(t("What it plays as is worked out from the units the player had.")) : null));
+        name.focus();
+      },
+      buttons: [
+        { label: t("Cancel") },
+        {
+          label: t("Name"), primary: true,
+          run: () => {
+            const row = namedRow(r.id, name.value, letter.value, plays.value);
+            if (row === "name") { name.focus(); return false; }
+            if (row === "letter") {
+              api.ui.toast({ kind: "warn", title: t("A letter is one of a to z, other than z, t, p and n") });
+              letter.focus();
+              return false;
+            }
+            let kept: unknown = null;
+            try { kept = declare(raceEditor, row); } catch (err) { api.log("Aftermath: naming a race,", err); }
+            if (!kept) api.ui.toast({ kind: "warn", title: t("The race could not be named"), detail: t("The data set in use keeps no names for races.") });
+            racesChanged();
+          },
+        },
+      ],
+    });
+  }
+
   /** A mod's folder being read to attach, and how far. */
   let attaching: { entry: Loaded; done: number; of: number } | null = null;
 
@@ -626,10 +766,14 @@ export function activate(api: PluginApi) {
     return null;
   };
 
+  /** The name the editor's data set gives a race byte that is none of the game's (a replay with the sign names no mod), or null. */
+  const raceNamed = (race: number) => raceView(race, editorSources(raceEditor)).name;
   /** The signs that a replay was played with a mod, in words: "its map uses Jungle tile group 3734, and StarCraft's last is 2045". */
   function signsText(signs: readonly ModSign[]): string {
     return signs.map((sign) => sign.kind === "terrain"
       ? t("its map uses {tileset} tile group {group}, and the last StarCraft has, in Remastered, is {last}", { tileset: translate(TILESETS[sign.tileset]), group: sign.group, last: sign.last })
+      : raceNamed(sign.race)
+      ? t("{player}'s race is {name} ({race}), which is none of the game's", { player: plainText(sign.player), name: raceNamed(sign.race)!, race: sign.race })
       : t("{player}'s race is {race}, which is none of the game's", { player: plainText(sign.player), race: sign.race })).join("; ");
   }
 
@@ -945,7 +1089,7 @@ export function activate(api: PluginApi) {
       if (files.length) api.ui.toast({ kind: "warn", title: t("Not a replay"), detail: t("Aftermath opens StarCraft replays, files ending in .rep.") });
       return;
     }
-    void api.data.load();
+    void api.data.load().then(() => racesChanged());
     void api.graphics.load();
     const batch: Loaded[] = [];
     for (const file of reps) {
@@ -954,6 +1098,8 @@ export function activate(api: PluginApi) {
         const replay = await parseReplay(bytes);
         const id = nextId++, map = readChk(replay.chk);
         const group = [...loaded, ...batch].find((l) => likeness(map, l.map) >= SAME_MAP)?.group ?? id;
+        // (The bases its orders took go by the halls of the units table it was played with, where the editor has it loaded.)
+        useRoles(!replay.mod || api.gameData?.source?.()?.hash === replay.mod.dataSet.hash ? rolesOf(api.data.units()?.flags) : null);
         batch.push({ id, fileName: file.name, report: analyse(replay), map, bytes, docId: null, group, excluded: false, frame: 0, hidden: new Set(), played: null, failed: null, eyes: null, again: null, mod: replay.mod ?? null, ...(replay.mod ? { dataSet: replayDataSet(replay.mod) } : {}), signs: replay.mod ? [] : modSigns(replay.players, map) });
       } catch (err) {
         const detail = err instanceof ReplayError ? translate(err.message) : String(err);
@@ -1513,7 +1659,12 @@ export function activate(api: PluginApi) {
     return {
       map: plainText(entry.report.replay.header.mapName),
       timeline: done.timeline,
-      players: players.map((p) => ({ index: p.player.index, name: p.player.name, race: p.player.race, leftAt: p.leftAt, build: p.build })),
+      players: players.map((p) => {
+        // (A race that is none of the game's three goes by its true name, never as a Terran; the commentators speak English.)
+        const r = raceOf(entry, p.player);
+        const other = isPlayed(r.id) ? {} : { raceName: r.name ?? `Race ${r.id}`, like: r.like };
+        return { index: p.player.index, name: p.player.name, race: p.player.race, ...other, leftAt: p.leftAt, build: p.build };
+      }),
       fights: done.fights,
       bases: done.bases,
       winner: winnerOf(players.map((p) => ({ index: p.player.index, left: p.leftAt !== null })), done.standing),
@@ -1523,6 +1674,19 @@ export function activate(api: PluginApi) {
       },
       durations,
     };
+  }
+
+  /**
+   * Why no cast can be made of this game, in words, or null when one can: the server is told each player's race as
+   * Zerg, Terran or Protoss, so a game whose every player plays a race that is none of them, playing as one not known,
+   * cannot be sent.
+   */
+  function castBlocked(entry: Loaded): string | null {
+    const tl = entry.played?.timeline;
+    const players = entry.report.players.filter((p) => !tl || tl.samples.players.some((q) => q.slot === p.player.index));
+    const races = players.map((p) => raceOf(entry, p.player));
+    if (castable(races.map((r) => ({ index: 0, name: "", race: r.id, like: r.like, leftAt: null, build: [] })))) return null;
+    return t("A cast cannot be made of this game. The commentators are told each player's race as Zerg, Terran or Protoss, and what {races} plays as cannot be told.", { races: [...new Set(races.map((r) => r.label))].join(", ") });
   }
 
   /** The stretches a cast of this replay would have, in this format. */
@@ -1566,6 +1730,8 @@ export function activate(api: PluginApi) {
       if (!m.script) {
         const clips = clipsOf(entry, options.format);
         if (!clips.length) throw new Error(t("This game has no key moments to cast."));
+        const blocked = castBlocked(entry);
+        if (blocked) throw new Error(blocked);
         const game = await castGameOf(entry);
         const input = castInput(game, clips, notes.trim() || undefined, options);
         input.seed = Math.floor(Math.random() * 2_000_000_000);
@@ -1825,6 +1991,9 @@ export function activate(api: PluginApi) {
           const cardsPick = w.checkbox(t("Show upgrades and units on screen"), { value: settings.castCards, onChange: (v) => { settings.castCards = v; save(); redraw(); } });
           const notesField = w.text({ value: notes, placeholder: t("Optional: a language, a tone, what to talk about more…"), onChange: (v) => { notes = v.slice(0, 300); settings.castNotes = notes; save(); update(); } });
           const make = w.button(t("Make cast"), { primary: true, onClick: () => { void makeCast(entry, { format, banter }, voiced, notes); } });
+          // (A game no player of which can be told to the server is said so here, and not sent.)
+          const blocked = castBlocked(entry);
+          if (blocked) make.disabled = true;
           const keptRows = kept.map((k: KeptCast) => {
             const label = [k.options.format === "game" ? t("Whole game") : t("Key moments"), k.options.banter === "off" ? t("No banter") : k.options.banter === "lots" ? t("Lots of banter") : t("Some banter"), k.voiced ? t("Voiced") : t("Captions only")].join(" · ");
             const watch = w.button(t("Watch"), { primary: true, onClick: async () => {
@@ -1854,6 +2023,7 @@ export function activate(api: PluginApi) {
               ]),
               ...(!offer?.speech ? [w.hint(t("This server has no voices set up: the cast is shown as captions."))] : []),
               estimateLine,
+              ...(blocked ? [el("p", { className: "afm-cast-error" }, blocked)] : []),
               w.row(make)),
           );
         };
@@ -1992,9 +2162,9 @@ export function activate(api: PluginApi) {
   }
   document.addEventListener("fullscreenchange", onFullscreen);
 
-  /** A race of the replay's players (0 zerg, 1 terran, 2 protoss), at random; null when none is known. */
+  /** A race of the replay's players (0 zerg, 1 terran, 2 protoss), at random, a race the game does not have by what it plays as; null when none is known. */
   function musicRace(entry: Loaded): number | null {
-    const races = [...new Set(entry.report.players.map((p) => p.player.race).filter((r) => r >= 0 && r <= 2))];
+    const races = [...new Set(entry.report.players.map((p) => raceOf(entry, p.player).like).filter((r) => r !== null))];
     return races.length ? races[Math.floor(Math.random() * races.length)] : null;
   }
 
@@ -2011,7 +2181,7 @@ export function activate(api: PluginApi) {
     grad.addColorStop(0, "rgba(6,8,12,0.92)"); grad.addColorStop(1, "rgba(6,8,12,0.72)");
     ctx.fillStyle = grad; ctx.fillRect(0, 0, W, h);
     const i = tl ? sampleAt(tl.samples.frame, frame) : -1;
-    const race = (r: number) => (r === 0 ? t("Zerg") : r === 1 ? t("Terran") : t("Protoss"));
+    const race = (p: PlayerReport["player"]) => raceOf(entry, p).label;
     const side = (p: PlayerReport, right: boolean) => {
       const q = tl?.samples.players.find((s) => s.slot === p.player.index);
       const x = right ? W - 24 : 24;
@@ -2021,8 +2191,8 @@ export function activate(api: PluginApi) {
       ctx.fillText(p.player.name, x, 25);
       ctx.font = "600 12px system-ui, sans-serif"; ctx.fillStyle = p.player.color;
       const stats = q && i >= 0
-        ? `${race(p.player.race)} · ${t("Supply {used}/{max}", { used: supplyShown(q.supplyUsed[i] ?? 0), max: supplyShown(q.supplyMax[i] ?? 0) })} · ${t("{n} workers", { n: q.workers[i] ?? 0 })} · ${t("army {value}", { value: number(q.armyValue[i] ?? 0) })}`
-        : race(p.player.race);
+        ? `${race(p.player)} · ${t("Supply {used}/{max}", { used: supplyShown(q.supplyUsed[i] ?? 0), max: supplyShown(q.supplyMax[i] ?? 0) })} · ${t("{n} workers", { n: q.workers[i] ?? 0 })} · ${t("army {value}", { value: number(q.armyValue[i] ?? 0) })}`
+        : race(p.player);
       ctx.fillText(stats, x, 45);
     };
     if (players.length >= 1) side(players[0], false);
@@ -2271,13 +2441,15 @@ export function activate(api: PluginApi) {
       // (The costs come from the game's unit table, when the editor has the game's data.)
       await api.data.load();
       const units = api.data.units();
+      // (Workers and halls by the units table the replay was played with, where the editor has it.)
+      useRoles(ownData(entry) ? rolesOf(units?.flags) : null);
       // A Zergling or a Scourge is half of what units.dat asks, which is the price of the pair from one egg.
       const cost = (type: number) => (units ? ((units.mineralCost[type] ?? 0) + (units.vespeneCost[type] ?? 0)) / (TWINS.has(type) ? 2 : 1) : 0);
       const index = unitIndex(timeline);
       // A Command Center flown to a base comes down where its Land order put it (the engine's timeline does not follow a building in the air).
       const landings = entry.report.players.flatMap((p) => p.placements.filter((pl) => pl.landed && TOWN_HALLS.has(pl.unit)).map((pl) => {
         const size = api.palette.unitSize(pl.unit);
-        return { player: p.player.index, frame: pl.frame, x: pl.tx * 32 + size.width / 2, y: pl.ty * 32 + size.height / 2 };
+        return { player: p.player.index, frame: pl.frame, x: pl.tx * 32 + size.width / 2, y: pl.ty * 32 + size.height / 2, type: pl.unit };
       }));
       const standing = standingBuildings(timeline), fights = findFights(timeline, cost, index), taken = takenBases(standing, mineralLines(timeline), landings);
       entry.played = {
@@ -2879,8 +3051,7 @@ export function activate(api: PluginApi) {
       moment(r.frame, r.player, gameIcon(r.kind, r.id, r.player), r.kind === "upgrade" && r.level > 1 ? t("{name}, level {level}", { name, level: r.level }) : name);
     }
     for (const b of entry.played?.bases ?? []) {
-      const race = byIndex.get(b.player)?.player.race ?? 1;
-      moment(b.frame, b.player, gameIcon("unit", HALLS[race] ?? 106, b.player), t("Takes base {n}", { n: b.nth }));
+      moment(b.frame, b.player, b.type !== undefined ? gameIcon("unit", b.type, b.player) : null, t("Takes base {n}", { n: b.nth }));
     }
     for (const line of entry.report.chat) {
       const p = entry.report.players.find((x) => x.player.id === line.player);
@@ -2987,7 +3158,7 @@ export function activate(api: PluginApi) {
         lines: insightLines(tl),
         index: entry.played.index,
         map: tl.map,
-        players: entry.report.players.map((p) => ({ slot: p.player.index, name: p.player.name, color: p.player.color, leftAt: p.leftAt, hidden: entry.hidden.has(p.player.id), team: p.player.team })),
+        players: entry.report.players.map((p) => ({ slot: p.player.index, name: p.player.name, color: p.player.color, leftAt: p.leftAt, hidden: entry.hidden.has(p.player.id), team: p.player.team, race: raceOf(entry, p.player) })),
       },
     };
   }
@@ -3174,11 +3345,12 @@ export function activate(api: PluginApi) {
       if (own > 0) box.append(el("div", { className: "afm-dim" }, t("{n, plural, one {# command block is the mod's own and is not analysed.} other {# command blocks are the mod's own and are not analysed.}}", { n: own })));
       // (Play From Here and the Replay view play it with the mod, given the mod's hash and `live` (scm-sim 0.17.0); the
       // analysis too where the engine's page says "modAnalysis" (0.18.0), and its timeline says what it played with.)
-      box.append(w.hint(`${game.playsMods ? t("Play From Here and the Replay view play it with the mod.") : t("Play From Here plays it with the mod on the play page.")} ${this.modAnalysisLine(entry)} ${t("What is shown is the players' orders, and Aftermath's own rules for workers and town halls go by the game's unit ids, which a mod may give other units.")}`));
+      box.append(w.hint(`${game.playsMods ? t("Play From Here and the Replay view play it with the mod.") : t("Play From Here plays it with the mod on the play page.")} ${this.modAnalysisLine(entry)} ${ownData(entry) && rolesOf(api.data.units()?.flags) ? t("What is shown is the players' orders. Workers and town halls are the ones the mod's units table says.") : t("What is shown is the players' orders, and Aftermath's own rules for workers and town halls go by the game's unit ids, which a mod may give other units.")}`));
       this.root.append(box);
     }
 
     render(): void {
+      refreshRoles();
       this.root.replaceChildren();
       this.live = [];
       this.steps = [];
@@ -3212,7 +3384,7 @@ export function activate(api: PluginApi) {
         const readout = el("span", { className: "afm-live" });
         const line = el("div", { className: "afm-player" + (entry.hidden.has(p.player.id) ? " afm-off" : ""), title: entry.hidden.has(p.player.id) ? t("Show {name} on the map", { name: p.player.name }) : t("Hide {name} on the map", { name: p.player.name }) },
           el("span", { className: "afm-swatch", style: `background:${p.player.color}` }),
-          el("span", { className: "afm-name" }, p.player.name, el("span", { className: "afm-race" }, RACES[p.player.race] ? translate(RACES[p.player.race]) : t("Random"))),
+          el("span", { className: "afm-name" }, p.player.name, raceNode(entry, p.player)),
           readout,
         );
         line.addEventListener("click", () => {
@@ -4112,9 +4284,10 @@ export function activate(api: PluginApi) {
     redraw();
     strip?.update();
   });
-  api.events.on("language", () => { side?.render(); strip?.render(); });
-  // (Another data set in use: a mod's replay is named by its mod only while the editor draws with it.)
-  api.events.on("gameData", () => { side?.render(); strip?.render(); redraw(); });
+  api.events.on("language", () => racesChanged());
+  // (Another data set in use: a mod's replay is named by its mod only while the editor draws with it; its races and
+  // their names, its workers and halls, follow it. Its tables load after the event.)
+  api.events.on("gameData", () => { racesChanged(); void api.data.load().then(() => racesChanged()); });
 
   return () => {
     stop();

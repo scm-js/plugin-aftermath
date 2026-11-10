@@ -8,9 +8,8 @@ import type { ReplayTimeline } from "./vendor/scm-sim";
 import type { Fight } from "./fights";
 import type { Standing } from "./played";
 import type { Base } from "./story";
+import { TOWN_HALLS } from "./roles";
 
-/** Command Center, Hatchery, Nexus: what makes a place a base. */
-const HALLS = new Set([106, 131, 154]);
 /** Halls this near each other are one base (ten tiles); fights this near are one place (fifteen). */
 const SITE_RADIUS = 320;
 const SPOT_RADIUS = 480;
@@ -116,7 +115,7 @@ export function mapReport(games: readonly GameInput[], map: { width: number; hei
   games.forEach((game, g) => {
     // Where each player started: the hall they had at the first frame.
     const startOf = new Map<number, { x: number; y: number }>();
-    for (const b of game.standing) if (b.from === 0 && HALLS.has(b.type) && !startOf.has(b.owner)) startOf.set(b.owner, { x: b.x, y: b.y });
+    for (const b of game.standing) if (b.from === 0 && TOWN_HALLS.has(b.type) && !startOf.has(b.owner)) startOf.set(b.owner, { x: b.x, y: b.y });
     for (const [player, at] of startOf) {
       const s = siteAt(at.x, at.y);
       s.starts++;

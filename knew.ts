@@ -9,7 +9,7 @@
  * - `unseen`: their opponents' buildings that stood the longest before the player saw them.
  * - `armyInSight`: at each sample, the share of their opponents' army (by cost) the player could see.
  */
-import { isBuilding } from "./played";
+import { isBuilding, WORKERS } from "./played";
 import type { ReplayTimeline } from "./vendor/scm-sim";
 
 /** One stretch of a player seeing a unit, frames from–to; `by`, the player's unit that saw it first (null: none found). */
@@ -166,12 +166,15 @@ export interface Threat {
   already: { frame: number; type: number } | null;
 }
 
-/** Each kind of threat their opponents had, as `player` met it. `race`: the player's (0 Zerg, 1 Terran, 2 Protoss). */
-export function threats(k: Knowledge, player: number, race: number, them: ReadonlySet<number>): Threat[] {
+/**
+ * Each kind of threat their opponents had, as `player` met it. `race`: the player's (0 Zerg, 1 Terran, 2 Protoss),
+ * whose answers are looked for; null for any other (a race a data set adds has answers of its own), and none is found.
+ */
+export function threats(k: Knowledge, player: number, race: number | null, them: ReadonlySet<number>): Threat[] {
   const out: Threat[] = [];
   for (const kind of ["cloaked", "air"] as ThreatKind[]) {
     const tells = new Set([...THREATS[kind].units, ...THREATS[kind].buildings]);
-    const answers = new Set(ANSWERS[kind][race] ?? []);
+    const answers = new Set(race === null ? [] : ANSWERS[kind][race] ?? []);
     let made: Threat["made"] | null = null, seen: Threat["seen"] = null;
     const mine: { frame: number; type: number }[] = [];
     for (const [unit, l] of k.lives) {
@@ -239,7 +242,6 @@ export function unseen(k: Knowledge, t: ReplayTimeline, player: number, them: Re
 
 /** Not an army: larva, eggs, cocoon, what is fired or laid, spells that are units, and the Overlord (supply, not a fighter). */
 const NOT_ARMY = new Set([13, 14, 33, 35, 36, 42, 59, 73, 85, 97, 101, 105, 202]);
-const WORKER = new Set([7, 41, 64]);
 
 export interface ArmyInSight {
   frames: number[];
@@ -262,7 +264,7 @@ export function armyInSight(k: Knowledge, t: ReplayTimeline, player: number, the
       if (f < l.born) continue;
       if (l.died !== null && f >= l.died) break;
       const st = stateAt(l, f);
-      if (!st || !st.done || NOT_ARMY.has(st.type) || WORKER.has(st.type) || isBuilding(st.type)) continue;
+      if (!st || !st.done || NOT_ARMY.has(st.type) || WORKERS.has(st.type) || isBuilding(st.type)) continue;
       const c = cost(st.type);
       total[i] += c;
       if (seenAt(list, player, f)) seen[i] += c;

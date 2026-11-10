@@ -47,6 +47,7 @@ const FRAMES_PER_MINUTE = 60_000 / 42;
 const RESOURCES = new Set([176, 177, 178, 188]);
 /** High and Dark Templar: two become one Archon, and the one that is not kept leaves the game as a death nobody caused. */
 const MERGES = new Map([[67, 68], [61, 63]]);
+/** The game's worker of each race (0 Zerg, 1 Terran, 2 Protoss), for a player whose own workers the timeline does not show. */
 const WORKER_OF = [41, 7, 64];
 const fell = (e: UnitEvent, ignored: ReadonlySet<number>) => e.kind === "died" && e.owner <= 7 && e.type < 203 && !NOT_MADE.has(e.type) && !RESOURCES.has(e.type) && !ignored.has(e.unit);
 
@@ -156,14 +157,22 @@ export function fights(t: ReplayTimeline, cost: (type: number) => number, index:
   // Weighed by cost, or by count where nothing has one (no game data in the editor).
   const costed = t.events.some((e) => e.kind === "died" && cost(e.type) > 0);
   const weigh = (type: number) => (costed ? cost(type) : 1);
-  const races = new Map(t.players.map((p) => [p.slot, p.race] as const));
+  // A worker's cost: the player's own workers' (the first they had), the game's worker of their race, or any worker's.
+  const workerOf = new Map<number, number>();
+  let anyWorker: number | null = null;
+  for (const e of t.events) {
+    if (e.kind !== "born" || !WORKERS.has(e.type)) continue;
+    anyWorker ??= e.type;
+    if (!workerOf.has(e.owner)) workerOf.set(e.owner, e.type);
+  }
+  for (const p of t.players) if (!workerOf.has(p.slot) && WORKER_OF[p.race] !== undefined) workerOf.set(p.slot, WORKER_OF[p.race]);
   /** What a player had in the whole game at a frame: the army and the workers. */
   const hadAt = (player: number, frame: number) => {
     const q = t.samples.players.find((p) => p.slot === player);
     const i = sampleAt(t.samples.frame, frame);
     if (!q || i < 0) return 0;
-    const workers = q.workers[i] ?? 0, worker = WORKER_OF[races.get(player) ?? 1] ?? 7;
-    return costed ? (q.armyValue[i] ?? 0) + workers * cost(worker) : (q.army[i] ?? 0) + workers;
+    const workers = q.workers[i] ?? 0, worker = workerOf.get(player) ?? anyWorker;
+    return costed ? (q.armyValue[i] ?? 0) + (worker === null ? 0 : workers * cost(worker)) : (q.army[i] ?? 0) + workers;
   };
 
   const out: Fight[] = [];
