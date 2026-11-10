@@ -950,32 +950,253 @@ async function parseReplay(bytes, unzip = inflate) {
 var GAME_WORKERS = [7, 41, 64];
 var GAME_HALLS = [106, 131, 154];
 var GAME_DEPOTS = [106, 131, 132, 133, 154];
-var UNIT_FLAGS = { building: 1 << 0, worker: 1 << 3, depot: 1 << 12 };
+var UNIT_FLAGS = {
+  building: 1 << 0,
+  flyer: 1 << 2,
+  worker: 1 << 3,
+  subunit: 1 << 4,
+  cloakable: 1 << 9,
+  twins: 1 << 10,
+  depot: 1 << 12,
+  container: 1 << 13,
+  detector: 1 << 15,
+  permanentCloak: 1 << 22,
+  invincible: 1 << 29,
+  produces: 2147483648
+};
+var GROUP_FLAGS = { zerg: 1 << 0, terran: 1 << 1, protoss: 1 << 2, men: 1 << 3, building: 1 << 4 };
+var NO_WEAPON = 130;
+var NO_UNIT = 228;
 var WORKERS = new Set(GAME_WORKERS);
 var TOWN_HALLS = new Set(GAME_HALLS);
 var DEPOTS = new Set(GAME_DEPOTS);
-function rolesOf(flags) {
-  if (!flags) return null;
+var GAME_RESOURCES = [176, 177, 178, 188];
+var GAME_NOT_MADE = [13, 14, 33, 35, 36, 59, 73, 85, 97, 101, 105, 202];
+var range = (from, to) => Array.from({ length: Math.max(0, to - from + 1) }, (_, i) => from + i);
+var GAME_KINDS = {
+  game: true,
+  buildings: range(106, 201).filter((t) => !GAME_RESOURCES.includes(t)),
+  resources: GAME_RESOURCES,
+  minerals: [176, 177, 178],
+  counted: range(0, 202).filter((t) => !GAME_NOT_MADE.includes(t) && !GAME_RESOURCES.includes(t)),
+  notMade: GAME_NOT_MADE,
+  eggs: [36, 59, 97],
+  // The Overlord.
+  supplyOnly: [42],
+  // Pylon, Supply Depot, Refinery, Extractor, Assimilator, Creep Colony, Missile Turret, Bunker, Photon Cannon,
+  // Sunken Colony, Spore Colony.
+  quiet: [156, 109, 110, 149, 157, 143, 124, 125, 162, 146, 144],
+  // Barracks, Factory, Starport, Gateway, Stargate, Robotics Facility.
+  production: [111, 113, 114, 160, 167, 155],
+  // Supply Depot, Refinery, Extractor, Pylon, Assimilator, Overlord.
+  routine: [109, 110, 149, 156, 157, 42],
+  // In the order each race reaches them. Town halls, supply and defences are not here; a Lair and a Hive are, and a
+  // race's first gas and its first unit producer, since the timing of those is tech.
+  tech: [
+    // Barracks, Refinery, Academy, Factory, Machine Shop, Engineering Bay, Comsat Station, Starport, Control Tower,
+    // Armory, Science Facility, Covert Ops, Physics Lab, Nuclear Silo.
+    111,
+    110,
+    112,
+    113,
+    120,
+    122,
+    107,
+    114,
+    115,
+    123,
+    116,
+    117,
+    118,
+    108,
+    // Spawning Pool, Extractor, Evolution Chamber, Lair, Hydralisk Den, Spire, Queen's Nest, Hive, Defiler Mound,
+    // Ultralisk Cavern, Greater Spire, Nydus Canal.
+    142,
+    149,
+    139,
+    132,
+    135,
+    141,
+    138,
+    133,
+    136,
+    140,
+    137,
+    134,
+    // Gateway, Assimilator, Forge, Cybernetics Core, Citadel of Adun, Robotics Facility, Observatory, Robotics Support
+    // Bay, Stargate, Templar Archives, Fleet Beacon, Arbiter Tribunal.
+    160,
+    157,
+    166,
+    164,
+    163,
+    155,
+    159,
+    171,
+    167,
+    165,
+    169,
+    170
+  ],
+  // Zergling, Scourge.
+  twins: [37, 47],
+  // A sieged Siege Tank is a Siege Tank.
+  sameAs: [[30, 5]],
+  // High and Dark Templar: two become one Archon or Dark Archon.
+  merges: [[67, 68], [61, 63]],
+  // Drone, SCV, Probe.
+  workerOf: [41, 7, 64],
+  threats: {
+    // Dark Templar, Lurker and its egg, Arbiter; Templar Archives (Dark Templar), none for the Lurker (a Hydralisk Den is not one).
+    cloaked: { units: [61, 103, 97, 71], buildings: [165, 170] },
+    // Mutalisk, Guardian, Devourer, Wraith, Battlecruiser, Carrier, Scout, Arbiter; Spire, Greater Spire, Stargate, Fleet Beacon, Physics Lab.
+    air: { units: [43, 44, 62, 8, 12, 72, 70, 71], buildings: [141, 137, 167, 169, 118] }
+  },
+  answers: {
+    // Spore Colony; Missile Turret, Comsat Station, Science Vessel; Photon Cannon, Observatory, Observer.
+    cloaked: { byRace: { 0: [144], 1: [124, 107, 9], 2: [162, 159, 84] } },
+    // Spore Colony, Hydralisk Den, Hydralisk, Scourge, Spire, Mutalisk; Missile Turret, Armory, Goliath, Valkyrie, Wraith;
+    // Photon Cannon, Stargate, Corsair, Scout, Archon.
+    air: { byRace: { 0: [144, 135, 38, 47, 141, 43], 1: [124, 123, 3, 58, 8], 2: [162, 167, 60, 70, 68] } }
+  }
+};
+var GAME_TABLE = { types: 228, hash: 1842091904 };
+function tableHash(table) {
+  let h = 2166136261;
+  const n = table.flags.length;
+  for (const col of [table.flags, table.groupFlags, table.subunit, table.groundWeapon, table.airWeapon]) {
+    for (let i = 0; i < n; i++) {
+      h ^= (col[i] ?? 0) >>> 0;
+      h = Math.imul(h, 16777619) >>> 0;
+    }
+  }
+  return h >>> 0;
+}
+var isGameTable = (table) => table.flags.length === GAME_TABLE.types && tableHash(table) === GAME_TABLE.hash;
+function kindsOf(table) {
+  const n = table.flags.length;
+  const flag = (t, f) => (table.flags[t] >>> 0 & f) !== 0;
+  const group = (t, g) => ((table.groupFlags[t] ?? 0) & g) !== 0;
+  const weapon = (w) => w !== void 0 && w !== NO_WEAPON;
+  const turret = (t) => {
+    const s = table.subunit[t];
+    return s !== void 0 && s !== NO_UNIT && s !== t && s < n ? s : -1;
+  };
+  const hits = (t, air) => {
+    const col = air ? table.airWeapon : table.groundWeapon, s = turret(t);
+    return weapon(col[t]) || s >= 0 && weapon(col[s]);
+  };
+  const armed = (t) => hits(t, false) || hits(t, true);
+  const all = range(0, n - 1);
+  const resource = (t) => flag(t, UNIT_FLAGS.container) && flag(t, UNIT_FLAGS.invincible);
+  const building = (t) => flag(t, UNIT_FLAGS.building) && !resource(t);
+  const made = (t) => !resource(t) && !flag(t, UNIT_FLAGS.subunit) && !flag(t, UNIT_FLAGS.invincible) && group(t, GROUP_FLAGS.men | GROUP_FLAGS.building);
+  const madeBuilding = (t) => building(t) && made(t);
+  const unit = (t) => made(t) && !building(t);
+  const gas = (t) => madeBuilding(t) && flag(t, UNIT_FLAGS.container);
+  const size = (t) => `${table.placementWidth[t] ?? 0}x${table.placementHeight[t] ?? 0}`;
+  const gasSizes = new Set(all.filter(gas).map(size));
+  const races = GROUP_FLAGS.zerg | GROUP_FLAGS.terran | GROUP_FLAGS.protoss;
+  return {
+    game: false,
+    buildings: all.filter(building),
+    resources: all.filter(resource),
+    minerals: all.filter((t) => resource(t) && !gasSizes.has(size(t))),
+    counted: all.filter(made),
+    notMade: all.filter((t) => !made(t) && !resource(t)),
+    eggs: all.filter((t) => !made(t) && !resource(t) && !flag(t, UNIT_FLAGS.subunit) && !flag(t, UNIT_FLAGS.invincible) && group(t, races)),
+    supplyOnly: [],
+    quiet: all.filter((t) => gas(t) || madeBuilding(t) && armed(t)),
+    production: all.filter((t) => madeBuilding(t) && flag(t, UNIT_FLAGS.produces)),
+    routine: all.filter(gas),
+    tech: all.filter((t) => madeBuilding(t) && !flag(t, UNIT_FLAGS.depot) && !armed(t)),
+    twins: all.filter((t) => made(t) && flag(t, UNIT_FLAGS.twins)),
+    sameAs: [],
+    merges: null,
+    workerOf: [],
+    threats: {
+      cloaked: { units: all.filter((t) => unit(t) && armed(t) && flag(t, UNIT_FLAGS.cloakable | UNIT_FLAGS.permanentCloak)), buildings: [] },
+      air: { units: all.filter((t) => unit(t) && armed(t) && flag(t, UNIT_FLAGS.flyer) && !flag(t, UNIT_FLAGS.worker)), buildings: [] }
+    },
+    answers: {
+      cloaked: { any: all.filter((t) => made(t) && flag(t, UNIT_FLAGS.detector)) },
+      air: { any: all.filter((t) => made(t) && !flag(t, UNIT_FLAGS.worker) && hits(t, true)) }
+    }
+  };
+}
+var isTable = (x) => "flags" in x && "groupFlags" in x;
+function rolesOf(table) {
+  if (!table) return null;
+  const flags = isTable(table) ? table.flags : table;
   const workers = [], halls = [];
   for (let id = 0; id < flags.length; id++) {
     const f = flags[id];
     if (f & UNIT_FLAGS.worker) workers.push(id);
     if (f & UNIT_FLAGS.depot && f & UNIT_FLAGS.building) halls.push(id);
   }
-  return workers.length && halls.length ? { workers, halls } : null;
+  if (!workers.length || !halls.length) return null;
+  if (!isTable(table)) return { workers, halls };
+  return { workers, halls, kinds: isGameTable(table) ? null : kindsOf(table) };
 }
+var KINDS = {
+  game: true,
+  /** Counts the changes, for what is kept worked out with the kinds of the time. */
+  revision: 0,
+  buildings: /* @__PURE__ */ new Set(),
+  resources: /* @__PURE__ */ new Set(),
+  minerals: /* @__PURE__ */ new Set(),
+  counted: /* @__PURE__ */ new Set(),
+  notMade: /* @__PURE__ */ new Set(),
+  eggs: /* @__PURE__ */ new Set(),
+  supplyOnly: /* @__PURE__ */ new Set(),
+  quiet: /* @__PURE__ */ new Set(),
+  production: /* @__PURE__ */ new Set(),
+  routine: /* @__PURE__ */ new Set(),
+  tech: /* @__PURE__ */ new Set(),
+  twins: /* @__PURE__ */ new Set(),
+  sameAs: /* @__PURE__ */ new Map(),
+  merges: null,
+  workerOf: [],
+  threats: GAME_KINDS.threats,
+  answers: GAME_KINDS.answers
+};
+var kindsInUse = null;
 var fill = (set, ids) => {
   set.clear();
   for (const id of ids) set.add(id);
 };
 var same = (set, ids) => set.size === ids.length && ids.every((id) => set.has(id));
+var sameKinds = (a, b) => a === b || JSON.stringify(a) === JSON.stringify(b);
+function useKinds(k) {
+  kindsInUse = k;
+  KINDS.revision++;
+  KINDS.game = k.game;
+  for (const key of ["buildings", "resources", "minerals", "counted", "notMade", "eggs", "supplyOnly", "quiet", "production", "routine", "tech", "twins"]) fill(KINDS[key], k[key]);
+  KINDS.sameAs.clear();
+  for (const [a, b] of k.sameAs) KINDS.sameAs.set(a, b);
+  KINDS.merges = k.merges ? new Map(k.merges) : null;
+  KINDS.workerOf = [...k.workerOf];
+  KINDS.threats = k.threats;
+  KINDS.answers = k.answers;
+}
+useKinds(GAME_KINDS);
 function useRoles(roles) {
   const workers = roles?.workers ?? GAME_WORKERS, halls = roles?.halls ?? GAME_HALLS, depots = roles?.halls ?? GAME_DEPOTS;
-  if (same(WORKERS, workers) && same(TOWN_HALLS, halls) && same(DEPOTS, depots)) return false;
+  const kinds = roles?.kinds ?? GAME_KINDS;
+  const sameSorts = kindsInUse !== null && sameKinds(kindsInUse, kinds);
+  if (same(WORKERS, workers) && same(TOWN_HALLS, halls) && same(DEPOTS, depots) && sameSorts) return false;
   fill(WORKERS, workers);
   fill(TOWN_HALLS, halls);
   fill(DEPOTS, depots);
+  if (!sameSorts) useKinds(kinds);
   return true;
+}
+var isBuilding = (type) => KINDS.buildings.has(type);
+var counted = (type) => KINDS.counted.has(type);
+function answersFor(kind, race) {
+  const a = KINDS.answers[kind];
+  if ("any" in a) return a.any;
+  return race === null ? null : a.byRace[race] ?? null;
 }
 
 // analysis.ts
@@ -1296,6 +1517,16 @@ function declaredRows(editor) {
     return [];
   }
 }
+function keptRaces(editor) {
+  try {
+    const gd = editor.gameData;
+    if (typeof gd?.races !== "function") return null;
+    const rows = gd.races();
+    return Array.isArray(rows) ? rows : null;
+  } catch {
+    return null;
+  }
+}
 function editorSources(editor) {
   const names = editor.names;
   return {
@@ -1456,19 +1687,19 @@ var liveLifter = (tag2) => tag2.plugins.length > 0 || tag2.firegraft !== null &&
 function replayDataSet(tag2) {
   if (!tag2) return void 0;
   const url = safeLink(tag2.dataSet.url);
-  const races = raceRows(tag2.dataSet.races);
-  return { hash: tag2.dataSet.hash, ...tag2.dataSet.name ? { name: tag2.dataSet.name } : {}, ...url ? { url } : {}, ...liveLifter(tag2) ? { live: true } : {}, ...races.length ? { races } : {} };
+  const said = Array.isArray(tag2.dataSet.races);
+  return { hash: tag2.dataSet.hash, ...tag2.dataSet.name ? { name: tag2.dataSet.name } : {}, ...url ? { url } : {}, ...liveLifter(tag2) ? { live: true } : {}, ...said ? { races: raceRows(tag2.dataSet.races) } : {} };
 }
-function openModOf(source) {
+function openModOf(source, kept = null) {
   if (!source || source.profile.id === "starcraft" || !source.hash || !/^[0-9a-f]{16}$/.test(source.hash)) return null;
-  const races = raceRows(source.profile.races);
-  return { hash: source.hash, name: source.profile.name, url: safeLink(source.profile.url ?? null), ...races.length ? { races } : {} };
+  const races = raceRows(kept ?? source.profile.races);
+  return { hash: source.hash, name: source.profile.name, url: safeLink(source.profile.url ?? null), ...kept || races.length ? { races } : {} };
 }
 function assumedTag(mod) {
   return { v: 1, dataSet: { hash: mod.hash, name: mod.name, url: mod.url }, plugins: [], firegraft: null, noplugins: false, engine: null, madeBy: "Aftermath" };
 }
 function assumedDataSet(mod) {
-  return { hash: mod.hash, ...mod.name ? { name: mod.name } : {}, ...mod.url ? { url: mod.url } : {}, live: true, ...mod.races?.length ? { races: mod.races } : {} };
+  return { hash: mod.hash, ...mod.name ? { name: mod.name } : {}, ...mod.url ? { url: mod.url } : {}, live: true, ...mod.races ? { races: mod.races } : {} };
 }
 function handedReplay(bytes, name, dataSet) {
   return { bytes, name, ...dataSet ? { dataSet } : {} };
@@ -2059,7 +2290,7 @@ var KO = {
   "The analysis (the Game and Fights tabs, Analysis, Cast) played it with {name} ({hash}).": "\uBD84\uC11D(\uAC8C\uC784\uACFC \uC804\uD22C \uD0ED, \uBD84\uC11D, \uC911\uACC4)\uC740 {name}({hash}) \uBAA8\uB4DC\uB85C \uC7AC\uC0DD\uD588\uC2B5\uB2C8\uB2E4.",
   "The analysis could not play it with the mod: {reason}": "\uBD84\uC11D\uC740 \uC774 \uB9AC\uD50C\uB808\uC774\uB97C \uBAA8\uB4DC\uB85C \uC7AC\uC0DD\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4: {reason}",
   "The analysis (the Game and Fights tabs, Analysis, Cast) plays it with the mod, when this browser keeps it: a mod is added once on the play page.": "\uBD84\uC11D(\uAC8C\uC784\uACFC \uC804\uD22C \uD0ED, \uBD84\uC11D, \uC911\uACC4)\uC740 \uC774 \uBE0C\uB77C\uC6B0\uC800\uC5D0 \uBAA8\uB4DC\uAC00 \uC788\uC73C\uBA74 \uADF8 \uBAA8\uB4DC\uB85C \uC7AC\uC0DD\uD569\uB2C8\uB2E4: \uBAA8\uB4DC\uB294 \uD50C\uB808\uC774 \uD398\uC774\uC9C0\uC5D0\uC11C \uD55C \uBC88 \uCD94\uAC00\uD569\uB2C8\uB2E4.",
-  "What is shown is the players' orders, and Aftermath's own rules for workers and town halls go by the game's unit ids, which a mod may give other units.": "\uBCF4\uC774\uB294 \uAC83\uC740 \uD50C\uB808\uC774\uC5B4\uB4E4\uC758 \uBA85\uB839\uC774\uBA70, Aftermath\uAC00 \uC77C\uAFBC\uACFC \uBCF8\uC9C4\uC744 \uAC00\uB824\uB0B4\uB294 \uADDC\uCE59\uC740 \uAC8C\uC784\uC758 \uC720\uB2DB \uBC88\uD638\uB97C \uB530\uB974\uB294\uB370, \uBAA8\uB4DC\uB294 \uADF8 \uBC88\uD638\uB97C \uB2E4\uB978 \uC720\uB2DB\uC5D0 \uC904 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+  "What is shown is the players' orders, and Aftermath's own rules for what each unit is go by the game's unit ids, which a mod may give other units.": "\uBCF4\uC774\uB294 \uAC83\uC740 \uD50C\uB808\uC774\uC5B4\uB4E4\uC758 \uBA85\uB839\uC774\uBA70, Aftermath\uAC00 \uAC01 \uC720\uB2DB\uC774 \uBB34\uC5C7\uC778\uC9C0 \uAC00\uB824\uB0B4\uB294 \uADDC\uCE59\uC740 \uAC8C\uC784\uC758 \uC720\uB2DB \uBC88\uD638\uB97C \uB530\uB974\uB294\uB370, \uBAA8\uB4DC\uB294 \uADF8 \uBC88\uD638\uB97C \uB2E4\uB978 \uC720\uB2DB\uC5D0 \uC904 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
   "{n, plural, one {# command block is the mod's own and is not analysed.} other {# command blocks are the mod's own and are not analysed.}}": "\uBA85\uB839 \uBB36\uC74C {n}\uAC1C\uB294 \uBAA8\uB4DC \uC790\uCCB4\uC758 \uAC83\uC774\uB77C \uBD84\uC11D\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
   "It was played with {name}: the play page plays it with that mod if this browser keeps it, and otherwise asks for the mod's folder, which its makers publish at {link}.": "{name|\uC73C\uB85C} \uD50C\uB808\uC774\uD55C \uB9AC\uD50C\uB808\uC774\uC785\uB2C8\uB2E4: \uC774 \uBE0C\uB77C\uC6B0\uC800\uC5D0 \uADF8 \uBAA8\uB4DC\uAC00 \uC788\uC73C\uBA74 \uD50C\uB808\uC774 \uD398\uC774\uC9C0\uAC00 \uADF8 \uBAA8\uB4DC\uB85C \uC7AC\uC0DD\uD558\uACE0, \uC5C6\uC73C\uBA74 \uBAA8\uB4DC \uD3F4\uB354\uB97C \uC694\uCCAD\uD569\uB2C8\uB2E4. \uBAA8\uB4DC\uB294 \uC81C\uC791\uC790\uAC00 {link}\uC5D0\uC11C \uBC30\uD3EC\uD569\uB2C8\uB2E4.",
   "It was played with {name}: the play page plays it with that mod if this browser keeps it, and otherwise asks for the mod's folder.": "{name|\uC73C\uB85C} \uD50C\uB808\uC774\uD55C \uB9AC\uD50C\uB808\uC774\uC785\uB2C8\uB2E4: \uC774 \uBE0C\uB77C\uC6B0\uC800\uC5D0 \uADF8 \uBAA8\uB4DC\uAC00 \uC788\uC73C\uBA74 \uD50C\uB808\uC774 \uD398\uC774\uC9C0\uAC00 \uADF8 \uBAA8\uB4DC\uB85C \uC7AC\uC0DD\uD558\uACE0, \uC5C6\uC73C\uBA74 \uBAA8\uB4DC \uD3F4\uB354\uB97C \uC694\uCCAD\uD569\uB2C8\uB2E4.",
@@ -2116,11 +2347,14 @@ var KO = {
   "The race could not be named": "\uC885\uC871 \uC774\uB984\uC744 \uC815\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4",
   "The data set in use keeps no names for races.": "\uC0AC\uC6A9 \uC911\uC778 \uB370\uC774\uD130 \uC138\uD2B8\uB294 \uC885\uC871 \uC774\uB984\uC744 \uBCF4\uAD00\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
   "{player}'s race is {name} ({race}), which is none of the game's": "{player}\uC758 \uC885\uC871\uC774 {name}({race})\uC778\uB370, \uAC8C\uC784\uC5D0 \uC5C6\uB294 \uC885\uC871\uC785\uB2C8\uB2E4",
-  "What is shown is the players' orders. Workers and town halls are the ones the mod's units table says.": "\uBCF4\uC774\uB294 \uAC83\uC740 \uD50C\uB808\uC774\uC5B4\uB4E4\uC758 \uBA85\uB839\uC785\uB2C8\uB2E4. \uC77C\uAFBC\uACFC \uBCF8\uC9C4\uC740 \uBAA8\uB4DC\uC758 \uC720\uB2DB \uD45C\uAC00 \uB9D0\uD558\uB294 \uAC83\uC744 \uB530\uB985\uB2C8\uB2E4.",
+  "What is shown is the players' orders. What each unit is (a worker, a town hall, a building, a threat) is what the mod's units table says.": "\uBCF4\uC774\uB294 \uAC83\uC740 \uD50C\uB808\uC774\uC5B4\uB4E4\uC758 \uBA85\uB839\uC785\uB2C8\uB2E4. \uAC01 \uC720\uB2DB\uC774 \uBB34\uC5C7\uC778\uC9C0(\uC77C\uAFBC, \uBCF8\uC9C4, \uAC74\uBB3C, \uC704\uD611)\uB294 \uBAA8\uB4DC\uC758 \uC720\uB2DB \uD45C\uAC00 \uB9D0\uD558\uB294 \uAC83\uC744 \uB530\uB985\uB2C8\uB2E4.",
   "tiers not known": "\uD2F0\uC5B4 \uC54C \uC218 \uC5C6\uC74C",
   "cannot tell": "\uC54C \uC218 \uC5C6\uC74C",
   "{name} plays {race}, which is not one of the game's three races. Tiers are known for Zerg, Terran and Protoss only.": "{name|\uC740} \uAC8C\uC784\uC758 \uC138 \uC885\uC871\uC774 \uC544\uB2CC {race|\uC744} \uD50C\uB808\uC774\uD569\uB2C8\uB2E4. \uD2F0\uC5B4\uB294 \uC800\uADF8, \uD14C\uB780, \uD504\uB85C\uD1A0\uC2A4\uC5D0 \uB300\uD574\uC11C\uB9CC \uC54C \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
   "{name} plays {race}, which is not one of the game's three races. Answers are known for Zerg, Terran and Protoss only.": "{name|\uC740} \uAC8C\uC784\uC758 \uC138 \uC885\uC871\uC774 \uC544\uB2CC {race|\uC744} \uD50C\uB808\uC774\uD569\uB2C8\uB2E4. \uB300\uC751\uC740 \uC800\uADF8, \uD14C\uB780, \uD504\uB85C\uD1A0\uC2A4\uC5D0 \uB300\uD574\uC11C\uB9CC \uC54C \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+  "Tiers are known for the game's own units only; with a mod's, every building but town halls and defences counts as tech.": "\uD2F0\uC5B4\uB294 \uAC8C\uC784 \uC790\uCCB4\uC758 \uC720\uB2DB\uC5D0 \uB300\uD574\uC11C\uB9CC \uC54C \uC218 \uC788\uC2B5\uB2C8\uB2E4. \uBAA8\uB4DC\uC758 \uC720\uB2DB \uD45C\uB85C\uB294 \uBCF8\uC9C4\uACFC \uBC29\uC5B4 \uAC74\uBB3C\uC744 \uBE80 \uBAA8\uB4E0 \uAC74\uBB3C\uC744 \uD14C\uD06C\uB85C \uC149\uB2C8\uB2E4.",
+  "With a mod's units table, a threat is an armed unit that is cloaked, can cloak or flies, and an answer is a detector or anything that can shoot at air, the first of a kind the player had not had before.": "\uBAA8\uB4DC\uC758 \uC720\uB2DB \uD45C\uB85C\uB294, \uC704\uD611\uC740 \uD074\uB85C\uD0B9\uB418\uC5B4 \uC788\uAC70\uB098 \uD074\uB85C\uD0B9\uD560 \uC218 \uC788\uAC70\uB098 \uB0A0\uC544\uB2E4\uB2C8\uB294 \uBB34\uC7A5 \uC720\uB2DB\uC774\uACE0, \uB300\uC751\uC740 \uD0D0\uC9C0\uAE30\uB098 \uACF5\uC911\uC744 \uACF5\uACA9\uD560 \uC218 \uC788\uB294 \uAC83 \uC911 \uC120\uC218\uC5D0\uAC8C \uC804\uC5D0 \uC5C6\uB358 \uC885\uB958\uC758 \uCCAB \uBC88\uC9F8\uC785\uB2C8\uB2E4.",
+  "The opponents' buildings that stood the longest before each player saw them, from when they were started. Gas and static defence are left out, and so is what stood from the start; a mod's units table does not say which buildings give supply.": "\uC0C1\uB300\uC758 \uAC74\uBB3C \uC911 \uAC01 \uC120\uC218\uAC00 \uBCF4\uAE30 \uC804\uAE4C\uC9C0 \uAC00\uC7A5 \uC624\uB798 \uC11C \uC788\uB358 \uAC83\uB4E4\uB85C, \uAC74\uC124\uC744 \uC2DC\uC791\uD55C \uB54C\uBD80\uD130 \uC7BD\uB2C8\uB2E4. \uAC00\uC2A4, \uBC29\uC5B4 \uAC74\uBB3C\uACFC \uCC98\uC74C\uBD80\uD130 \uC788\uB358 \uAC74\uBB3C\uC740 \uBE8D\uB2C8\uB2E4. \uBAA8\uB4DC\uC758 \uC720\uB2DB \uD45C\uB294 \uC5B4\uB290 \uAC74\uBB3C\uC774 \uBCF4\uAE09\uC744 \uC8FC\uB294\uC9C0 \uB9D0\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
   "A cast cannot be made of this game. The commentators are told each player's race as Zerg, Terran or Protoss, and what {races} plays as cannot be told.": "\uC774 \uAC8C\uC784\uC73C\uB85C\uB294 \uC911\uACC4\uB97C \uB9CC\uB4E4 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4. \uD574\uC124\uC790\uC5D0\uAC8C\uB294 \uAC01 \uD50C\uB808\uC774\uC5B4\uC758 \uC885\uC871\uC744 \uC800\uADF8, \uD14C\uB780, \uD504\uB85C\uD1A0\uC2A4 \uC911 \uD558\uB098\uB85C \uC54C\uB824 \uC8FC\uB294\uB370, {races|\uC774} \uC5B4\uB290 \uC885\uC871\uCC98\uB7FC \uD50C\uB808\uC774\uB418\uB294\uC9C0 \uC54C \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.",
   "Name the Race": "\uC774\uB984 \uC815\uD558\uAE30",
   "Give the race a name.": "\uC885\uC871 \uC774\uB984\uC744 \uC785\uB825\uD558\uC138\uC694.",
@@ -2129,11 +2363,8 @@ var KO = {
 };
 
 // played.ts
-var NOT_MADE = /* @__PURE__ */ new Set([13, 14, 33, 35, 36, 59, 73, 85, 97, 101, 105, 202]);
-var EGGS = /* @__PURE__ */ new Set([36, 59, 97]);
-var RESOURCES = /* @__PURE__ */ new Set([176, 177, 178, 188]);
-var isBuilding = (type) => type >= 106 && type <= 201 && !RESOURCES.has(type);
-var counted = (type) => type >= 0 && type < 203 && !NOT_MADE.has(type) && !RESOURCES.has(type);
+var NOT_MADE = KINDS.notMade;
+var EGGS = KINDS.eggs;
 var FOLD_FRAMES = 3 * 24;
 function madeRows(t, player, options = {}) {
   const rows = [];
@@ -2189,7 +2420,7 @@ function madeRows(t, player, options = {}) {
   }
   return out;
 }
-var MINERALS = /* @__PURE__ */ new Set([176, 177, 178]);
+var MINERALS = KINDS.minerals;
 var FIELD_LINK = 192;
 var MIN_FIELDS = 3;
 var HALL_REACH = 256;
@@ -2418,24 +2649,12 @@ function firstLooks(k, player, them) {
   }
   return out;
 }
-var THREATS = {
-  // Dark Templar, Lurker and its egg, Arbiter; Templar Archives (Dark Templar), none for the Lurker (a Hydralisk Den is not one).
-  cloaked: { units: [61, 103, 97, 71], buildings: [165, 170] },
-  // Mutalisk, Guardian, Devourer, Wraith, Battlecruiser, Carrier, Scout, Arbiter; Spire, Greater Spire, Stargate, Fleet Beacon, Physics Lab.
-  air: { units: [43, 44, 62, 8, 12, 72, 70, 71], buildings: [141, 137, 167, 169, 118] }
-};
-var ANSWERS = {
-  // Spore Colony; Missile Turret, Comsat Station, Science Vessel; Photon Cannon, Observatory, Observer.
-  cloaked: { 0: [144], 1: [124, 107, 9], 2: [162, 159, 84] },
-  // Spore Colony, Hydralisk Den, Hydralisk, Scourge, Spire, Mutalisk; Missile Turret, Armory, Goliath, Valkyrie, Wraith;
-  // Photon Cannon, Stargate, Corsair, Scout, Archon.
-  air: { 0: [144, 135, 38, 47, 141, 43], 1: [124, 123, 3, 58, 8], 2: [162, 167, 60, 70, 68] }
-};
 function threats(k, player, race, them) {
   const out = [];
   for (const kind of ["cloaked", "air"]) {
-    const tells = /* @__PURE__ */ new Set([...THREATS[kind].units, ...THREATS[kind].buildings]);
-    const answers = new Set(race === null ? [] : ANSWERS[kind][race] ?? []);
+    const tells = /* @__PURE__ */ new Set([...KINDS.threats[kind].units, ...KINDS.threats[kind].buildings]);
+    const answers = new Set(answersFor(kind, race) ?? []);
+    const newKinds = !KINDS.game;
     let made = null, seen = null;
     const mine = [];
     for (const [unit, l] of k.lives) {
@@ -2446,17 +2665,18 @@ function threats(k, player, race, them) {
           const s = firstSeen(k.sights.get(unit), player, st.from, st.to);
           if (s !== null && (!seen || s < seen.frame)) seen = { frame: s, type: st.type };
         }
-        if (l.owner === player && answers.has(st.type) && st.from > 0) mine.push({ frame: st.from, type: st.type });
+        if (l.owner === player && answers.has(st.type) && (st.from > 0 || newKinds)) mine.push({ frame: st.from, type: st.type });
       }
     }
     if (!made) continue;
     mine.sort((a, b) => a.frame - b.frame);
     const from = made.frame;
-    out.push({ kind, made, seen, answer: mine.find((a) => a.frame >= from) ?? null, already: mine.find((a) => a.frame < from) ?? null });
+    const before = mine.filter((a) => a.frame < from), had = new Set(before.map((a) => a.type));
+    out.push({ kind, made, seen, answer: mine.find((a) => a.frame >= from && !(newKinds && had.has(a.type))) ?? null, already: before[0] ?? null });
   }
   return out;
 }
-var QUIET_BUILDINGS = /* @__PURE__ */ new Set([156, 109, 110, 149, 157, 143, 124, 125, 162, 146, 144]);
+var QUIET_BUILDINGS = KINDS.quiet;
 function unseen(k, t, player, them) {
   const where = /* @__PURE__ */ new Map();
   for (const e of t.events) if ((e.kind === "born" || e.kind === "morph") && isBuilding(e.type)) where.set(e.unit, { x: e.x, y: e.y });
@@ -2472,7 +2692,7 @@ function unseen(k, t, player, them) {
   }
   return out.sort((a, b) => b.unseenFor - a.unseenFor || a.from - b.from);
 }
-var NOT_ARMY = /* @__PURE__ */ new Set([13, 14, 33, 35, 36, 42, 59, 73, 85, 97, 101, 105, 202]);
+var notArmy = (type) => KINDS.notMade.has(type) || KINDS.supplyOnly.has(type);
 function armyInSight(k, t, player, them, cost) {
   const frames = t.samples.frame;
   const total = frames.map(() => 0), seen = frames.map(() => 0);
@@ -2484,7 +2704,7 @@ function armyInSight(k, t, player, them, cost) {
       if (f < l.born) continue;
       if (l.died !== null && f >= l.died) break;
       const st = stateAt(l, f);
-      if (!st || !st.done || NOT_ARMY.has(st.type) || WORKERS.has(st.type) || isBuilding(st.type)) continue;
+      if (!st || !st.done || notArmy(st.type) || WORKERS.has(st.type) || isBuilding(st.type)) continue;
       const c = cost(st.type);
       total[i] += c;
       if (seenAt(list, player, f)) seen[i] += c;
@@ -2623,16 +2843,15 @@ var KEY_MINUTES = 6;
 var MIN_KEYS = 3;
 var MAX_KEYS = 8;
 var FRAMES_PER_MINUTE2 = 6e4 / 42;
-var RESOURCES2 = /* @__PURE__ */ new Set([176, 177, 178, 188]);
-var MERGES = /* @__PURE__ */ new Map([[67, 68], [61, 63]]);
-var WORKER_OF = [41, 7, 64];
-var fell = (e, ignored) => e.kind === "died" && e.owner <= 7 && e.type < 203 && !NOT_MADE.has(e.type) && !RESOURCES2.has(e.type) && !ignored.has(e.unit);
+var mergesInto = (from, to) => KINDS.merges ? KINDS.merges.get(from) === to : from !== to;
+var fell = (e, ignored) => e.kind === "died" && e.owner <= 7 && counted(e.type) && !ignored.has(e.unit);
 function merged(t) {
   const out = /* @__PURE__ */ new Set();
-  const morphs = t.events.filter((e) => e.kind === "morph" && e.from !== void 0 && MERGES.get(e.from) === e.type);
+  const morphs = t.events.filter((e) => e.kind === "morph" && e.from !== void 0 && mergesInto(e.from, e.type));
   if (!morphs.length) return out;
+  const from = new Set(morphs.map((m) => m.from));
   for (const e of t.events) {
-    if (e.kind !== "died" || e.by !== void 0 || !MERGES.has(e.type)) continue;
+    if (e.kind !== "died" || e.by !== void 0 || !from.has(e.type)) continue;
     if (morphs.some((m) => m.from === e.type && m.owner === e.owner && Math.abs(m.frame - e.frame) <= 8 && Math.hypot(m.x - e.x, m.y - e.y) <= 64)) out.add(e.unit);
   }
   return out;
@@ -2694,7 +2913,7 @@ function fights(t, cost, index) {
     anyWorker ??= e.type;
     if (!workerOf.has(e.owner)) workerOf.set(e.owner, e.type);
   }
-  for (const p of t.players) if (!workerOf.has(p.slot) && WORKER_OF[p.race] !== void 0) workerOf.set(p.slot, WORKER_OF[p.race]);
+  for (const p of t.players) if (!workerOf.has(p.slot) && KINDS.workerOf[p.race] !== void 0) workerOf.set(p.slot, KINDS.workerOf[p.race]);
   const hadAt = (player, frame) => {
     const q = t.samples.players.find((p) => p.slot === player);
     const i = sampleAt(t.samples.frame, frame);
@@ -4260,8 +4479,8 @@ var MAX_EVENTS = 60;
 var OPENING_STEPS = 18;
 var OPENING_UNTIL = frameOf(360);
 var BLOCK_SAID = frameOf(6);
-var PRODUCTION = /* @__PURE__ */ new Set([111, 113, 114, 160, 167, 155]);
-var ROUTINE = /* @__PURE__ */ new Set([109, 110, 149, 156, 157, 42]);
+var PRODUCTION = KINDS.production;
+var ROUTINE = KINDS.routine;
 function castSegments(fights2, frames) {
   const live = [];
   for (const f of fights2.filter((x) => x.key).sort((a, b) => a.from - b.from)) {
@@ -5434,21 +5653,9 @@ function nearest2(xs, x) {
 }
 
 // tech.ts
-var TECH_BUILDINGS = {
-  // Barracks, Refinery, Academy, Factory, Machine Shop, Engineering Bay, Comsat Station, Starport, Control Tower,
-  // Armory, Science Facility, Covert Ops, Physics Lab, Nuclear Silo.
-  terran: [111, 110, 112, 113, 120, 122, 107, 114, 115, 123, 116, 117, 118, 108],
-  // Spawning Pool, Extractor, Evolution Chamber, Lair, Hydralisk Den, Spire, Queen's Nest, Hive, Defiler Mound,
-  // Ultralisk Cavern, Greater Spire, Nydus Canal.
-  zerg: [142, 149, 139, 132, 135, 141, 138, 133, 136, 140, 137, 134],
-  // Gateway, Assimilator, Forge, Cybernetics Core, Citadel of Adun, Robotics Facility, Observatory, Robotics Support
-  // Bay, Stargate, Templar Archives, Fleet Beacon, Arbiter Tribunal.
-  protoss: [160, 157, 166, 164, 163, 155, 159, 171, 167, 165, 169, 170]
-};
-var TECH = new Set(Object.values(TECH_BUILDINGS).flat());
-var isTechBuilding = (type) => TECH.has(type);
-var NOT_ARMY2 = /* @__PURE__ */ new Set([42]);
-var SAME_AS = /* @__PURE__ */ new Map([[30, 5]]);
+var isTechBuilding = (type) => KINDS.tech.has(type);
+var NOT_ARMY = KINDS.supplyOnly;
+var SAME_AS = KINDS.sameAs;
 function techBuildings(t, players, time) {
   const out = new Map(players.map((p) => [p, []]));
   const seen = /* @__PURE__ */ new Set();
@@ -5474,7 +5681,7 @@ function researchItems(t, players, time) {
   for (const list of out.values()) list.sort((a, b) => a.done - b.done);
   return out;
 }
-var isArmy = (type) => counted(type) && !isBuilding(type) && !WORKERS.has(type) && !NOT_ARMY2.has(type);
+var isArmy = (type) => counted(type) && !isBuilding(type) && !WORKERS.has(type) && !NOT_ARMY.has(type);
 function armyRows(t, players) {
   const minutes = Math.max(1, Math.ceil(t.frames / FRAMES_PER_MINUTE));
   const want = new Set(players);
@@ -5545,7 +5752,7 @@ var TIERS = {
   2: [[163, 155, 167], [165, 169, 170]]
 };
 function tierOf(race, buildings2) {
-  const tiers = race === null ? void 0 : TIERS[race];
+  const tiers = race === null || !KINDS.game ? void 0 : TIERS[race];
   if (!tiers) return null;
   for (const tier of [3, 2]) {
     const item = buildings2.find((b) => tiers[tier - 2].includes(b.id));
@@ -5560,14 +5767,14 @@ function mountTech(body, cx) {
   const el = api.ui.el, w = api.ui.widgets;
   const data = { units: api.data.units(), upgrades: api.data.upgrades(), techs: api.data.techs() };
   const time = (kind, id, level) => kind === "unit" ? data.units?.buildTime[id] ?? null : kind === "upgrade" ? data.upgrades ? data.upgrades.timeCost[id] + data.upgrades.timeFactor[id] * (level - 1) : null : data.techs?.researchTime[id] ?? null;
-  let all = techs.get(tl);
+  let all = techs.get(tl)?.revision === KINDS.revision ? techs.get(tl).tech : void 0;
   if (!all) {
     all = tech(tl, tl.samples.players.filter((s) => s.supplyMax.some((n) => n > 0)).map((s) => s.slot), time);
-    if (data.units && data.upgrades && data.techs) techs.set(tl, all);
+    if (data.units && data.upgrades && data.techs) techs.set(tl, { revision: KINDS.revision, tech: all });
   }
   const shown = cx.players.filter((p) => all.players.some((x) => x.slot === p.slot));
   const of = (slot) => all.players.find((p) => p.slot === slot);
-  const raceOf = (slot) => tableRace(cx.players.find((p) => p.slot === slot)?.race?.id ?? tl.players.find((p) => p.slot === slot)?.race);
+  const raceOf = (slot) => !KINDS.game ? null : tableRace(cx.players.find((p) => p.slot === slot)?.race?.id ?? tl.players.find((p) => p.slot === slot)?.race);
   const nameOf = (item) => item.kind === "building" ? api.names.unit(item.id) : item.kind === "tech" ? api.names.tech(item.id) : (data.upgrades?.maxRepeats[item.id] ?? item.level) > 1 ? `${api.names.upgrade(item.id)} ${item.level}` : api.names.upgrade(item.id);
   const swatch = (color) => el("span", { className: "afm-tip-swatch", style: `background:${color}` });
   const waiting = [];
@@ -5687,7 +5894,8 @@ function mountTech(body, cx) {
     el("span", { className: "afm-ti-key" }, el("span", { className: "afm-ti-key-bar" }), t("Upgrades and technologies"))
   );
   const notes = [];
-  for (const p of shown) {
+  if (!KINDS.game) notes.push(el("p", { className: "afm-dim afm-it-note" }, t("Tiers are known for the game's own units only; with a mod's, every building but town halls and defences counts as tech.")));
+  else for (const p of shown) {
     if (!p.race || isPlayed(p.race.id)) continue;
     notes.push(el("p", { className: "afm-dim afm-it-note" }, t("{name} plays {race}, which is not one of the game's three races. Tiers are known for Zerg, Terran and Protoss only.", { name: p.name, race: p.race.label })));
   }
@@ -5975,17 +6183,18 @@ function mountScouting(body, cx) {
         el("th", { scope: "row" }, kindName(th)),
         go(el("td", {}, `${formatTime(th.made.frame)} \xB7 ${unit(th.made.type)}`), th.made.frame),
         seenCell(th),
-        answerCell(th, like !== null)
+        answerCell(th, answersFor(th.kind, like) !== null)
       ))
     ];
   });
-  const raceNotes = shown.filter((p) => p.race && !isPlayed(p.race.id)).map((p) => el("p", { className: "afm-dim afm-it-note" }, t("{name} plays {race}, which is not one of the game's three races. Answers are known for Zerg, Terran and Protoss only.", { name: p.name, race: p.race.label })));
+  const raceNotes = !KINDS.game ? [] : shown.filter((p) => p.race && !isPlayed(p.race.id)).map((p) => el("p", { className: "afm-dim afm-it-note" }, t("{name} plays {race}, which is not one of the game's three races. Answers are known for Zerg, Terran and Protoss only.", { name: p.name, race: p.race.label })));
   const threatSection = threatRows.length ? el(
     "section",
     { className: "afm-it-section" },
     el("h3", { className: "afm-sc-h" }, t("Seen and answered")),
     ...raceNotes,
     el("p", { className: "afm-dim afm-it-note" }, t("For the cloaked and the air units the opponents had: when they first had one (or the building that makes them), when the player first saw one, and the first answer the player started after that: detection against cloaked units, anti-air against air units. An answer started before seeing was guessed at, or scouted some other way. One the player had before the opponents had the threat at all is shown as already had.")),
+    ...KINDS.game ? [] : [el("p", { className: "afm-dim afm-it-note" }, t("With a mod's units table, a threat is an armed unit that is cloaked, can cloak or flies, and an answer is a detector or anything that can shoot at air, the first of a kind the player had not had before."))],
     el(
       "table",
       { className: "afm-it-table afm-ti-table afm-sc-table" },
@@ -6025,7 +6234,7 @@ function mountScouting(body, cx) {
   ) : null;
   const unseenFold = w.fold({ text: t("Unseen the longest"), open: false });
   unseenFold.body.append(
-    el("p", { className: "afm-dim afm-it-note" }, t("The opponents' town halls, production and tech buildings that stood the longest before each player saw them, from when they were started. Supply, gas and static defence are left out, and so is what stood from the start.")),
+    el("p", { className: "afm-dim afm-it-note" }, KINDS.game ? t("The opponents' town halls, production and tech buildings that stood the longest before each player saw them, from when they were started. Supply, gas and static defence are left out, and so is what stood from the start.") : t("The opponents' buildings that stood the longest before each player saw them, from when they were started. Gas and static defence are left out, and so is what stood from the start; a mod's units table does not say which buildings give supply.")),
     el("table", { className: "afm-it-table afm-ti-table afm-sc-table" }, el("tbody", {}, ...shown.flatMap((p) => {
       const list = hidden.get(p.slot).slice(0, UNSEEN_SHOWN);
       if (!list.length) return [];
@@ -6397,7 +6606,7 @@ function nearestSample(frames, frame) {
 var DEFAULTS = { orders: false, legend: true, heat: "losses", speed: 8, workers: false, chart: "lead", tab: "summary", insightTab: "economy", resource: "both", insightMetric: "income", castFormat: "game", castBanter: "light", castCards: true, castVoiced: true, castNotes: "", cinemaMinimap: true, version: 5 };
 var FRONT_FRAMES = 120;
 var FIGHT_LEAD = 48;
-var TWINS = /* @__PURE__ */ new Set([37, 47]);
+var TWINS = KINDS.twins;
 var TRAIL_FRAMES = 8 * 24;
 var KILL_FRAMES = 36;
 var NEW_FRAMES = 6 * 24;
@@ -6773,10 +6982,12 @@ function activate(api) {
     for (const s of p?.build ?? []) if (s.kind === "build" || s.kind === "train" || s.kind === "morph") yield s.id;
     for (const e of entry?.played?.timeline.events ?? []) if ((e.kind === "born" || e.kind === "morph") && e.owner === index) yield e.type;
   }
-  const refreshRoles = () => useRoles(ownData(current) ? rolesOf(api.data.units()?.flags) : null);
+  const refreshRoles = () => useRoles(ownData(current) ? rolesOf(api.data.units()) : null);
   function racesChanged() {
     raceRevision++;
     refreshRoles();
+    const open = openModOf(api.gameData?.source?.(), keptRaces(raceEditor));
+    for (const e of loaded) if (e.assumed && open && e.dataSet?.hash === open.hash) e.dataSet = assumedDataSet(open);
     side?.render();
     strip?.render();
     refreshInsight();
@@ -6970,7 +7181,7 @@ function activate(api) {
       };
       const check = () => {
         const source = api.gameData?.source?.();
-        const mod = openModOf(source);
+        const mod = openModOf(source, keptRaces(raceEditor));
         if (mod) end(mod);
         else if (!modHashPending(source)) end(null);
       };
@@ -7147,8 +7358,9 @@ function activate(api) {
         return t("Morphing into {name}", { name: names.unit(u.workId) });
       case "addon":
         return t("Building {name}", { name: names.unit(u.workId) });
+      // (A building with a nuke is a silo; a unit calls one down.)
       case "nuke":
-        return u.type === 108 ? t("Nuclear missile ready") : t("Calling down a nuclear strike");
+        return isBuilding(u.type) ? t("Nuclear missile ready") : t("Calling down a nuclear strike");
       default:
         return u.completed ? null : t("Under construction");
     }
@@ -7260,7 +7472,7 @@ function activate(api) {
         const replay = await parseReplay(bytes);
         const id = nextId++, map = readChk(replay.chk);
         const group = [...loaded, ...batch].find((l) => likeness(map, l.map) >= SAME_MAP)?.group ?? id;
-        useRoles(!replay.mod || api.gameData?.source?.()?.hash === replay.mod.dataSet.hash ? rolesOf(api.data.units()?.flags) : null);
+        useRoles(!replay.mod || api.gameData?.source?.()?.hash === replay.mod.dataSet.hash ? rolesOf(api.data.units()) : null);
         batch.push({ id, fileName: file.name, report: analyse(replay), map, bytes, docId: null, group, excluded: false, frame: 0, hidden: /* @__PURE__ */ new Set(), played: null, failed: null, eyes: null, again: null, mod: replay.mod ?? null, ...replay.mod ? { dataSet: replayDataSet(replay.mod) } : {}, signs: replay.mod ? [] : modSigns(replay.players, map) });
       } catch (err) {
         const detail = err instanceof ReplayError ? translate(err.message) : String(err);
@@ -7270,7 +7482,7 @@ function activate(api) {
     }
     if (!batch.length) return;
     const untagged = batch.filter((e) => !e.mod);
-    let open = untagged.length ? openModOf(api.gameData?.source?.()) : null;
+    let open = untagged.length ? openModOf(api.gameData?.source?.(), keptRaces(raceEditor)) : null;
     if (untagged.length && !open && modHashPending(api.gameData?.source?.())) open = await modHashWaited();
     const signed = untagged.filter((e) => e.signs.length);
     if (open) {
@@ -8606,7 +8818,7 @@ function activate(api) {
       });
       await api.data.load();
       const units = api.data.units();
-      useRoles(ownData(entry) ? rolesOf(units?.flags) : null);
+      useRoles(ownData(entry) ? rolesOf(units) : null);
       const cost = (type) => units ? ((units.mineralCost[type] ?? 0) + (units.vespeneCost[type] ?? 0)) / (TWINS.has(type) ? 2 : 1) : 0;
       const index = unitIndex(timeline);
       const landings = entry.report.players.flatMap((p) => p.placements.filter((pl) => pl.landed && TOWN_HALLS.has(pl.unit)).map((pl) => {
@@ -9463,7 +9675,7 @@ function activate(api) {
         box.append(el("div", { className: "afm-dim" }, t("Reading the mod: {done} of {n} files\u2026", { done: attaching.done, n: attaching.of })));
         return;
       }
-      const open = openModOf(api.gameData?.source?.());
+      const open = openModOf(api.gameData?.source?.(), keptRaces(raceEditor));
       const acts = el("div", { className: "afm-acts" });
       if (open && open.hash !== except) acts.append(w.button(t("Watch With {name}", { name: open.name || open.hash }), { className: "sm", onClick: () => {
         assume([entry], open);
@@ -9500,7 +9712,7 @@ function activate(api) {
       }
       const own = entry.report.replay.unknownCommands;
       if (own > 0) box.append(el("div", { className: "afm-dim" }, t("{n, plural, one {# command block is the mod's own and is not analysed.} other {# command blocks are the mod's own and are not analysed.}}", { n: own })));
-      box.append(w.hint(`${game.playsMods ? t("Play From Here and the Replay view play it with the mod.") : t("Play From Here plays it with the mod on the play page.")} ${this.modAnalysisLine(entry)} ${ownData(entry) && rolesOf(api.data.units()?.flags) ? t("What is shown is the players' orders. Workers and town halls are the ones the mod's units table says.") : t("What is shown is the players' orders, and Aftermath's own rules for workers and town halls go by the game's unit ids, which a mod may give other units.")}`));
+      box.append(w.hint(`${game.playsMods ? t("Play From Here and the Replay view play it with the mod.") : t("Play From Here plays it with the mod on the play page.")} ${this.modAnalysisLine(entry)} ${ownData(entry) && rolesOf(api.data.units()?.flags) ? t("What is shown is the players' orders. What each unit is (a worker, a town hall, a building, a threat) is what the mod's units table says.") : t("What is shown is the players' orders, and Aftermath's own rules for what each unit is go by the game's unit ids, which a mod may give other units.")}`));
       this.root.append(box);
     }
     render() {
