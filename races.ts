@@ -259,12 +259,14 @@ export function canName(view: RaceView, editor: RaceEditor, own: boolean): boole
 }
 
 /**
- * The row a person's answers make, or what is wrong with them: `"name"` (empty, or longer than 40 characters once
- * trimmed) or `"letter"` (not one lower-case letter, or one of the game's z, t, p and n). `like` is "" for not known.
+ * The row a person's answers make, or what is wrong with them: `"name"` (none, once trimmed), `"long"` (longer than
+ * 40 characters once trimmed) or `"letter"` (not one lower-case letter, or one of the game's z, t, p and n). `like` is
+ * "" for not known.
  */
-export function namedRow(id: number, name: string, letter: string, like: string): DataSetRace | "name" | "letter" {
+export function namedRow(id: number, name: string, letter: string, like: string): DataSetRace | "name" | "long" | "letter" {
   const n = name.trim(), l = letter.trim().toLowerCase();
-  if (!n || n.length > RACE_NAME_MAX) return "name";
+  if (!n) return "name";
+  if (n.length > RACE_NAME_MAX) return "long";
   if (l && (!/^[a-z]$/.test(l) || "ztpn".includes(l))) return "letter";
   return { id, name: n, ...(l ? { letter: l } : {}), ...(like === "0" || like === "1" || like === "2" ? { like: Number(like) as 0 | 1 | 2 } : {}) };
 }

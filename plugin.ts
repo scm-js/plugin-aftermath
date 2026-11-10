@@ -398,10 +398,12 @@ const STYLE = `
 .afm .afm-player { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; gap: 6px; padding: 3px 4px; border-radius: 4px; cursor: pointer; }
 .afm .afm-player:hover { background: var(--hover, rgba(255,255,255,0.06)); }
 .afm .afm-player.afm-off { opacity: 0.4; }
-.afm .afm-player .afm-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.afm .afm-player .afm-race { color: var(--text-dim, #99a2b3); margin-left: 4px; }
-.afm .afm-player .afm-race .afm-link { margin-left: 6px; font-size: 11px; }
-.afm-name-race .afm-choices { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.afm .afm-player .afm-name { display: flex; align-items: baseline; min-width: 0; overflow: hidden; white-space: nowrap; }
+.afm .afm-player .afm-pname { flex: 0 1 auto; min-width: 2em; overflow: hidden; text-overflow: ellipsis; }
+.afm .afm-player .afm-race { flex: none; max-width: calc(100% - 2.5em); overflow: hidden; text-overflow: ellipsis; color: var(--text-dim, #99a2b3); margin-left: 4px; }
+.afm .afm-player .afm-race-act { grid-column: 2 / -1; margin-top: -2px; }
+.afm .afm-player .afm-race-act .afm-link { font-size: 11px; }
+.afm-name-race .afm-choices { display: flex; flex-wrap: wrap; gap: 4px; margin-top: -4px; }
 .afm .afm-player .afm-live { font-variant-numeric: tabular-nums; color: var(--text-dim, #99a2b3); white-space: nowrap; }
 .afm .afm-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
 .afm .afm-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border, #3a4150); }
@@ -595,17 +597,20 @@ export function activate(api: PluginApi) {
     redraw();
   }
 
-  /** A player's race beside their name: one the game does not play says what it plays as, and one with no name offers to be named. */
+  /** A player's race beside their name: one the game does not play says what it plays as. */
   function raceNode(entry: Loaded, player: { index: number; race: number; name: string }): HTMLElement {
     const r = raceOf(entry, player);
     const node = el("span", { className: "afm-race" }, r.label);
-    if (!isPlayed(r.id)) node.title = playsAsText(r);
-    if (canName(r, raceEditor, ownData(entry))) {
-      const b = el("button", { className: "afm-link", type: "button", title: t("Give this race a name for the data set in use") }, t("Name this race…"));
-      b.addEventListener("click", (e) => { e.stopPropagation(); void nameRace(player, r); });
-      node.append(b);
-    }
+    if (!isPlayed(r.id)) node.title = `${r.label} · ${playsAsText(r)}`;
     return node;
+  }
+  /** "Name this race…" for a race with no name that the editor can keep one for, on a line of its own under the player; else null. */
+  function raceAction(entry: Loaded, player: { index: number; race: number; name: string }): HTMLElement | null {
+    const r = raceOf(entry, player);
+    if (!canName(r, raceEditor, ownData(entry))) return null;
+    const b = el("button", { className: "afm-link", type: "button", title: t("Give this race a name for the data set in use") }, t("Name this race…"));
+    b.addEventListener("click", (e) => { e.stopPropagation(); void nameRace(player, r); });
+    return el("div", { className: "afm-race-act" }, b);
   }
 
   /**
@@ -642,8 +647,9 @@ export function activate(api: PluginApi) {
     const letter = w.text({ placeholder: t("None") });
     letter.maxLength = 1;
     const plays = w.select([{ value: "", label: t("Not known") }, ...([0, 1, 2] as const).map((k) => ({ value: String(k), label: likeLabel(k) }))], { value: r.like === null ? "" : String(r.like) });
+    /** The hints under a field, as small buttons in one wrapping row: a click puts one in the field. */
     const choices = (list: readonly string[], field: HTMLInputElement) => list.length
-      ? el("div", { className: "afm-choices" }, ...list.map((v) => w.button(v, { ghost: true, onClick: () => { field.value = v; field.focus(); } })))
+      ? { label: "", field: el("div", { className: "afm-choices" }, ...list.map((v) => w.button(v, { className: "sm", title: t("Use {value}", { value: v }), onClick: () => { field.value = v; field.focus(); } }))) }
       : null;
     api.ui.dialog({
       title: t("Name this race"),
@@ -652,8 +658,10 @@ export function activate(api: PluginApi) {
         body.append(el("div", { className: "afm-name-race" },
           el("p", {}, t("{player} plays race {n}, which the data set in use adds. A name given here is kept with the data set, and shown for every replay played with it.", { player: plainText(player.name), n: r.id })),
           w.form([
-            { label: t("Name"), field: el("div", {}, name, choices(hints.names, name)) },
-            { label: t("Letter of its files"), field: el("div", {}, letter, choices(hints.letters, letter)) },
+            { label: t("Name"), field: name },
+            choices(hints.names, name),
+            { label: t("Letter of its files"), field: letter },
+            choices(hints.letters, letter),
             { label: t("Plays as"), field: plays },
           ]),
           hints.names.length ? w.hint(t("The names offered are ones the data set's files have past the game's own. They are suggestions: check them.")) : null,
@@ -663,10 +671,14 @@ export function activate(api: PluginApi) {
       buttons: [
         { label: t("Cancel") },
         {
-          label: t("Name"), primary: true,
+          label: t("Name the Race"), primary: true,
           run: () => {
             const row = namedRow(r.id, name.value, letter.value, plays.value);
-            if (row === "name") { name.focus(); return false; }
+            if (row === "name" || row === "long") {
+              api.ui.toast({ kind: "warn", title: row === "name" ? t("Give the race a name.") : t("A race's name is 40 characters at most.") });
+              name.focus();
+              return false;
+            }
             if (row === "letter") {
               api.ui.toast({ kind: "warn", title: t("A letter is one of a to z, other than z, t, p and n") });
               letter.focus();
@@ -3388,8 +3400,10 @@ export function activate(api: PluginApi) {
         const readout = el("span", { className: "afm-live" });
         const line = el("div", { className: "afm-player" + (entry.hidden.has(p.player.id) ? " afm-off" : ""), title: entry.hidden.has(p.player.id) ? t("Show {name} on the map", { name: p.player.name }) : t("Hide {name} on the map", { name: p.player.name }) },
           el("span", { className: "afm-swatch", style: `background:${p.player.color}` }),
-          el("span", { className: "afm-name" }, p.player.name, raceNode(entry, p.player)),
+          // (The name gives way to the race when the panel is narrow: the race is never cut.)
+          el("span", { className: "afm-name" }, el("span", { className: "afm-pname" }, p.player.name), raceNode(entry, p.player)),
           readout,
+          raceAction(entry, p.player),
         );
         line.addEventListener("click", () => {
           if (entry.hidden.has(p.player.id)) entry.hidden.delete(p.player.id); else entry.hidden.add(p.player.id);

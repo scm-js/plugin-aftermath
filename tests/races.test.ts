@@ -219,7 +219,8 @@ describe("naming a race in the editor", () => {
     expect(namedRow(69, "  Askosi ", "A", "1")).toEqual({ id: 69, name: "Askosi", letter: "a", like: 1 });
     expect(namedRow(69, "Askosi", "", "")).toEqual({ id: 69, name: "Askosi" });
     expect(namedRow(69, "  ", "", "")).toBe("name");
-    expect(namedRow(69, "x".repeat(41), "", "")).toBe("name");
+    expect(namedRow(69, "x".repeat(41), "", "")).toBe("long");
+    expect(namedRow(69, ` ${"x".repeat(40)} `, "", "")).toEqual({ id: 69, name: "x".repeat(40) });
     expect(namedRow(69, "Askosi", "t", "")).toBe("letter");
     expect(namedRow(69, "Askosi", "ab", "")).toBe("letter");
   });

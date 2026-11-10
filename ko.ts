@@ -589,4 +589,8 @@ export const KO: Record<string, string> = {
   "{name} plays {race}, which is not one of the game's three races. Tiers are known for Zerg, Terran and Protoss only.": "{name|은} 게임의 세 종족이 아닌 {race|을} 플레이합니다. 티어는 저그, 테란, 프로토스에 대해서만 알 수 있습니다.",
   "{name} plays {race}, which is not one of the game's three races. Answers are known for Zerg, Terran and Protoss only.": "{name|은} 게임의 세 종족이 아닌 {race|을} 플레이합니다. 대응은 저그, 테란, 프로토스에 대해서만 알 수 있습니다.",
   "A cast cannot be made of this game. The commentators are told each player's race as Zerg, Terran or Protoss, and what {races} plays as cannot be told.": "이 게임으로는 중계를 만들 수 없습니다. 해설자에게는 각 플레이어의 종족을 저그, 테란, 프로토스 중 하나로 알려 주는데, {races|이} 어느 종족처럼 플레이되는지 알 수 없습니다.",
+  "Name the Race": "이름 정하기",
+  "Give the race a name.": "종족 이름을 입력하세요.",
+  "A race's name is 40 characters at most.": "종족 이름은 40자까지입니다.",
+  "Use {value}": "{value} 사용",
 };
