@@ -34,7 +34,8 @@ import type { Disposable, MapView, OverlayHandle, PanelHandle, PluginApi, Plugin
 import { analyse, buildOrderRows, formatTime, FRAMES_PER_MINUTE, heat, TOWN_HALLS, type ClickKind, type HeatGrid, type PlayerReport, type ReplayReport } from "./analysis";
 import { likeness, plainText, readChk, type ChkInfo } from "./chk";
 import { FRAME_MS, parseReplay, ReplayError, type ModTag } from "@scm-js/replay";
-import { ask, assumedDataSet, assumedTag, engineReason, engineSentence, folderHashes, handedReplay, isReplaysMod, modAnalysis, modFolder, modHashPending, modSigns, openModOf, pickedModFiles, playsModReplays, pluginNames, replayDataSet, safeLink, type EngineReason, type ModFolder, type ModSign, type OpenMod, type PickedFile } from "./modreplay";
+import { ask, assumedDataSet, assumedTag, engineReason, engineSentence, handedReplay, holdsMod, isReplaysMod, modAnalysis, modErrorText, modFolder, modHashPending, modSigns, modText, openModOf, pickedModFiles, playsModReplays, pluginNames, replayDataSet, safeLink, type EngineReason, type ModFolder, type ModSign, type OpenMod, type PickedFile } from "./modreplay";
+import { say } from "@scm-js/mod";
 import { KO } from "./ko";
 import { buildings as standingBuildings, isBuilding, losses, lossPoints, madeRows, mineralLines, presencePoints, sampleAt, series, unitIndex, unitsAt, WORKERS, type Metric, type Point, type Standing, type UnitIndex } from "./played";
 import { knowledge, knownAt, placedBuildings, REMEMBER_FRAMES, trails, type Knowledge, type Trail } from "./knew";
@@ -698,14 +699,33 @@ export function activate(api: PluginApi) {
     });
   }
 
-  /** A mod's folder being read to attach, and how far. */
-  let attaching: { entry: Loaded; done: number; of: number } | null = null;
+  /** A mod's folder being read to attach, and the reader's last sentence of how far it is. */
+  let attaching: { entry: Loaded; words: string } | null = null;
+
+  /**
+   * A picked folder read as a mod (`@scm-js/mod`: its loose files and its archives), the panel told how far: null, with
+   * the person told, when it holds no mod.
+   */
+  async function readPickedMod(entry: Loaded, picked: PickedFile[]): Promise<ModFolder | null> {
+    attaching = { entry, words: modText(say("opening", { path: picked[0].path.split("/")[0] }), t) };
+    side?.render();
+    let shown = 0;
+    const folder = await modFolder(picked, (member) => api.gameData.read(api.gameData.storedPath(member)), (said) => {
+      if (!attaching) return;
+      attaching.words = modText(said, t);
+      if (performance.now() - shown > 250) { shown = performance.now(); side?.render(); }
+    });
+    if (holdsMod(folder.description)) return folder;
+    api.ui.toast({ kind: "warn", title: t("No mod in that folder"), detail: t("Pick the mod's folder: the one holding its arr, unit and other game folders, its archive or its program, or the folder above it.") });
+    return null;
+  }
 
   /**
    * The mod's folder, picked by the person and attached as the editor's data set for the session (nothing stored), once
    * its hash is the replay's: names, costs and pictures then come from the mod. The hash is the mod's, by the rule the
-   * play page and scmJS share (its game files, plugins and FireGraft project), with or without the plugins; a replay
-   * tagged before that rule is matched by its older forms. Archives in the folder are not read.
+   * play page and scmJS share (`@scm-js/mod`: its game files, loose or in its archives, its FireGraft project and its
+   * code), with or without the code; a replay tagged by an earlier rule is matched by the forms that rule gave, and
+   * attached under the hash it names.
    */
   async function attachMod(entry: Loaded): Promise<void> {
     const tag = entry.mod;
@@ -716,23 +736,12 @@ export function activate(api: PluginApi) {
     }
     const picked = await api.ui.pickFiles({ directory: true });
     if (!picked.length) return;
-    const folder = modFolder(picked);
-    if (!folder.files.size) {
-      api.ui.toast({ kind: "warn", title: t("No game files in that folder"), detail: t("Pick the mod's folder: the one holding its arr, unit and other game folders, or the folder above it.") });
-      return;
-    }
-    attaching = { entry, done: 0, of: folder.files.size + folder.plugins.size + folder.firegraft.size };
-    side?.render();
-    let shown = 0;
     try {
-      const hashes = await folderHashes(folder, (member) => api.gameData.read(api.gameData.storedPath(member)), (done) => {
-        if (!attaching) return;
-        attaching.done = done;
-        if (performance.now() - shown > 250) { shown = performance.now(); side?.render(); }
-      });
+      const folder = await readPickedMod(entry, picked);
+      if (!folder) return;
+      const hashes = folder.hashes;
       if (!isReplaysMod(tag, hashes)) {
-        const detail = t("Its data set is {hash}, the replay's is {wanted} ({name}).", { hash: hashes.hash, wanted: tag.dataSet.hash, name: tag.dataSet.name });
-        api.ui.toast({ kind: "error", title: t("This folder is not the mod the replay was played with"), detail: folder.unread.length ? `${detail} ${t("Its archives ({list}) are not read here: pick a folder of the mod's loose files.", { list: folder.unread.join(", ") })}` : detail });
+        api.ui.toast({ kind: "error", title: t("This folder is not the mod the replay was played with"), detail: t("Its data set is {hash}, the replay's is {wanted} ({name}).", { hash: hashes.hash, wanted: tag.dataSet.hash, name: tag.dataSet.name }) });
         return;
       }
       const url = safeLink(tag.dataSet.url);
@@ -742,7 +751,7 @@ export function activate(api: PluginApi) {
       if (entry.viewFailed) playWithMod(entry);
       api.ui.toast({ kind: "ok", title: t("{name} attached", { name: tag.dataSet.name || tag.dataSet.hash }), detail: t("The editor draws with the mod's files until its data set is changed or the page is loaded again.") });
     } catch (err) {
-      api.ui.toast({ kind: "error", title: t("The mod could not be attached"), detail: err instanceof Error ? err.message : String(err) });
+      api.ui.toast({ kind: "error", title: t("The mod could not be attached"), detail: modErrorText(err, t) });
       api.log("Aftermath: attaching a mod,", err);
     } finally {
       attaching = null;
@@ -751,12 +760,9 @@ export function activate(api: PluginApi) {
       redraw();
     }
   }
-  /** The folder's game files as the editor's data set for the session (nothing stored), named by `hash`. */
+  /** The mod's game files (loose or in its archives) as the editor's data set for the session (nothing stored), named by `hash`. */
   async function attachFolder(folder: ModFolder, profile: { id: string; name: string; url?: string }, hash: string): Promise<void> {
-    await api.gameData.attach(profile, async (_path, file) => {
-      const f = file?.member ? folder.files.get(file.member) : undefined;
-      return f ? new Uint8Array(await f.file.arrayBuffer()) : null;
-    }, { hash });
+    await api.gameData.attach(profile, async (_path, file) => (file?.member ? folder.file(file.member) : null), { hash });
     await api.data.load();
   }
 
@@ -863,29 +869,20 @@ export function activate(api: PluginApi) {
     }
     const picked = await api.ui.pickFiles({ directory: true });
     if (!picked.length) return false;
-    const folder = modFolder(picked);
-    if (!folder.files.size) {
-      api.ui.toast({ kind: "warn", title: t("No game files in that folder"), detail: t("Pick the mod's folder: the one holding its arr, unit and other game folders, or the folder above it.") });
-      return false;
-    }
-    const entry = entries[0];
-    attaching = { entry, done: 0, of: folder.files.size + folder.plugins.size + folder.firegraft.size };
-    side?.render();
-    let shown = 0;
     try {
-      const hashes = await folderHashes(folder, (member) => api.gameData.read(api.gameData.storedPath(member)), (done) => {
-        if (!attaching) return;
-        attaching.done = done;
-        if (performance.now() - shown > 250) { shown = performance.now(); side?.render(); }
-      });
-      const name = picked[0].path.split("/")[0] || t("Mod");
-      await attachFolder(folder, { id: `replay-${hashes.hash}`, name }, hashes.hash);
+      const folder = await readPickedMod(entries[0], picked);
+      if (!folder) return false;
+      const hashes = folder.hashes;
+      // (the mod's own name and link where it says them: its mod.json, else the one program that holds it, else the folder's)
+      const name = folder.description.name || picked[0].path.split("/")[0] || t("Mod");
+      const url = safeLink(folder.description.link ?? null);
+      await attachFolder(folder, { id: `replay-${hashes.hash}`, name, ...(url ? { url } : {}) }, hashes.hash);
       provideFolder(hashes.hash, name, picked);
-      assume(entries, { hash: hashes.hash, name, url: null });
+      assume(entries, { hash: hashes.hash, name, url });
       api.ui.toast({ kind: "ok", title: t("{name} attached", { name }), detail: t("The replay is watched and analysed with it, and the editor draws with its files until its data set is changed or the page is loaded again.") });
       return true;
     } catch (err) {
-      api.ui.toast({ kind: "error", title: t("The mod could not be attached"), detail: err instanceof Error ? err.message : String(err) });
+      api.ui.toast({ kind: "error", title: t("The mod could not be attached"), detail: modErrorText(err, t) });
       api.log("Aftermath: attaching a mod,", err);
       return false;
     } finally {
@@ -3327,7 +3324,7 @@ export function activate(api: PluginApi) {
 
     /** "Watch With" the mod open in the editor (not the one `except` names), and "Pick the Mod's Folder…"; or how far the folder is read. */
     private modActions(entry: Loaded, box: HTMLElement, except: string | null): void {
-      if (attaching?.entry === entry) { box.append(el("div", { className: "afm-dim" }, t("Reading the mod: {done} of {n} files…", { done: attaching.done, n: attaching.of }))); return; }
+      if (attaching?.entry === entry) { box.append(el("div", { className: "afm-dim" }, attaching.words)); return; }
       const open = openModOf(api.gameData?.source?.(), keptRaces(raceEditor));
       const acts = el("div", { className: "afm-acts" });
       if (open && open.hash !== except) acts.append(w.button(t("Watch With {name}", { name: open.name || open.hash }), { className: "sm", onClick: () => { assume([entry], open); } }));
@@ -3348,7 +3345,7 @@ export function activate(api: PluginApi) {
         plugins ? el("div", { className: "afm-dim" }, t("Plugins: {names}", { names: plugins })) : null,
       );
       if (ownData(entry)) box.append(el("div", { className: "afm-dim" }, t("Names and costs are the mod's: the editor draws with its data set.")));
-      else if (attaching?.entry === entry) box.append(el("div", { className: "afm-dim" }, t("Reading the mod: {done} of {n} files…", { done: attaching.done, n: attaching.of })));
+      else if (attaching?.entry === entry) box.append(el("div", { className: "afm-dim" }, attaching.words));
       else box.append(
         w.hint(t("Units, upgrades and technologies show by id until the editor draws with the mod: attach the mod's folder, and it is checked against the replay first.")),
         w.button(t("Attach the Mod's Folder…"), { className: "sm", onClick: () => { void attachMod(entry); } }),
