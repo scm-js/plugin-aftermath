@@ -8,7 +8,7 @@ import { hashLines, ModReadError, PatcherError, readMod, say } from "@scm-js/mod
 import { Creator } from "mopaq";
 import { appendModTag, parseReplay, type ModTag } from "@scm-js/replay";
 import { chk, cmds, le16, writeReplay } from "@scm-js/replay/write";
-import { ask, assumedDataSet, assumedTag, engineReason, engineSentence, folderHashes, handedReplay, holdsMod, isReplaysMod, modAnalysis, modErrorText, modFolder, modHashPending, modSigns, liveLifter, openModOf, pickedModFiles, pickedTree, playsModReplays, pluginNames, REMASTERED_TERRAIN_GROUPS, replayDataSet, safeLink, type PickedFile } from "../modreplay";
+import { ask, assumedDataSet, assumedTag, engineReason, engineSentence, folderHashes, folderMod, handedReplay, holdsMod, isReplaysMod, modAnalysis, modErrorText, modFolder, MOD_WORDS, modHashPending, modSigns, liveLifter, openModOf, pickedModFiles, pickedTree, playsModReplays, pluginNames, REMASTERED_TERRAIN_GROUPS, replayDataSet, safeLink, type PickedFile } from "../modreplay";
 import { KO } from "../ko";
 
 const blob = (s: string | Uint8Array) => new Blob([typeof s === "string" ? new TextEncoder().encode(s) : s]);
@@ -47,6 +47,18 @@ describe("a picked folder read as a mod (@scm-js/mod)", () => {
     expect(folder.hashes.hash).toBe(await hashLines([`arr\\units.dat\t${digest("units in the archive")}`, `unit\\terran\\marine.grp\t${digest("a picture")}`]));
     expect(new TextDecoder().decode((await folder.file("unit\\terran\\marine.grp"))!)).toBe("a picture");
     expect(isReplaysMod(named(folder.hashes.hash), folder.hashes)).toBe(true);
+    // Let go of, the archive is opened again by a later read.
+    folder.close();
+    expect(new TextDecoder().decode((await folder.file("arr\\units.dat"))!)).toBe("units in the archive");
+  });
+
+  it("refuses an archive it cannot open with the reader's own error, and its reason", async () => {
+    const broken = new Uint8Array(96);
+    broken.set([0x4d, 0x50, 0x51, 0x1a]);
+    const err = await modFolder(picked({ "Mod.mpq": broken }), none).then(() => null, (e: unknown) => e);
+    expect(err).toBeInstanceOf(ModReadError);
+    expect((err as ModReadError).detail.key).toBe("archive-unopenable");
+    expect(((err as ModReadError).detail.params as { reason?: { key: string } }).reason?.key).toMatch(/^mpq-/);
   });
 
   it("reads a file only when the reader asks for it, and hands a dot folder's files to no one", async () => {
@@ -69,7 +81,17 @@ describe("a picked folder read as a mod (@scm-js/mod)", () => {
   });
 
   it("says why it cannot read a folder in the package's words, translated by their English template", () => {
-    const t = (text: string, params: Record<string, string | number> = {}) => (KO[text] ?? text).replace(/\{(\w+)(?:\|[^}]*)?\}/g, (_, n: string) => String(params[n] ?? ""));
+    const fill = (text: string, params: Record<string, string | number>) => text.replace(/\{(\w+)(?:\|[^}]*)?\}/g, (_, n: string) => String(params[n] ?? ""));
+    const t = (text: string, params: Record<string, string | number> = {}) => fill(KO[text] ?? text, params);
+    const english = (text: string, params: Record<string, string | number> = {}) => fill(text, params);
+    // The library's English text is `why`; its reason, hidden in English, is what Korean shows.
+    const archive = new ModReadError(say("archive-unopenable", { path: "Mod.mpq", why: "Invalid MPQ header", reason: say("mpq-damaged", { detail: "Invalid MPQ header" }) }));
+    expect(modErrorText(archive, english)).toBe("Mod.mpq could not be opened as an archive: Invalid MPQ header");
+    expect(modErrorText(archive, t)).toBe("Mod.mpq 아카이브로 열지 못했습니다: 손상되었습니다(Invalid MPQ header)");
+    // (made without the reason, Korean shows the library's text)
+    expect(modErrorText(new ModReadError(say("archive-unopenable", { path: "Mod.mpq", why: "Invalid MPQ header" } as never)), t)).toBe("Mod.mpq 아카이브로 열지 못했습니다: Invalid MPQ header");
+    // The progress the reader can say includes a copy of the game it leaves out.
+    expect(MOD_WORDS).toContain("game-copy");
     const err = new ModReadError(say("exe-unreadable", { path: "Mod.exe", why: new PatcherError(say("overlay-form", { at: 1024, form: 2, known: 1 })).detail }));
     const text = modErrorText(err, t);
     expect(text).toContain("Mod.exe");
@@ -190,6 +212,20 @@ describe("an operating system's files are not a mod's", () => {
     const h = await folderHashes(d, { changed: ["arr\\units.dat"] });
     expect(h.changed).toBe(h.all);
     expect(h.older).toEqual([]);
+  });
+});
+
+describe("the mod a picked folder holds, for replays that name none", () => {
+  it("goes by the name, link and races its mod.json gives", async () => {
+    const json = (o: object) => JSON.stringify(o);
+    const d = (await modFolder(picked({ "arr/units.dat": "u", "mod.json": json({ name: "Made Mod", link: "https://example.org/made", races: [{ id: 69, name: "Seventh" }] }) }), none)).description;
+    expect(folderMod(d, "0123456789abcdef", "Made")).toEqual({ hash: "0123456789abcdef", name: "Made Mod", url: "https://example.org/made", races: [{ id: 69, name: "Seventh" }] });
+    // races: [] declares none, which a page that kept names from before must drop; no races says nothing
+    const none_ = (await modFolder(picked({ "arr/units.dat": "u", "mod.json": json({ races: [] }) }), none)).description;
+    expect(folderMod(none_, "0123456789abcdef", "Made")).toEqual({ hash: "0123456789abcdef", name: "Made", url: null, races: [] });
+    const silent = (await modFolder(picked({ "arr/units.dat": "u" }), none)).description;
+    expect(folderMod(silent, "0123456789abcdef", "Made")).toEqual({ hash: "0123456789abcdef", name: "Made", url: null });
+    expect(assumedDataSet(folderMod(d, "0123456789abcdef", "Made")).races).toEqual([{ id: 69, name: "Seventh" }]);
   });
 });
 

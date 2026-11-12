@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { REPLAY_ERRORS } from "@scm-js/replay";
 import { KO } from "../ko";
+import { MOD_MESSAGES } from "@scm-js/mod";
 import { MOD_WORD_TEXTS } from "../modreplay";
 
 // Every literal the plugin shows through `t("…")` / `api.i18n.t("…")`, or keeps in a table as `msg("…")`,
@@ -11,6 +12,8 @@ const files = ["plugin.ts", "analysis.ts", "chk.ts", "insight.ts", "techview.ts"
 const sources = files.map((f) => readFileSync(new URL(`../${f}`, import.meta.url), "utf8"));
 const keys = new Set([...sources.flatMap((source) => [...source.matchAll(/\b(?:t|msg)\("((?:[^"\\]|\\.)*)"/g)].map((m) => JSON.parse(`"${m[1]}"`) as string)), ...REPLAY_ERRORS, ...MOD_WORD_TEXTS]);
 
+/** The mod reader's templates with parameters their English text does not show (`hidden`). */
+const HIDDEN = new Map(Object.values(MOD_MESSAGES as Record<string, { text: string; hidden?: readonly string[] }>).filter((m) => m.hidden).map((m) => [m.text, m.hidden!]));
 /** The brace that closes the one at `open`. */
 const closing = (s: string, open: number) => { let depth = 0; for (let i = open; i < s.length; i++) { if (s[i] === "{") depth++; else if (s[i] === "}" && --depth === 0) return i; } return s.length; };
 /**
@@ -44,6 +47,14 @@ describe("the Korean catalogue", () => {
 
   it("keeps every placeholder, and adds none", () => {
     for (const [en, ko] of Object.entries(KO)) {
+      // (a parameter of the mod reader's that its English text does not show, an archive's `reason`, may be shown in
+      // place of one it does: as many placeholders, none but those)
+      const hidden = HIDDEN.get(en);
+      if (hidden) {
+        expect([...names(ko)].filter((n) => !names(en).has(n) && !hidden.includes(n)), en).toEqual([]);
+        expect(names(ko).size, en).toBe(names(en).size);
+        continue;
+      }
       const want = [...names(en)].filter((n) => !counts(en).has(n) || names(ko).has(n)).sort();
       expect([...names(ko)].sort(), en).toEqual(want);
     }

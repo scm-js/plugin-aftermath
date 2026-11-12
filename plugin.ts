@@ -34,7 +34,7 @@ import type { Disposable, MapView, OverlayHandle, PanelHandle, PluginApi, Plugin
 import { analyse, buildOrderRows, formatTime, FRAMES_PER_MINUTE, heat, TOWN_HALLS, type ClickKind, type HeatGrid, type PlayerReport, type ReplayReport } from "./analysis";
 import { likeness, plainText, readChk, type ChkInfo } from "./chk";
 import { FRAME_MS, parseReplay, ReplayError, type ModTag } from "@scm-js/replay";
-import { ask, assumedDataSet, assumedTag, engineReason, engineSentence, handedReplay, holdsMod, isReplaysMod, modAnalysis, modErrorText, modFolder, modHashPending, modSigns, modText, openModOf, pickedModFiles, playsModReplays, pluginNames, replayDataSet, safeLink, type EngineReason, type ModFolder, type ModSign, type OpenMod, type PickedFile } from "./modreplay";
+import { ask, assumedDataSet, assumedTag, engineReason, engineSentence, folderMod, handedReplay, holdsMod, isReplaysMod, modAnalysis, modErrorText, modFolder, modHashPending, modSigns, modText, openModOf, pickedModFiles, playsModReplays, pluginNames, replayDataSet, safeLink, type EngineReason, type ModFolder, type ModSign, type OpenMod, type PickedFile } from "./modreplay";
 import { say } from "@scm-js/mod";
 import { KO } from "./ko";
 import { buildings as standingBuildings, isBuilding, losses, lossPoints, madeRows, mineralLines, presencePoints, sampleAt, series, unitIndex, unitsAt, WORKERS, type Metric, type Point, type Standing, type UnitIndex } from "./played";
@@ -716,6 +716,7 @@ export function activate(api: PluginApi) {
       if (performance.now() - shown > 250) { shown = performance.now(); side?.render(); }
     });
     if (holdsMod(folder.description)) return folder;
+    folder.close();
     api.ui.toast({ kind: "warn", title: t("No mod in that folder"), detail: t("Pick the mod's folder: the one holding its arr, unit and other game folders, its archive or its program, or the folder above it.") });
     return null;
   }
@@ -736,11 +737,13 @@ export function activate(api: PluginApi) {
     }
     const picked = await api.ui.pickFiles({ directory: true });
     if (!picked.length) return;
+    let folder: ModFolder | null = null;
     try {
-      const folder = await readPickedMod(entry, picked);
+      folder = await readPickedMod(entry, picked);
       if (!folder) return;
       const hashes = folder.hashes;
       if (!isReplaysMod(tag, hashes)) {
+        folder.close();
         api.ui.toast({ kind: "error", title: t("This folder is not the mod the replay was played with"), detail: t("Its data set is {hash}, the replay's is {wanted} ({name}).", { hash: hashes.hash, wanted: tag.dataSet.hash, name: tag.dataSet.name }) });
         return;
       }
@@ -751,6 +754,7 @@ export function activate(api: PluginApi) {
       if (entry.viewFailed) playWithMod(entry);
       api.ui.toast({ kind: "ok", title: t("{name} attached", { name: tag.dataSet.name || tag.dataSet.hash }), detail: t("The editor draws with the mod's files until its data set is changed or the page is loaded again.") });
     } catch (err) {
+      if (folder !== attachedFolder?.folder) folder?.close();
       api.ui.toast({ kind: "error", title: t("The mod could not be attached"), detail: modErrorText(err, t) });
       api.log("Aftermath: attaching a mod,", err);
     } finally {
@@ -760,9 +764,22 @@ export function activate(api: PluginApi) {
       redraw();
     }
   }
+  /**
+   * The folder the editor's data set draws from now, by that set's id: its archives stay open while the editor reads
+   * from it, and are let go once another data set is in use (`letGoOfFolder`).
+   */
+  let attachedFolder: { folder: ModFolder; id: string } | null = null;
+  function letGoOfFolder(): void {
+    attachedFolder?.folder.close();
+    attachedFolder = null;
+  }
+
   /** The mod's game files (loose or in its archives) as the editor's data set for the session (nothing stored), named by `hash`. */
   async function attachFolder(folder: ModFolder, profile: { id: string; name: string; url?: string }, hash: string): Promise<void> {
     await api.gameData.attach(profile, async (_path, file) => (file?.member ? folder.file(file.member) : null), { hash });
+    // (the folder attached before is let go of here, if the editor's event has not done it already)
+    if (attachedFolder?.folder !== folder) letGoOfFolder();
+    attachedFolder = { folder, id: profile.id };
     await api.data.load();
   }
 
@@ -869,19 +886,20 @@ export function activate(api: PluginApi) {
     }
     const picked = await api.ui.pickFiles({ directory: true });
     if (!picked.length) return false;
+    let folder: ModFolder | null = null;
     try {
-      const folder = await readPickedMod(entries[0], picked);
+      folder = await readPickedMod(entries[0], picked);
       if (!folder) return false;
-      const hashes = folder.hashes;
-      // (the mod's own name and link where it says them: its mod.json, else the one program that holds it, else the folder's)
-      const name = folder.description.name || picked[0].path.split("/")[0] || t("Mod");
-      const url = safeLink(folder.description.link ?? null);
-      await attachFolder(folder, { id: `replay-${hashes.hash}`, name, ...(url ? { url } : {}) }, hashes.hash);
-      provideFolder(hashes.hash, name, picked);
-      assume(entries, { hash: hashes.hash, name, url });
+      // (the mod's own name, link and races where it says them)
+      const mod = folderMod(folder.description, folder.hashes.hash, picked[0].path.split("/")[0] || t("Mod"));
+      const name = mod.name;
+      await attachFolder(folder, { id: `replay-${mod.hash}`, name, ...(mod.url ? { url: mod.url } : {}) }, mod.hash);
+      provideFolder(mod.hash, name, picked);
+      assume(entries, mod);
       api.ui.toast({ kind: "ok", title: t("{name} attached", { name }), detail: t("The replay is watched and analysed with it, and the editor draws with its files until its data set is changed or the page is loaded again.") });
       return true;
     } catch (err) {
+      if (folder !== attachedFolder?.folder) folder?.close();
       api.ui.toast({ kind: "error", title: t("The mod could not be attached"), detail: modErrorText(err, t) });
       api.log("Aftermath: attaching a mod,", err);
       return false;
@@ -4307,7 +4325,12 @@ export function activate(api: PluginApi) {
   api.events.on("language", () => racesChanged());
   // (Another data set in use: a mod's replay is named by its mod only while the editor draws with it; its races and
   // their names, its workers and halls, follow it. Its tables load after the event.)
-  api.events.on("gameData", () => { racesChanged(); void api.data.load().then(() => racesChanged()); });
+  api.events.on("gameData", () => {
+    // (a mod's folder attached here is let go once the editor draws from another data set)
+    if (attachedFolder && api.gameData?.source?.()?.profile.id !== attachedFolder.id) letGoOfFolder();
+    racesChanged();
+    void api.data.load().then(() => racesChanged());
+  });
 
   return () => {
     stop();
@@ -4317,6 +4340,7 @@ export function activate(api: PluginApi) {
     againRunning?.controller.abort();
     game.dispose();
     unregisterFolders();
+    letGoOfFolder();
     simWatch.dispose();
     endCast();
     making?.abort.abort();

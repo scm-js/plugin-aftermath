@@ -177,6 +177,7 @@ and goes by nothing else (not by names). When it finds either:
   offers **Pick the Mod's Folder…** or opening it without. The folder picked is attached as
   the editor's data set as **Attach the Mod's Folder…** attaches one (its hash is the folder's
   own: the replay has none to compare it with), and the replay is watched and analysed with it.
+  The mod is named as its `mod.json` names it, with the link and the races it declares there.
 - Afterwards, the panel says the same with **Watch With** the mod open in the editor (a mod
   opened with File ▸ Open a Mod… after the replay is offered there too) and **Pick the Mod's
   Folder…**, until a mod is chosen.
@@ -214,8 +215,8 @@ attached as one. Files an operating system leaves in folders (`desktop.ini`, `Th
 2026, and a replay saved before then names the mod by a hash with them: it is matched when
 the picked folder shows those files, which the browser's folder picker does not for
 `desktop.ini` and `Thumbs.db`, or when the mod's archive holds them. Each archive is read
-whole while the folder is read, so a mod with a large one needs that much memory for a
-while.
+whole, once, so a mod with a large one needs that much memory: the archives the mod lays stay
+open while the editor draws with it, and are let go once another data set is in use.
 
 With the scm-sim plugin 0.16.0 or later, **Play From Here** opens a mod's replay on the play
 page with the mod's hash, name and link (never its files). The page plays it with that mod
@@ -616,6 +617,19 @@ npm run build     # dist/plugin.js, the bundle the editor loads
 The tests write their own replays in all three formats (`@scm-js/replay/write`), so
 nobody's games are in the repository. Put real replays in `fixtures/` (gitignored) and the tests read
 each of them as well.
+
+Two more sets of tests run only on files you point them at, which never go in the repository:
+
+- `SCM_MOD_REPLAY=<file.rep>`: a replay a mod's own release recorded. The test checks that it
+  names no mod and that Aftermath finds a sign it was played with one.
+- `SCM_MOD_FOLDERS="<folder>=<hash>[,<hash>…];<folder>=…"`: mods' folders, each read as the
+  browser's folder picker hands one over. The first hash is the one the folder must go by; the
+  others are hashes it went by under earlier rules, each of which must still find it. A large
+  mod takes a while to read; each test waits up to fifteen minutes.
+
+```sh
+SCM_MOD_FOLDERS="$HOME/mods/Some Mod=0123456789abcdef,fedcba9876543210" npx vitest run tests/modreplay.test.ts
+```
 
 | File | What it is |
 | --- | --- |
