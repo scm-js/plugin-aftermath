@@ -177,6 +177,7 @@ and goes by nothing else (not by names). When it finds either:
   offers **Pick the Mod's Folder…** or opening it without. The folder picked is attached as
   the editor's data set as **Attach the Mod's Folder…** attaches one (its hash is the folder's
   own: the replay has none to compare it with), and the replay is watched and analysed with it.
+  The mod is named as its `mod.json` names it, with the link and the races it declares there.
 - Afterwards, the panel says the same with **Watch With** the mod open in the editor (a mod
   opened with File ▸ Open a Mod… after the replay is offered there too) and **Pick the Mod's
   Folder…**, until a mod is chosen.
@@ -193,22 +194,29 @@ two actions.
 A mod gives the game's unit numbers to its own units, so the replay is named only by the
 mod: until the editor draws with the mod's files, units, upgrades and technologies show by
 number, never by the game's names. **Attach the Mod's Folder…** asks for the mod's folder
-(the one holding its `arr`, `unit` and other game folders, or a folder above it), checks
-that it is the mod the replay names, and has the editor draw with it for the session.
-Names, costs and pictures then come from the mod. A folder of another version is refused,
-with both hashes.
+(the one holding its `arr`, `unit` and other game folders, its archive or its program, or a
+folder above it), checks that it is the mod the replay names, and has the editor draw with
+it for the session. Names, costs and pictures then come from the mod. A folder of another
+version is refused, with both hashes.
 
-The check is the mod's hash as the play page and `scmjs mod info` work it out: one line
-for each of the folder's game files, each plugin it carries (`.qdp`, `.bwl`) and its
-FireGraft project (`.fgp`), never compared with your copy of the game; a replay of a game
-that ran none of the plugins names the hash without them, which is taken too, as are the
-older forms a replay saved before November 2026 names. Files an operating system leaves in
-folders (`desktop.ini`, `Thumbs.db`, `.DS_Store` and the like) are not the mod's and have
-no line. They had one until 9 November 2026, and a replay saved before then names the mod
-by a hash with them: it is matched when the picked folder shows those files, which the
-browser's folder picker does not for `desktop.ini` and `Thumbs.db`. Only the folder's loose
-files are read: archives in it (an `.mpq`, the mod's `.exe`) are not, so a mod that keeps
-its files in one is refused here, and the message says so. Pick the folder of loose files.
+The folder is read as the play page, `scmjs mod` and the editor read a mod, with the same
+reader ([`@scm-js/mod`](https://www.npmjs.com/package/@scm-js/mod)): its loose files, and
+the archives in it (an `.mpq`, the mod's patcher or self-executing `.exe`, a `.zip`), so a
+mod that keeps its files in one is found as well. The check is the mod's hash as that reader
+works it out: one line for each game file the mod lays, one for its FireGraft project
+(`.fgp`) and one for each module of its code (its plugins, the plugins a patcher `.exe`
+carries, and the libraries they load), never compared with your copy of the game. A replay of
+a game that ran none of the code names the hash without those lines, which is taken too. So
+are the hashes earlier rules gave, which replays saved under them name: the hash from before
+every module of the code had a line (11 November 2026), and the older forms a replay saved
+before November 2026 names. A replay matched by one of those is the same mod, and is
+attached as one. Files an operating system leaves in folders (`desktop.ini`, `Thumbs.db`,
+`.DS_Store` and the like) are not the mod's and have no line. They had one until 9 November
+2026, and a replay saved before then names the mod by a hash with them: it is matched when
+the picked folder shows those files, which the browser's folder picker does not for
+`desktop.ini` and `Thumbs.db`, or when the mod's archive holds them. Each archive is read
+whole, once, so a mod with a large one needs that much memory: the archives the mod lays stay
+open while the editor draws with it, and are let go once another data set is in use.
 
 With the scm-sim plugin 0.16.0 or later, **Play From Here** opens a mod's replay on the play
 page with the mod's hash, name and link (never its files). The page plays it with that mod
@@ -609,6 +617,19 @@ npm run build     # dist/plugin.js, the bundle the editor loads
 The tests write their own replays in all three formats (`@scm-js/replay/write`), so
 nobody's games are in the repository. Put real replays in `fixtures/` (gitignored) and the tests read
 each of them as well.
+
+Two more sets of tests run only on files you point them at, which never go in the repository:
+
+- `SCM_MOD_REPLAY=<file.rep>`: a replay a mod's own release recorded. The test checks that it
+  names no mod and that Aftermath finds a sign it was played with one.
+- `SCM_MOD_FOLDERS="<folder>=<hash>[,<hash>…];<folder>=…"`: mods' folders, each read as the
+  browser's folder picker hands one over. The first hash is the one the folder must go by; the
+  others are hashes it went by under earlier rules, each of which must still find it. A large
+  mod takes a while to read; each test waits up to fifteen minutes.
+
+```sh
+SCM_MOD_FOLDERS="$HOME/mods/Some Mod=0123456789abcdef,fedcba9876543210" npx vitest run tests/modreplay.test.ts
+```
 
 | File | What it is |
 | --- | --- |
