@@ -79,13 +79,34 @@ While the Replay is shown:
 
 One game is shown at a time. Switching to another replay's tab starts that one.
 
+#### The game's own screen
+
+With a play page that can show it, a replay of a mod whose code ran opens on the game's own
+screen: the game draws its whole screen itself, with its console, minimap, replay panel and
+tooltips, and the mod's own interface, at the mod's own size. The pointer and the wheel over it
+are the game's. On it:
+
+- **Vision**, **Orders** and **Legend** are put away. The game's own screen is seen with every
+  player's vision, and Aftermath's marks cannot be placed on a picture the game draws at its
+  own scale. Spectate follows the whole game's action.
+- View ▸ Fog of War is greyed, and the editor's zoom, grid, locations and other plugins'
+  overlays do nothing over the game. There is no tooltip of Aftermath's: the game shows its own.
+- In the cinematic view, Aftermath's minimap and its **Minimap** button are put away.
+- The editor's minimap, Spectate, the timeline, the speed, the sounds and the music work as
+  before.
+
+**Game's own screen** on the timeline, shown where the play page can show it, turns it off
+for the play page's own picture of the map, which brings those controls back, and on again.
+The choice holds for the replays opened after it until the editor is closed.
+
 ### The timeline
 
 The strip under the map has:
 
 - **Play** / **Pause**, the time, and the speed. 1× is the game's own speed at Fastest.
 - Four switches, lit while on: **Spectate**, **Orders**, **Map stats** and **Legend**
-  (a key to the marks, in the map's bottom-left corner).
+  (a key to the marks, in the map's bottom-left corner), and **Game's own screen** where the
+  play page can show it.
 - The **Vision** menu: everyone, or one player's eyes.
 - How the analysis is going.
 - **Play From Here**, **Analysis**, **Cast…** and **Cinematic**, where they apply.

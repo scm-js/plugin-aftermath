@@ -552,7 +552,10 @@ export interface ViewReady {
   files: ScmSimStatus["files"];
   /** When `files` is null: why, in words for the person. */
   reason: string | null;
-  /** What the view's page says it does (as `ScmSimStatus.features`; 0.17.0): empty from a page before scm-sim's R2b. */
+  /**
+   * What the view's page says it does (as `ScmSimStatus.features`; 0.17.0): empty from a page before scm-sim's R2b.
+   * "ownScreen" (0.21.0): the page can show the game's own screen (`ViewOptions.ownScreen`, `ViewLooks.ownScreen`).
+   */
   features?: string[];
   /** The mods this browser keeps, and the one the view plays (0.19.0): left out by a page from before "modFiles". */
   mods?: ScmSimMods;
@@ -569,6 +572,19 @@ export interface ViewLooks {
   /** The copy has the files for Remastered's real-time lighting (on a graphics card that can), and whether it is on. */
   lighting: boolean;
   lightingOn: boolean;
+  /**
+   * Whether the replay loaded can be shown as the game's own screen, and whether it is (a page whose `ready` features
+   * have "ownScreen"; left out by a page from before it, which never shows it). It is offered where the replay's game
+   * is the game's own code on the live runtime: always for a replay of a mod whose code ran. While it is on the view
+   * shows the game's whole screen as the game draws it, fitted into the element with bars: its map, console, minimap
+   * and replay panel, and a mod's own interface. The pointer and the wheel are then the game's: `onHover` and
+   * `onPointer` say null and `onWheel` says nothing; the fog and `player` change nothing in the picture (a replay is
+   * seen with every player's vision); `camera`'s `height` is kept for when it is off; `onCamera`'s width and height are
+   * the map the game's screen may show at one to one (a mod that draws the world at its own scale shows less). Play,
+   * speed, seek, the camera, tracks, the minimap's squares, sounds and music work as before.
+   */
+  ownScreen?: boolean;
+  ownScreenOn?: boolean;
 }
 
 /** A replay the view has loaded. It stands paused at frame 0. */
@@ -623,6 +639,13 @@ export interface ViewOptions {
   lighting?: boolean;
   /** The game's console under the map (off at first: the editor has the controls, and the map gets the whole height). */
   console?: boolean;
+  /**
+   * The game's own screen (a page whose `ready` features have "ownScreen"): true or false, or null for the page's
+   * default again (on for a replay of a mod whose code ran, off for any other). The choice stands for the replays
+   * loaded after it too, and is told again to the page when it loads again (for a mod's replay, say). Answered, as
+   * every option, by the looks (`ownScreen`, `ownScreenOn`). A page from before ignores it.
+   */
+  ownScreen?: boolean | null;
 }
 
 /** The frame shown: at most ten times a second, and at once when playing or seeking changes. */
@@ -787,6 +810,12 @@ export interface ScmSimView {
   /** Whose eyes the fog is drawn through. */
   player(slot: number): void;
   options(options: ViewOptions): Promise<ViewLooks>;
+  /**
+   * Every time the page says how the game is drawn: the looks of a replay loaded, the answers to `options`, and those
+   * it says by itself (the game's own screen stopped by itself). Follow `ownScreenOn` here. Left out before
+   * plugin-scm-sim knew of the game's own screen: check that it exists.
+   */
+  onLooks?(listener: (looks: ViewLooks) => void): Disposable;
   onFrame(listener: (frame: ViewFrame) => void): Disposable;
   onCamera(listener: (camera: ViewCamera) => void): Disposable;
   /** The squares for a minimap of your own, as the game's minimap draws them. */
