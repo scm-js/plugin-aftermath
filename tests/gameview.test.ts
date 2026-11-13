@@ -417,3 +417,184 @@ describe("the Game view when the engine cannot play the replay with what it has 
     expect(failures.at(-1)).toEqual({ id: 3 });
   });
 });
+
+describe("the Game view on the game's own screen", () => {
+  type Looks = Record<string, unknown>;
+  let spec: MapViewSpec;
+  let fogs: (boolean | null)[];
+  let fogAsked: boolean[];
+  let pointers: ({ x: number; y: number } | null)[];
+  let hovers: unknown[];
+  let painted: number;
+  let zooms: number;
+  let cameraSent: { x: number; y: number; height?: number }[];
+  let optionsSent: Looks[];
+  let owns: { offered: boolean; on: boolean }[];
+  let loadLooks: Looks;
+  /** What the page answers an option of the game's own screen with. */
+  let answer: (asked: boolean | null) => Looks;
+  let listeners: { looks: ((l: Looks) => void)[]; hover: ((h: unknown) => void)[]; pointer: ((p: unknown) => void)[]; camera: ((c: ViewCamera) => void)[] };
+  let view: Record<string, unknown>;
+  let game: GameView;
+  const none = { dispose() {} };
+  const LOOKS = { remastered: false, remasteredOn: false, lighting: false, lightingOn: false };
+  const entry = { id: 1, fileName: "c.rep", bytes: new Uint8Array(1), docId: 7, eyes: 0 as number | null };
+
+  beforeEach(() => {
+    Object.assign(globalThis, { document: { createElement: () => fakeElement() }, window: { devicePixelRatio: 1, setInterval, clearInterval } });
+    fogs = []; fogAsked = []; pointers = []; hovers = []; painted = 0; zooms = 0; cameraSent = []; optionsSent = []; owns = [];
+    loadLooks = { ...LOOKS, ownScreen: true, ownScreenOn: true };
+    answer = (asked) => ({ ...LOOKS, ownScreen: true, ownScreenOn: asked !== false });
+    listeners = { looks: [], hover: [], pointer: [], camera: [] };
+    view = {
+      load: () => Promise.resolve({ name: "c.rep", frames: 100, players: [], map: { width: 128, height: 128 }, rewinds: true, looks: loadLooks, follows: true }),
+      camera: (x: number, y: number, height?: number) => { cameraSent.push({ x, y, height }); },
+      play() {}, speed() {}, seek() {}, player() {}, follow() {},
+      options: (o: Looks) => { optionsSent.push(o); return Promise.resolve("ownScreen" in o ? answer(o.ownScreen as boolean | null) : LOOKS); },
+      onFrame: () => none, onKey: () => none, onUnits: () => none, onWheel: () => none,
+      onCamera: (l: (c: ViewCamera) => void) => { listeners.camera.push(l); return none; },
+      onHover: (l: (h: unknown) => void) => { listeners.hover.push(l); return none; },
+      onPointer: (l: (p: unknown) => void) => { listeners.pointer.push(l); return none; },
+      onLooks: (l: (x: Looks) => void) => { listeners.looks.push(l); return none; },
+    };
+    const sim = { present: true, view: () => view, status: () => Promise.resolve({ available: true, features: ["replayDoor", "ownScreen"] }) } as unknown as ScmSimService;
+    let shown = false;
+    const api = {
+      view: { flags: () => ({}) },
+      ui: {
+        mapView: (s: MapViewSpec) => {
+          spec = s;
+          s.mount(fakeElement());
+          return {
+            offer() {}, onChange: () => none, isShown: () => shown, dispose() {}, setCamera() {}, redrawMinimap() {}, wheel: () => true,
+            setFog: (on: boolean | null) => { fogs.push(on); },
+            setPointer: (p: { x: number; y: number } | null) => { pointers.push(p); },
+            paintOver: () => { painted++; },
+            show: (on: boolean) => { shown = on; },
+          };
+        },
+      },
+    } as unknown as PluginApi;
+    game = new GameView(api, {
+      frame() {}, movedByUser() {}, zoomed: () => { zooms++; }, shown() {}, state() {}, seeking() {},
+      hover: (h) => { hovers.push(h); }, fog: (on) => { fogAsked.push(on); }, ownScreen: (o) => { owns.push({ ...o }); },
+    }, "Replay", { loading: (n) => n, failed: (m) => m });
+    game.setService(sim);
+  });
+  afterEach(() => { delete (globalThis as { document?: unknown }).document; delete (globalThis as { window?: unknown }).window; });
+
+  const hold = async (eyes: number | null = 0) => {
+    await game.offer(entry, true);
+    expect(await game.hold({ ...entry, eyes }, 0, false, 1)).toBe(true);
+  };
+  const say = (l: Looks) => { for (const h of listeners.looks) h(l); };
+  const camera = () => { for (const l of listeners.camera) l({ x: 960, y: 488, width: 1920, height: 976, byUser: false }); };
+  const settle = () => new Promise<void>((r) => setTimeout(r, 0));
+
+  it("leaves alone the editor's zoom, fog, tooltip, pointer and overlays while it is on", async () => {
+    await hold();
+    expect(game.ownScreen).toEqual({ offered: true, on: true });
+    expect(game.ownScreenOn).toBe(true);
+    // Said once while loading (none yet), once loaded (on).
+    expect(owns).toEqual([{ offered: true, on: true }]);
+    // The editor's Fog of War is greyed, and a press on it goes nowhere.
+    expect(fogs.at(-1)).toBeNull();
+    spec.onFog?.(true);
+    expect(fogAsked).toEqual([]);
+    game.eyes(1);
+    expect(fogs.at(-1)).toBeNull();
+    // Nothing under the pointer for a tooltip or the status bar, whatever a page says.
+    for (const l of listeners.hover) l({ unit: { type: 0 }, x: 1, y: 2 });
+    for (const l of listeners.pointer) l({ x: 100, y: 200 });
+    expect(hovers.at(-1)).toBeNull();
+    expect(pointers.at(-1)).toBeNull();
+    // The editor's zoom does nothing (the game keeps its own scale), and Spectate's track is kept.
+    cameraSent.length = 0;
+    spec.onZoom?.({ x: 1000, y: 900, width: 2400, height: 1400 });
+    expect(cameraSent).toEqual([]);
+    expect(zooms).toBe(0);
+    // The editor's grid, locations and overlays are not drawn over the game's picture.
+    camera();
+    spec.onRepaint?.();
+    expect(painted).toBe(0);
+    // The minimap and the camera still move the game.
+    spec.minimap?.press(500, 600);
+    expect(cameraSent).toEqual([{ x: 500, y: 600, height: undefined }]);
+  });
+
+  it("goes back to the page's own picture when asked, and gives the controls back", async () => {
+    await hold(2);
+    game.setOwnScreen(false);
+    expect(optionsSent.at(-1)).toEqual({ ownScreen: false });
+    await settle();
+    expect(game.ownScreen).toEqual({ offered: true, on: false });
+    expect(owns.at(-1)).toEqual({ offered: true, on: false });
+    // The fog toggle shows the eyes asked for again, and works.
+    expect(fogs.at(-1)).toBe(true);
+    spec.onFog?.(false);
+    expect(fogAsked).toEqual([false]);
+    // The tooltip, the pointer, the zoom and the overlays are back.
+    for (const l of listeners.hover) l({ unit: { type: 0 }, x: 1, y: 2 });
+    expect(hovers.at(-1)).not.toBeNull();
+    spec.onZoom?.({ x: 1000, y: 900, width: 2400, height: 1400 });
+    expect(cameraSent.at(-1)).toEqual({ x: 1000, y: 900, height: 1400 });
+    expect(zooms).toBe(1);
+    camera();
+    expect(painted).toBeGreaterThan(0);
+    // And on again.
+    game.setOwnScreen(true);
+    await settle();
+    expect(game.ownScreen).toEqual({ offered: true, on: true });
+    expect(fogs.at(-1)).toBeNull();
+  });
+
+  it("follows what the page says by itself, and nothing about another replay than the one held", async () => {
+    await hold(null);
+    // The game's draw stopped: the page says it is off.
+    say({ ...LOOKS, ownScreen: true, ownScreenOn: false });
+    expect(game.ownScreen).toEqual({ offered: true, on: false });
+    expect(fogs.at(-1)).toBe(false);
+    // The same again changes nothing and says nothing.
+    const said = owns.length;
+    say({ ...LOOKS, ownScreen: true, ownScreenOn: false });
+    expect(owns).toHaveLength(said);
+    // Another replay on its way: neither, whatever a looks said meanwhile, until its own looks.
+    loadLooks = { ...LOOKS, ownScreen: false, ownScreenOn: false };
+    let finish: () => void = () => {};
+    view.load = () => new Promise((resolve) => { finish = () => resolve({ name: "p.rep", frames: 100, players: [], map: { width: 128, height: 128 }, rewinds: true, looks: loadLooks, follows: true }); });
+    const other = { ...entry, id: 2 };
+    const held = game.hold(other, 0, false, 1);
+    expect(game.ownScreen).toEqual({ offered: false, on: false });
+    say({ ...LOOKS, ownScreen: true, ownScreenOn: true });
+    expect(game.ownScreen).toEqual({ offered: false, on: false });
+    finish();
+    await held;
+    expect(game.ownScreen).toEqual({ offered: false, on: false });
+    // Not offered for this one: asking does nothing.
+    optionsSent.length = 0;
+    game.setOwnScreen(true);
+    expect(optionsSent).toEqual([]);
+  });
+
+  it("changes nothing with a page from before it, or a plugin-scm-sim that does not pass it on", async () => {
+    // (A page from before: no `ownScreen` in its looks. A plugin-scm-sim from before: no `onLooks`, and it leaves the
+    // looks' `ownScreen` out, which comes to the same.)
+    loadLooks = { ...LOOKS };
+    delete view.onLooks;
+    await hold(1);
+    expect(game.ownScreen).toEqual({ offered: false, on: false });
+    expect(owns).toEqual([]);
+    expect(fogs.at(-1)).toBe(true);
+    spec.onFog?.(false);
+    expect(fogAsked).toEqual([false]);
+    for (const l of listeners.pointer) l({ x: 100, y: 200 });
+    expect(pointers.at(-1)).toEqual({ x: 100, y: 200 });
+    cameraSent.length = 0;
+    spec.onZoom?.({ x: 1000, y: 900, width: 2400, height: 1400 });
+    expect(cameraSent).toEqual([{ x: 1000, y: 900, height: 1400 }]);
+    camera();
+    expect(painted).toBe(1);
+    game.setOwnScreen(false);
+    expect(optionsSent.filter((o) => "ownScreen" in o)).toEqual([]);
+  });
+});

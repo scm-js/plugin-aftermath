@@ -940,6 +940,9 @@ export function activate(api: PluginApi) {
     seeking: () => { strip?.update(); showBusy(); },
     hover: (h) => showHover(h),
     fog: (on) => fogFromEditor(on),
+    // The game's own screen on or off: the switches over the game that it makes pointless come and go, Spectate goes
+    // back to the whole game's action (no player's fog is shown), and what is drawn over the game is drawn again.
+    ownScreen: () => { follow(); redraw(); strip?.update(); cinema.refresh?.(); },
     failure: (id, failed) => {
       const entry = loaded.find((l) => l.id === id);
       if (!entry) return;
@@ -1357,7 +1360,8 @@ export function activate(api: PluginApi) {
   function shotsOf(entry: Loaded): Shot[] {
     const done = entry.played;
     if (!done) return [];
-    const eyes = game.shown && game.holds(entry.id) ? entry.eyes : null;
+    // (Not on the game's own screen, which no player's fog changes: the Vision menu is put away there.)
+    const eyes = game.shown && game.holds(entry.id) && !game.ownScreenOn ? entry.eyes : null;
     const player = eyes === null ? undefined : entry.report.players.find((p) => p.player.slot === eyes)?.player.index;
     if (player === undefined) return done.shots;
     let shots = done.shotsFor.get(player);
@@ -2161,7 +2165,8 @@ export function activate(api: PluginApi) {
           button(playing ? t("Pause") : t("Play"), () => { if (playing) stop(); else play(); }),
           speed,
           button(t("Follow"), () => setFollowing(!cam.following), cam.following),
-          button(t("Minimap"), () => { settings.cinemaMinimap = !settings.cinemaMinimap; save(); game.redrawOver(); }, settings.cinemaMinimap),
+          // (The game's own screen has its own minimap: Aftermath's is put away there.)
+          ...(game.ownScreenOn ? [] : [button(t("Minimap"), () => { settings.cinemaMinimap = !settings.cinemaMinimap; save(); game.redrawOver(); }, settings.cinemaMinimap)]),
           ...(cast ? [cast] : []),
           button(t("Leave the cinematic view"), () => { void setCinema(false); }),
         );
@@ -2179,7 +2184,7 @@ export function activate(api: PluginApi) {
       let dragging = false;
       const lookFrom = (e: PointerEvent): boolean => {
         const entry = current;
-        if (!entry || !settings.cinemaMinimap) return false;
+        if (!entry || !settings.cinemaMinimap || game.ownScreenOn) return false;
         const r = layer.getBoundingClientRect();
         const at = GameView.minimapAt(e.clientX - r.left, e.clientY - r.top, minimapBox(r.height), mapPixels(entry));
         if (!at) return false;
@@ -2263,7 +2268,8 @@ export function activate(api: PluginApi) {
     const frame = (gameClock() ? game.frameNow(settings.speed) : null) ?? entry.frame;
     broadcastBar(ctx, entry, frame);
     const dpr = window.devicePixelRatio || 1;
-    if (settings.cinemaMinimap) game.drawMinimap(ctx, minimapBox(ctx.canvas.height / dpr), mapPixels(entry), groundOf(entry));
+    // (The game's own screen has its own minimap.)
+    if (settings.cinemaMinimap && !game.ownScreenOn) game.drawMinimap(ctx, minimapBox(ctx.canvas.height / dpr), mapPixels(entry), groundOf(entry));
     const now = performance.now();
     const tl = entry.played?.timeline;
     const players = entry.report.players.filter((p) => !tl || tl.samples.players.some((q) => q.slot === p.player.index));
@@ -2812,7 +2818,8 @@ export function activate(api: PluginApi) {
     const players = cur.report.players.filter((p) => !cur.hidden.has(p.player.id));
     // (The cinematic view is a broadcast: its own dress, no editor marks.)
     if (cinema.on) { cinemaDress(ctx, cur); subtitle(ctx); castCard(ctx); return; }
-    if (settings.orders) {
+    // (Not on the game's own screen: what it shows of the map, and at what scale, is the game's, so no mark has a place.)
+    if (settings.orders && !game.ownScreenOn) {
       drawOrders(ctx, v, players, game.frameNow(settings.speed) ?? cur.frame);
       if (settings.legend && !casting.reel) legend(ctx, "orders", cur.played !== null, true);
     }
@@ -3893,6 +3900,7 @@ export function activate(api: PluginApi) {
     private legendButton: HTMLButtonElement | null = null;
     private statsButton: HTMLButtonElement | null = null;
     private eyesSelect: HTMLSelectElement | null = null;
+    private ownButton: HTMLButtonElement | null = null;
     /** Where the pointer is over the graph, in CSS pixels from its left; null when it is not. */
     private hover: number | null = null;
     private tip: { refresh(): void; dispose(): void } | null = null;
@@ -3925,6 +3933,8 @@ export function activate(api: PluginApi) {
       this.ordersButton = toggle(t("Orders"), () => showOrders(!settings.orders));
       this.legendButton = toggle(t("Legend"), () => { settings.legend = !settings.legend; save(); redraw(); this.update(); });
       this.statsButton = toggle(t("Map stats"), () => showStats(lensOf() !== "map"));
+      // The game's own screen, where the play page can show it: on or off (`update` shows it only then).
+      this.ownButton = toggle(t("Game's own screen"), () => game.setOwnScreen(!game.ownScreen.on));
       // The Analysis window, on an editor with the tabs it is built of.
       // The cast, when the scmjs.dev server offers one to this account and the game has been analysed: the Cast window,
       // or the cast just made, or Stop while one plays.
@@ -4005,7 +4015,7 @@ export function activate(api: PluginApi) {
       } });
       this.eyesSelect = eyes;
       this.root.append(el("div", { className: "afm-row" }, this.playButton, this.timeLabel, speed,
-        el("span", { className: "afm-toggles" }, this.spectateButton, this.ordersButton, this.statsButton, this.legendButton), eyes,
+        el("span", { className: "afm-toggles" }, this.spectateButton, this.ordersButton, this.statsButton, this.legendButton, this.ownButton), eyes,
         this.status, retry, castCardsButton, playHere, cinemaButton, castButton, castMore, analysis, chartSelect));
 
       // The lane of marks and the graph, one canvas: press or drag anywhere on it to go there.
@@ -4066,6 +4076,8 @@ export function activate(api: PluginApi) {
           : t("Making the cast: {what} · {time}", { what: makingLine(making), time: formatTime(((Date.now() - making.started) / FRAME_MS)) });
       } else if (ready.has(entry.id)) line = t("The cast is ready.");
       const onMap = lensOf() === "map";
+      // The game's own screen, over the game in front: it draws its own console, minimap, tooltips and fog.
+      const own = game.shown && !onMap && game.holds(entry.id) ? game.ownScreen : { offered: false, on: false };
       if (onMap) {
         // Map stats is no one game's: the line says what it holds, and the timeline is faded.
         const n = counted(entry).length, waiting = waitingOf(entry);
@@ -4084,6 +4096,8 @@ export function activate(api: PluginApi) {
         : onMap ? t("Back to the game, with the camera following the action")
         : following ? t("F: the camera follows the action as an observer would; scroll the map, or press here, to look around yourself")
         : t("F: follow the action as an observer would: the fights that matter, armies about to meet, new bases, the armies on the move");
+      // (Orders and their legend are marks at places of the map, which the game's own screen leaves no room for.)
+      this.ordersButton!.hidden = own.on;
       this.ordersButton!.classList.toggle("afm-on", settings.orders);
       this.ordersButton!.setAttribute("aria-pressed", String(settings.orders));
       this.ordersButton!.title = game.shown ? t("O: what the players told their units to do in the last eight seconds, over the game")
@@ -4093,9 +4107,16 @@ export function activate(api: PluginApi) {
       // (Over the game only the orders have marks of Aftermath's own: there the legend keys them, and waits for them.)
       const keyless = game.shown && !onMap && !settings.orders;
       this.legendButton!.disabled = keyless;
+      this.legendButton!.hidden = own.on;
       this.legendButton!.title = keyless ? t("Over the game the legend keys the orders: turn Orders on to see it") : t("A key to the marks, in the map's corner");
       // (On the map, a player's eyes need the game's sightings, which come with the analysis.)
-      this.eyesSelect!.hidden = onMap || (!game.shown && !entry.played?.timeline.sight);
+      this.eyesSelect!.hidden = onMap || own.on || (!game.shown && !entry.played?.timeline.sight);
+      this.ownButton!.hidden = !own.offered;
+      this.ownButton!.classList.toggle("afm-on", own.on);
+      this.ownButton!.setAttribute("aria-pressed", String(own.on));
+      this.ownButton!.title = own.on
+        ? t("The game draws its whole screen: its console, minimap and tooltips, and a mod's own interface. Press for the play page's own picture of the map, with Vision, Orders, the tooltip and the editor's zoom and fog.")
+        : t("Press to have the game draw its whole screen: its console, minimap and tooltips, and a mod's own interface. Vision, Orders, the tooltip and the editor's zoom and fog do nothing there.");
       const games = mapGames(entry).length;
       this.statsButton!.textContent = games > 1 ? t("Map stats · {n}", { n: games }) : t("Map stats");
       this.statsButton!.classList.toggle("afm-on", onMap);

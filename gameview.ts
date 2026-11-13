@@ -17,9 +17,19 @@
  *
  * The view is offered only where it can play: the scm-sim plugin is there with a `view`, and the person's browser has
  * the game's files (the engine's page says so). Otherwise nothing changes: the tab has the map alone.
+ *
+ * The game's own screen (a play page whose looks say `ownScreen`, through a plugin-scm-sim that passes them on): the
+ * game draws its whole screen itself — its console, minimap and replay panel, and a mod's own interface — and the
+ * pointer and the wheel over it are the game's. While it is on, what the editor and Aftermath would add over the game
+ * or do to it is left alone: the editor's zoom (the game keeps its own scale), its Fog of War (a replay's own screen
+ * sees with every player's vision; the toggle is greyed), the tooltip and the pointer's place (the page says none),
+ * and the editor's grid, locations and overlays over the game (what the game shows of the map is the game's, at a
+ * scale a mod may choose, so nothing can be put at a map position over it). The minimap, the camera, Spectate's
+ * tracks, play, speed, seeks and sounds work as before. The choice is offered (`setOwnScreen`) where the page says it
+ * can show it; a page or a plugin-scm-sim from before says nothing of it, and nothing changes.
  */
 import type { Disposable, MapView, MapViewCamera, MapViewHandle, MinimapView, PluginApi } from "@scm-js/plugin-api";
-import type { ReplayDataSet, ScmSimService, ScmSimView, ViewFrame, ViewHover, ViewTrack, ViewUnits } from "./vendor/scm-sim";
+import type { ReplayDataSet, ScmSimService, ScmSimView, ViewFrame, ViewHover, ViewLooks, ViewTrack, ViewUnits } from "./vendor/scm-sim";
 import { FRAME_MS } from "@scm-js/replay";
 import { engineReason, engineSentence, type EngineReason } from "./modreplay";
 
@@ -58,6 +68,18 @@ const SETTLE_MS = 600;
 /** The rows of the map the game shows top to bottom (its 640 by 480 screen): the scale a replay opens at. */
 const GAME_ROWS = 480;
 
+/** The game's own screen for the replay loaded: whether the page can show it, and whether it does. */
+export interface OwnScreen {
+  offered: boolean;
+  on: boolean;
+}
+/** The game's own screen as the page's looks say it: neither offered nor on where they do not say (a page from before). */
+export const ownScreenOf = (looks: ViewLooks | null | undefined): OwnScreen => {
+  const offered = looks?.ownScreen === true;
+  return { offered, on: offered && looks?.ownScreenOn === true };
+};
+const NO_OWN_SCREEN: OwnScreen = { offered: false, on: false };
+
 /** What the Game view needs of a replay. */
 export interface Held {
   id: number;
@@ -94,6 +116,8 @@ export interface GameViewHooks {
   hover(hover: ViewHover | null): void;
   /** View ▸ Fog of War over the game: see it through a player's eyes (`eyes`), or everyone's. */
   fog?(on: boolean): void;
+  /** The game's own screen was offered or taken away, or went on or off (`GameView.ownScreen`). */
+  ownScreen?(own: OwnScreen): void;
 }
 
 export class GameView {
@@ -183,6 +207,10 @@ export class GameView {
   private looking: { x: number; y: number; width: number; height: number } | null = null;
   /** The tooltip by the pointer over the game (`tip`), in the editor's own style. */
   private tipBox: HTMLElement | null = null;
+  /** The game's own screen for the replay loaded, as the page last said. */
+  private own: OwnScreen = NO_OWN_SCREEN;
+  /** Whose eyes were last asked for (`eyes`), for the editor's Fog of War once the game's own screen is off again. */
+  private eyesAsked: number | null = null;
 
   constructor(api: PluginApi, hooks: GameViewHooks, title: string, words: GameView["words"]) {
     this.api = api;
@@ -214,7 +242,8 @@ export class GameView {
       onZoom: (look) => this.zoomTo(look),
       // The editor's grid, locations and the other plugins' overlays, over the game (`redrawOver`).
       onRepaint: () => this.redrawOver(),
-      onFog: (on) => hooks.fog?.(on),
+      // (Greyed while the game's own screen is on, which no fog changes: a press is nobody's.)
+      onFog: (on) => { if (!this.ownScreenOn) hooks.fog?.(on); },
       minimap: {
         draw: (ctx, m) => this.drawUnits(ctx, m),
         press: (x, y) => { if (this.view && this.loaded) { this.view.camera(x, y); hooks.movedByUser(); } },
@@ -229,6 +258,8 @@ export class GameView {
    * in the same moment, so Spectate goes on without a jump; until the viewer says, the size asked stands for it.
    */
   private zoomTo(look: MapViewCamera): void {
+    // (The game's own screen keeps the game's own scale: the zoom would only stop Spectate's track.)
+    if (this.ownScreenOn) return;
     if (!this.view || !this.loaded) { this.look = look; return; }
     this.view.camera(look.x, look.y, look.height);
     this.sent = null;
@@ -446,9 +477,12 @@ export class GameView {
     ];
     // (scm-sim before 0.6.0 sends no squares: the editor's minimap then shows the ground alone.)
     // (scm-sim before 0.6.0 says nothing of the pointer: there is no tooltip.)
-    if (typeof view.onHover === "function") this.subs.push(view.onHover((h) => this.hooks.hover(this.loaded && this.shown ? h : null)));
+    // (On the game's own screen the page says nothing is under the pointer, and the game shows its own tooltips.)
+    if (typeof view.onHover === "function") this.subs.push(view.onHover((h) => this.hooks.hover(this.loaded && this.shown && !this.own.on ? h : null)));
     // (scm-sim before 0.10.0 says the pointer only over a unit, and an editor before 1.54 has no status bar to give it to.)
-    if (typeof view.onPointer === "function") this.subs.push(view.onPointer((p) => this.handle.setPointer?.(this.loaded && this.shown ? p : null)));
+    if (typeof view.onPointer === "function") this.subs.push(view.onPointer((p) => this.handle.setPointer?.(this.loaded && this.shown && !this.own.on ? p : null)));
+    // (plugin-scm-sim from before the game's own screen says no looks but a load's, whose looks it leaves it out of: never on.)
+    if (typeof view.onLooks === "function") this.subs.push(view.onLooks((l) => { if (this.loaded) this.ownSaid(ownScreenOf(l)); }));
     // (scm-sim before 0.9.0 keeps the wheel; an editor before map views zoomed has no wheel to hand it to.)
     if (typeof view.onWheel === "function") this.subs.push(view.onWheel((w) => { if (this.loaded && this.shown && typeof this.handle.wheel === "function") this.handle.wheel(w); }));
     // (plugin-scm-sim 0.19.0: the page keeps a mod's files handed over with the replay first, a minute or two for a large one.)
@@ -466,6 +500,7 @@ export class GameView {
     if (!view) return false;
     if (this.holding !== entry.id || this.wanted !== null) {
       if (this.wanted === entry.id) return false;
+      let loadedLooks: ViewLooks | null = null;
       this.wanted = entry.id;
       this.units = null;
       this.looking = null;
@@ -473,6 +508,8 @@ export class GameView {
       this.hooks.hover(null);
       this.handle.redrawMinimap?.();
       this.hooks.state(this.words.loading(entry.fileName));
+      // (Whether the next replay has the game's own screen is its looks' to say.)
+      this.ownSaid(NO_OWN_SCREEN);
       this.dropDrag();
       this.arrived();
       this.sent = null;
@@ -481,6 +518,7 @@ export class GameView {
       try {
         // (A mod's replay with its mod: the view loads at the address that plays it, `?view&mod=…`, first.)
         const viewed = await view.load(entry.bytes, entry.fileName, entry.dataSet ?? null);
+        loadedLooks = viewed.looks;
         this.tracks = viewed.follows === true && typeof view.follow === "function";
         this.quickBack = viewed.rewinds !== false;
         this.slow = viewed.slow === true;
@@ -499,6 +537,7 @@ export class GameView {
       if (this.wanted !== entry.id) return false;
       this.wanted = null;
       this.holding = entry.id;
+      this.ownSaid(ownScreenOf(loadedLooks));
       this.hooks.failure?.(entry.id, null);
       this.hooks.state(null);
       this.remastered = null;
@@ -531,8 +570,9 @@ export class GameView {
 
   /** See the game through a player's eyes, with the fog of war (their slot), or everyone's with none (null). */
   eyes(slot: number | null): void {
-    // (The editor's Fog of War toggle shows the game's fog: on through a player's eyes.)
-    this.handle.setFog?.(slot !== null);
+    this.eyesAsked = slot;
+    // (The editor's Fog of War toggle shows the game's fog: on through a player's eyes; greyed on the game's own screen.)
+    this.handle.setFog?.(this.ownScreenOn ? null : slot !== null);
     const view = this.view;
     if (!view || !this.loaded || slot === this.eyesTold) return;
     this.eyesTold = slot;
@@ -559,6 +599,36 @@ export class GameView {
     if (!view || !this.loaded || fraction === this.duckTold) return;
     this.duckTold = fraction;
     view.options({ duck: fraction }).catch(() => {});
+  }
+
+  /**
+   * The game's own screen for the replay loaded: offered where the page can show it, and whether it does (neither
+   * while a replay loads, or with a page or a plugin-scm-sim from before it).
+   */
+  get ownScreen(): OwnScreen { return this.loaded ? this.own : NO_OWN_SCREEN; }
+  /** The game's own screen is what the game view shows now. */
+  get ownScreenOn(): boolean { return this.loaded && this.own.on; }
+  /**
+   * Have the page show the game's own screen (true), its own drawing (false), or as it chooses (null: on for a replay
+   * of a mod whose code ran). The page keeps the choice for the replays loaded after this one. Nothing where it is not
+   * offered.
+   */
+  setOwnScreen(on: boolean | null): void {
+    const view = this.view;
+    if (!view || !this.loaded || !this.own.offered) return;
+    view.options({ ownScreen: on }).then((l) => { if (this.loaded) this.ownSaid(ownScreenOf(l)); }, () => {});
+  }
+  /** What the page said of the game's own screen: what the editor's controls do over the game follows it. */
+  private ownSaid(own: OwnScreen): void {
+    if (own.offered === this.own.offered && own.on === this.own.on) return;
+    const was = this.own.on;
+    this.own = own;
+    if (own.on !== was) {
+      this.handle.setFog?.(own.on ? null : this.eyesAsked !== null);
+      if (own.on) { this.hooks.hover(null); this.handle.setPointer?.(null); }
+      this.redrawOver();
+    }
+    this.hooks.ownScreen?.(this.ownScreen);
   }
 
   /**
@@ -612,7 +682,8 @@ export class GameView {
     // cinematic view, which is the game full screen without the editor. (An editor from before map views drew them has
     // no paintOver.)
     const cinematic = typeof document !== "undefined" && document.fullscreenElement === el;
-    if (!cinematic && typeof this.handle.paintOver === "function") { ctx.save(); this.handle.paintOver(ctx, view); ctx.restore(); }
+    // (Nor over the game's own screen: what it shows of the map, and at what scale, is the game's.)
+    if (!cinematic && !this.own.on && typeof this.handle.paintOver === "function") { ctx.save(); this.handle.paintOver(ctx, view); ctx.restore(); }
     this.drawOver?.(ctx, view);
   }
 
