@@ -6443,6 +6443,9 @@ var KO = {
   "Minimap ping": "\uBBF8\uB2C8\uB9F5 \uD551",
   "In the player's colour": "\uD50C\uB808\uC774\uC5B4 \uC0C9\uC73C\uB85C \uADF8\uB9BD\uB2C8\uB2E4",
   "Legend": "\uBC94\uB840",
+  "Game's own screen": "\uAC8C\uC784 \uC790\uCCB4 \uD654\uBA74",
+  "The game draws its whole screen: its console, minimap and tooltips, and a mod's own interface. Press for the play page's own picture of the map, with Vision, Orders, the tooltip and the editor's zoom and fog.": "\uAC8C\uC784\uC774 \uD654\uBA74 \uC804\uCCB4\uB97C \uC9C1\uC811 \uADF8\uB9BD\uB2C8\uB2E4: \uCF58\uC194, \uBBF8\uB2C8\uB9F5, \uD234\uD301, \uBAA8\uB4DC \uC790\uCCB4\uC758 \uC778\uD130\uD398\uC774\uC2A4\uAE4C\uC9C0. \uB204\uB974\uBA74 \uD50C\uB808\uC774 \uD398\uC774\uC9C0\uAC00 \uADF8\uB9AC\uB294 \uC9C0\uB3C4 \uD654\uBA74\uC73C\uB85C \uB3CC\uC544\uAC00\uBA70, \uC2DC\uC57C, \uBA85\uB839, \uD234\uD301, \uC5D0\uB514\uD130\uC758 \uD655\uB300/\uCD95\uC18C\uC640 \uC804\uC7A5\uC758 \uC548\uAC1C\uB97C \uC4F8 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+  "Press to have the game draw its whole screen: its console, minimap and tooltips, and a mod's own interface. Vision, Orders, the tooltip and the editor's zoom and fog do nothing there.": "\uB204\uB974\uBA74 \uAC8C\uC784\uC774 \uD654\uBA74 \uC804\uCCB4\uB97C \uC9C1\uC811 \uADF8\uB9BD\uB2C8\uB2E4: \uCF58\uC194, \uBBF8\uB2C8\uB9F5, \uD234\uD301, \uBAA8\uB4DC \uC790\uCCB4\uC758 \uC778\uD130\uD398\uC774\uC2A4\uAE4C\uC9C0. \uADF8 \uD654\uBA74\uC5D0\uC11C\uB294 \uC2DC\uC57C, \uBA85\uB839, \uD234\uD301, \uC5D0\uB514\uD130\uC758 \uD655\uB300/\uCD95\uC18C\uC640 \uC804\uC7A5\uC758 \uC548\uAC1C\uAC00 \uC544\uBB34\uAC83\uB3C4 \uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
   "A key to the marks, in the map's corner": "\uB9F5 \uAD6C\uC11D\uC5D0 \uD45C\uC2DC\uD558\uB294 \uAE30\uD638 \uC124\uBA85",
   "even": "\uB300\uB4F1",
   "{name} ahead by {n}": "{name} {n} \uC55E\uC12C",
@@ -8170,6 +8173,11 @@ function seekTargetOf(f) {
 var MINIMAP_MS = 66;
 var SETTLE_MS = 600;
 var GAME_ROWS = 480;
+var ownScreenOf = (looks) => {
+  const offered = looks?.ownScreen === true;
+  return { offered, on: offered && looks?.ownScreenOn === true };
+};
+var NO_OWN_SCREEN = { offered: false, on: false };
 var GameView = class {
   api;
   hooks;
@@ -8257,6 +8265,10 @@ var GameView = class {
   looking = null;
   /** The tooltip by the pointer over the game (`tip`), in the editor's own style. */
   tipBox = null;
+  /** The game's own screen for the replay loaded, as the page last said. */
+  own = NO_OWN_SCREEN;
+  /** Whose eyes were last asked for (`eyes`), for the editor's Fog of War once the game's own screen is off again. */
+  eyesAsked = null;
   constructor(api, hooks, title, words) {
     this.api = api;
     this.hooks = hooks;
@@ -8287,7 +8299,10 @@ var GameView = class {
       onZoom: (look) => this.zoomTo(look),
       // The editor's grid, locations and the other plugins' overlays, over the game (`redrawOver`).
       onRepaint: () => this.redrawOver(),
-      onFog: (on) => hooks.fog?.(on),
+      // (Greyed while the game's own screen is on, which no fog changes: a press is nobody's.)
+      onFog: (on) => {
+        if (!this.ownScreenOn) hooks.fog?.(on);
+      },
       minimap: {
         draw: (ctx, m) => this.drawUnits(ctx, m),
         press: (x2, y) => {
@@ -8313,6 +8328,7 @@ var GameView = class {
    * in the same moment, so Spectate goes on without a jump; until the viewer says, the size asked stands for it.
    */
   zoomTo(look) {
+    if (this.ownScreenOn) return;
     if (!this.view || !this.loaded) {
       this.look = look;
       return;
@@ -8557,8 +8573,11 @@ var GameView = class {
         }
       })
     ];
-    if (typeof view2.onHover === "function") this.subs.push(view2.onHover((h) => this.hooks.hover(this.loaded && this.shown ? h : null)));
-    if (typeof view2.onPointer === "function") this.subs.push(view2.onPointer((p) => this.handle.setPointer?.(this.loaded && this.shown ? p : null)));
+    if (typeof view2.onHover === "function") this.subs.push(view2.onHover((h) => this.hooks.hover(this.loaded && this.shown && !this.own.on ? h : null)));
+    if (typeof view2.onPointer === "function") this.subs.push(view2.onPointer((p) => this.handle.setPointer?.(this.loaded && this.shown && !this.own.on ? p : null)));
+    if (typeof view2.onLooks === "function") this.subs.push(view2.onLooks((l) => {
+      if (this.loaded) this.ownSaid(ownScreenOf(l));
+    }));
     if (typeof view2.onWheel === "function") this.subs.push(view2.onWheel((w) => {
       if (this.loaded && this.shown && typeof this.handle.wheel === "function") this.handle.wheel(w);
     }));
@@ -8582,6 +8601,7 @@ var GameView = class {
     if (!view2) return false;
     if (this.holding !== entry.id || this.wanted !== null) {
       if (this.wanted === entry.id) return false;
+      let loadedLooks = null;
       this.wanted = entry.id;
       this.units = null;
       this.looking = null;
@@ -8589,6 +8609,7 @@ var GameView = class {
       this.hooks.hover(null);
       this.handle.redrawMinimap?.();
       this.hooks.state(this.words.loading(entry.fileName));
+      this.ownSaid(NO_OWN_SCREEN);
       this.dropDrag();
       this.arrived();
       this.sent = null;
@@ -8596,6 +8617,7 @@ var GameView = class {
       this.settle(true);
       try {
         const viewed = await view2.load(entry.bytes, entry.fileName, entry.dataSet ?? null);
+        loadedLooks = viewed.looks;
         this.tracks = viewed.follows === true && typeof view2.follow === "function";
         this.quickBack = viewed.rewinds !== false;
         this.slow = viewed.slow === true;
@@ -8612,6 +8634,7 @@ var GameView = class {
       if (this.wanted !== entry.id) return false;
       this.wanted = null;
       this.holding = entry.id;
+      this.ownSaid(ownScreenOf(loadedLooks));
       this.hooks.failure?.(entry.id, null);
       this.hooks.state(null);
       this.remastered = null;
@@ -8642,7 +8665,8 @@ var GameView = class {
   }
   /** See the game through a player's eyes, with the fog of war (their slot), or everyone's with none (null). */
   eyes(slot) {
-    this.handle.setFog?.(slot !== null);
+    this.eyesAsked = slot;
+    this.handle.setFog?.(this.ownScreenOn ? null : slot !== null);
     const view2 = this.view;
     if (!view2 || !this.loaded || slot === this.eyesTold) return;
     this.eyesTold = slot;
@@ -8670,6 +8694,45 @@ var GameView = class {
     this.duckTold = fraction;
     view2.options({ duck: fraction }).catch(() => {
     });
+  }
+  /**
+   * The game's own screen for the replay loaded: offered where the page can show it, and whether it does (neither
+   * while a replay loads, or with a page or a plugin-scm-sim from before it).
+   */
+  get ownScreen() {
+    return this.loaded ? this.own : NO_OWN_SCREEN;
+  }
+  /** The game's own screen is what the game view shows now. */
+  get ownScreenOn() {
+    return this.loaded && this.own.on;
+  }
+  /**
+   * Have the page show the game's own screen (true), its own drawing (false), or as it chooses (null: on for a replay
+   * of a mod whose code ran). The page keeps the choice for the replays loaded after this one. Nothing where it is not
+   * offered.
+   */
+  setOwnScreen(on) {
+    const view2 = this.view;
+    if (!view2 || !this.loaded || !this.own.offered) return;
+    view2.options({ ownScreen: on }).then((l) => {
+      if (this.loaded) this.ownSaid(ownScreenOf(l));
+    }, () => {
+    });
+  }
+  /** What the page said of the game's own screen: what the editor's controls do over the game follows it. */
+  ownSaid(own) {
+    if (own.offered === this.own.offered && own.on === this.own.on) return;
+    const was = this.own.on;
+    this.own = own;
+    if (own.on !== was) {
+      this.handle.setFog?.(own.on ? null : this.eyesAsked !== null);
+      if (own.on) {
+        this.hooks.hover(null);
+        this.handle.setPointer?.(null);
+      }
+      this.redrawOver();
+    }
+    this.hooks.ownScreen?.(this.ownScreen);
   }
   /**
    * Show `content` in the tooltip by the pointer, at `x`, `y` in the game's CSS pixels (below and right of it, or the
@@ -8723,7 +8786,7 @@ var GameView = class {
     };
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const cinematic = typeof document !== "undefined" && document.fullscreenElement === el;
-    if (!cinematic && typeof this.handle.paintOver === "function") {
+    if (!cinematic && !this.own.on && typeof this.handle.paintOver === "function") {
       ctx.save();
       this.handle.paintOver(ctx, view2);
       ctx.restore();
@@ -11842,6 +11905,14 @@ function activate(api) {
     },
     hover: (h) => showHover(h),
     fog: (on) => fogFromEditor(on),
+    // The game's own screen on or off: the switches over the game that it makes pointless come and go, Spectate goes
+    // back to the whole game's action (no player's fog is shown), and what is drawn over the game is drawn again.
+    ownScreen: () => {
+      follow();
+      redraw();
+      strip?.update();
+      cinema.refresh?.();
+    },
     failure: (id, failed) => {
       const entry = loaded.find((l) => l.id === id);
       if (!entry) return;
@@ -12207,7 +12278,7 @@ function activate(api) {
   function shotsOf(entry) {
     const done = entry.played;
     if (!done) return [];
-    const eyes = game.shown && game.holds(entry.id) ? entry.eyes : null;
+    const eyes = game.shown && game.holds(entry.id) && !game.ownScreenOn ? entry.eyes : null;
     const player = eyes === null ? void 0 : entry.report.players.find((p) => p.player.slot === eyes)?.player.index;
     if (player === void 0) return done.shots;
     let shots = done.shotsFor.get(player);
@@ -13034,11 +13105,11 @@ function activate(api) {
           }),
           speed,
           button(t("Follow"), () => setFollowing(!cam.following), cam.following),
-          button(t("Minimap"), () => {
+          ...game.ownScreenOn ? [] : [button(t("Minimap"), () => {
             settings.cinemaMinimap = !settings.cinemaMinimap;
             save();
             game.redrawOver();
-          }, settings.cinemaMinimap),
+          }, settings.cinemaMinimap)],
           ...cast ? [cast] : [],
           button(t("Leave the cinematic view"), () => {
             void setCinema(false);
@@ -13057,7 +13128,7 @@ function activate(api) {
       let dragging = false;
       const lookFrom = (e) => {
         const entry = current;
-        if (!entry || !settings.cinemaMinimap) return false;
+        if (!entry || !settings.cinemaMinimap || game.ownScreenOn) return false;
         const r = layer.getBoundingClientRect();
         const at = GameView.minimapAt(e.clientX - r.left, e.clientY - r.top, minimapBox(r.height), mapPixels(entry));
         if (!at) return false;
@@ -13149,7 +13220,7 @@ function activate(api) {
     const frame = (gameClock() ? game.frameNow(settings.speed) : null) ?? entry.frame;
     broadcastBar(ctx, entry, frame);
     const dpr = window.devicePixelRatio || 1;
-    if (settings.cinemaMinimap) game.drawMinimap(ctx, minimapBox(ctx.canvas.height / dpr), mapPixels(entry), groundOf(entry));
+    if (settings.cinemaMinimap && !game.ownScreenOn) game.drawMinimap(ctx, minimapBox(ctx.canvas.height / dpr), mapPixels(entry), groundOf(entry));
     const now = performance.now();
     const tl = entry.played?.timeline;
     const players = entry.report.players.filter((p) => !tl || tl.samples.players.some((q) => q.slot === p.player.index));
@@ -13685,7 +13756,7 @@ function activate(api) {
       castCard(ctx);
       return;
     }
-    if (settings.orders) {
+    if (settings.orders && !game.ownScreenOn) {
       drawOrders(ctx, v, players, game.frameNow(settings.speed) ?? cur.frame);
       if (settings.legend && !casting.reel) legend(ctx, "orders", cur.played !== null, true);
     }
@@ -14815,6 +14886,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
     legendButton = null;
     statsButton = null;
     eyesSelect = null;
+    ownButton = null;
     /** Where the pointer is over the graph, in CSS pixels from its left; null when it is not. */
     hover = null;
     tip = null;
@@ -14858,6 +14930,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
         this.update();
       });
       this.statsButton = toggle(t("Map stats"), () => showStats(lensOf() !== "map"));
+      this.ownButton = toggle(t("Game's own screen"), () => game.setOwnScreen(!game.ownScreen.on));
       if (castOffer && entry.played && !keptChecked.has(entry)) void refreshKept(entry);
       const watchKey = ready.get(entry.id) ?? keptFor.get(entry.id);
       const castState = casting.entry === entry ? "playing" : making?.entry === entry ? making.error ? "failed" : "making" : watchKey ? "ready" : "idle";
@@ -14930,7 +15003,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
         this.playButton,
         this.timeLabel,
         speed,
-        el("span", { className: "afm-toggles" }, this.spectateButton, this.ordersButton, this.statsButton, this.legendButton),
+        el("span", { className: "afm-toggles" }, this.spectateButton, this.ordersButton, this.statsButton, this.legendButton, this.ownButton),
         eyes,
         this.status,
         retry,
@@ -15003,6 +15076,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
         line = making.error ? t("The cast could not be made: {reason}", { reason: making.error }) : t("Making the cast: {what} \xB7 {time}", { what: makingLine(making), time: formatTime((Date.now() - making.started) / FRAME_MS) });
       } else if (ready.has(entry.id)) line = t("The cast is ready.");
       const onMap = lensOf() === "map";
+      const own = game.shown && !onMap && game.holds(entry.id) ? game.ownScreen : { offered: false, on: false };
       if (onMap) {
         const n = counted2(entry).length, waiting = waitingOf(entry);
         line = [t("Map stats: {n, plural, one {# game} other {# games}} of this map together", { n }), waiting ? t("{n} still being analysed", { n: waiting }) : null].filter(Boolean).join(" \xB7 ");
@@ -15016,6 +15090,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
       this.spectateButton.setAttribute("aria-pressed", String(following));
       this.spectateButton.disabled = !shots;
       this.spectateButton.title = !shots ? t("The camera follows the game once it has been analysed") : onMap ? t("Back to the game, with the camera following the action") : following ? t("F: the camera follows the action as an observer would; scroll the map, or press here, to look around yourself") : t("F: follow the action as an observer would: the fights that matter, armies about to meet, new bases, the armies on the move");
+      this.ordersButton.hidden = own.on;
       this.ordersButton.classList.toggle("afm-on", settings.orders);
       this.ordersButton.setAttribute("aria-pressed", String(settings.orders));
       this.ordersButton.title = game.shown ? t("O: what the players told their units to do in the last eight seconds, over the game") : t("O: what the players told their units to do in the last eight seconds, over the units drawn faintly");
@@ -15023,8 +15098,13 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
       this.legendButton.setAttribute("aria-pressed", String(settings.legend));
       const keyless = game.shown && !onMap && !settings.orders;
       this.legendButton.disabled = keyless;
+      this.legendButton.hidden = own.on;
       this.legendButton.title = keyless ? t("Over the game the legend keys the orders: turn Orders on to see it") : t("A key to the marks, in the map's corner");
-      this.eyesSelect.hidden = onMap || !game.shown && !entry.played?.timeline.sight;
+      this.eyesSelect.hidden = onMap || own.on || !game.shown && !entry.played?.timeline.sight;
+      this.ownButton.hidden = !own.offered;
+      this.ownButton.classList.toggle("afm-on", own.on);
+      this.ownButton.setAttribute("aria-pressed", String(own.on));
+      this.ownButton.title = own.on ? t("The game draws its whole screen: its console, minimap and tooltips, and a mod's own interface. Press for the play page's own picture of the map, with Vision, Orders, the tooltip and the editor's zoom and fog.") : t("Press to have the game draw its whole screen: its console, minimap and tooltips, and a mod's own interface. Vision, Orders, the tooltip and the editor's zoom and fog do nothing there.");
       const games = mapGames(entry).length;
       this.statsButton.textContent = games > 1 ? t("Map stats \xB7 {n}", { n: games }) : t("Map stats");
       this.statsButton.classList.toggle("afm-on", onMap);
