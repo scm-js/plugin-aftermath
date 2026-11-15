@@ -109,7 +109,7 @@ The strip under the map has:
   play page can show it.
 - The **Vision** menu: everyone, or one player's eyes.
 - How the analysis is going.
-- **Play From Here**, **Analysis**, **Cast…** and **Cinematic**, where they apply.
+- **Play From Here**, **Share**, **Analysis**, **Cast…** and **Cinematic**, where they apply.
 - A menu for the graph: actions per minute, or once the game is analysed, the army lead (in
   a game of two), army value, army size, workers, supply, minerals or gas in the bank, or
   buildings.
@@ -599,6 +599,28 @@ open. From there you take one of the players and play on alone, against a commun
 with others who join by an invite. Going back to an earlier moment in the play page watches
 the replay again.
 
+### Share
+
+**Share** on the timeline (with the scmjs.dev plugin on) gives a link to the replay. Choose
+**From the start** or **From 6:42**, the time under the playhead, which is chosen when the
+playhead is past the start and follows it while the popover is open. With a time chosen,
+**Whoever opens it** either **Watches** or **Plays as** one of the players (the one you are
+watching through comes first). **Copy link** puts the link on the clipboard.
+
+The link is the replay's on scmjs.dev: `https://scmjs.dev/replay/<token>`, with `?t=6:42` for
+the moment and `&play=<slot>` for the player. Opened, it shows the replay in the editor at
+that moment, paused, with "Opened at 6:42 from a shared link" on the timeline until you play
+or move; with a player, the site sends it on to the play page to play on from there as that
+player. Anyone who has the link can open it.
+
+The replay has to be on your scmjs.dev account for that. The first time, the button is
+**Keep and copy link**, and says that sharing keeps the replay on your account; signed out it
+is **Sign in to share**, and once you are signed in the popover is still there with the link.
+A replay already on your account is never sent again: the scmjs.dev plugin knows it by its
+contents. A replay opened from a link already has its link, and shares it without a sign-in.
+
+The popover closes with Esc or a press anywhere but on it or on the timeline.
+
 ### Cinematic view
 
 Where the game itself is shown, **Cinematic** on the timeline takes it full screen without
@@ -662,6 +684,7 @@ SCM_MOD_FOLDERS="$HOME/mods/Some Mod=0123456789abcdef,fedcba9876543210" npx vite
 | `gameview.ts` | The Replay view, through scm-sim's `view`. |
 | `insight.ts`, `economy.ts`, `tech.ts`, `techview.ts`, `knew.ts`, `scoutview.ts`, `charts.ts` | The Analysis window. |
 | `cast.ts`, `castmake.ts`, `castplay.ts` | Casts. |
+| `share.ts` | Share: the popover, the link with its moment, the moment a link opens at. |
 | `ko.ts` | The Korean catalogue. |
 | `plugin.ts` | The tabs, the panels, the playback clock and the overlay. |
 

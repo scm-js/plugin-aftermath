@@ -50,7 +50,8 @@ import { castable, castCards, castInput, castSegments, estimate, highlightClips,
 import type { Durations } from "./tech";
 import { Reel } from "./castplay";
 import { CastStore, KEEP_BYTES, KEEP_CASTS, batches, castKey, estimate as castEstimate, readStream, replayKey, writingProgress, type KeptCast, type Writing } from "./castmake";
-import type { ScmjsAccountService } from "./vendor/scmjs-dev";
+import type { ScmjsAccountService, ScmjsReplaysService } from "./vendor/scmjs-dev";
+import { frameAt, SharePopover } from "./share";
 import { InsightView, type InsightGame, type Metric as InsightMetric, type Resource } from "./insight";
 import { canName, declare, editorHints, editorSources, isPlayed, keptRaces, labelOf, letterFiles, nameCandidates, namedRow, RACE_LETTERS, RACE_NAME_MAX, raceView, type DataSetRace, type NamedRace, type RaceEditor, type RaceHints, type RaceView } from "./races";
 import { KINDS, rolesOf, useRoles } from "./roles";
@@ -145,6 +146,17 @@ interface Loaded {
   viewFailed?: { reason: EngineReason | null; message: string } | null;
   /** The engine's reason beside `failed`, where it gave one. */
   failedReason?: EngineReason | null;
+  /** Its link on scmjs.dev, once it has one: it came with it (opened from a link) or Share made it. */
+  link?: string;
+  /** Opened from a shared link at this frame: the timeline says so until the first play or seek. */
+  sharedAt?: number | null;
+}
+
+/** Where a replay handed over by another plugin came from (`aftermath.replays`): its link, and the moment to open it at. */
+interface ReplayFrom {
+  link?: string;
+  /** Seconds of game time; the replay opens there, paused. */
+  at?: number;
 }
 
 /** A game's key fights played again by the game: as played, and with both sides only attack-moving. */
@@ -459,6 +471,8 @@ const STYLE = `
 .afm-tl > .afm-row > button:first-child { min-width: 64px; }
 .afm-tl canvas { flex: 1; min-height: 40px; width: 100%; display: block; cursor: pointer; touch-action: none; }
 .afm-tl canvas.afm-faded { opacity: 0.3; }
+.afm-tl .afm-shared { flex-shrink: 0; margin-top: -2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.afm-tl .afm-shared[hidden] { display: none; }
 .afm .afm-mod { margin: 6px 0; padding: 6px 8px; border-left: 2px solid var(--accent, #6aa0ff); display: grid; gap: 3px; }
 .afm .afm-mod a { color: inherit; }
 .afm .afm-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
@@ -1070,6 +1084,11 @@ export function activate(api: PluginApi) {
 
   /** The Game view is the clock: it shows the replay in front, loaded. */
   const gameClock = () => current !== null && game.shown && game.holds(current.id);
+  /**
+   * The clock's frame: while a seek is on its way (a view that cannot rewind starting the game again says frame 0 all
+   * the while) the one asked for, never one the game showed on its way there.
+   */
+  const clockFrame = (entry: Loaded) => Math.round((entry === current && gameClock() ? game.clockFrame(settings.speed) : null) ?? entry.frame);
 
   /** The tab in front went from the map to the game or back: the clock goes with it, from where it stood. */
   function handOver(on: boolean): void {
@@ -1122,7 +1141,7 @@ export function activate(api: PluginApi) {
    * opens in a tab of its own; without, each opens in a tab, unless several of one map came together and the user
    * chooses to have one tab of the map and the rest in its Map stats.
    */
-  async function load(files: File[], into: Loaded | null = null): Promise<void> {
+  async function load(files: File[], into: Loaded | null = null, from: ReplayFrom = {}): Promise<void> {
     const reps = files.filter((f) => /\.rep$/i.test(f.name));
     if (!reps.length) {
       if (files.length) api.ui.toast({ kind: "warn", title: t("Not a replay"), detail: t("Aftermath opens StarCraft replays, files ending in .rep.") });
@@ -1139,7 +1158,10 @@ export function activate(api: PluginApi) {
         const group = [...loaded, ...batch].find((l) => likeness(map, l.map) >= SAME_MAP)?.group ?? id;
         // (The bases its orders took go by the halls of the units table it was played with, where the editor has it loaded.)
         useRoles(!replay.mod || api.gameData?.source?.()?.hash === replay.mod.dataSet.hash ? rolesOf(api.data.units()) : null);
-        batch.push({ id, fileName: file.name, report: analyse(replay), map, bytes, docId: null, group, excluded: false, frame: 0, hidden: new Set(), played: null, failed: null, eyes: null, again: null, mod: replay.mod ?? null, ...(replay.mod ? { dataSet: replayDataSet(replay.mod) } : {}), signs: replay.mod ? [] : modSigns(replay.players, map) });
+        const report = analyse(replay);
+        // (A replay handed over from a link: the link goes with it, and it opens at the link's moment, paused.)
+        const at = from.at !== undefined && reps.length === 1 ? frameAt(from.at, report.frames) : 0;
+        batch.push({ id, fileName: file.name, report, map, bytes, docId: null, group, excluded: false, frame: at, hidden: new Set(), played: null, failed: null, eyes: null, again: null, mod: replay.mod ?? null, ...(replay.mod ? { dataSet: replayDataSet(replay.mod) } : {}), signs: replay.mod ? [] : modSigns(replay.players, map), ...(from.link && reps.length === 1 ? { link: from.link } : {}), sharedAt: at > 0 ? at : null });
       } catch (err) {
         const detail = err instanceof ReplayError ? translate(err.message) : String(err);
         api.ui.toast({ kind: "error", title: t("Could not read {name}", { name: file.name }), detail });
@@ -1286,6 +1308,7 @@ export function activate(api: PluginApi) {
     if (opening && opening.docId === null && id !== null && !loaded.some((l) => l.docId === id)) opening.docId = id;
     const next = loaded.find((l) => l.docId !== null && l.docId === id) ?? null;
     if (next !== current) {
+      share.close();
       endCast();
       stop();
       current = next;
@@ -1318,6 +1341,7 @@ export function activate(api: PluginApi) {
     if (!current) return;
     // The clock is one game's: moving it brings that game back from Map stats.
     if (lensOf() === "map") showStats(false);
+    current.sharedAt = null;
     current.frame = Math.max(0, Math.min(current.report.frames, Math.round(f)));
     if (gameClock()) { if (drag) game.drag(current.frame); else game.seek(current.frame); }
     tick();
@@ -1498,6 +1522,7 @@ export function activate(api: PluginApi) {
   function play(): void {
     if (!current || playing) return;
     if (lensOf() === "map") showStats(false);
+    current.sharedAt = null;
     if (current.frame >= current.report.frames) current.frame = 0;
     playing = true;
     cinema.refresh?.();
@@ -3139,6 +3164,20 @@ export function activate(api: PluginApi) {
   let side: SideView | null = null;
   let stripPanel: PanelHandle | null = null;
   let strip: StripView | null = null;
+
+  /** The scmjs.dev plugin's replay links (`scmjs-dev.replays`), for Share; null while that plugin is off. */
+  let replaysService: ScmjsReplaysService | null = null;
+  /** Share's popover, over the map above its button. */
+  const share = new SharePopover({
+    api,
+    service: () => replaysService,
+    frame: () => (current ? clockFrame(current) : 0),
+    // (The same slot Play From Here hands the play page as the player to play as.)
+    players: () => current ? current.report.players.map((p) => ({ slot: p.player.slot, label: `${plainText(p.player.name)} (${raceOf(current, p.player).label})` })) : [],
+    watching: () => current?.eyes ?? null,
+    // (A press on the timeline moves the playhead the popover describes: it stays open for it.)
+    keepsOpen: (node) => !!strip?.root.querySelector("canvas")?.contains(node),
+  });
   /** The user hid a panel while this replay is in front; it stays hidden until another comes forward. */
   let sideHidden = false;
   let stripHidden = false;
@@ -3263,6 +3302,7 @@ export function activate(api: PluginApi) {
       },
       onClose: () => {
         if (stripPanel !== handle) return;
+        share.close();
         stripPanel = null;
         strip = null;
         stop();
@@ -3893,6 +3933,8 @@ export function activate(api: PluginApi) {
     private playButton: HTMLButtonElement | null = null;
     private timeLabel: HTMLElement | null = null;
     private status: HTMLElement | null = null;
+    /** "Opened at 6:42 from a shared link", on a line of its own until the first play or seek. */
+    private shared: HTMLElement | null = null;
     private canvas: HTMLCanvasElement | null = null;
     private resize: ResizeObserver | null = null;
     private spectateButton: HTMLButtonElement | null = null;
@@ -3982,9 +4024,7 @@ export function activate(api: PluginApi) {
             ? `${t("Open this replay on the play page at this moment and play on from there: as one of its players, alone, against a community bot, or with others")}. ${modSays}`
             : t("Open this replay on the play page at this moment and play on from there: as one of its players, alone, against a community bot, or with others"),
           onClick: () => {
-            // The clock's frame: while a seek is on its way (a view that cannot rewind starting the game again says
-            // frame 0 all the while) the one asked for, never one the game showed on its way there.
-            const frame = Math.round((gameClock() ? game.clockFrame(settings.speed) : null) ?? entry.frame);
+            const frame = clockFrame(entry);
             if (playing) stop();
             const player = entry.eyes ?? entry.report.players[0]?.player.slot;
             sim!.playReplay!(handedReplay(entry.bytes, entry.fileName, entry.dataSet), { frame, ...(player !== undefined ? { player } : {}) })
@@ -3993,6 +4033,17 @@ export function activate(api: PluginApi) {
           },
         })
         : null;
+      // Share: a link to this replay, from its start or this moment, for whoever opens it to watch or to play on from.
+      // There while the scmjs.dev plugin is (it keeps the replay and makes the link), or the replay came with its link.
+      const shareButton = replaysService || entry.link
+        ? w.button(t("Share"), {
+          className: "sm",
+          title: t("A link to this replay, from its start or from this moment, to watch or to play on from"),
+          onClick: () => share.toggle(shareButton!, entry),
+        })
+        : null;
+      if (shareButton) { shareButton.setAttribute("aria-haspopup", "dialog"); shareButton.setAttribute("aria-expanded", "false"); }
+      if (share.isOpen()) { if (shareButton && share.holds(entry)) share.anchorTo(shareButton); else share.close(); }
       const cinemaButton = cinemaPossible()
         ? w.button(t("Cinematic"), { className: "sm", title: t("The game full screen, dressed as a broadcast, without the editor around it. Esc leaves."), onClick: () => { void setCinema(true); } })
         : null;
@@ -4016,7 +4067,10 @@ export function activate(api: PluginApi) {
       this.eyesSelect = eyes;
       this.root.append(el("div", { className: "afm-row" }, this.playButton, this.timeLabel, speed,
         el("span", { className: "afm-toggles" }, this.spectateButton, this.ordersButton, this.statsButton, this.legendButton, this.ownButton), eyes,
-        this.status, retry, castCardsButton, playHere, cinemaButton, castButton, castMore, analysis, chartSelect));
+        this.status, retry, castCardsButton, playHere, shareButton, cinemaButton, castButton, castMore, analysis, chartSelect));
+
+      this.shared = el("div", { className: "afm-dim afm-shared" });
+      this.root.append(this.shared);
 
       // The lane of marks and the graph, one canvas: press or drag anywhere on it to go there.
       const canvas = el("canvas") as HTMLCanvasElement;
@@ -4086,6 +4140,9 @@ export function activate(api: PluginApi) {
       }
       this.status!.textContent = line;
       this.status!.title = why || line;
+      // (Opened from a shared link at a moment: said until the first play or seek.)
+      this.shared!.hidden = !entry.sharedAt;
+      this.shared!.textContent = entry.sharedAt ? t("Opened at {time} from a shared link", { time: formatTime(entry.sharedAt) }) : "";
       // The switches as they stand: the camera lets go when the map is moved, and follows nothing until the game is analysed.
       const shots = (entry.played?.shots.length ?? 0) > 0;
       const following = shots && cam.following && !onMap;
@@ -4127,6 +4184,7 @@ export function activate(api: PluginApi) {
       this.canvas?.classList.toggle("afm-faded", onMap);
       this.draw();
       this.tip?.refresh();
+      share.update();
     }
 
     /** The tooltip at a point over the canvas, CSS pixels from its corner. */
@@ -4299,6 +4357,10 @@ export function activate(api: PluginApi) {
 
   /* ── Menus, commands, file type, events ── */
 
+  // A replay handed over by another plugin with where it came from: the scmjs.dev plugin opening a replay link (its
+  // link, and the moment its `?t=` says). Provided before `open-replay`, which that plugin waits for.
+  const replaysProvided = api.services.provide("replays", { open: (file: File, from?: ReplayFrom) => load([file], null, from ?? {}) }, { version: 1 });
+
   // Titles and menu labels go to the editor in English; it shows them in the user's language from this plugin's catalogue.
   api.commands.register({ id: "open-replay", title: msg("Open Replay…"), run: () => void pick() });
   api.commands.register({
@@ -4322,6 +4384,12 @@ export function activate(api: PluginApi) {
 
   // Last: a service already there is announced at once, and the answer reaches the panels.
   const simWatch = api.services.watch<ScmSimService>("scm-sim.engine", (service) => { unregisterFolders(); sim = service; registerFolders(); game.setService(service); if (current) gameFor(current); pump(); strip?.render(); });
+
+  const replaysWatch = api.services.watch<ScmjsReplaysService>("scmjs-dev.replays", (service) => {
+    replaysService = service;
+    if (!service && !current?.link) share.close();
+    strip?.render();
+  });
 
   let accountChange: (() => void) | null = null;
   const accountWatch = api.services.watch<ScmjsAccountService>("scmjs-dev.account", (service) => {
@@ -4368,6 +4436,9 @@ export function activate(api: PluginApi) {
     document.removeEventListener("fullscreenchange", onFullscreen);
     accountChange?.();
     accountWatch.dispose();
+    replaysWatch.dispose();
+    replaysProvided.dispose();
+    share.dispose();
     imageListener.dispose();
     style.remove();
   };
