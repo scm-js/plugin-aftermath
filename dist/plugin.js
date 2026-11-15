@@ -6717,6 +6717,22 @@ var KO = {
   "{name} wins": "{name} \uC2B9\uB9AC",
   "Cinematic": "\uC2DC\uB124\uB9C8\uD2F1",
   "Play From Here": "\uC5EC\uAE30\uC11C\uBD80\uD130 \uD50C\uB808\uC774",
+  "Share": "\uACF5\uC720",
+  "A link to this replay, from its start or from this moment, to watch or to play on from": "\uC774 \uB9AC\uD50C\uB808\uC774\uC758 \uB9C1\uD06C. \uCC98\uC74C\uBD80\uD130 \uB610\uB294 \uC9C0\uAE08 \uC774 \uC21C\uAC04\uBD80\uD130, \uAD00\uC804\uD558\uAC70\uB098 \uC774\uC5B4\uC11C \uD50C\uB808\uC774\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4",
+  "Share this replay": "\uC774 \uB9AC\uD50C\uB808\uC774 \uACF5\uC720",
+  "From the start": "\uCC98\uC74C\uBD80\uD130",
+  "From {time}": "{time}\uBD80\uD130",
+  "Whoever opens it": "\uB9C1\uD06C\uB97C \uC5F0 \uC0AC\uB78C\uC740",
+  "Watches": "\uAD00\uC804",
+  "Plays as {name}": "{name} \uC790\uB9AC\uC5D0\uC11C \uD50C\uB808\uC774",
+  "Link": "\uB9C1\uD06C",
+  "Copy link": "\uB9C1\uD06C \uBCF5\uC0AC",
+  "Copied": "\uBCF5\uC0AC\uB428",
+  "Keep and copy link": "\uBCF4\uAD00\uD558\uACE0 \uB9C1\uD06C \uBCF5\uC0AC",
+  "Sign in to share": "\uB85C\uADF8\uC778\uD558\uACE0 \uACF5\uC720",
+  "Sign in with {name}": "{name|\uC73C\uB85C} \uB85C\uADF8\uC778",
+  "Sharing keeps this replay on your scmjs.dev account.": "\uACF5\uC720\uD558\uBA74 \uC774 \uB9AC\uD50C\uB808\uC774\uAC00 scmjs.dev \uACC4\uC815\uC5D0 \uBCF4\uAD00\uB429\uB2C8\uB2E4.",
+  "Opened at {time} from a shared link": "\uACF5\uC720 \uB9C1\uD06C\uB85C {time}\uC5D0\uC11C \uC5F4\uC5C8\uC2B5\uB2C8\uB2E4",
   "Open this replay on the play page at this moment and play on from there: as one of its players, alone, against a community bot, or with others": "\uC774 \uB9AC\uD50C\uB808\uC774\uB97C \uD50C\uB808\uC774 \uD398\uC774\uC9C0\uC5D0\uC11C \uC774 \uC21C\uAC04\uBD80\uD130 \uC5F4\uACE0, \uAC70\uAE30\uC11C\uBD80\uD130 \uC774\uC5B4\uC11C \uD50C\uB808\uC774\uD569\uB2C8\uB2E4: \uD50C\uB808\uC774\uC5B4 \uC911 \uD55C \uBA85\uC73C\uB85C, \uD63C\uC790\uC11C, \uCEE4\uBBA4\uB2C8\uD2F0 \uBD07\uC744 \uC0C1\uB300\uB85C, \uB610\uB294 \uB2E4\uB978 \uC0AC\uB78C\uB4E4\uACFC \uD568\uAED8",
   "The play page could not open the replay": "\uD50C\uB808\uC774 \uD398\uC774\uC9C0\uAC00 \uB9AC\uD50C\uB808\uC774\uB97C \uC5F4 \uC218 \uC5C6\uC5C8\uC2B5\uB2C8\uB2E4",
   "The game full screen, dressed as a broadcast, without the editor around it. Esc leaves.": "\uD3B8\uC9D1\uAE30 \uC5C6\uC774 \uAC8C\uC784\uC744 \uBC29\uC1A1\uCC98\uB7FC \uC804\uCCB4 \uD654\uBA74\uC73C\uB85C \uBD05\uB2C8\uB2E4. Esc\uB85C \uB098\uAC11\uB2C8\uB2E4.",
@@ -9473,7 +9489,7 @@ function schedule(lines, durations, moments) {
     starts.push(length);
     length += span(m);
   }
-  const frameAt = (t) => {
+  const frameAt2 = (t) => {
     let k = moments.length - 1;
     while (k > 0 && starts[k] > t) k--;
     if (t >= length) return -1;
@@ -9487,7 +9503,7 @@ function schedule(lines, durations, moments) {
     const duration = durations[i2] ?? estimate(l.text);
     const start = Math.max(when, cursor + GAP);
     if (start - when > LATE[l.priority]) continue;
-    out.push({ moment: l.moment, speaker: l.speaker, text: l.text, clip: i2, start, duration, frame: frameAt(start), ...l.card ? { card: l.card } : {} });
+    out.push({ moment: l.moment, speaker: l.speaker, text: l.text, clip: i2, start, duration, frame: frameAt2(start), ...l.card ? { card: l.card } : {} });
     cursor = start + duration;
   }
   return { lines: out, starts, length, hold: Math.max(0, cursor - length) };
@@ -9895,6 +9911,372 @@ var CastStore = class {
   }
 };
 
+// share.ts
+function frameAt(seconds2, last) {
+  return Math.max(0, Math.min(last, Math.ceil(seconds2 * 1e3 / FRAME_MS - 1e-6)));
+}
+function withMoment(link, moment) {
+  const at = link.indexOf("?");
+  const path = at < 0 ? link : link.slice(0, at);
+  const params = (at < 0 ? "" : link.slice(at + 1)).split("&").filter((p) => p && !/^(t|play)(=|$)/.test(p));
+  if (moment) {
+    params.push(`t=${formatTime(moment.frame)}`);
+    if (moment.play !== void 0 && moment.play !== null) params.push(`play=${moment.play}`);
+  }
+  return params.length ? `${path}?${params.join("&")}` : path;
+}
+var pastStart = (frame) => formatTime(frame) !== formatTime(0);
+function shareView(status, choice, frame) {
+  const who = choice.from === "time";
+  const base = status.state === "kept" ? status.link : null;
+  const moment = who ? { frame, play: choice.who === "play" ? choice.player : null } : null;
+  const action = status.state === "kept" ? "copy" : status.state === "not-kept" ? "keep" : status.state === "signed-out" ? "sign-in" : null;
+  return {
+    time: formatTime(frame),
+    who,
+    link: base ? withMoment(base, moment) : null,
+    action,
+    // (A replay kept without a link only needs its link made: nothing new is kept.)
+    keeps: status.state === "not-kept" || status.state === "signed-out",
+    reason: status.state === "unavailable" ? status.reason : null
+  };
+}
+var STYLE = `
+.afm-share { position: fixed; z-index: 170; width: 300px; max-width: calc(100vw - 16px); box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 12px; background: var(--bg-2, #191d25); border: 1px solid var(--border-strong, #3b4453); border-radius: var(--radius-lg, 5px); box-shadow: var(--shadow-pop, 0 10px 30px rgba(0,0,0,0.55)), var(--bevel-raised, none); font-size: var(--fs-md, 12.5px); color: var(--text, #dde2ea); }
+.afm-share-title { font-weight: 600; font-size: var(--fs-lg, 14px); }
+.afm-share-choices { display: flex; flex-direction: column; gap: 2px; }
+.afm-share-who { display: flex; flex-direction: column; gap: 3px; }
+.afm-share-who > span { color: var(--text-dim, #99a2b3); }
+.afm-share-who select { width: 100%; min-width: 0; }
+.afm-share input.afm-share-link { width: 100%; box-sizing: border-box; font-family: var(--font-mono, monospace); font-size: var(--fs-sm, 11.5px); }
+.afm-share-line { color: var(--text-dim, #99a2b3); line-height: 1.4; }
+.afm-share-error { color: var(--danger, #d9534f); line-height: 1.4; }
+.afm-share-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+.afm-share-buttons > button { flex: 1 1 auto; }
+`;
+var COPIED_MS = 1600;
+var SharePopover = class {
+  deps;
+  t;
+  root = null;
+  anchor = null;
+  target = null;
+  status = { state: "asking" };
+  choice = { from: "start", who: "watch", player: null };
+  error = null;
+  busy = false;
+  choosing = false;
+  copiedUntil = 0;
+  copiedTimer = 0;
+  asked = 0;
+  unsubscribe = null;
+  style = null;
+  /* What moves with the clock, kept to be changed in place. */
+  timeLabel = null;
+  field = null;
+  shownLink = null;
+  shownTime = "";
+  /** Told the link a replay was given, so it is kept with the replay. */
+  onLink = null;
+  constructor(deps) {
+    this.deps = deps;
+    this.t = deps.api.i18n.t;
+  }
+  isOpen() {
+    return this.root !== null;
+  }
+  /** The replay it is open on. */
+  holds(target) {
+    return this.target === target;
+  }
+  toggle(anchor, target) {
+    if (this.root && this.target === target) {
+      this.close();
+      return;
+    }
+    this.open(anchor, target);
+  }
+  open(anchor, target) {
+    this.close();
+    if (!this.style) {
+      this.style = document.createElement("style");
+      this.style.textContent = STYLE;
+      document.head.append(this.style);
+    }
+    this.anchor = anchor;
+    this.target = target;
+    this.error = null;
+    this.busy = false;
+    this.choosing = false;
+    const frame = this.deps.frame();
+    this.choice = { from: pastStart(frame) ? "time" : "start", who: "watch", player: this.deps.watching() ?? this.deps.players()[0]?.slot ?? null };
+    this.root = this.deps.api.ui.el("div", { className: "afm-share", role: "dialog", "aria-label": this.t("Share this replay") });
+    document.body.append(this.root);
+    anchor.setAttribute("aria-expanded", "true");
+    document.addEventListener("pointerdown", this.onPointer, true);
+    document.addEventListener("keydown", this.onKey, true);
+    window.addEventListener("resize", this.place);
+    window.addEventListener("blur", this.onBlur);
+    document.addEventListener("scroll", this.place, true);
+    const service = this.deps.service();
+    this.unsubscribe = service ? service.onChange(() => {
+      if (!this.busy) this.ask();
+    }) : null;
+    this.ask();
+    this.render();
+    (this.root.querySelector(".afm-share-buttons button:not([disabled])") ?? this.root.querySelector("input"))?.focus();
+  }
+  close = () => {
+    if (!this.root) return;
+    this.root.remove();
+    this.root = null;
+    this.anchor?.setAttribute("aria-expanded", "false");
+    this.anchor = null;
+    this.target = null;
+    this.timeLabel = this.field = null;
+    this.unsubscribe?.();
+    this.unsubscribe = null;
+    clearTimeout(this.copiedTimer);
+    this.copiedUntil = 0;
+    this.asked++;
+    document.removeEventListener("pointerdown", this.onPointer, true);
+    document.removeEventListener("keydown", this.onKey, true);
+    window.removeEventListener("resize", this.place);
+    window.removeEventListener("blur", this.onBlur);
+    document.removeEventListener("scroll", this.place, true);
+  };
+  /** The timeline drew its row again: the popover stays with the new Share button. */
+  anchorTo(anchor) {
+    if (!this.root) return;
+    this.anchor = anchor;
+    anchor.setAttribute("aria-expanded", "true");
+    this.place();
+  }
+  /** The clock moved: "From 6:42" and the link follow it, and the popover its button, which the row's other words move. */
+  update() {
+    if (!this.root) return;
+    this.place();
+    const view2 = this.view();
+    if (view2.time !== this.shownTime && this.timeLabel) {
+      this.timeLabel.textContent = this.t("From {time}", { time: view2.time });
+      this.shownTime = view2.time;
+    }
+    if (view2.link !== this.shownLink && this.field && view2.link) {
+      this.field.value = view2.link;
+      this.shownLink = view2.link;
+      this.field.scrollLeft = this.field.scrollWidth;
+    }
+  }
+  view() {
+    return shareView(this.status, this.choice, Math.round(this.deps.frame()));
+  }
+  /** Where the replay stands: the link it came with, or the scmjs.dev plugin's answer. */
+  ask() {
+    const target = this.target;
+    if (!target) return;
+    const asked = ++this.asked;
+    if (target.link) {
+      this.status = { state: "kept", link: target.link };
+      return;
+    }
+    const service = this.deps.service();
+    if (!service) {
+      this.status = { state: "unavailable", reason: "" };
+      return;
+    }
+    this.status = { state: "asking" };
+    void service.status({ bytes: target.bytes, fileName: target.fileName }).then((s) => {
+      if (asked !== this.asked || !this.root) return;
+      this.status = s;
+      this.render();
+    });
+  }
+  render() {
+    const root = this.root;
+    if (!root) return;
+    const { el, widgets: w } = this.deps.api.ui;
+    const t = this.t;
+    const view2 = this.view();
+    const focused = root.contains(document.activeElement) ? document.activeElement.dataset.key ?? null : null;
+    root.replaceChildren();
+    root.append(el("div", { className: "afm-share-title" }, t("Share this replay")));
+    const radio = (value, label) => {
+      const box = w.checkbox(label, { radio: true, name: "afm-share-from", value: this.choice.from === value, onChange: (on) => {
+        if (on) {
+          this.choice.from = value;
+          this.render();
+        }
+      } });
+      box.input.dataset.key = `from-${value}`;
+      return box;
+    };
+    const fromTime = radio("time", t("From {time}", { time: view2.time }));
+    this.timeLabel = fromTime.querySelector("span");
+    this.shownTime = view2.time;
+    root.append(el("div", { className: "afm-share-choices" }, radio("start", t("From the start")), fromTime));
+    if (view2.who) {
+      const players = this.deps.players();
+      const watching = this.deps.watching();
+      const order = [...players.filter((p) => p.slot === watching), ...players.filter((p) => p.slot !== watching)];
+      const value = this.choice.who === "play" && this.choice.player !== null ? String(this.choice.player) : "watch";
+      const pick = w.select([{ value: "watch", label: t("Watches") }, ...order.map((p) => ({ value: String(p.slot), label: t("Plays as {name}", { name: p.label }) }))], {
+        value,
+        title: t("Whoever opens it"),
+        onChange: (v) => {
+          if (v === "watch") this.choice.who = "watch";
+          else {
+            this.choice.who = "play";
+            this.choice.player = Number(v);
+          }
+          this.update();
+        }
+      });
+      pick.dataset.key = "who";
+      root.append(el("label", { className: "afm-share-who" }, el("span", {}, t("Whoever opens it")), pick));
+    }
+    this.field = null;
+    this.shownLink = view2.link;
+    if (view2.link) {
+      const field = w.text({ value: view2.link });
+      field.readOnly = true;
+      field.className = `${field.className} afm-share-link`.trim();
+      field.setAttribute("aria-label", t("Link"));
+      field.dataset.key = "link";
+      field.addEventListener("focus", () => field.select());
+      this.field = field;
+      root.append(field);
+      requestAnimationFrame(() => {
+        field.scrollLeft = field.scrollWidth;
+      });
+    }
+    if (view2.keeps) root.append(el("div", { className: "afm-share-line" }, t("Sharing keeps this replay on your scmjs.dev account.")));
+    const reason = view2.reason ?? this.error;
+    if (reason) root.append(el("div", { className: "afm-share-error", role: "alert" }, reason));
+    const buttons = el("div", { className: "afm-share-buttons" });
+    const status = this.status;
+    if (this.choosing && status.state === "signed-out") {
+      for (const p of status.providers) {
+        const b = w.button(t("Sign in with {name}", { name: p.name }), { busy: this.busy, onClick: () => this.share(p.id) });
+        b.dataset.key = `provider-${p.id}`;
+        buttons.append(b);
+      }
+    } else if (view2.action || status.state === "asking") {
+      const copied = view2.action === "copy" && Date.now() < this.copiedUntil;
+      const label = view2.action === "copy" ? copied ? t("Copied") : t("Copy link") : view2.action === "sign-in" ? t("Sign in to share") : t("Keep and copy link");
+      const b = w.button(label, { primary: true, busy: this.busy || status.state === "asking", onClick: () => this.press() });
+      b.dataset.key = "action";
+      buttons.append(b);
+    }
+    if (buttons.childElementCount) root.append(buttons);
+    if (focused) root.querySelector(`[data-key="${focused}"]`)?.focus();
+    this.place();
+  }
+  press() {
+    const view2 = this.view();
+    if (view2.link) {
+      void this.copy(view2.link);
+      return;
+    }
+    const status = this.status;
+    if (status.state === "signed-out" && status.providers.length > 1) {
+      this.choosing = true;
+      this.render();
+      return;
+    }
+    this.share(status.state === "signed-out" ? status.providers[0]?.id : void 0);
+  }
+  /** Sign in if need be, keep the replay, get its link (the scmjs.dev plugin does all three), and copy it. */
+  share(provider) {
+    const service = this.deps.service();
+    const target = this.target;
+    if (!service || !target || this.busy) return;
+    this.busy = true;
+    this.error = null;
+    const asked = this.asked;
+    const linking = service.link({ bytes: target.bytes, fileName: target.fileName }, provider);
+    this.render();
+    void linking.then(
+      (link) => {
+        target.link = link;
+        this.onLink?.(target, link);
+        if (asked !== this.asked || this.target !== target) return;
+        this.busy = false;
+        this.choosing = false;
+        this.status = { state: "kept", link };
+        this.render();
+        const full = this.view().link;
+        if (full) void this.copy(full);
+      },
+      (err2) => {
+        if (asked !== this.asked || this.target !== target) return;
+        this.busy = false;
+        const code = err2.code;
+        this.error = code === "aborted" ? null : err2 instanceof Error ? err2.message : String(err2);
+        this.ask();
+        this.render();
+      }
+    );
+  }
+  async copy(link) {
+    try {
+      await navigator.clipboard.writeText(link);
+    } catch {
+      this.field?.focus();
+      this.field?.select();
+      return;
+    }
+    if (!this.root) return;
+    this.copiedUntil = Date.now() + COPIED_MS;
+    clearTimeout(this.copiedTimer);
+    this.copiedTimer = window.setTimeout(() => this.render(), COPIED_MS + 20);
+    this.render();
+  }
+  /** Over the map above the Share button, so the timeline stays in view; below it, or at the top, when there is no room. */
+  place = () => {
+    const root = this.root, anchor = this.anchor;
+    if (!root || !anchor || !anchor.isConnected) return;
+    const gap = 6, edge = 8;
+    const a = anchor.getBoundingClientRect();
+    const w = root.offsetWidth, h = root.offsetHeight;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const left = Math.max(edge, Math.min(vw - w - edge, a.right - w));
+    const above = a.top - gap - h;
+    const below = a.bottom + gap;
+    const top = above >= edge ? above : below + h <= vh - edge ? below : Math.max(edge, vh - h - edge);
+    root.style.left = `${Math.round(left)}px`;
+    root.style.top = `${Math.round(top)}px`;
+  };
+  onPointer = (e) => {
+    const target = e.target;
+    if (!this.root || !target) return;
+    if (this.root.contains(target) || this.anchor?.contains(target) || this.deps.keepsOpen?.(target)) return;
+    this.close();
+  };
+  /** A press in a frame on the page (the Game view) is a press outside too, though the page never hears it. */
+  onBlur = () => {
+    setTimeout(() => {
+      if (this.root && document.activeElement instanceof HTMLIFrameElement) this.close();
+    }, 0);
+  };
+  onKey = (e) => {
+    if (!this.root) return;
+    if (e.key !== "Escape") {
+      if (this.root.contains(document.activeElement)) e.stopPropagation();
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    const anchor = this.anchor;
+    this.close();
+    anchor?.focus();
+  };
+  dispose() {
+    this.close();
+    this.style?.remove();
+    this.style = null;
+  }
+};
+
 // charts.ts
 var LEFT = 46;
 var RIGHT = 96;
@@ -9946,11 +10328,11 @@ var Chart = class {
     this.element = document.createElement("div");
     this.element.className = "afm-chart";
     this.element.append(this.canvas);
-    const frameAt = (offsetX) => {
+    const frameAt2 = (offsetX) => {
       const w = this.canvas.clientWidth - this.left - this.right;
       return Math.max(0, Math.min(this.end, (offsetX - this.left) / Math.max(1, w) * this.end));
     };
-    const pickAt = (e) => this.host.pick(frameAt(e.clientX - this.canvas.getBoundingClientRect().left));
+    const pickAt = (e) => this.host.pick(frameAt2(e.clientX - this.canvas.getBoundingClientRect().left));
     this.canvas.addEventListener("pointerdown", (e) => {
       if (e.button !== 0) return;
       this.canvas.setPointerCapture(e.pointerId);
@@ -9958,10 +10340,10 @@ var Chart = class {
     });
     this.canvas.addEventListener("pointermove", (e) => {
       if (this.canvas.hasPointerCapture(e.pointerId)) pickAt(e);
-      this.host.hover(frameAt(e.clientX - this.canvas.getBoundingClientRect().left));
+      this.host.hover(frameAt2(e.clientX - this.canvas.getBoundingClientRect().left));
     });
     this.canvas.addEventListener("pointerleave", () => this.host.hover(null));
-    this.tip = host.tooltip(this.canvas, (at) => at.offsetX < this.left - 4 ? null : this.tipAt(frameAt(at.offsetX), at));
+    this.tip = host.tooltip(this.canvas, (at) => at.offsetX < this.left - 4 ? null : this.tipAt(frameAt2(at.offsetX), at));
     this.resize = new ResizeObserver(() => this.draw());
     this.resize.observe(this.canvas);
   }
@@ -11283,7 +11665,7 @@ function fightMark(f) {
   if (f.tier === "major" && f.winner === null) return { id: "even", label: msg2("Even trade"), why: msg2("Both sides lost about as much") };
   return null;
 }
-var STYLE = `
+var STYLE2 = `
 .afm-cinema { background: #000; }
 .afm-cinema .afm-tip, .afm-cinema .afm-busy { display: none; }
 .afm-cinema-layer { position: absolute; inset: 0; z-index: 4; cursor: none; }
@@ -11487,6 +11869,8 @@ var STYLE = `
 .afm-tl > .afm-row > button:first-child { min-width: 64px; }
 .afm-tl canvas { flex: 1; min-height: 40px; width: 100%; display: block; cursor: pointer; touch-action: none; }
 .afm-tl canvas.afm-faded { opacity: 0.3; }
+.afm-tl .afm-shared { flex-shrink: 0; margin-top: -2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.afm-tl .afm-shared[hidden] { display: none; }
 .afm .afm-mod { margin: 6px 0; padding: 6px 8px; border-left: 2px solid var(--accent, #6aa0ff); display: grid; gap: 3px; }
 .afm .afm-mod a { color: inherit; }
 .afm .afm-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
@@ -12043,6 +12427,7 @@ function activate(api) {
     strip?.update();
   }
   const gameClock = () => current !== null && game.shown && game.holds(current.id);
+  const clockFrame = (entry) => Math.round((entry === current && gameClock() ? game.clockFrame(settings.speed) : null) ?? entry.frame);
   function handOver(on) {
     const entry = current;
     if (!entry || on && entry.mod && !game.playsMods) return;
@@ -12076,9 +12461,9 @@ function activate(api) {
     if (game.shown && !game.holds(entry.id)) handOver(true);
   }
   const style = document.createElement("style");
-  style.textContent = STYLE;
+  style.textContent = STYLE2;
   document.head.append(style);
-  async function load(files, into = null) {
+  async function load(files, into = null, from = {}) {
     const reps = files.filter((f) => /\.rep$/i.test(f.name));
     if (!reps.length) {
       if (files.length) api.ui.toast({ kind: "warn", title: t("Not a replay"), detail: t("Aftermath opens StarCraft replays, files ending in .rep.") });
@@ -12094,7 +12479,9 @@ function activate(api) {
         const id = nextId++, map = readChk(replay.chk);
         const group = [...loaded, ...batch].find((l) => likeness(map, l.map) >= SAME_MAP)?.group ?? id;
         useRoles(!replay.mod || api.gameData?.source?.()?.hash === replay.mod.dataSet.hash ? rolesOf(api.data.units()) : null);
-        batch.push({ id, fileName: file.name, report: analyse(replay), map, bytes, docId: null, group, excluded: false, frame: 0, hidden: /* @__PURE__ */ new Set(), played: null, failed: null, eyes: null, again: null, mod: replay.mod ?? null, ...replay.mod ? { dataSet: replayDataSet(replay.mod) } : {}, signs: replay.mod ? [] : modSigns(replay.players, map) });
+        const report = analyse(replay);
+        const at = from.at !== void 0 && reps.length === 1 ? frameAt(from.at, report.frames) : 0;
+        batch.push({ id, fileName: file.name, report, map, bytes, docId: null, group, excluded: false, frame: at, hidden: /* @__PURE__ */ new Set(), played: null, failed: null, eyes: null, again: null, mod: replay.mod ?? null, ...replay.mod ? { dataSet: replayDataSet(replay.mod) } : {}, signs: replay.mod ? [] : modSigns(replay.players, map), ...from.link && reps.length === 1 ? { link: from.link } : {}, sharedAt: at > 0 ? at : null });
       } catch (err2) {
         const detail = err2 instanceof ReplayError ? translate(err2.message) : String(err2);
         api.ui.toast({ kind: "error", title: t("Could not read {name}", { name: file.name }), detail });
@@ -12222,6 +12609,7 @@ function activate(api) {
     if (opening && opening.docId === null && id !== null && !loaded.some((l) => l.docId === id)) opening.docId = id;
     const next = loaded.find((l) => l.docId !== null && l.docId === id) ?? null;
     if (next !== current) {
+      share.close();
       endCast();
       stop();
       current = next;
@@ -12246,6 +12634,7 @@ function activate(api) {
   function seek(f, drag = false) {
     if (!current) return;
     if (lensOf() === "map") showStats(false);
+    current.sharedAt = null;
     current.frame = Math.max(0, Math.min(current.report.frames, Math.round(f)));
     if (gameClock()) {
       if (drag) game.drag(current.frame);
@@ -12403,6 +12792,7 @@ function activate(api) {
   function play() {
     if (!current || playing3) return;
     if (lensOf() === "map") showStats(false);
+    current.sharedAt = null;
     if (current.frame >= current.report.frames) current.frame = 0;
     playing3 = true;
     cinema.refresh?.();
@@ -13271,7 +13661,7 @@ function activate(api) {
     const who = entry.report.players.find((p) => p.player.index === card.player)?.player;
     const name = card.kind === "unit" ? plainName(names.unit(card.type)).replace(/\s*\([^)]*\)\s*$/, "") : card.kind === "tech" ? names.tech(card.type) : card.level > 1 ? `${names.upgrade(card.type)} ${card.level}` : names.upgrade(card.type);
     const making2 = frame < card.done && card.done > card.start;
-    const share = making2 ? Math.max(0, Math.min(1, (frame - card.start) / (card.done - card.start))) : 1;
+    const share2 = making2 ? Math.max(0, Math.min(1, (frame - card.start) / (card.done - card.start))) : 1;
     const status = making2 ? t("{what} \xB7 {time} left", { what: card.kind === "unit" ? isBuilding(card.type) ? t("Building") : t("In production") : t("Researching"), time: formatTime(card.done - frame) }) : frame < card.start ? t("Ordered") : t("Done at {time}", { time: formatTime(card.done) });
     let pic = null;
     if (typeof api.graphics.icon === "function") {
@@ -13304,7 +13694,7 @@ function activate(api) {
     ctx.fillStyle = "rgba(255,255,255,0.14)";
     ctx.fillRect(tx, y0 + 46, tw, 5);
     ctx.fillStyle = making2 ? colour : "#7fd18b";
-    ctx.fillRect(tx, y0 + 46, tw * share, 5);
+    ctx.fillRect(tx, y0 + 46, tw * share2, 5);
     ctx.font = "500 11px system-ui, sans-serif";
     ctx.fillStyle = "#b9c0cc";
     ctx.fillText(status, tx, y0 + 54, tw);
@@ -14076,6 +14466,17 @@ function activate(api) {
   let side = null;
   let stripPanel = null;
   let strip = null;
+  let replaysService = null;
+  const share = new SharePopover({
+    api,
+    service: () => replaysService,
+    frame: () => current ? clockFrame(current) : 0,
+    // (The same slot Play From Here hands the play page as the player to play as.)
+    players: () => current ? current.report.players.map((p) => ({ slot: p.player.slot, label: `${plainText(p.player.name)} (${raceOf(current, p.player).label})` })) : [],
+    watching: () => current?.eyes ?? null,
+    // (A press on the timeline moves the playhead the popover describes: it stays open for it.)
+    keepsOpen: (node) => !!strip?.root.querySelector("canvas")?.contains(node)
+  });
   let sideHidden = false;
   let stripHidden = false;
   let sideAsked = false;
@@ -14212,6 +14613,7 @@ function activate(api) {
       },
       onClose: () => {
         if (stripPanel !== handle) return;
+        share.close();
         stripPanel = null;
         strip = null;
         stop();
@@ -14879,6 +15281,8 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
     playButton = null;
     timeLabel = null;
     status = null;
+    /** "Opened at 6:42 from a shared link", on a line of its own until the first play or seek. */
+    shared = null;
     canvas = null;
     resize = null;
     spectateButton = null;
@@ -14962,13 +15366,26 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
         className: "sm",
         title: modSays ? `${t("Open this replay on the play page at this moment and play on from there: as one of its players, alone, against a community bot, or with others")}. ${modSays}` : t("Open this replay on the play page at this moment and play on from there: as one of its players, alone, against a community bot, or with others"),
         onClick: () => {
-          const frame = Math.round((gameClock() ? game.clockFrame(settings.speed) : null) ?? entry.frame);
+          const frame = clockFrame(entry);
           if (playing3) stop();
           const player = entry.eyes ?? entry.report.players[0]?.player.slot;
           sim.playReplay(handedReplay(entry.bytes, entry.fileName, entry.dataSet), { frame, ...player !== void 0 ? { player } : {} }).catch((err2) => api.ui.toast({ kind: "error", title: t("The play page could not open the replay"), detail: err2 instanceof Error ? err2.message : String(err2) }));
           if (modSays) api.ui.toast({ kind: "info", title: t("A replay of a mod"), detail: modSays });
         }
       }) : null;
+      const shareButton = replaysService || entry.link ? w.button(t("Share"), {
+        className: "sm",
+        title: t("A link to this replay, from its start or from this moment, to watch or to play on from"),
+        onClick: () => share.toggle(shareButton, entry)
+      }) : null;
+      if (shareButton) {
+        shareButton.setAttribute("aria-haspopup", "dialog");
+        shareButton.setAttribute("aria-expanded", "false");
+      }
+      if (share.isOpen()) {
+        if (shareButton && share.holds(entry)) share.anchorTo(shareButton);
+        else share.close();
+      }
       const cinemaButton = cinemaPossible() ? w.button(t("Cinematic"), { className: "sm", title: t("The game full screen, dressed as a broadcast, without the editor around it. Esc leaves."), onClick: () => {
         void setCinema(true);
       } }) : null;
@@ -15009,12 +15426,15 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
         retry,
         castCardsButton,
         playHere,
+        shareButton,
         cinemaButton,
         castButton,
         castMore,
         analysis,
         chartSelect
       ));
+      this.shared = el("div", { className: "afm-dim afm-shared" });
+      this.root.append(this.shared);
       const canvas = el("canvas");
       this.canvas = canvas;
       this.tip?.dispose();
@@ -15084,6 +15504,8 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
       }
       this.status.textContent = line;
       this.status.title = why || line;
+      this.shared.hidden = !entry.sharedAt;
+      this.shared.textContent = entry.sharedAt ? t("Opened at {time} from a shared link", { time: formatTime(entry.sharedAt) }) : "";
       const shots = (entry.played?.shots.length ?? 0) > 0;
       const following = shots && cam.following && !onMap;
       this.spectateButton.classList.toggle("afm-on", following);
@@ -15113,6 +15535,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
       this.canvas?.classList.toggle("afm-faded", onMap);
       this.draw();
       this.tip?.refresh();
+      share.update();
     }
     /** The tooltip at a point over the canvas, CSS pixels from its corner. */
     tipAt(x2, y) {
@@ -15295,6 +15718,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
     const files = await api.ui.pickFiles({ accept: ".rep", multiple: true });
     if (files.length) await load(files, into);
   }
+  const replaysProvided = api.services.provide("replays", { open: (file, from) => load([file], null, from ?? {}) }, { version: 1 });
   api.commands.register({ id: "open-replay", title: msg2("Open Replay\u2026"), run: () => void pick() });
   api.commands.register({
     id: "panel",
@@ -15329,6 +15753,11 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
     game.setService(service);
     if (current) gameFor(current);
     pump();
+    strip?.render();
+  });
+  const replaysWatch = api.services.watch("scmjs-dev.replays", (service) => {
+    replaysService = service;
+    if (!service && !current?.link) share.close();
     strip?.render();
   });
   let accountChange = null;
@@ -15369,6 +15798,9 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
     document.removeEventListener("fullscreenchange", onFullscreen);
     accountChange?.();
     accountWatch.dispose();
+    replaysWatch.dispose();
+    replaysProvided.dispose();
+    share.dispose();
     imageListener.dispose();
     style.remove();
   };
