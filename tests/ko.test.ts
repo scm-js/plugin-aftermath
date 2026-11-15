@@ -8,7 +8,7 @@ import { MOD_WORD_TEXTS } from "../modreplay";
 // Every literal the plugin shows through `t("…")` / `api.i18n.t("…")`, or keeps in a table as `msg("…")`,
 // read from the source the way the editor's own extractor reads it; and the replay reader's errors (@scm-js/replay's
 // REPLAY_ERRORS) and the mod reader's sentences it shows (@scm-js/mod's, MOD_WORDS), which the plugin shows translated.
-const files = ["plugin.ts", "analysis.ts", "chk.ts", "insight.ts", "techview.ts", "scoutview.ts"];
+const files = ["plugin.ts", "analysis.ts", "chk.ts", "insight.ts", "techview.ts", "scoutview.ts", "share.ts"];
 const sources = files.map((f) => readFileSync(new URL(`../${f}`, import.meta.url), "utf8"));
 const keys = new Set([...sources.flatMap((source) => [...source.matchAll(/\b(?:t|msg)\("((?:[^"\\]|\\.)*)"/g)].map((m) => JSON.parse(`"${m[1]}"`) as string)), ...REPLAY_ERRORS, ...MOD_WORD_TEXTS]);
 
