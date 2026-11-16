@@ -7652,6 +7652,9 @@ var median = (list) => {
   const s = [...list].sort((a, b) => a - b);
   return s[s.length - 1 >> 1];
 };
+function playedOn(started) {
+  return started && started.getUTCFullYear() >= 1998 ? started : null;
+}
 function clockOf(x2, y, widthPx, heightPx) {
   const dx = (x2 - widthPx / 2) / widthPx, dy = (y - heightPx / 2) / heightPx;
   if (Math.hypot(dx, dy) < 0.125) return 0;
@@ -14754,7 +14757,7 @@ function activate(api) {
       const facts = [
         (GAME_TYPES[rep.header.gameType] ? translate(GAME_TYPES[rep.header.gameType]) : null) ?? t("Game type {n}", { n: rep.header.gameType }),
         formatTime(entry.report.frames),
-        rep.header.started ? rep.header.started.toLocaleDateString() : null,
+        playedOn(rep.header.started)?.toLocaleDateString() ?? null,
         rep.format === "legacy" ? t("before 1.18") : rep.format === "1.18" ? "1.18\u20131.20" : "1.21+"
       ].filter(Boolean).join(" \xB7 ");
       this.root.append(
