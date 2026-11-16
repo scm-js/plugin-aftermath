@@ -80,6 +80,16 @@ const median = (list: number[]): number | null => {
   return s[(s.length - 1) >> 1];
 };
 
+/**
+ * The day a game was played, or null when its replay does not say. A replay's header holds the start time as seconds
+ * since 1970, but a game recorded by a program rather than the game itself may hold something else there: a bot
+ * ladder's replays carry the game's seed (1, 2, 3…), which reads as the last day of 1969. A time before StarCraft
+ * came out (1998) is not a start time; `scmjs replay info` draws the same line.
+ */
+export function playedOn(started: Date | null | undefined): Date | null {
+  return started && started.getUTCFullYear() >= 1998 ? started : null;
+}
+
 /** 12 at the top, 3 on the right; 0 for a point within an eighth of the map's size of its middle. */
 export function clockOf(x: number, y: number, widthPx: number, heightPx: number): number {
   const dx = (x - widthPx / 2) / widthPx, dy = (y - heightPx / 2) / heightPx;

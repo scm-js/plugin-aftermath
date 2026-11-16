@@ -3,7 +3,7 @@ import type { ReplayTimeline } from "../vendor/scm-sim";
 import type { Fight } from "../fights";
 import type { Standing } from "../played";
 import type { Base } from "../story";
-import { clockOf, mapReport, winnerOf, VISIT_CELL, type GameInput } from "../report";
+import { clockOf, mapReport, playedOn, winnerOf, VISIT_CELL, type GameInput } from "../report";
 
 const CC = 106;
 const hall = (owner: number, x: number, y: number, from = 0, type = CC): Standing => ({ type, owner, x, y, from, done: from, to: null });
@@ -76,5 +76,18 @@ describe("who won", () => {
     expect(winnerOf([{ index: 0, left: false }, { index: 2, left: false }], [b(0, 500), b(2, null)])).toBe(2);
     expect(winnerOf([{ index: 0, left: false }, { index: 2, left: false }], [b(0, null), b(2, null)])).toBeNull();
     expect(winnerOf([{ index: 0, left: false }], [b(0, null)])).toBeNull();
+  });
+});
+
+describe("the day a game was played", () => {
+  it("is the header's start time when it is one", () => {
+    const day = new Date(Date.UTC(2004, 6, 12, 18, 30));
+    expect(playedOn(day)).toBe(day);
+  });
+  it("is not said for a bot ladder's replay, whose header carries the seed", () => {
+    expect(playedOn(new Date(1 * 1000))).toBeNull();
+    expect(playedOn(new Date(3 * 1000))).toBeNull();
+    expect(playedOn(null)).toBeNull();
+    expect(playedOn(undefined)).toBeNull();
   });
 });

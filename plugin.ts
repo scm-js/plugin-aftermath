@@ -40,7 +40,7 @@ import { KO } from "./ko";
 import { buildings as standingBuildings, isBuilding, losses, lossPoints, madeRows, mineralLines, presencePoints, sampleAt, series, unitIndex, unitsAt, WORKERS, type Metric, type Point, type Standing, type UnitIndex } from "./played";
 import { knowledge, knownAt, placedBuildings, REMEMBER_FRAMES, trails, type Knowledge, type Trail } from "./knew";
 import { engagement, fights as findFights, kills as findKills, topKillers, type Fight, type FightKind, type Kill, type Killer } from "./fights";
-import { clockOf, mapReport, winnerOf, type MapReport } from "./report";
+import { clockOf, mapReport, playedOn, winnerOf, type MapReport } from "./report";
 import { direct, lookAt, shotAt, type Shot } from "./director";
 import { cameraTrack, trackAt, type CameraTrack } from "./camera";
 import { advantage, bases as takenBases, hardestHit, leads, story, totals, type Advantage, type Base, type PlayerTotals } from "./story";
@@ -3447,7 +3447,7 @@ export function activate(api: PluginApi) {
       const facts = [
         (GAME_TYPES[rep.header.gameType] ? translate(GAME_TYPES[rep.header.gameType]) : null) ?? t("Game type {n}", { n: rep.header.gameType }),
         formatTime(entry.report.frames),
-        rep.header.started ? rep.header.started.toLocaleDateString() : null,
+        playedOn(rep.header.started)?.toLocaleDateString() ?? null,
         rep.format === "legacy" ? t("before 1.18") : rep.format === "1.18" ? "1.18–1.20" : "1.21+",
       ].filter(Boolean).join(" · ");
       this.root.append(
