@@ -13,6 +13,7 @@
 import type { PluginApi } from "@scm-js/plugin-api";
 import { FRAME_MS } from "@scm-js/replay";
 import { formatTime } from "./analysis";
+import { zoomOf } from "./pointer";
 import type { ReplayStatus, ScmjsReplaysService } from "./vendor/scmjs-dev";
 
 /* ── The moment and the link ── */
@@ -114,7 +115,7 @@ export interface ShareTarget {
 }
 
 const STYLE = `
-.afm-share { position: fixed; z-index: 170; width: 300px; max-width: calc(100vw - 16px); box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 12px; background: var(--bg-2, #191d25); border: 1px solid var(--border-strong, #3b4453); border-radius: var(--radius-lg, 5px); box-shadow: var(--shadow-pop, 0 10px 30px rgba(0,0,0,0.55)), var(--bevel-raised, none); font-size: var(--fs-md, 12.5px); color: var(--text, #dde2ea); }
+.afm-share { position: fixed; z-index: 170; zoom: var(--ui-zoom, 1); width: 300px; max-width: calc(100vw / var(--ui-zoom, 1) - 16px); box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 12px; background: var(--bg-2, #191d25); border: 1px solid var(--border-strong, #3b4453); border-radius: var(--radius-lg, 5px); box-shadow: var(--shadow-pop, 0 10px 30px rgba(0,0,0,0.55)), var(--bevel-raised, none); font-size: var(--fs-md, 12.5px); color: var(--text, #dde2ea); }
 .afm-share-title { font-weight: 600; font-size: var(--fs-lg, 14px); }
 .afm-share-choices { display: flex; flex-direction: column; gap: 2px; }
 .afm-share-who { display: flex; flex-direction: column; gap: 3px; }
@@ -400,14 +401,17 @@ export class SharePopover {
     if (!root || !anchor || !anchor.isConnected) return;
     const gap = 6, edge = 8;
     const a = anchor.getBoundingClientRect();
-    const w = root.offsetWidth, h = root.offsetHeight;
+    // Worked out in the page's pixels. The popup is zoomed with the editor's interface size, so its own size is
+    // multiplied up and its place divided back (see pointer.ts).
+    const z = zoomOf(root);
+    const w = root.offsetWidth * z, h = root.offsetHeight * z;
     const vw = window.innerWidth, vh = window.innerHeight;
     const left = Math.max(edge, Math.min(vw - w - edge, a.right - w));
     const above = a.top - gap - h;
     const below = a.bottom + gap;
     const top = above >= edge ? above : below + h <= vh - edge ? below : Math.max(edge, vh - h - edge);
-    root.style.left = `${Math.round(left)}px`;
-    root.style.top = `${Math.round(top)}px`;
+    root.style.left = `${Math.round(left) / z}px`;
+    root.style.top = `${Math.round(top) / z}px`;
   };
 
   private onPointer = (e: PointerEvent): void => {

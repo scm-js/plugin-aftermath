@@ -4,6 +4,7 @@
  * all of them) and the replay's own moment (a brighter one), and a press or a drag goes to the moment pressed.
  */
 import { FRAMES_PER_MINUTE } from "./analysis";
+import { pointIn, type TipPoint } from "./pointer";
 
 export interface LineSeries {
   label: string;
@@ -26,7 +27,7 @@ export interface ChartHost {
   /** Go to `frame` in the replay. */
   pick(frame: number): void;
   /** The tooltip over an element, asked again as the pointer moves. */
-  tooltip(target: HTMLElement, content: (at: { offsetX: number; offsetY: number }) => HTMLElement | string | null): { refresh(): void; dispose(): void };
+  tooltip(target: HTMLElement, content: (at: TipPoint) => HTMLElement | string | null): { refresh(): void; dispose(): void };
 }
 
 /** Space round the plot: the y-axis' labels at the left, the minutes under it, the series' names at the right. */
@@ -75,9 +76,9 @@ abstract class Chart {
   protected axis = true;
 
   protected readonly host: ChartHost;
-  protected readonly tipAt: (frame: number, at: { offsetX: number; offsetY: number }) => HTMLElement | null;
+  protected readonly tipAt: (frame: number, at: TipPoint) => HTMLElement | null;
 
-  constructor(host: ChartHost, height: number, tipAt: (frame: number, at: { offsetX: number; offsetY: number }) => HTMLElement | null, label: string) {
+  constructor(host: ChartHost, height: number, tipAt: (frame: number, at: TipPoint) => HTMLElement | null, label: string) {
     this.host = host;
     this.tipAt = tipAt;
     this.canvas = document.createElement("canvas");
@@ -92,11 +93,13 @@ abstract class Chart {
       const w = this.canvas.clientWidth - this.left - this.right;
       return Math.max(0, Math.min(this.end, ((offsetX - this.left) / Math.max(1, w)) * this.end));
     };
-    const pickAt = (e: PointerEvent) => this.host.pick(frameAt(e.clientX - this.canvas.getBoundingClientRect().left));
+    // (The pointer in the canvas's own pixels, which is what it is drawn in: see pointer.ts.)
+    const under = (e: PointerEvent) => frameAt(pointIn(this.canvas, e.clientX, e.clientY).x);
+    const pickAt = (e: PointerEvent) => this.host.pick(under(e));
     this.canvas.addEventListener("pointerdown", (e) => { if (e.button !== 0) return; this.canvas.setPointerCapture(e.pointerId); pickAt(e); });
     this.canvas.addEventListener("pointermove", (e) => {
       if (this.canvas.hasPointerCapture(e.pointerId)) pickAt(e);
-      this.host.hover(frameAt(e.clientX - this.canvas.getBoundingClientRect().left));
+      this.host.hover(under(e));
     });
     this.canvas.addEventListener("pointerleave", () => this.host.hover(null));
     this.tip = host.tooltip(this.canvas, (at) => (at.offsetX < this.left - 4 ? null : this.tipAt(frameAt(at.offsetX), at)));
@@ -327,7 +330,7 @@ export class GanttChart extends Chart {
   /** Where each bar was drawn, for the tooltip: [group, bar, x0, x1, y0]. */
   private placed: { group: number; bar: number; x0: number; x1: number; y0: number }[] = [];
 
-  constructor(host: ChartHost, tipAt: (frame: number, at: { offsetX: number; offsetY: number }) => HTMLElement | null, label: string) {
+  constructor(host: ChartHost, tipAt: (frame: number, at: TipPoint) => HTMLElement | null, label: string) {
     super(host, 40, tipAt, label);
   }
 

@@ -319,12 +319,11 @@ export class InsightView implements ChartHost {
       }
     }
     const cellAt = (x: number, y: number) => {
-      const r = grid.getBoundingClientRect();
-      const hit = document.elementFromPoint(r.left + x, r.top + y);
+      const hit = document.elementFromPoint(x, y);
       return hit instanceof HTMLElement && hit.classList.contains("afm-it-sat-cell") ? hit : null;
     };
     this.tips.push(this.deps.tooltip(grid, (at) => {
-      const cell = cellAt(at.offsetX, at.offsetY);
+      const cell = cellAt(at.x, at.y);
       const row = cell ? rows[Number(cell.dataset.row)] : undefined;
       if (!cell || !row) return null;
       const m = Number(cell.dataset.minute), n = row.perMinute[m];
