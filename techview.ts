@@ -147,8 +147,7 @@ export function mountTech(body: HTMLElement, cx: TechContext): void {
   }));
   // The names on the cards' icons, in the editor's tooltip.
   cx.keep(cx.host.tooltip(cards, (at) => {
-    const r = cards.getBoundingClientRect();
-    const hit = document.elementFromPoint(r.left + at.offsetX, r.top + at.offsetY);
+    const hit = document.elementFromPoint(at.x, at.y);
     const slot = hit instanceof Element ? hit.closest<HTMLElement>(".afm-ti") : null;
     return slot?.dataset.name ?? null;
   }));
@@ -278,8 +277,7 @@ function armyGrid(cx: TechContext, all: Tech, shown: TechContext["players"], ico
   }
   const at = (m: number) => Math.min(cx.timeline.frames, (m + 1) * FRAMES_PER_MINUTE);
   cx.keep(cx.host.tooltip(grid, (pt) => {
-    const r = grid.getBoundingClientRect();
-    const hit = document.elementFromPoint(r.left + pt.offsetX, r.top + pt.offsetY);
+    const hit = document.elementFromPoint(pt.x, pt.y);
     if (!(hit instanceof HTMLElement) || !hit.classList.contains("afm-it-sat-cell")) return null;
     const row = kept[Number(hit.dataset.row)], m = Number(hit.dataset.minute);
     if (!row) return null;

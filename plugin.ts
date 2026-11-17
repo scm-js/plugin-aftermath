@@ -55,6 +55,7 @@ import { frameAt, SharePopover } from "./share";
 import { InsightView, type InsightGame, type Metric as InsightMetric, type Resource } from "./insight";
 import { canName, declare, editorHints, editorSources, isPlayed, keptRaces, labelOf, letterFiles, nameCandidates, namedRow, RACE_LETTERS, RACE_NAME_MAX, raceView, type DataSetRace, type NamedRace, type RaceEditor, type RaceHints, type RaceView } from "./races";
 import { KINDS, rolesOf, useRoles } from "./roles";
+import { pointIn, type TipPoint } from "./pointer";
 
 /* ── State ──────────────────────────────────────────────── */
 
@@ -519,14 +520,18 @@ export function activate(api: PluginApi) {
   /**
    * The editor's tooltip over an element of Aftermath's, asked again as the pointer moves. An editor from before
    * `ui.tooltip` gets a plain one of the plugin's own in the editor's tooltip style.
+   *
+   * `content` is asked with the pointer in the target's own pixels (`offsetX`, `offsetY`) and in the page's (`x`,
+   * `y`). The two differ at a larger interface size, so the offsets are worked out here from the page's point,
+   * not taken from the editor's.
    */
-  function tooltip(target: HTMLElement, content: (at: { offsetX: number; offsetY: number }) => HTMLElement | string | null): { refresh(): void; dispose(): void } {
-    if (typeof api.ui.tooltip === "function") return api.ui.tooltip(target, content, { maxWidth: 360 });
+  function tooltip(target: HTMLElement, content: (at: TipPoint) => HTMLElement | string | null): { refresh(): void; dispose(): void } {
+    const ask = (x: number, y: number) => { const own = pointIn(target, x, y); return content({ offsetX: own.x, offsetY: own.y, x, y }); };
+    if (typeof api.ui.tooltip === "function") return api.ui.tooltip(target, (at) => ask(at.x, at.y), { maxWidth: 360 });
     const tip = el("div", { className: "tooltip afm-tip-fallback", role: "tooltip" });
     let last: PointerEvent | null = null;
     const show = () => {
-      const r = target.getBoundingClientRect();
-      const body = last && target.isConnected ? content({ offsetX: last.clientX - r.left, offsetY: last.clientY - r.top }) : null;
+      const body = last && target.isConnected ? ask(last.clientX, last.clientY) : null;
       if (!body || !last) { tip.remove(); return; }
       tip.replaceChildren(body);
       if (!tip.isConnected) document.body.append(tip);
@@ -4086,7 +4091,7 @@ export function activate(api: PluginApi) {
       canvas.addEventListener("lostpointercapture", () => game.dragEnd());
       canvas.addEventListener("pointermove", (e) => {
         if (canvas.hasPointerCapture(e.pointerId)) seekTo(e);
-        this.hover = e.clientX - canvas.getBoundingClientRect().left;
+        this.hover = pointIn(canvas, e.clientX, e.clientY).x;
         this.draw();
       });
       canvas.addEventListener("pointerleave", () => { this.hover = null; this.draw(); });
@@ -4187,7 +4192,7 @@ export function activate(api: PluginApi) {
       share.update();
     }
 
-    /** The tooltip at a point over the canvas, CSS pixels from its corner. */
+    /** The tooltip at a point over the canvas, in the canvas's own pixels from its corner. */
     private tipAt(x: number, y: number): HTMLElement | string | null {
       const entry = current, c = this.canvas;
       if (!entry || !c) return null;
