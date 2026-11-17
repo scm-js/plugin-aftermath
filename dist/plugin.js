@@ -9914,6 +9914,16 @@ var CastStore = class {
   }
 };
 
+// pointer.ts
+function zoomOf(el) {
+  const z = el?.currentCSSZoom;
+  return typeof z === "number" && z > 0 ? z : 1;
+}
+function pointIn(el, clientX, clientY) {
+  const r = el.getBoundingClientRect(), z = zoomOf(el);
+  return { x: (clientX - r.left) / z, y: (clientY - r.top) / z };
+}
+
 // share.ts
 function frameAt(seconds2, last) {
   return Math.max(0, Math.min(last, Math.ceil(seconds2 * 1e3 / FRAME_MS - 1e-6)));
@@ -9945,7 +9955,7 @@ function shareView(status, choice, frame) {
   };
 }
 var STYLE = `
-.afm-share { position: fixed; z-index: 170; width: 300px; max-width: calc(100vw - 16px); box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 12px; background: var(--bg-2, #191d25); border: 1px solid var(--border-strong, #3b4453); border-radius: var(--radius-lg, 5px); box-shadow: var(--shadow-pop, 0 10px 30px rgba(0,0,0,0.55)), var(--bevel-raised, none); font-size: var(--fs-md, 12.5px); color: var(--text, #dde2ea); }
+.afm-share { position: fixed; z-index: 170; zoom: var(--ui-zoom, 1); width: 300px; max-width: calc(100vw / var(--ui-zoom, 1) - 16px); box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 12px; background: var(--bg-2, #191d25); border: 1px solid var(--border-strong, #3b4453); border-radius: var(--radius-lg, 5px); box-shadow: var(--shadow-pop, 0 10px 30px rgba(0,0,0,0.55)), var(--bevel-raised, none); font-size: var(--fs-md, 12.5px); color: var(--text, #dde2ea); }
 .afm-share-title { font-weight: 600; font-size: var(--fs-lg, 14px); }
 .afm-share-choices { display: flex; flex-direction: column; gap: 2px; }
 .afm-share-who { display: flex; flex-direction: column; gap: 3px; }
@@ -10240,14 +10250,15 @@ var SharePopover = class {
     if (!root || !anchor || !anchor.isConnected) return;
     const gap = 6, edge = 8;
     const a = anchor.getBoundingClientRect();
-    const w = root.offsetWidth, h = root.offsetHeight;
+    const z = zoomOf(root);
+    const w = root.offsetWidth * z, h = root.offsetHeight * z;
     const vw = window.innerWidth, vh = window.innerHeight;
     const left = Math.max(edge, Math.min(vw - w - edge, a.right - w));
     const above = a.top - gap - h;
     const below = a.bottom + gap;
     const top = above >= edge ? above : below + h <= vh - edge ? below : Math.max(edge, vh - h - edge);
-    root.style.left = `${Math.round(left)}px`;
-    root.style.top = `${Math.round(top)}px`;
+    root.style.left = `${Math.round(left) / z}px`;
+    root.style.top = `${Math.round(top) / z}px`;
   };
   onPointer = (e) => {
     const target = e.target;
@@ -10335,7 +10346,8 @@ var Chart = class {
       const w = this.canvas.clientWidth - this.left - this.right;
       return Math.max(0, Math.min(this.end, (offsetX - this.left) / Math.max(1, w) * this.end));
     };
-    const pickAt = (e) => this.host.pick(frameAt2(e.clientX - this.canvas.getBoundingClientRect().left));
+    const under = (e) => frameAt2(pointIn(this.canvas, e.clientX, e.clientY).x);
+    const pickAt = (e) => this.host.pick(under(e));
     this.canvas.addEventListener("pointerdown", (e) => {
       if (e.button !== 0) return;
       this.canvas.setPointerCapture(e.pointerId);
@@ -10343,7 +10355,7 @@ var Chart = class {
     });
     this.canvas.addEventListener("pointermove", (e) => {
       if (this.canvas.hasPointerCapture(e.pointerId)) pickAt(e);
-      this.host.hover(frameAt2(e.clientX - this.canvas.getBoundingClientRect().left));
+      this.host.hover(under(e));
     });
     this.canvas.addEventListener("pointerleave", () => this.host.hover(null));
     this.tip = host.tooltip(this.canvas, (at) => at.offsetX < this.left - 4 ? null : this.tipAt(frameAt2(at.offsetX), at));
@@ -10838,8 +10850,7 @@ function mountTech(body, cx) {
     );
   }));
   cx.keep(cx.host.tooltip(cards, (at) => {
-    const r = cards.getBoundingClientRect();
-    const hit = document.elementFromPoint(r.left + at.offsetX, r.top + at.offsetY);
+    const hit = document.elementFromPoint(at.x, at.y);
     const slot = hit instanceof Element ? hit.closest(".afm-ti") : null;
     return slot?.dataset.name ?? null;
   }));
@@ -10975,8 +10986,7 @@ function armyGrid(cx, all, shown, icon) {
   }
   const at = (m) => Math.min(cx.timeline.frames, (m + 1) * FRAMES_PER_MINUTE);
   cx.keep(cx.host.tooltip(grid, (pt) => {
-    const r = grid.getBoundingClientRect();
-    const hit = document.elementFromPoint(r.left + pt.offsetX, r.top + pt.offsetY);
+    const hit = document.elementFromPoint(pt.x, pt.y);
     if (!(hit instanceof HTMLElement) || !hit.classList.contains("afm-it-sat-cell")) return null;
     const row = kept[Number(hit.dataset.row)], m = Number(hit.dataset.minute);
     if (!row) return null;
@@ -11561,12 +11571,11 @@ var InsightView = class {
       }
     }
     const cellAt = (x2, y) => {
-      const r = grid.getBoundingClientRect();
-      const hit = document.elementFromPoint(r.left + x2, r.top + y);
+      const hit = document.elementFromPoint(x2, y);
       return hit instanceof HTMLElement && hit.classList.contains("afm-it-sat-cell") ? hit : null;
     };
     this.tips.push(this.deps.tooltip(grid, (at) => {
-      const cell = cellAt(at.offsetX, at.offsetY);
+      const cell = cellAt(at.x, at.y);
       const row = cell ? rows[Number(cell.dataset.row)] : void 0;
       if (!cell || !row) return null;
       const m = Number(cell.dataset.minute), n = row.perMinute[m];
@@ -11912,12 +11921,15 @@ function activate(api) {
   const w = api.ui.widgets;
   const el = api.ui.el;
   function tooltip(target, content) {
-    if (typeof api.ui.tooltip === "function") return api.ui.tooltip(target, content, { maxWidth: 360 });
+    const ask2 = (x2, y) => {
+      const own = pointIn(target, x2, y);
+      return content({ offsetX: own.x, offsetY: own.y, x: x2, y });
+    };
+    if (typeof api.ui.tooltip === "function") return api.ui.tooltip(target, (at) => ask2(at.x, at.y), { maxWidth: 360 });
     const tip = el("div", { className: "tooltip afm-tip-fallback", role: "tooltip" });
     let last = null;
     const show = () => {
-      const r = target.getBoundingClientRect();
-      const body = last && target.isConnected ? content({ offsetX: last.clientX - r.left, offsetY: last.clientY - r.top }) : null;
+      const body = last && target.isConnected ? ask2(last.clientX, last.clientY) : null;
       if (!body || !last) {
         tip.remove();
         return;
@@ -15454,7 +15466,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
       canvas.addEventListener("lostpointercapture", () => game.dragEnd());
       canvas.addEventListener("pointermove", (e) => {
         if (canvas.hasPointerCapture(e.pointerId)) seekTo(e);
-        this.hover = e.clientX - canvas.getBoundingClientRect().left;
+        this.hover = pointIn(canvas, e.clientX, e.clientY).x;
         this.draw();
       });
       canvas.addEventListener("pointerleave", () => {
@@ -15540,7 +15552,7 @@ ${t("What fell was {percent}% of everything the players in it had", { percent: M
       this.tip?.refresh();
       share.update();
     }
-    /** The tooltip at a point over the canvas, CSS pixels from its corner. */
+    /** The tooltip at a point over the canvas, in the canvas's own pixels from its corner. */
     tipAt(x2, y) {
       const entry = current, c = this.canvas;
       if (!entry || !c) return null;
