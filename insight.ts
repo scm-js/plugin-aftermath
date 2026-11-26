@@ -2,16 +2,18 @@
  * The Analysis window: a large panel beside the replay for reading a game at length, a tab a subject. Economy: what
  * each player mined and how fast, what they left unspent, their workers, when they were supply blocked, and how many
  * workers stood at each mineral line, minute by minute. Tech (`techview.ts`): the tier each reached, every tech
- * building and research from start to done, and the army they fielded. Every chart follows the replay's clock, and a
- * press on one goes there.
+ * building and research from start to done, and the army they fielded. Scouting (`scoutview.ts`): what each player saw
+ * of the other. Macro (`macroview.ts`): when production buildings stood idle with money there, when workers stopped,
+ * when larvae waited. Every chart follows the replay's clock, and a press on one goes there.
  */
 import type { PluginApi } from "@scm-js/plugin-api";
 import { formatTime, FRAMES_PER_MINUTE } from "./analysis";
-import { GanttChart, LaneChart, LineChart, type ChartHost, type LineSeries } from "./charts";
+import { GanttChart, LaneChart, LineChart, ProductionChart, type ChartHost, type LineSeries } from "./charts";
 import { economy, type Economy, type LineSaturation } from "./economy";
 import type { MineralLines, UnitIndex } from "./played";
 import { mountTech } from "./techview";
 import { mountScouting } from "./scoutview";
+import { mountMacro } from "./macroview";
 import type { ReplayTimeline } from "./vendor/scm-sim";
 import type { NamedRace } from "./races";
 
@@ -49,7 +51,7 @@ const economies = new WeakMap<ReplayTimeline, Economy>();
 
 export class InsightView implements ChartHost {
   private game: InsightGame | null = null;
-  private charts: (LineChart | LaneChart | GanttChart)[] = [];
+  private charts: (LineChart | LaneChart | GanttChart | ProductionChart)[] = [];
   private tips: { dispose(): void }[] = [];
   private readonly root: HTMLElement;
 
@@ -74,6 +76,12 @@ export class InsightView implements ChartHost {
     this.shownTimeline = game?.timeline ?? null;
     this.game = game;
     this.render(why);
+  }
+
+  /** Show the tab `tab` ("macro"), as a link from elsewhere asks. */
+  select(tab: string): void {
+    this.deps.settings.tab = tab;
+    if (this.game) { this.shownKey = ""; this.render(""); }
   }
 
   /** The replay's clock moved. */
@@ -105,6 +113,7 @@ export class InsightView implements ChartHost {
       { value: "economy", label: t("Economy"), mount: (body) => this.economy(body) },
       { value: "tech", label: t("Tech"), mount: (body) => this.tech(body) },
       { value: "scouting", label: t("Scouting"), mount: (body) => this.scouting(body) },
+      { value: "macro", label: t("Macro"), mount: (body) => this.macro(body) },
     ], { value: settings.tab, onChange: (tab) => { settings.tab = tab; this.deps.save(); } });
     tabs.classList.add("afm-insight-tabs");
     this.root.append(tabs);
@@ -116,6 +125,19 @@ export class InsightView implements ChartHost {
   private tech(body: HTMLElement): void {
     const game = this.game!;
     mountTech(body, {
+      api: this.deps.api, t: this.deps.t, host: this, timeline: game.timeline,
+      players: game.players.filter((p) => !p.hidden),
+      seek: (f) => this.deps.seek(f),
+      chart: (c) => { this.charts.push(c); c.setNow(this.deps.frame()); },
+      keep: (d) => { this.tips.push(d); },
+    });
+  }
+
+  /* ── Macro ── */
+
+  private macro(body: HTMLElement): void {
+    const game = this.game!;
+    mountMacro(body, {
       api: this.deps.api, t: this.deps.t, host: this, timeline: game.timeline,
       players: game.players.filter((p) => !p.hidden),
       seek: (f) => this.deps.seek(f),

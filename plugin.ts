@@ -53,7 +53,11 @@ import { CastStore, KEEP_BYTES, KEEP_CASTS, batches, castKey, estimate as castEs
 import type { ScmjsAccountService, ScmjsReplaysService } from "./vendor/scmjs-dev";
 import { frameAt, SharePopover } from "./share";
 import { InsightView, type InsightGame, type Metric as InsightMetric, type Resource } from "./insight";
-import { canName, declare, editorHints, editorSources, isPlayed, keptRaces, labelOf, letterFiles, nameCandidates, namedRow, RACE_LETTERS, RACE_NAME_MAX, raceView, type DataSetRace, type NamedRace, type RaceEditor, type RaceHints, type RaceView } from "./races";
+import { icons as iconMaker, type Icons } from "./icons";
+import { macroOf } from "./macroview";
+import { supplyBlocks } from "./economy";
+import { keySteps, opening as openingOf, starts, supplyAt, type Opening } from "./opening";
+import { canName, declare, editorHints, tableRace, editorSources, isPlayed, keptRaces, labelOf, letterFiles, nameCandidates, namedRow, RACE_LETTERS, RACE_NAME_MAX, raceView, type DataSetRace, type NamedRace, type RaceEditor, type RaceHints, type RaceView } from "./races";
 import { KINDS, rolesOf, useRoles } from "./roles";
 import { pointIn, type TipPoint } from "./pointer";
 
@@ -434,6 +438,33 @@ const STYLE = `
 .afm .afm-step.afm-future { opacity: 0.45; }
 .afm .afm-step .afm-t { font-variant-numeric: tabular-nums; color: var(--text-dim, #99a2b3); }
 .afm .afm-step.afm-hall { font-weight: 600; }
+.afm .afm-bo-who { display: flex; gap: 6px; margin-bottom: 6px; }
+.afm .afm-bo-player { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 6px; padding: 5px 8px; background: none; border: 1px solid var(--border, #3a4150); border-radius: 4px; color: var(--text-dim, #99a2b3); font: inherit; cursor: pointer; }
+.afm .afm-bo-player.afm-on { color: var(--text, #e4e8ef); border-color: var(--accent, #4fd1c5); background: var(--hover, rgba(255,255,255,0.06)); }
+.afm .afm-bo-card { display: flex; flex-direction: column; gap: 5px; margin: 2px 0 8px; padding: 9px 10px; background: var(--bg-2, rgba(255,255,255,0.04)); border: 1px solid var(--border, rgba(255,255,255,0.08)); border-radius: 6px; }
+.afm .afm-bo-kicker { font-size: 11px; }
+.afm .afm-bo-opening { font-size: 16px; font-weight: 600; }
+.afm .afm-bo-keys { display: flex; flex-wrap: wrap; gap: 2px 10px; }
+.afm .afm-bo-stats { display: flex; flex-wrap: wrap; gap: 6px 14px; padding-top: 6px; margin-top: 2px; border-top: 1px solid var(--border, rgba(255,255,255,0.08)); }
+.afm .afm-bo-stat { display: flex; flex-direction: column; font-variant-numeric: tabular-nums; cursor: help; }
+.afm .afm-bo-stat .afm-dim { font-size: 11px; }
+.afm .afm-bo-card .afm-link { align-self: flex-start; font-size: 11px; }
+.afm .afm-bstep { display: grid; grid-template-columns: 22px 26px minmax(0, 1fr) auto; gap: 6px; align-items: center; }
+.afm .afm-bstep.afm-bo-head { padding: 0 6px 2px; font-size: 11px; cursor: default; }
+.afm .afm-bo-head > span:first-child, .afm .afm-bo-supply { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.afm .afm-bstep.afm-hall .afm-bo-supply { color: var(--accent, #4fd1c5); }
+.afm .afm-bo-name { display: flex; flex-direction: column; min-width: 0; }
+.afm .afm-bo-name > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.afm .afm-ostep { grid-template-columns: 44px 26px minmax(0, 1fr); align-items: center; }
+.afm .afm-bo-block { display: flex; justify-content: space-between; gap: 8px; margin: 2px 6px; padding: 2px 8px; border-radius: 3px; background: rgba(232,131,58,0.16); color: #f0b48a; font-size: 11px; cursor: pointer; }
+.afm .afm-bo-block.afm-future { opacity: 0.45; }
+.afm .afm-bo-block .afm-t { color: inherit; }
+.afm-mc-key { display: inline-block; width: 16px; height: 8px; border-radius: 2px; vertical-align: middle; }
+.afm-mc-busy { background: var(--text-dim, #99a2b3); }
+.afm-mc-idle { box-sizing: border-box; border: 1px solid; background: repeating-linear-gradient(135deg, #e8833a 0 2px, transparent 2px 5px); }
+.afm-mc-table th, .afm-mc-table td { text-align: left; }
+.afm-mc-table tbody tr { cursor: pointer; }
+.afm-mc-table tbody tr:hover td { text-decoration: underline; }
 .afm .afm-fight { padding-top: 3px; padding-bottom: 3px; }
 .afm .afm-fight .afm-sides, .afm .afm-fold .afm-step { font-size: 11px; color: var(--text-dim, #99a2b3); }
 .afm .afm-again { margin-top: 2px; font-size: 11px; font-variant-numeric: tabular-nums; }
@@ -558,6 +589,20 @@ export function activate(api: PluginApi) {
    */
   /** The editor draws with the replay's own data set: a replay of the game itself, or of the mod in use. */
   const ownData = (entry: Loaded | null) => !entry?.mod || api.gameData?.source?.()?.hash === entry.mod.dataSet.hash;
+  /** A name where room is short: the game names most things after their race ("Protoss Gateway"). */
+  const short = (name: string) => name.replace(/^(Terran|Zerg|Protoss) (?=\S)/, "");
+  /** An opening's name as players say it. */
+  const openingName = (o: Opening): string => {
+    const n = o.n ?? 0, m = o.m ?? 0;
+    const name = o.kind === "pool" ? t("{n} Pool", { n }) : o.kind === "overpool" ? t("Overpool") : o.kind === "hatch" ? t("{n} Hatch", { n })
+      : o.kind === "hatch-pool" ? t("{n} Hatch, {m} Pool", { n, m }) : o.kind === "bbs" ? t("Two Barracks before a Supply Depot")
+      : o.kind === "cc-first" ? t("{n} Command Center", { n }) : o.kind === "rax-fe" ? t("One Barracks expand")
+      : o.kind === "rax" ? t("{n, plural, one {One Barracks} other {# Barracks}}", { n }) : o.kind === "one-one-one" ? t("Barracks, Factory, Starport")
+      : o.kind === "two-fact" ? t("Two Factories") : o.kind === "rax-fact" ? t("Barracks, Factory")
+      : o.kind === "forge-fe" ? t("Forge expand") : o.kind === "nexus-first" ? t("{n} Nexus", { n })
+      : o.kind === "gates" ? t("{n} Gateways", { n }) : o.kind === "gate-fe" ? t("Gateway expand") : t("One Gateway, Cybernetics Core");
+    return o.proxy ? t("{opening}, proxied", { opening: name }) : name;
+  };
   const names = {
     unit: (id: number) => (ownData(current) ? api.names.unit(id) : t("Unit {id}", { id })),
     upgrade: (id: number) => (ownData(current) ? api.names.upgrade(id) : t("Upgrade {id}", { id })),
@@ -3335,6 +3380,10 @@ export function activate(api: PluginApi) {
     /** The list rows that belong to a moment, greyed while it is still to come. */
     private steps: { el: HTMLElement; frame: number }[] = [];
     private buildPlayer = -1;
+    /** The Build tab of a played game: what was made, or what was ordered. */
+    private buildMode: "made" | "ordered" = "made";
+    /** The game's icons on the Build tab's lines, filled in as they arrive. */
+    private readonly icons: Icons = iconMaker(api);
     /** Map stats' line for the game the engine is playing, refreshed with its progress. */
     private running: { el: HTMLElement; entry: Loaded } | null = null;
     /** The Fights tab's lines for key moments still being played again, refreshed with the engine's progress. */
@@ -3538,44 +3587,82 @@ export function activate(api: PluginApi) {
     private renderBuild(body: HTMLElement, entry: Loaded): void {
       const players = entry.report.players;
       if (!players.some((p) => p.player.id === this.buildPlayer)) this.buildPlayer = players[0]?.player.id ?? -1;
-      const who = w.select(players.map((p) => ({ value: p.player.id, label: p.player.name })), { value: this.buildPlayer, onChange: (id) => { this.buildPlayer = Number(id); this.render(); } });
-      const workers = w.checkbox(t("Workers"), { value: settings.workers, title: t("Show SCVs, Drones and Probes"), onChange: (on) => { settings.workers = on; save(); this.render(); } });
-      body.append(w.row(who, workers));
-      const list = el("div");
+      // The players as buttons in their colours, a select where there are too many for a row.
+      const who = players.length <= 4
+        ? el("div", { className: "afm-bo-who" }, ...players.map((p) => {
+          const b = el("button", { type: "button", className: "afm-bo-player" + (p.player.id === this.buildPlayer ? " afm-on" : ""), title: p.player.name },
+            el("span", { className: "afm-tip-swatch", style: `background:${p.player.color}` }), el("span", { className: "afm-gt-name" }, p.player.name));
+          b.setAttribute("aria-pressed", String(p.player.id === this.buildPlayer));
+          b.addEventListener("click", () => { this.buildPlayer = p.player.id; this.render(); });
+          return b;
+        }))
+        : w.select(players.map((p) => ({ value: p.player.id, label: p.player.name })), { value: this.buildPlayer, onChange: (id) => { this.buildPlayer = Number(id); this.render(); } });
+      body.append(who);
       const pr = players.find((p) => p.player.id === this.buildPlayer);
+      const made = !!entry.played && this.buildMode === "made";
+      if (entry.played && pr) body.append(this.openingCard(entry, pr));
+      const workers = w.checkbox(t("Workers"), { value: settings.workers, title: t("Show SCVs, Drones and Probes"), onChange: (on) => { settings.workers = on; save(); this.render(); } });
+      const mode = entry.played ? w.segmented([{ value: "made", label: t("Made") }, { value: "ordered", label: t("Ordered") }], {
+        value: this.buildMode, title: t("What was really made, as the game played it, or what the replay's commands asked for"),
+        onChange: (v) => { this.buildMode = v === "ordered" ? "ordered" : "made"; this.render(); },
+      }) : null;
+      body.append(w.row(...(mode ? [mode] : []), workers));
+      const list = el("div", { className: "afm-bo-list" });
+      const icon = (kind: "unit" | "upgrade" | "tech", id: number, owner: number) => this.icons.icon(kind, id, { title: kind === "unit" ? names.unit(id) : kind === "tech" ? names.tech(id) : names.upgrade(id), owner });
       const toBuilding = (frame: number, x: number, y: number, type: number) => {
         const size = api.palette.unitSize(type);
         const tw = Math.max(1, Math.ceil(size.width / 32)), th = Math.max(1, Math.ceil(size.height / 32));
         const tx = Math.max(0, Math.floor(x / 32 - tw / 2)), ty = Math.max(0, Math.floor(y / 32 - th / 2));
         goTo(frame, x, y, { x0: tx, y0: ty, x1: tx + tw, y1: ty + th });
       };
-      if (entry.played && pr) {
-        // What happened: every line is something that was really started, with what became of it.
+      if (made && entry.played && pr) {
+        // What happened: every line is something that was really started, with the supply then and what became of it.
+        const tl = entry.played.timeline, slot = pr.player.index;
+        const series = tl.samples.players.find((s) => s.slot === slot);
+        const blocks = series ? supplyBlocks(tl.samples.frame, series.supplyUsed, series.supplyMax, pr.leftAt ?? tl.frames) : [];
+        let block = 0;
+        const band = (b: { from: number; to: number }) => {
+          const line = el("div", { className: "afm-bo-block", title: t("Go to the time") },
+            el("span", {}, t("Supply blocked {time}", { time: formatTime(b.to - b.from) })), el("span", { className: "afm-t" }, formatTime(b.from)));
+          line.addEventListener("click", () => seek(b.from));
+          list.append(line);
+          this.steps.push({ el: line, frame: b.from });
+        };
         let count = 0;
-        for (const row of madeRows(entry.played.timeline, pr.player.index, { workers: settings.workers })) {
-          const name = row.kind === "upgrade" ? `${names.upgrade(row.id)} ${row.level ?? ""}`.trim() : row.kind === "tech" ? names.tech(row.id) : names.unit(row.id);
+        list.append(el("div", { className: "afm-bstep afm-bo-head afm-dim" }, el("span", {}, t("Supply")), el("span", {}), el("span", {}, t("Started")), el("span", {})));
+        for (const row of madeRows(tl, slot, { workers: settings.workers })) {
+          while (block < blocks.length && blocks[block].from <= row.frame) band(blocks[block++]);
+          const name = row.kind === "upgrade" ? short(`${names.upgrade(row.id)} ${row.level ?? ""}`.trim()) : row.kind === "tech" ? names.tech(row.id) : short(names.unit(row.id));
           const hall = row.kind === "unit" && TOWN_HALLS.has(row.id);
           const end = row.kind !== "unit" ? t("researched")
             : row.done === null ? (row.lost === null ? t("not finished") : row.building ? t("cancelled or destroyed {time}", { time: formatTime(row.lost) }) : t("lost {time}", { time: formatTime(row.lost) }))
             : row.lost !== null ? t("lost {time}", { time: formatTime(row.lost) })
             : row.building ? t("done {time}", { time: formatTime(row.done) }) : "";
-          const line = el("div", { className: "afm-step" + (hall ? " afm-hall" : "") + (row.kind === "unit" && row.done === null && row.lost !== null ? " afm-gone" : ""), title: row.kind === "unit" ? t("Go to the time and place") : t("Go to the time") },
+          const supply = row.kind === "unit" ? supplyAt(tl, slot, row.frame) : null;
+          const line = el("div", { className: "afm-step afm-bstep" + (hall ? " afm-hall" : "") + (row.kind === "unit" && row.done === null && row.lost !== null ? " afm-gone" : ""), title: row.kind === "unit" ? t("Go to the time and place") : t("Go to the time") },
+            el("span", { className: "afm-bo-supply" }, supply === null ? "" : String(Math.floor(supply))),
+            icon(row.kind === "unit" ? "unit" : row.kind, row.id, slot),
+            el("span", { className: "afm-bo-name" }, el("span", {}, row.count > 1 ? `${name} ×${row.count}` : name), end ? el("span", { className: "afm-end" }, end) : null),
             el("span", { className: "afm-t" }, formatTime(row.frame)),
-            el("span", {}, row.count > 1 ? `${name} ×${row.count}` : name, end ? el("span", { className: "afm-end" }, ` · ${end}`) : null),
           );
           line.addEventListener("click", () => { if (row.kind === "unit") toBuilding(row.frame, row.x, row.y, row.id); else seek(row.frame); });
           list.append(line);
           this.steps.push({ el: line, frame: row.frame });
           count++;
         }
+        while (block < blocks.length) band(blocks[block++]);
         if (!count) list.append(el("div", { className: "afm-dim" }, t("Nothing was made.")));
+        body.append(list);
+        if (count) body.append(w.hint(t("Supply is what the player had when each was begun. Press a line to go to that time and place.")));
+        return;
       } else {
         const rows = pr ? buildOrderRows(pr.build, { workers: settings.workers }) : [];
         for (const step of rows) {
           const name = step.kind === "upgrade" ? names.upgrade(step.id) : step.kind === "tech" ? names.tech(step.id) : names.unit(step.id);
           const hall = step.kind === "build" && TOWN_HALLS.has(step.id);
-          const line = el("div", { className: "afm-step" + (hall ? " afm-hall" : ""), title: step.placement ? t("Go to the time and place") : t("Go to the time") },
+          const line = el("div", { className: "afm-step afm-ostep" + (hall ? " afm-hall" : ""), title: step.placement ? t("Go to the time and place") : t("Go to the time") },
             el("span", { className: "afm-t" }, formatTime(step.frame)),
+            icon(step.kind === "upgrade" || step.kind === "tech" ? step.kind : "unit", step.id, pr?.player.index ?? 0),
             el("span", { title: step.count > 1 ? t("Ordered {n} times", { n: step.count }) : undefined }, step.count > 1 ? `${name} ×${step.count}` : name),
           );
           line.addEventListener("click", () => {
@@ -3590,9 +3677,54 @@ export function activate(api: PluginApi) {
         }
         if (!rows.length) list.append(el("div", { className: "afm-dim" }, t("No builds, units or research ordered.")));
         // Until the game is played through this is what was ordered, which is not always what was made.
-        if (rows.length) body.append(w.hint(t("What was ordered. Once the game has been analysed, this shows what was really made.")));
+        else if (!entry.played) body.append(w.hint(t("What was ordered. Once the game has been analysed, this shows what was really made.")));
+        else body.append(w.hint(t("What the replay's commands asked for, which is not always what was made.")));
       }
       body.append(list);
+    }
+
+    /**
+     * The card over a played game's build: the opening's name, its first buildings with the supply each was begun at,
+     * and three numbers on how the production went (from the Macro tab of the Analysis window).
+     */
+    private openingCard(entry: Loaded, pr: PlayerReport): HTMLElement {
+      const tl = entry.played!.timeline, slot = pr.player.index;
+      const steps = madeRows(tl, slot).map((row) => ({ row, supply: row.kind === "unit" ? supplyAt(tl, slot, row.frame) : null }));
+      const homes = starts(tl);
+      const others = [...homes].filter(([s]) => s !== slot).map(([, at]) => at);
+      const race = tableRace(raceOf(entry, pr.player).id);
+      const o = openingOf(steps, race, homes.get(slot) ?? null, others);
+      const card = el("section", { className: "afm-bo-card" });
+      // Against whom: the race of every player on another team, when they are all one.
+      // (Observers are in the replay's players too: only those who played count.)
+      const played = new Set(tl.samples.players.filter((s) => s.supplyMax.some((n) => n > 0)).map((s) => s.slot));
+      const foes = entry.report.players.filter((p) => p.player.index !== slot && played.has(p.player.index) && (pr.player.team === 0 || p.player.team !== pr.player.team));
+      const foeRaces = [...new Set(foes.map((p) => tableRace(raceOf(entry, p.player).id)))];
+      const against = foeRaces.length === 1 && foeRaces[0] !== null ? t("Opening, against {race}", { race: translate(RACES[foeRaces[0]]) }) : t("Opening");
+      card.append(el("div", { className: "afm-dim afm-bo-kicker" }, against));
+      card.append(el("div", { className: "afm-bo-opening" }, o ? openingName(o) : t("No name for this start")));
+      const keys = keySteps(steps);
+      if (keys.length) card.append(el("div", { className: "afm-bo-keys" }, ...keys.map((k) => el("span", {},
+        k.supply === null ? null : el("b", {}, `${Math.floor(k.supply)} `), short(names.unit(k.row.id))))));
+      // The numbers: workers stopped (or larvae waiting), supply blocked, workers at 8:00.
+      const m = macroOf(api, tl, new Map(entry.report.players.map((p) => [p.player.index, p.leftAt])));
+      const mp = m?.players.find((p) => p.slot === slot) ?? null;
+      const series = tl.samples.players.find((s) => s.slot === slot);
+      const blocked = series ? supplyBlocks(tl.samples.frame, series.supplyUsed, series.supplyMax, pr.leftAt ?? tl.frames).reduce((n, b) => n + b.to - b.from, 0) : 0;
+      const eight = 8 * FRAMES_PER_MINUTE, at8 = series && tl.frames >= eight ? series.workers[sampleAt(tl.samples.frame, eight)] : null;
+      const stat = (value: string, label: string, title: string) => el("div", { className: "afm-bo-stat", title }, el("b", {}, value), el("span", { className: "afm-dim" }, label));
+      const stats: HTMLElement[] = [];
+      if (mp?.noWorker != null) stats.push(stat(formatTime(mp.noWorker), t("no worker made"), t("Before 10:00, the time no town hall had a worker in training while there was money for one")));
+      else if (mp?.larvaeWaiting != null) stats.push(stat(formatTime(mp.larvaeWaiting), t("larvae waiting"), t("Before 10:00, the time larvae waited at a full hatchery while there was money to spend")));
+      stats.push(stat(formatTime(blocked), t("supply blocked"), t("Time at the supply limit, below 200")));
+      if (at8 !== null && at8 !== undefined) stats.push(stat(String(at8), t("workers at 8:00"), t("Finished workers at 8:00")));
+      card.append(el("div", { className: "afm-bo-stats" }, ...stats));
+      if (mp) {
+        const more = el("button", { type: "button", className: "afm-link" }, t("Production in the Analysis window"));
+        more.addEventListener("click", () => { settings.insightTab = "macro"; save(); if (insight) insight.select("macro"); else openInsight(); });
+        card.append(more);
+      }
+      return card;
     }
 
     /** Who lost what in a fight, a swatch and a number a side, the side that came out ahead in bold. */

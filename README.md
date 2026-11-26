@@ -14,7 +14,7 @@ went to.
 In the editor at [scmjs.dev/editor](https://scmjs.dev/editor/), Aftermath also plays each
 replay through with the game's own code. That shows the game itself in the map's place, and
 what really happened in it: units where they stood, what was built and lost, the fights,
-and each player's economy and tech. See [Analysis](#analysis).
+and each player's economy, tech and production. See [Analysis](#analysis).
 
 ## Install
 
@@ -161,10 +161,24 @@ this drops the names it kept from before, and an older one keeps them.
 It has five tabs:
 
 - **Game**, once the game is analysed. See [Analysis](#analysis).
-- **Build**: one player's buildings, units, upgrades and research in order. Workers are left
-  out unless you tick **Workers**. Orders for the same unit next to each other are joined:
-  `Zergling ×12` is twelve presses of the button, and may be fewer Zerglings. Town halls are
-  in bold. Click a line to go to that moment and, for a building, to the place.
+- **Build**: one player's buildings, units, upgrades and research in order, each with its
+  icon. Pick the player with the buttons at the top. Workers are left out unless you tick
+  **Workers**. Town halls are in bold. Click a line to go to that moment and, for a
+  building, to the place.
+
+  Once the game is analysed, the tab shows what was really made, the way players write a
+  build: each line starts with the supply the player had when it was begun (`9 Spawning
+  Pool`), and says when it was done or lost. Supply blocks sit in the list where they
+  happened. A card above the list names the opening (*Forge expand*, *11 Nexus*,
+  *Overpool*, *Barracks, Factory, Starport*), with the supply of its first buildings, and
+  gives three numbers: the time with no worker in training before 10:00 (for Zerg, the
+  time larvae waited at a full hatchery), the time supply blocked, and the workers at 8:00.
+  **Production in the Analysis window** opens the Macro tab. Openings are named for Zerg,
+  Terran and Protoss with the game's own units; a mod's units table gets no name. A first
+  Gateway, Barracks or Hatchery put down nearer an opponent's start than the player's own is
+  called *proxied*. **Ordered** shows what the replay's commands asked for instead: orders
+  for the same unit next to each other are joined, so `Zergling ×12` is twelve presses of
+  the button, and may be fewer Zerglings.
 - **Fights**, once the game is analysed, with **Most kills** at the end.
 - **Chat**, when there was any. Click a line to go to that moment.
 - **Map stats**: every replay of this map you have open, taken together. See
@@ -501,6 +515,29 @@ middle. The tab needs a game engine from October 2026 or later.
 
 Press a time in either table to go there.
 
+The **Macro** tab shows the rhythm of each player's production: when their buildings made
+something, and when they stood idle while there was money to spend.
+
+- A card for each player, counted over the first 10 minutes: the time with no worker in
+  training at any town hall, and about how many workers that cost by 8:00 at one hall's
+  pace; the production buildings' idle time added up; and the most they had unspent. For
+  Zerg, the time larvae waited at a full hatchery takes the workers' place. A sentence says
+  how often each player stopped making workers, and the longest stop.
+- **Production over the game**: a row for every building that makes things, with its icon,
+  grouped by player. A bar in the player's colour is the building at work: training, or an
+  add-on going up. Hatched orange is idle with money for something it makes. For a
+  hatchery, the bar is making larvae and the hatching is three larvae waiting.
+- **The longest gaps**: the longest idle stretches of the game, with roughly what each
+  cost, such as *about 2 × Zealot*. Press one to go there.
+
+A building counts from when it is finished. It is idle only while its owner could pay for
+the cheapest thing that kind of building made in this game and had the supply for it. Time
+at the supply limit is counted on the Economy tab instead. A town hall's idle time stops
+counting at 10:00, because players with enough workers stop on purpose. The game records
+each unit at the moment its training begins, in the middle of the building training it, so
+what each building made, and when, is exact. A Terran building that lifts off and lands
+elsewhere is followed by what it trains there. Money and supply are read every two seconds.
+
 ### The map as a player knew it
 
 Once the game is analysed, choose a player in the **Vision** menu while the Map is shown. The
@@ -682,7 +719,8 @@ SCM_MOD_FOLDERS="$HOME/mods/Some Mod=0123456789abcdef,fedcba9876543210" npx vite
 | `report.ts` | Map stats across many games. |
 | `director.ts`, `camera.ts` | Spectate's camera. |
 | `gameview.ts` | The Replay view, through scm-sim's `view`. |
-| `insight.ts`, `economy.ts`, `tech.ts`, `techview.ts`, `knew.ts`, `scoutview.ts`, `charts.ts` | The Analysis window. |
+| `insight.ts`, `economy.ts`, `tech.ts`, `techview.ts`, `knew.ts`, `scoutview.ts`, `macro.ts`, `macroview.ts`, `charts.ts`, `icons.ts` | The Analysis window. |
+| `opening.ts` | The Build tab's supply counts and opening names. |
 | `cast.ts`, `castmake.ts`, `castplay.ts` | Casts. |
 | `share.ts` | Share: the popover, the link with its moment, the moment a link opens at. |
 | `ko.ts` | The Korean catalogue. |

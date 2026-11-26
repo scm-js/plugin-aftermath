@@ -7,7 +7,7 @@
 import type { PluginApi } from "@scm-js/plugin-api";
 import { formatTime, FRAMES_PER_MINUTE } from "./analysis";
 import { GanttChart, type ChartHost, type GanttBar } from "./charts";
-import { isBuilding } from "./played";
+import { icons } from "./icons";
 import { tech, type ArmyRow, type Durations, type Tech, type TechItem } from "./tech";
 import type { ReplayTimeline } from "./vendor/scm-sim";
 import { isPlayed, tableRace, type NamedRace } from "./races";
@@ -83,53 +83,7 @@ export function mountTech(body: HTMLElement, cx: TechContext): void {
     : (data.upgrades?.maxRepeats[item.id] ?? item.level) > 1 ? `${api.names.upgrade(item.id)} ${item.level}` : api.names.upgrade(item.id);
   const swatch = (color: string) => el("span", { className: "afm-tip-swatch", style: `background:${color}` });
 
-  // The game's icons load lazily, and a copy of the game data installed before the editor kept them has none at all.
-  // A unit with no icon is shown by its picture on the map (not a building, which shrinks past reading); until either arrives, or for good when neither can, a slot
-  // shows the name instead (a card's path), or nothing where the name is beside it already.
-  type Kind = "unit" | "upgrade" | "tech";
-  const waiting: { slot: HTMLElement; kind: Kind; id: number; owner: number }[] = [];
-  const picture = (kind: Kind, id: number, owner: number): { image: HTMLCanvasElement; width: number; height: number; icon: boolean } | null => {
-    const pic = typeof api.graphics.icon === "function" ? api.graphics.icon(kind, id) : null;
-    if (pic) return { ...pic, icon: true };
-    // A building's art shrunk to an icon's size reads as a smudge: its name says more.
-    if (kind !== "unit" || isBuilding(id)) return null;
-    const unit = api.graphics.unitImage(id, { owner });
-    return unit ? { ...unit, icon: false } : null;
-  };
-  const ask = (kind: Kind, id: number) => {
-    if (typeof api.graphics.requestIcons === "function") api.graphics.requestIcons();
-    if (kind === "unit" && !isBuilding(id)) api.graphics.requestUnit(id);
-  };
-  /** Put the best picture there is in `slot`; true once it is the icon, which nothing replaces. */
-  const fill = (slot: HTMLElement, kind: Kind, id: number, owner: number): boolean => {
-    const pic = picture(kind, id, owner);
-    if (!pic || slot.dataset.shown === (pic.icon ? "icon" : "unit")) return pic?.icon ?? false;
-    // Drawn into the icon sheet's size, a unit's picture fitted in, so the two line up.
-    const w = 36, h = 34, k = Math.min(w / pic.width, h / pic.height, 1);
-    const c = el("canvas", { width: w, height: h }) as HTMLCanvasElement;
-    c.getContext("2d")?.drawImage(pic.image, (w - pic.width * k) / 2, (h - pic.height * k) / 2, pic.width * k, pic.height * k);
-    slot.replaceChildren(c);
-    slot.dataset.shown = pic.icon ? "icon" : "unit";
-    slot.classList.remove("afm-gi-none", "afm-ti-text", "afm-ti-empty");
-    return pic.icon;
-  };
-  /**
-   * A slot for an icon. `text`: what it says until a picture comes (none: it takes no room meanwhile). `wait`: fill it
-   * when pictures arrive (not a tooltip's, which is asked again anyway). `owner`: whose colours a unit's picture takes.
-   */
-  const icon = (kind: Kind, id: number, options: { title: string; text?: string; small?: boolean; wait?: boolean; owner?: number }) => {
-    const slot = el("span", { className: `afm-ti${options.small ? " afm-ti-sm" : ""}` });
-    slot.dataset.name = options.title;
-    const owner = options.owner ?? 0;
-    if (!fill(slot, kind, id, owner)) {
-      if (!slot.dataset.shown) {
-        if (options.text) { slot.classList.add("afm-ti-text"); slot.textContent = options.text; }
-        else slot.classList.add("afm-ti-empty");
-      }
-      if (options.wait ?? true) { waiting.push({ slot, kind, id, owner }); ask(kind, id); }
-    }
-    return slot;
-  };
+  const { picture, icon, watch } = icons(api);
   const kindOf = (item: TechItem) => (item.kind === "building" ? "unit" : item.kind);
 
   // The cards: the furthest tier and when, what was researched, and the path of buildings as icons.
@@ -210,12 +164,8 @@ export function mountTech(body: HTMLElement, cx: TechContext): void {
     el("section", { className: "afm-it-section" }, legend, el("div", { className: "afm-it-chart" }, chart.element), ...notes), army, timings);
   chart.draw();
 
-  if (typeof api.graphics.onImageLoaded === "function") {
-    cx.keep(api.graphics.onImageLoaded(() => {
-      for (let i = waiting.length - 1; i >= 0; i--) if (fill(waiting[i].slot, waiting[i].kind, waiting[i].id, waiting[i].owner)) waiting.splice(i, 1);
-      chart.draw();
-    }));
-  }
+  const watching = watch(() => chart.draw());
+  if (watching) cx.keep(watching);
 }
 
 /** A sentence or two comparing two players' tech; null for another number of players or nothing to say. */
