@@ -70,7 +70,7 @@ abstract class Chart {
   private readonly resize: ResizeObserver;
   private readonly tip: { refresh(): void; dispose(): void };
   /** The same on every chart of a window, so their times line up: the axis' numbers at the left, names at the right. */
-  protected readonly right = RIGHT;
+  protected readonly right: number = RIGHT;
   protected readonly left = LEFT;
   /** The minutes under the plot; off for a chart with another under it on the same time axis. */
   protected axis = true;
@@ -425,4 +425,129 @@ export function nearest(xs: ArrayLike<number>, x: number): number {
   if (hi < 0) return -1;
   while (lo < hi) { const mid = (lo + hi) >> 1; if (xs[mid] < x) lo = mid + 1; else hi = mid; }
   return lo > 0 && Math.abs(xs[lo - 1] - x) <= Math.abs(xs[lo] - x) ? lo - 1 : lo;
+}
+
+export interface ProductionRow {
+  label: string;
+  /** The building's icon, drawn in the margin at the left; null while it loads or when there is none. */
+  icon: () => { image: HTMLCanvasElement; width: number; height: number } | null;
+  /** When it stood finished. */
+  from: number;
+  to: number;
+  /** Making something. */
+  busy: readonly { from: number; to: number }[];
+  /** Making nothing, while its owner could pay for something it makes. */
+  idle: readonly { from: number; to: number }[];
+}
+
+export interface ProductionGroup {
+  slot: number;
+  label: string;
+  color: string;
+  rows: ProductionRow[];
+}
+
+/** A row of the production chart, its icon in the left margin. */
+const PROD_ROW = 16, PROD_ICON_W = 16, PROD_ICON_H = 15;
+/** Idle: hatched in this, so it reads apart from every player's colour by more than hue. */
+export const IDLE_COLOUR = "#e8833a";
+
+/**
+ * A row a building that makes things, a group of rows a player: when it stood, when it made something (the player's
+ * colour) and when it stood idle with money there (hatched). The building's icon is in the margin at the left and its
+ * name at the right, as the other charts name their lines.
+ */
+export class ProductionChart extends Chart {
+  /** Room at the right for a building's name ("Command Center 2"): this chart is alone on its tab. */
+  protected override readonly right = 140;
+  private groups: ProductionGroup[] = [];
+  private placed: { group: number; row: number; y0: number }[] = [];
+  private hatch: CanvasPattern | null = null;
+
+  constructor(host: ChartHost, tipAt: (frame: number, at: TipPoint) => HTMLElement | null, label: string) {
+    super(host, 40, tipAt, label);
+  }
+
+  set(groups: ProductionGroup[], end: number): void {
+    this.groups = groups;
+    this.end = Math.max(1, end);
+    this.draw();
+  }
+
+  /** The row under a point of the chart (CSS pixels), or null. */
+  rowAt(offsetY: number): { group: ProductionGroup; row: ProductionRow } | null {
+    for (const p of this.placed) if (offsetY >= p.y0 && offsetY < p.y0 + PROD_ROW) return { group: this.groups[p.group], row: this.groups[p.group].rows[p.row] };
+    return null;
+  }
+
+  private pattern(g: CanvasRenderingContext2D, dpr: number): CanvasPattern | null {
+    if (this.hatch) return this.hatch;
+    const size = Math.round(6 * dpr);
+    const c = document.createElement("canvas");
+    c.width = c.height = size;
+    const p = c.getContext("2d");
+    if (!p) return null;
+    p.strokeStyle = IDLE_COLOUR;
+    p.lineWidth = 1.5 * dpr;
+    p.beginPath();
+    p.moveTo(0, size); p.lineTo(size, 0);
+    p.moveTo(-size / 2, size / 2); p.lineTo(size / 2, -size / 2);
+    p.moveTo(size / 2, size * 1.5); p.lineTo(size * 1.5, size / 2);
+    p.stroke();
+    this.hatch = g.createPattern(c, "repeat");
+    this.hatch?.setTransform(new DOMMatrix().scale(1 / dpr));
+    return this.hatch;
+  }
+
+  protected plot(g: CanvasRenderingContext2D, box: { x: (f: number) => number; top: number; dpr: number }): void {
+    const { x, dpr } = box;
+    const width = this.canvas.clientWidth, text = css(this.canvas, "--text", "#e4e8ef");
+    const hatch = this.pattern(g, dpr);
+    this.placed = [];
+    let y = 4;
+    g.font = "11px system-ui, sans-serif";
+    g.textBaseline = "middle";
+    this.groups.forEach((group, gi) => {
+      const h = group.rows.length * PROD_ROW;
+      g.fillStyle = "rgba(255,255,255,0.03)";
+      g.fillRect(this.left, y, width - this.left - this.right, h);
+      group.rows.forEach((row, ri) => {
+        const y0 = y + ri * PROD_ROW;
+        this.placed.push({ group: gi, row: ri, y0 });
+        // When it stood, faintly; what it made, in the player's colour; idle with money, hatched.
+        g.fillStyle = "rgba(255,255,255,0.06)";
+        g.fillRect(x(row.from), y0 + 2, Math.max(1, x(row.to) - x(row.from)), PROD_ROW - 4);
+        g.globalAlpha = 0.8;
+        g.fillStyle = group.color;
+        for (const s of row.busy) g.fillRect(x(s.from), y0 + 3, Math.max(1, x(s.to) - x(s.from)), PROD_ROW - 6);
+        g.globalAlpha = 1;
+        for (const s of row.idle) {
+          const a = x(s.from), b = Math.max(a + 1, x(s.to));
+          if (hatch) { g.fillStyle = hatch; g.fillRect(a, y0 + 3, b - a, PROD_ROW - 6); }
+          g.strokeStyle = IDLE_COLOUR;
+          g.lineWidth = 1;
+          g.strokeRect(Math.round(a) + 0.5, y0 + 3.5, Math.max(1, Math.round(b - a) - 1), PROD_ROW - 7);
+        }
+        const icon = row.icon();
+        if (icon) {
+          const ix = this.left - PROD_ICON_W - 6, k = Math.min(PROD_ICON_W / icon.width, PROD_ICON_H / icon.height);
+          g.fillStyle = "#12151c";
+          g.fillRect(ix, y0, PROD_ICON_W, PROD_ICON_H + 1);
+          g.drawImage(icon.image, ix + (PROD_ICON_W - icon.width * k) / 2, y0 + 0.5 + (PROD_ICON_H - icon.height * k) / 2, icon.width * k, icon.height * k);
+        }
+        g.fillStyle = text;
+        g.textAlign = "left";
+        let label = row.label;
+        const room = this.right - 12;
+        while (label.length > 3 && g.measureText(label).width > room) label = `${label.slice(0, -2)}…`;
+        g.fillText(label, width - this.right + 8, y0 + PROD_ROW / 2);
+      });
+      // The player, a bar of their colour down the rows' right edge.
+      g.fillStyle = group.color;
+      g.fillRect(width - this.right + 2, y + 1, 3, h - 2);
+      y += h + 8;
+    });
+    const want = `${Math.max(PROD_ROW, y - 8 + 4) + (this.axis ? 18 : 2)}px`;
+    if (this.canvas.style.height !== want) requestAnimationFrame(() => { this.canvas.style.height = want; });
+  }
 }
