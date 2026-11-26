@@ -5717,8 +5717,8 @@ async function readMod(tree, o = {}) {
 async function hashPlan(p, progress, onFile, digests = /* @__PURE__ */ new Map()) {
   const lines = [], unreadable = [];
   const digestOf = async (key, read) => {
-    const kept = digests.get(key);
-    if (kept) return kept;
+    const kept2 = digests.get(key);
+    if (kept2) return kept2;
     const d = await sha256Hex(await read());
     digests.set(key, d);
     return d;
@@ -5907,7 +5907,7 @@ async function readFrom(tree, path, zips) {
   }));
 }
 function opener(tree, archives = /* @__PURE__ */ new Map()) {
-  const opening = /* @__PURE__ */ new Map(), zips = /* @__PURE__ */ new Map();
+  const opening2 = /* @__PURE__ */ new Map(), zips = /* @__PURE__ */ new Map();
   return {
     archives,
     file: (path) => readFrom(tree, path, zips),
@@ -5915,7 +5915,7 @@ function opener(tree, archives = /* @__PURE__ */ new Map()) {
     archive(path, at) {
       const have = archives.get(path);
       if (have) return Promise.resolve(have);
-      let p = opening.get(path);
+      let p = opening2.get(path);
       if (!p) {
         p = readFrom(tree, path, zips).then((b) => {
           const a = Archive.open(b, at ? { offset: at } : void 0);
@@ -5923,14 +5923,14 @@ function opener(tree, archives = /* @__PURE__ */ new Map()) {
           return a;
         });
         const made = p;
-        opening.set(path, made);
-        made.then(() => opening.delete(path), () => opening.delete(path));
+        opening2.set(path, made);
+        made.then(() => opening2.delete(path), () => opening2.delete(path));
       }
       return p;
     },
     close() {
       archives.clear();
-      opening.clear();
+      opening2.clear();
       zips.clear();
     }
   };
@@ -6200,10 +6200,10 @@ function replayDataSet(tag2) {
 function folderMod(d, hash, name) {
   return { hash, name: d.name || name, url: safeLink(d.link ?? null), ...d.races !== void 0 ? { races: raceRows(d.races) } : {} };
 }
-function openModOf(source, kept = null) {
+function openModOf(source, kept2 = null) {
   if (!source || source.profile.id === "starcraft" || !source.hash || !/^[0-9a-f]{16}$/.test(source.hash)) return null;
-  const races = raceRows(kept ?? source.profile.races);
-  return { hash: source.hash, name: source.profile.name, url: safeLink(source.profile.url ?? null), ...kept || races.length ? { races } : {} };
+  const races = raceRows(kept2 ?? source.profile.races);
+  return { hash: source.hash, name: source.profile.name, url: safeLink(source.profile.url ?? null), ...kept2 || races.length ? { races } : {} };
 }
 function assumedTag(mod) {
   return { v: 1, dataSet: { hash: mod.hash, name: mod.name, url: mod.url }, plugins: [], firegraft: null, noplugins: false, engine: null, madeBy: "Aftermath" };
@@ -6930,7 +6930,83 @@ var KO = {
   "it could not be read ({detail})": "\uC77D\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4({detail})",
   "a file it needs is not in it ({detail})": "\uD544\uC694\uD55C \uD30C\uC77C\uC774 \uC548\uC5D0 \uC5C6\uC2B5\uB2C8\uB2E4({detail})",
   "{detail}": "{detail}",
-  "{folder} is a copy of the game. Its own archives ({list}{more, plural, =0 {} other { and # more}}) are not part of the mod and were left out.": "{folder|\uC740} \uAC8C\uC784 \uC0AC\uBCF8\uC785\uB2C8\uB2E4. \uADF8 \uC548\uC758 \uAC8C\uC784 \uC544\uCE74\uC774\uBE0C({list}{more, plural, =0 {} other { \uC678 #\uAC1C}})\uB294 \uBAA8\uB4DC\uAC00 \uC544\uB2C8\uB77C\uC11C \uBE90\uC2B5\uB2C8\uB2E4."
+  "{folder} is a copy of the game. Its own archives ({list}{more, plural, =0 {} other { and # more}}) are not part of the mod and were left out.": "{folder|\uC740} \uAC8C\uC784 \uC0AC\uBCF8\uC785\uB2C8\uB2E4. \uADF8 \uC548\uC758 \uAC8C\uC784 \uC544\uCE74\uC774\uBE0C({list}{more, plural, =0 {} other { \uC678 #\uAC1C}})\uB294 \uBAA8\uB4DC\uAC00 \uC544\uB2C8\uB77C\uC11C \uBE90\uC2B5\uB2C8\uB2E4.",
+  "{n} Pool": "{n}\uD480",
+  "Overpool": "\uC624\uBC84\uD480",
+  "{n} Hatch": "{n}\uC55E\uB9C8\uB2F9",
+  "{n} Hatch, {m} Pool": "{n}\uC55E\uB9C8\uB2F9, {m}\uD480",
+  "Two Barracks before a Supply Depot": "\uD22C\uBC30\uB7ED (\uC11C\uD50C\uB77C\uC774 \uB514\uD3EC \uC804)",
+  "{n} Command Center": "{n} \uCEE4\uB9E8\uB4DC \uC13C\uD130",
+  "One Barracks expand": "\uC6D0\uBC30\uB7ED \uB354\uBE14",
+  "{n, plural, one {One Barracks} other {# Barracks}}": "{n, plural, one {\uC6D0\uBC30\uB7ED} other {\uBC30\uB7ED #\uAC1C}}",
+  "Barracks, Factory, Starport": "\uBC30\uB7ED, \uD329\uD1A0\uB9AC, \uC2A4\uD0C0\uD3EC\uD2B8",
+  "Two Factories": "\uD22C\uD329\uD1A0\uB9AC",
+  "Barracks, Factory": "\uBC30\uB7ED, \uD329\uD1A0\uB9AC",
+  "Forge expand": "\uD3EC\uC9C0 \uB354\uBE14",
+  "{n} Nexus": "{n} \uB125\uC11C\uC2A4",
+  "{n} Gateways": "{n}\uAC8C\uC774\uD2B8",
+  "Gateway expand": "\uAC8C\uC774\uD2B8 \uB354\uBE14",
+  "One Gateway, Cybernetics Core": "\uC6D0\uAC8C\uC774\uD2B8, \uC0AC\uC774\uBC84\uB124\uD2F1\uC2A4 \uCF54\uC5B4",
+  "{opening}, proxied": "{opening} (\uC804\uC9C4)",
+  "Made": "\uB9CC\uB4E0 \uAC83",
+  "What was really made, as the game played it, or what the replay's commands asked for": "\uAC8C\uC784\uC774 \uC9C4\uD589\uB418\uBA70 \uC2E4\uC81C\uB85C \uB9CC\uB4E4\uC5B4\uC9C4 \uAC83, \uB610\uB294 \uB9AC\uD50C\uB808\uC774\uC758 \uBA85\uB839\uC774 \uC694\uCCAD\uD55C \uAC83",
+  "Supply blocked {time}": "\uC778\uAD6C\uC218 \uB9C9\uD798 {time}",
+  "Started": "\uC2DC\uC791",
+  "Supply is what the player had when each was begun. Press a line to go to that time and place.": "\uBCF4\uAE09\uC740 \uAC01 \uD56D\uBAA9\uC744 \uC2DC\uC791\uD588\uC744 \uB54C \uD50C\uB808\uC774\uC5B4\uC758 \uC778\uAD6C\uC218\uC785\uB2C8\uB2E4. \uC904\uC744 \uB204\uB974\uBA74 \uADF8 \uC2DC\uAC04\uACFC \uC704\uCE58\uB85C \uC774\uB3D9\uD569\uB2C8\uB2E4.",
+  "What the replay's commands asked for, which is not always what was made.": "\uB9AC\uD50C\uB808\uC774\uC758 \uBA85\uB839\uC774 \uC694\uCCAD\uD55C \uAC83\uC73C\uB85C, \uC2E4\uC81C\uB85C \uB9CC\uB4E4\uC5B4\uC9C4 \uAC83\uACFC \uB2E4\uB97C \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+  "Opening, against {race}": "{race} \uC0C1\uB300 \uC624\uD504\uB2DD",
+  "Opening": "\uC624\uD504\uB2DD",
+  "No name for this start": "\uC774 \uC2DC\uC791\uC5D0\uB294 \uC774\uB984\uC774 \uC5C6\uC2B5\uB2C8\uB2E4",
+  "no worker made": "\uC77C\uAFBC \uC0DD\uC0B0 \uC5C6\uC74C",
+  "Before 10:00, the time no town hall had a worker in training while there was money for one": "10:00 \uC804, \uC77C\uAFBC\uC744 \uB9CC\uB4E4 \uB3C8\uC774 \uC788\uB294\uB370 \uC5B4\uB5A4 \uBCF8\uC9C4 \uAC74\uBB3C\uB3C4 \uC77C\uAFBC\uC744 \uC0DD\uC0B0\uD558\uC9C0 \uC54A\uC740 \uC2DC\uAC04",
+  "larvae waiting": "\uB77C\uBC14 \uB300\uAE30",
+  "Before 10:00, the time larvae waited at a full hatchery while there was money to spend": "10:00 \uC804, \uC4F8 \uB3C8\uC774 \uC788\uB294\uB370 \uB77C\uBC14\uAC00 \uAC00\uB4DD \uCC2C \uD574\uCC98\uB9AC\uC5D0\uC11C \uAE30\uB2E4\uB9B0 \uC2DC\uAC04",
+  "supply blocked": "\uC778\uAD6C\uC218 \uB9C9\uD798",
+  "Time at the supply limit, below 200": "200 \uBBF8\uB9CC\uC5D0\uC11C \uC778\uAD6C\uC218 \uD55C\uB3C4\uC5D0 \uAC78\uB824 \uC788\uB358 \uC2DC\uAC04",
+  "workers at 8:00": "8:00\uC758 \uC77C\uAFBC",
+  "Finished workers at 8:00": "8:00\uC5D0 \uC644\uC131\uB41C \uC77C\uAFBC \uC218",
+  "Production in the Analysis window": "\uBD84\uC11D \uCC3D\uC5D0\uC11C \uC0DD\uC0B0 \uBCF4\uAE30",
+  "Macro": "\uC6B4\uC601",
+  "The Macro tab needs the game's data (what units cost and how long they take), which this editor does not have.": "\uC6B4\uC601 \uD0ED\uC5D0\uB294 \uAC8C\uC784 \uB370\uC774\uD130(\uC720\uB2DB \uBE44\uC6A9\uACFC \uC0DD\uC0B0 \uC2DC\uAC04)\uAC00 \uD544\uC694\uD55C\uB370, \uC774 \uC5D0\uB514\uD130\uC5D0\uB294 \uC5C6\uC2B5\uB2C8\uB2E4.",
+  "worker": "\uC77C\uAFBC",
+  "no workers or larvae made": "\uC77C\uAFBC\uB3C4 \uB77C\uBC14\uB3C4 \uB9CC\uB4E4\uC9C0 \uC54A\uC74C",
+  "about {n}": "\uC57D {n}",
+  "unspent at the most, {time}": "\uAC00\uC7A5 \uB9CE\uC774 \uB0A8\uAE34 \uC790\uC6D0, {time}",
+  "{name} kept a worker in training until {time}, but for moments.": "{name}\uC740(\uB294) {time}\uAE4C\uC9C0 \uC7A0\uAE50\uC744 \uBE7C\uACE0 \uACC4\uC18D \uC77C\uAFBC\uC744 \uC0DD\uC0B0\uD588\uC2B5\uB2C8\uB2E4.",
+  "{name} stopped making workers {n, plural, one {once} other {# times}} for 10 seconds or more before {time}; the longest stop was {length} from {at}.": "{name}\uC740(\uB294) {time} \uC804\uC5D0 10\uCD08 \uC774\uC0C1 \uC77C\uAFBC \uC0DD\uC0B0\uC744 {n}\uBC88 \uBA48\uCDC4\uC2B5\uB2C8\uB2E4. \uAC00\uC7A5 \uAE38\uAC8C \uBA48\uCD98 \uAC83\uC740 {at}\uBD80\uD130 {length}\uC785\uB2C8\uB2E4.",
+  "{name} had larvae waiting at a full hatchery, with money to spend, for {length} before {time}.": "{name}\uC740(\uB294) {time} \uC804\uC5D0 \uC4F8 \uB3C8\uC774 \uC788\uB294\uB370\uB3C4 \uAC00\uB4DD \uCC2C \uD574\uCC98\uB9AC\uC5D0\uC11C \uB77C\uBC14\uB97C {length} \uB3D9\uC548 \uAE30\uB2E4\uB9AC\uAC8C \uD588\uC2B5\uB2C8\uB2E4.",
+  "{name} spent larvae as they came until {time}, but for moments.": "{name}\uC740(\uB294) {time}\uAE4C\uC9C0 \uC7A0\uAE50\uC744 \uBE7C\uACE0 \uB77C\uBC14\uAC00 \uC0DD\uAE30\uB294 \uB300\uB85C \uC37C\uC2B5\uB2C8\uB2E4.",
+  "not standing then": "\uADF8\uB54C\uB294 \uC5C6\uC74C",
+  "making larvae": "\uB77C\uBC14 \uC0DD\uC131 \uC911",
+  "making something": "\uC0DD\uC0B0 \uC911",
+  "full of larvae, with money to spend": "\uB77C\uBC14 \uAC00\uB4DD, \uC4F8 \uB3C8 \uC788\uC74C",
+  "idle, with money for a unit": "\uC26C\uB294 \uC911, \uC720\uB2DB\uC744 \uB9CC\uB4E4 \uB3C8 \uC788\uC74C",
+  "full of larvae, without the money or the supply": "\uB77C\uBC14 \uAC00\uB4DD, \uB3C8\uC774\uB098 \uC778\uAD6C\uC218 \uC5C6\uC74C",
+  "idle, without the money or the supply": "\uC26C\uB294 \uC911, \uB3C8\uC774\uB098 \uC778\uAD6C\uC218 \uC5C6\uC74C",
+  "Production over the game": "\uAC8C\uC784 \uB3D9\uC548\uC758 \uC0DD\uC0B0",
+  "making something (a hatchery: making larvae)": "\uC0DD\uC0B0 \uC911 (\uD574\uCC98\uB9AC: \uB77C\uBC14 \uC0DD\uC131 \uC911)",
+  "idle, with money for something it makes (a hatchery: full of larvae)": "\uB9CC\uB4E4 \uC218 \uC788\uB294 \uAC83\uC744 \uC0B4 \uB3C8\uC774 \uC788\uB294\uB370 \uC26C\uB294 \uC911 (\uD574\uCC98\uB9AC: \uB77C\uBC14 \uAC00\uB4DD)",
+  "A building counts from when it is finished. It is idle only while its owner could pay for something it makes and had the supply for it; supply blocks are on the Economy tab. A town hall's idle time is shown to {time}: later, a player with workers enough stops on purpose.": "\uAC74\uBB3C\uC740 \uC644\uC131\uB41C \uB54C\uBD80\uD130 \uC149\uB2C8\uB2E4. \uC8FC\uC778\uC774 \uADF8 \uAC74\uBB3C\uC5D0\uC11C \uB9CC\uB4DC\uB294 \uAC83\uC744 \uC0B4 \uB3C8\uACFC \uC778\uAD6C\uC218\uAC00 \uC788\uC744 \uB54C\uB9CC \uC26C\uB294 \uAC83\uC73C\uB85C \uBD05\uB2C8\uB2E4. \uC778\uAD6C\uC218 \uB9C9\uD798\uC740 \uACBD\uC81C \uD0ED\uC5D0 \uC788\uC2B5\uB2C8\uB2E4. \uBCF8\uC9C4 \uAC74\uBB3C\uC758 \uC26C\uB294 \uC2DC\uAC04\uC740 {time}\uAE4C\uC9C0\uB9CC \uBCF4\uC785\uB2C8\uB2E4. \uADF8 \uB4A4\uC5D0\uB294 \uC77C\uAFBC\uC774 \uCDA9\uBD84\uD55C \uD50C\uB808\uC774\uC5B4\uAC00 \uC77C\uBD80\uB7EC \uBA48\uCDA5\uB2C8\uB2E4.",
+  "No {worker} in training": "{worker} \uC0DD\uC0B0 \uC5C6\uC74C",
+  "Larvae waiting at {building}": "{building}\uC5D0\uC11C \uB77C\uBC14 \uB300\uAE30",
+  "{n} \xD7 {building} idle": "{building} {n}\uAC1C \uC27C",
+  "{building} idle": "{building} \uC27C",
+  "{n} unspent at the most": "\uAC00\uC7A5 \uB9CE\uC774 \uB0A8\uAE34 \uC790\uC6D0 {n}",
+  "about {n} \xD7 {unit}": "{unit} \uC57D {n}\uAE30",
+  "less than one {unit}": "{unit} 1\uAE30 \uBBF8\uB9CC",
+  "The longest gaps": "\uAC00\uC7A5 \uAE34 \uACF5\uBC31",
+  "What": "\uBB34\uC5C7",
+  "How long": "\uC5BC\uB9C8 \uB3D9\uC548",
+  "What it cost, about": "\uB300\uB7B5\uC758 \uC190\uC2E4",
+  "No gap of 10 seconds or more.": "10\uCD08 \uC774\uC0C1\uC758 \uACF5\uBC31\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.",
+  "Idle moments less than 8 seconds apart are one gap. A building is listed only for a gap it was used again after; one left standing to the end shows on the chart. The cost is the gap over what the building made most, at its build time.": "8\uCD08 \uBBF8\uB9CC\uC73C\uB85C \uB5A8\uC5B4\uC9C4 \uC26C\uB294 \uC2DC\uAC04\uC740 \uD558\uB098\uC758 \uACF5\uBC31\uC73C\uB85C \uBD05\uB2C8\uB2E4. \uAC74\uBB3C\uC740 \uADF8 \uB4A4\uC5D0 \uB2E4\uC2DC \uC4F0\uC778 \uACF5\uBC31\uB9CC \uB098\uC5F4\uD558\uACE0, \uB05D\uAE4C\uC9C0 \uB0B4\uBC84\uB824 \uB454 \uAC74\uBB3C\uC740 \uCC28\uD2B8\uC5D0 \uBCF4\uC785\uB2C8\uB2E4. \uC190\uC2E4\uC740 \uACF5\uBC31 \uC2DC\uAC04\uC744 \uADF8 \uAC74\uBB3C\uC774 \uAC00\uC7A5 \uB9CE\uC774 \uB9CC\uB4E0 \uC720\uB2DB\uC758 \uC0DD\uC0B0 \uC2DC\uAC04\uC73C\uB85C \uB098\uB208 \uAC83\uC785\uB2C8\uB2E4.",
+  "How this is measured": "\uC5B4\uB5BB\uAC8C \uC7AC\uB294\uC9C0",
+  "The game records each unit the frame its training begins, at the middle of the building training it, so what each building made, and when, is exact. A Terran building that lifts off and lands elsewhere is followed by what it trains there. Larvae count for the hatchery they appear beside; a hatchery is full at {n}. Money and supply are read every two seconds.": "\uAC8C\uC784\uC740 \uAC01 \uC720\uB2DB\uC744 \uC0DD\uC0B0\uC774 \uC2DC\uC791\uB418\uB294 \uD504\uB808\uC784\uC5D0, \uC0DD\uC0B0\uD558\uB294 \uAC74\uBB3C\uC758 \uD55C\uAC00\uC6B4\uB370\uC5D0 \uAE30\uB85D\uD558\uBBC0\uB85C \uAC01 \uAC74\uBB3C\uC774 \uBB34\uC5C7\uC744 \uC5B8\uC81C \uB9CC\uB4E4\uC5C8\uB294\uC9C0\uB294 \uC815\uD655\uD569\uB2C8\uB2E4. \uB5A0\uC62C\uB77C \uB2E4\uB978 \uACF3\uC5D0 \uB0B4\uB9B0 \uD14C\uB780 \uAC74\uBB3C\uC740 \uADF8\uACF3\uC5D0\uC11C \uC0DD\uC0B0\uD558\uB294 \uAC83\uC73C\uB85C \uB530\uB77C\uAC11\uB2C8\uB2E4. \uB77C\uBC14\uB294 \uC606\uC5D0 \uB098\uD0C0\uB09C \uD574\uCC98\uB9AC\uC758 \uAC83\uC73C\uB85C \uC149\uB2C8\uB2E4. \uD574\uCC98\uB9AC\uB294 {n}\uB9C8\uB9AC\uBA74 \uAC00\uB4DD \uCC39\uB2C8\uB2E4. \uC790\uC6D0\uACFC \uC778\uAD6C\uC218\uB294 2\uCD08\uB9C8\uB2E4 \uC77D\uC2B5\uB2C8\uB2E4.",
+  "no {worker} in training": "{worker} \uC0DD\uC0B0 \uC5C6\uC74C",
+  "larvae waiting at a full hatchery": "\uAC00\uB4DD \uCC2C \uD574\uCC98\uB9AC\uC5D0\uC11C \uB77C\uBC14 \uB300\uAE30",
+  "workers short at {time}": "{time}\uC5D0 \uBAA8\uC790\uB780 \uC77C\uAFBC",
+  "production idle with money": "\uB3C8\uC774 \uC788\uB294\uB370 \uC270 \uC0DD\uC0B0",
+  "The cards count the first {time}. Workers short: the time with no worker in training over a worker's build time, as one hall would have made them. Production idle: each production building's idle time with money there, added up.": "\uCE74\uB4DC\uB294 \uCC98\uC74C {time}\uAE4C\uC9C0 \uC149\uB2C8\uB2E4. \uBAA8\uC790\uB780 \uC77C\uAFBC: \uC77C\uAFBC\uC744 \uC0DD\uC0B0\uD558\uC9C0 \uC54A\uC740 \uC2DC\uAC04\uC744 \uC77C\uAFBC \uC0DD\uC0B0 \uC2DC\uAC04\uC73C\uB85C \uB098\uB208 \uAC83\uC73C\uB85C, \uBCF8\uC9C4 \uAC74\uBB3C \uD558\uB098\uAC00 \uB9CC\uB4E4\uC5C8\uC744 \uC218\uC785\uB2C8\uB2E4. \uB3C8\uC774 \uC788\uB294\uB370 \uC270 \uC0DD\uC0B0: \uAC01 \uC0DD\uC0B0 \uAC74\uBB3C\uC774 \uB3C8\uC774 \uC788\uB294\uB370 \uC270 \uC2DC\uAC04\uC758 \uD569\uC785\uB2C8\uB2E4."
 };
 
 // played.ts
@@ -7628,16 +7704,16 @@ function engagement(f) {
       best = i2;
     }
   }
-  const kept = points.slice(best, best + most);
-  while (kept.length > 1 && kept[1].frame - kept[0].frame > ENGAGEMENT_LULL) kept.shift();
-  while (kept.length > 1 && kept[kept.length - 1].frame - kept[kept.length - 2].frame > ENGAGEMENT_LULL) kept.pop();
+  const kept2 = points.slice(best, best + most);
+  while (kept2.length > 1 && kept2[1].frame - kept2[0].frame > ENGAGEMENT_LULL) kept2.shift();
+  while (kept2.length > 1 && kept2[kept2.length - 1].frame - kept2[kept2.length - 2].frame > ENGAGEMENT_LULL) kept2.pop();
   return {
-    from: kept[0].frame,
-    to: kept[kept.length - 1].frame,
-    x0: Math.min(...kept.map((p) => p.x)),
-    y0: Math.min(...kept.map((p) => p.y)),
-    x1: Math.max(...kept.map((p) => p.x)),
-    y1: Math.max(...kept.map((p) => p.y)),
+    from: kept2[0].frame,
+    to: kept2[kept2.length - 1].frame,
+    x0: Math.min(...kept2.map((p) => p.x)),
+    y0: Math.min(...kept2.map((p) => p.y)),
+    x1: Math.max(...kept2.map((p) => p.x)),
+    y1: Math.max(...kept2.map((p) => p.y)),
     players: f.sides.map((s) => s.player)
   };
 }
@@ -9280,7 +9356,7 @@ function castInput(game, clips, wishes, options) {
     }
     return out;
   };
-  const opening = (p) => {
+  const opening2 = (p) => {
     const q = series2(p.index);
     const seenTrain = /* @__PURE__ */ new Set();
     const steps = p.build.filter((s, k, all) => {
@@ -9475,7 +9551,7 @@ function castInput(game, clips, wishes, options) {
         race: castRace(p),
         result: game.winner === null ? p.leftAt !== null ? "left" : "unknown" : p.index === game.winner ? "won" : p.leftAt !== null ? "left" : "lost"
       })),
-      openings: game.players.map(opening).filter((o) => o !== null)
+      openings: game.players.map(opening2).filter((o) => o !== null)
     },
     moments,
     ...wishes?.trim() ? { wishes: wishes.trim() } : {}
@@ -9486,20 +9562,20 @@ var LATE = { 1: 6, 2: 3, 3: 1.5 };
 var GAP = 0.3;
 function schedule(lines, durations, moments) {
   const span = (m) => m.seconds ?? (m.to - m.from) / (m.speed ?? 1);
-  const starts = [];
+  const starts2 = [];
   let length = 0;
   for (const m of moments) {
-    starts.push(length);
+    starts2.push(length);
     length += span(m);
   }
   const frameAt2 = (t) => {
     let k = moments.length - 1;
-    while (k > 0 && starts[k] > t) k--;
+    while (k > 0 && starts2[k] > t) k--;
     if (t >= length) return -1;
     const m = moments[k];
-    return Math.round((m.from + (t - starts[k]) * (m.speed ?? 1)) / FRAME_SECONDS);
+    return Math.round((m.from + (t - starts2[k]) * (m.speed ?? 1)) / FRAME_SECONDS);
   };
-  const order = lines.map((l, i2) => ({ l, i: i2, when: (starts[l.moment] ?? 0) + l.at })).sort((a, b) => a.when - b.when);
+  const order = lines.map((l, i2) => ({ l, i: i2, when: (starts2[l.moment] ?? 0) + l.at })).sort((a, b) => a.when - b.when);
   const out = [];
   let cursor = -Infinity;
   for (const { l, i: i2, when } of order) {
@@ -9509,7 +9585,7 @@ function schedule(lines, durations, moments) {
     out.push({ moment: l.moment, speaker: l.speaker, text: l.text, clip: i2, start, duration, frame: frameAt2(start), ...l.card ? { card: l.card } : {} });
     cursor = start + duration;
   }
-  return { lines: out, starts, length, hold: Math.max(0, cursor - length) };
+  return { lines: out, starts: starts2, length, hold: Math.max(0, cursor - length) };
 }
 function spoken(text) {
   return text.replace(/\[[^\]]*\]\s*/g, "").replace(/\s+/g, " ").trim();
@@ -9536,8 +9612,8 @@ function loudness(channels, sampleRate) {
   if (!loud.length) return -Infinity;
   const mean = (ps) => ps.reduce((a, b) => a + b, 0) / ps.length;
   const gate = lufs(mean(loud)) - 10;
-  const kept = loud.filter((p) => lufs(p) > gate);
-  return lufs(mean(kept.length ? kept : loud));
+  const kept2 = loud.filter((p) => lufs(p) > gate);
+  return lufs(mean(kept2.length ? kept2 : loud));
 }
 function gainFor(buffer) {
   const channels = Array.from({ length: buffer.numberOfChannels }, (_, c) => buffer.getChannelData(c));
@@ -10663,6 +10739,162 @@ function nearest2(xs, x2) {
   }
   return lo > 0 && Math.abs(xs[lo - 1] - x2) <= Math.abs(xs[lo] - x2) ? lo - 1 : lo;
 }
+var PROD_ROW = 16;
+var PROD_ICON_W = 16;
+var PROD_ICON_H = 15;
+var IDLE_COLOUR = "#e8833a";
+var ProductionChart = class extends Chart {
+  /** Room at the right for a building's name ("Command Center 2"): this chart is alone on its tab. */
+  right = 140;
+  groups = [];
+  placed = [];
+  hatch = null;
+  constructor(host, tipAt, label) {
+    super(host, 40, tipAt, label);
+  }
+  set(groups, end) {
+    this.groups = groups;
+    this.end = Math.max(1, end);
+    this.draw();
+  }
+  /** The row under a point of the chart (CSS pixels), or null. */
+  rowAt(offsetY) {
+    for (const p of this.placed) if (offsetY >= p.y0 && offsetY < p.y0 + PROD_ROW) return { group: this.groups[p.group], row: this.groups[p.group].rows[p.row] };
+    return null;
+  }
+  pattern(g, dpr) {
+    if (this.hatch) return this.hatch;
+    const size = Math.round(6 * dpr);
+    const c = document.createElement("canvas");
+    c.width = c.height = size;
+    const p = c.getContext("2d");
+    if (!p) return null;
+    p.strokeStyle = IDLE_COLOUR;
+    p.lineWidth = 1.5 * dpr;
+    p.beginPath();
+    p.moveTo(0, size);
+    p.lineTo(size, 0);
+    p.moveTo(-size / 2, size / 2);
+    p.lineTo(size / 2, -size / 2);
+    p.moveTo(size / 2, size * 1.5);
+    p.lineTo(size * 1.5, size / 2);
+    p.stroke();
+    this.hatch = g.createPattern(c, "repeat");
+    this.hatch?.setTransform(new DOMMatrix().scale(1 / dpr));
+    return this.hatch;
+  }
+  plot(g, box) {
+    const { x: x2, dpr } = box;
+    const width = this.canvas.clientWidth, text = css(this.canvas, "--text", "#e4e8ef");
+    const hatch = this.pattern(g, dpr);
+    this.placed = [];
+    let y = 4;
+    g.font = "11px system-ui, sans-serif";
+    g.textBaseline = "middle";
+    this.groups.forEach((group, gi) => {
+      const h = group.rows.length * PROD_ROW;
+      g.fillStyle = "rgba(255,255,255,0.03)";
+      g.fillRect(this.left, y, width - this.left - this.right, h);
+      group.rows.forEach((row, ri) => {
+        const y0 = y + ri * PROD_ROW;
+        this.placed.push({ group: gi, row: ri, y0 });
+        g.fillStyle = "rgba(255,255,255,0.06)";
+        g.fillRect(x2(row.from), y0 + 2, Math.max(1, x2(row.to) - x2(row.from)), PROD_ROW - 4);
+        g.globalAlpha = 0.8;
+        g.fillStyle = group.color;
+        for (const s of row.busy) g.fillRect(x2(s.from), y0 + 3, Math.max(1, x2(s.to) - x2(s.from)), PROD_ROW - 6);
+        g.globalAlpha = 1;
+        for (const s of row.idle) {
+          const a = x2(s.from), b = Math.max(a + 1, x2(s.to));
+          if (hatch) {
+            g.fillStyle = hatch;
+            g.fillRect(a, y0 + 3, b - a, PROD_ROW - 6);
+          }
+          g.strokeStyle = IDLE_COLOUR;
+          g.lineWidth = 1;
+          g.strokeRect(Math.round(a) + 0.5, y0 + 3.5, Math.max(1, Math.round(b - a) - 1), PROD_ROW - 7);
+        }
+        const icon = row.icon();
+        if (icon) {
+          const ix = this.left - PROD_ICON_W - 6, k = Math.min(PROD_ICON_W / icon.width, PROD_ICON_H / icon.height);
+          g.fillStyle = "#12151c";
+          g.fillRect(ix, y0, PROD_ICON_W, PROD_ICON_H + 1);
+          g.drawImage(icon.image, ix + (PROD_ICON_W - icon.width * k) / 2, y0 + 0.5 + (PROD_ICON_H - icon.height * k) / 2, icon.width * k, icon.height * k);
+        }
+        g.fillStyle = text;
+        g.textAlign = "left";
+        let label = row.label;
+        const room = this.right - 12;
+        while (label.length > 3 && g.measureText(label).width > room) label = `${label.slice(0, -2)}\u2026`;
+        g.fillText(label, width - this.right + 8, y0 + PROD_ROW / 2);
+      });
+      g.fillStyle = group.color;
+      g.fillRect(width - this.right + 2, y + 1, 3, h - 2);
+      y += h + 8;
+    });
+    const want = `${Math.max(PROD_ROW, y - 8 + 4) + (this.axis ? 18 : 2)}px`;
+    if (this.canvas.style.height !== want) requestAnimationFrame(() => {
+      this.canvas.style.height = want;
+    });
+  }
+};
+
+// icons.ts
+function icons(api) {
+  const el = api.ui.el;
+  const waiting = [];
+  const picture = (kind, id, owner) => {
+    const pic = typeof api.graphics.icon === "function" ? api.graphics.icon(kind, id) : null;
+    if (pic) return { ...pic, icon: true };
+    if (kind !== "unit" || isBuilding(id)) return null;
+    const unit = api.graphics.unitImage(id, { owner });
+    return unit ? { ...unit, icon: false } : null;
+  };
+  const ask2 = (kind, id) => {
+    if (typeof api.graphics.requestIcons === "function") api.graphics.requestIcons();
+    if (kind === "unit" && !isBuilding(id)) api.graphics.requestUnit(id);
+  };
+  const fill2 = (slot, kind, id, owner) => {
+    const pic = picture(kind, id, owner);
+    if (!pic || slot.dataset.shown === (pic.icon ? "icon" : "unit")) return pic?.icon ?? false;
+    const w = 36, h = 34, k = Math.min(w / pic.width, h / pic.height, 1);
+    const c = el("canvas", { width: w, height: h });
+    c.getContext("2d")?.drawImage(pic.image, (w - pic.width * k) / 2, (h - pic.height * k) / 2, pic.width * k, pic.height * k);
+    slot.replaceChildren(c);
+    slot.dataset.shown = pic.icon ? "icon" : "unit";
+    slot.classList.remove("afm-gi-none", "afm-ti-text", "afm-ti-empty");
+    return pic.icon;
+  };
+  const icon = (kind, id, options) => {
+    const slot = el("span", { className: `afm-ti${options.small ? " afm-ti-sm" : ""}` });
+    slot.dataset.name = options.title;
+    const owner = options.owner ?? 0;
+    if (!fill2(slot, kind, id, owner)) {
+      if (!slot.dataset.shown) {
+        if (options.text) {
+          slot.classList.add("afm-ti-text");
+          slot.textContent = options.text;
+        } else slot.classList.add("afm-ti-empty");
+      }
+      if (options.wait ?? true) {
+        waiting.push({ slot, kind, id, owner });
+        ask2(kind, id);
+      }
+    }
+    return slot;
+  };
+  return {
+    picture,
+    icon: (kind, id, options) => icon(kind, id, options),
+    watch(then) {
+      if (typeof api.graphics.onImageLoaded !== "function") return null;
+      return api.graphics.onImageLoaded(() => {
+        for (let i2 = waiting.length - 1; i2 >= 0; i2--) if (!waiting[i2].slot.isConnected || fill2(waiting[i2].slot, waiting[i2].kind, waiting[i2].id, waiting[i2].owner)) waiting.splice(i2, 1);
+        then?.();
+      });
+    }
+  };
+}
 
 // tech.ts
 var isTechBuilding = (type) => KINDS.tech.has(type);
@@ -10789,47 +11021,7 @@ function mountTech(body, cx) {
   const raceOf = (slot) => !KINDS.game ? null : tableRace(cx.players.find((p) => p.slot === slot)?.race?.id ?? tl.players.find((p) => p.slot === slot)?.race);
   const nameOf = (item) => item.kind === "building" ? api.names.unit(item.id) : item.kind === "tech" ? api.names.tech(item.id) : (data.upgrades?.maxRepeats[item.id] ?? item.level) > 1 ? `${api.names.upgrade(item.id)} ${item.level}` : api.names.upgrade(item.id);
   const swatch = (color) => el("span", { className: "afm-tip-swatch", style: `background:${color}` });
-  const waiting = [];
-  const picture = (kind, id, owner) => {
-    const pic = typeof api.graphics.icon === "function" ? api.graphics.icon(kind, id) : null;
-    if (pic) return { ...pic, icon: true };
-    if (kind !== "unit" || isBuilding(id)) return null;
-    const unit = api.graphics.unitImage(id, { owner });
-    return unit ? { ...unit, icon: false } : null;
-  };
-  const ask2 = (kind, id) => {
-    if (typeof api.graphics.requestIcons === "function") api.graphics.requestIcons();
-    if (kind === "unit" && !isBuilding(id)) api.graphics.requestUnit(id);
-  };
-  const fill2 = (slot, kind, id, owner) => {
-    const pic = picture(kind, id, owner);
-    if (!pic || slot.dataset.shown === (pic.icon ? "icon" : "unit")) return pic?.icon ?? false;
-    const w2 = 36, h = 34, k = Math.min(w2 / pic.width, h / pic.height, 1);
-    const c = el("canvas", { width: w2, height: h });
-    c.getContext("2d")?.drawImage(pic.image, (w2 - pic.width * k) / 2, (h - pic.height * k) / 2, pic.width * k, pic.height * k);
-    slot.replaceChildren(c);
-    slot.dataset.shown = pic.icon ? "icon" : "unit";
-    slot.classList.remove("afm-gi-none", "afm-ti-text", "afm-ti-empty");
-    return pic.icon;
-  };
-  const icon = (kind, id, options) => {
-    const slot = el("span", { className: `afm-ti${options.small ? " afm-ti-sm" : ""}` });
-    slot.dataset.name = options.title;
-    const owner = options.owner ?? 0;
-    if (!fill2(slot, kind, id, owner)) {
-      if (!slot.dataset.shown) {
-        if (options.text) {
-          slot.classList.add("afm-ti-text");
-          slot.textContent = options.text;
-        } else slot.classList.add("afm-ti-empty");
-      }
-      if (options.wait ?? true) {
-        waiting.push({ slot, kind, id, owner });
-        ask2(kind, id);
-      }
-    }
-    return slot;
-  };
+  const { picture, icon, watch } = icons(api);
   const kindOf2 = (item) => item.kind === "building" ? "unit" : item.kind;
   const cards = el("div", { className: "afm-it-cards" }, ...shown.map((p) => {
     const pt = of(p.slot), reached = tierOf(raceOf(p.slot), pt.buildings);
@@ -10924,12 +11116,8 @@ function mountTech(body, cx) {
     timings
   );
   chart.draw();
-  if (typeof api.graphics.onImageLoaded === "function") {
-    cx.keep(api.graphics.onImageLoaded(() => {
-      for (let i2 = waiting.length - 1; i2 >= 0; i2--) if (fill2(waiting[i2].slot, waiting[i2].kind, waiting[i2].id, waiting[i2].owner)) waiting.splice(i2, 1);
-      chart.draw();
-    }));
-  }
+  const watching = watch(() => chart.draw());
+  if (watching) cx.keep(watching);
 }
 function sayTech(cx, all, shown, raceOf, nameOf) {
   const { t } = cx;
@@ -10964,10 +11152,10 @@ function armyGrid(cx, all, shown, icon) {
   const grid = el("div", { className: "afm-it-sat", style: `grid-template-columns: 150px repeat(${minutes}, minmax(6px, 1fr))` });
   grid.append(el("span", {}));
   for (let m = 0; m < minutes; m++) grid.append(el("span", { className: "afm-it-sat-min afm-dim" }, (m + 1) % 5 === 0 ? String(m + 1) : ""));
-  const kept = [];
+  const kept2 = [];
   for (const p of shown) {
     for (const row of rows.filter((r) => r.player === p.slot)) {
-      kept.push(row);
+      kept2.push(row);
       grid.append(el(
         "span",
         { className: "afm-it-sat-line" },
@@ -10978,7 +11166,7 @@ function armyGrid(cx, all, shown, icon) {
       row.perMinute.forEach((n, m) => {
         const a = n === 0 ? 0 : 0.15 + 0.7 * (n / Math.max(1, row.peak));
         const cell = el("span", { className: "afm-it-sat-cell", style: a ? `background: rgba(79,209,197,${a.toFixed(2)})` : "" });
-        cell.dataset.row = String(kept.length - 1);
+        cell.dataset.row = String(kept2.length - 1);
         cell.dataset.minute = String(m);
         grid.append(cell);
       });
@@ -10988,7 +11176,7 @@ function armyGrid(cx, all, shown, icon) {
   cx.keep(cx.host.tooltip(grid, (pt) => {
     const hit = document.elementFromPoint(pt.x, pt.y);
     if (!(hit instanceof HTMLElement) || !hit.classList.contains("afm-it-sat-cell")) return null;
-    const row = kept[Number(hit.dataset.row)], m = Number(hit.dataset.minute);
+    const row = kept2[Number(hit.dataset.row)], m = Number(hit.dataset.minute);
     if (!row) return null;
     const p = shown.find((x2) => x2.slot === row.player);
     return el(
@@ -11264,6 +11452,504 @@ function mountScouting(body, cx) {
   chart.draw();
 }
 
+// macro.ts
+var COUNT_UNTIL = 10 * FRAMES_PER_MINUTE;
+var SHORT_AT = 8 * FRAMES_PER_MINUTE;
+var GAP_JOIN = 4 * 48;
+var GAP_MIN = 240;
+var GAPS = 8;
+var QUEUE_JOIN = 24;
+var LARVA_REACH = 192;
+var ADDON_REACH = 128;
+function push(out, from, to, join = 0) {
+  if (to <= from) return;
+  const last = out[out.length - 1];
+  if (last && from <= last.to + join) last.to = Math.max(last.to, to);
+  else out.push({ from, to });
+}
+function merged2(spans, join = 0) {
+  const out = [];
+  for (const s of [...spans].sort((a, b) => a.from - b.from)) push(out, s.from, s.to, join);
+  return out;
+}
+function covered(spans, from = -Infinity, to = Infinity) {
+  let n = 0;
+  for (const s of spans) n += Math.max(0, Math.min(to, s.to) - Math.max(from, s.from));
+  return n;
+}
+function free(window2, busy) {
+  const out = [];
+  let at = window2.from;
+  for (const b of busy) {
+    if (b.to <= at) continue;
+    if (b.from >= window2.to) break;
+    push(out, at, Math.min(b.from, window2.to));
+    at = Math.max(at, b.to);
+  }
+  push(out, at, window2.to);
+  return out;
+}
+function macro(t, players, data, leftAt = /* @__PURE__ */ new Map()) {
+  const end = t.frames;
+  const playing3 = new Set(players);
+  const doneAt = /* @__PURE__ */ new Map(), goneAt = /* @__PURE__ */ new Map();
+  for (const e of t.events) {
+    if (e.kind === "done" && !doneAt.has(e.unit)) doneAt.set(e.unit, e.frame);
+    else if (e.kind === "died") goneAt.set(e.unit, e.frame);
+  }
+  const buildings2 = /* @__PURE__ */ new Map();
+  const standing = /* @__PURE__ */ new Map();
+  const at = (owner, x2, y) => `${owner}:${x2}:${y}`;
+  const larvaTypes = /* @__PURE__ */ new Set();
+  for (const e of t.events) if (e.kind === "morph" && KINDS.eggs.has(e.type) && e.from !== void 0 && !counted(e.from)) larvaTypes.add(e.from);
+  const larvae = [];
+  const larvaOf = /* @__PURE__ */ new Map();
+  const hatched = /* @__PURE__ */ new Map();
+  const hallsOf = (owner) => [...buildings2.values()].filter((b) => b.owner === owner && b.done !== null && b.end === null && DEPOTS.has(b.type));
+  const close = (b, frame) => {
+    if (b.end !== null) return;
+    b.end = frame;
+    if (standing.get(at(b.owner, b.x, b.y)) === b) standing.delete(at(b.owner, b.x, b.y));
+  };
+  const hallucinated = /* @__PURE__ */ new Set();
+  const placed = /* @__PURE__ */ new Map();
+  for (const e of t.events) if ((e.kind === "born" || e.kind === "morph") && isBuilding(e.type) && e.owner <= 7) placed.set(at(e.owner, e.x, e.y), e.type);
+  const tally = /* @__PURE__ */ new Map();
+  for (const e of t.events) {
+    if (e.kind !== "born" || e.frame === 0 || e.hallucination || isBuilding(e.type) || !counted(e.type) || doneAt.get(e.unit) === e.frame) continue;
+    const kind = placed.get(at(e.owner, e.x, e.y));
+    if (kind === void 0) continue;
+    const m = tally.get(e.type) ?? /* @__PURE__ */ new Map();
+    m.set(kind, (m.get(kind) ?? 0) + 1);
+    tally.set(e.type, m);
+  }
+  const producerOf = new Map([...tally].map(([type, m]) => [type, [...m].sort((a, b) => b[1] - a[1])[0][0]]));
+  for (const e of t.events) {
+    if (e.kind === "born" && e.hallucination) {
+      hallucinated.add(e.unit);
+      continue;
+    }
+    if (hallucinated.has(e.unit)) continue;
+    if (e.kind === "born") {
+      if (e.owner > 7) continue;
+      if (isBuilding(e.type)) {
+        buildings2.set(e.unit, { unit: e.unit, type: e.type, owner: e.owner, x: e.x, y: e.y, done: null, end: null, made: /* @__PURE__ */ new Map(), busy: [] });
+        if (e.frame > 0 && data.addon(e.type)) {
+          let best = null, bestD = Infinity;
+          for (const b of standing.values()) {
+            if (b.owner !== e.owner || b.x >= e.x) continue;
+            const d = Math.hypot(e.x - b.x, e.y - b.y);
+            if (d < bestD && d <= ADDON_REACH) {
+              best = b;
+              bestD = d;
+            }
+          }
+          if (best) best.busy.push({ from: e.frame, to: doneAt.get(e.unit) ?? goneAt.get(e.unit) ?? end });
+        }
+        continue;
+      }
+      if (larvaTypes.has(e.type)) {
+        let hall = null, bestD = Infinity;
+        for (const b of hallsOf(e.owner)) {
+          const d = Math.hypot(e.x - b.x, e.y - b.y);
+          if (d < bestD && d <= LARVA_REACH) {
+            hall = b;
+            bestD = d;
+          }
+        }
+        if (hall) {
+          const l = { hall: hall.unit, from: e.frame, to: goneAt.get(e.unit) ?? end, owner: e.owner };
+          larvae.push(l);
+          larvaOf.set(e.unit, l);
+        }
+        continue;
+      }
+      if (e.frame === 0 || !counted(e.type) || doneAt.get(e.unit) === e.frame) continue;
+      let by = standing.get(at(e.owner, e.x, e.y));
+      if (!by) {
+        const kind = producerOf.get(e.type);
+        let best = null, bestLast = Infinity;
+        for (const b of standing.values()) {
+          if (b.owner !== e.owner || b.type !== kind) continue;
+          const last = b.busy.length ? b.busy[b.busy.length - 1].to : -1;
+          if (last <= e.frame && last < bestLast) {
+            best = b;
+            bestLast = last;
+          }
+        }
+        if (!best) continue;
+        standing.delete(at(best.owner, best.x, best.y));
+        best.x = e.x;
+        best.y = e.y;
+        standing.set(at(best.owner, best.x, best.y), best);
+        by = best;
+      }
+      by.made.set(e.type, (by.made.get(e.type) ?? 0) + 1);
+      by.busy.push({ from: e.frame, to: Math.min(doneAt.get(e.unit) ?? goneAt.get(e.unit) ?? end, goneAt.get(e.unit) ?? end) });
+    } else if (e.kind === "done") {
+      const b = buildings2.get(e.unit);
+      if (b && b.done === null && b.end === null) {
+        b.done = e.frame;
+        standing.set(at(b.owner, b.x, b.y), b);
+      }
+    } else if (e.kind === "morph") {
+      const l = larvaOf.get(e.unit);
+      if (l) {
+        l.to = Math.min(l.to, e.frame);
+        larvaOf.delete(e.unit);
+      }
+      if (e.from !== void 0 && KINDS.eggs.has(e.from) && counted(e.type)) {
+        const m = hatched.get(e.owner) ?? /* @__PURE__ */ new Map();
+        m.set(e.type, (m.get(e.type) ?? 0) + 1);
+        hatched.set(e.owner, m);
+      }
+      const b = buildings2.get(e.unit);
+      if (!b) {
+        if (isBuilding(e.type) && e.owner <= 7) buildings2.set(e.unit, { unit: e.unit, type: e.type, owner: e.owner, x: e.x, y: e.y, done: null, end: null, made: /* @__PURE__ */ new Map(), busy: [] });
+        continue;
+      }
+      if (isBuilding(e.type)) b.type = e.type;
+      else close(b, e.frame);
+    } else if (e.kind === "given") {
+      const b = buildings2.get(e.unit);
+      if (b && b.done === null && b.end === null) {
+        b.owner = e.owner;
+        continue;
+      }
+      if (b) close(b, e.frame);
+    } else if (e.kind === "died") {
+      const b = buildings2.get(e.unit);
+      if (b) close(b, e.frame);
+    }
+  }
+  const madeByType = /* @__PURE__ */ new Map();
+  for (const b of buildings2.values()) {
+    if (!b.made.size) continue;
+    const m = madeByType.get(b.type) ?? /* @__PURE__ */ new Map();
+    for (const [type, n] of b.made) m.set(type, (m.get(type) ?? 0) + n);
+    madeByType.set(b.type, m);
+  }
+  const most = (m) => m && m.size ? [...m].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0][0] : null;
+  const cheapest = (types) => {
+    let best = null;
+    for (const type of types) {
+      const c = data.cost(type);
+      if (!best || c.minerals + c.gas < best.minerals + best.gas) best = c;
+    }
+    return best ?? { minerals: 0, gas: 0 };
+  };
+  const counts = /* @__PURE__ */ new Map();
+  for (const l of larvae) {
+    const list = counts.get(l.hall) ?? [];
+    list.push({ frame: l.from, d: 1 }, { frame: l.to, d: -1 });
+    counts.set(l.hall, list);
+  }
+  const steps = /* @__PURE__ */ new Map();
+  let seenMost = 0;
+  for (const [hall, list] of counts) {
+    list.sort((a, b) => a.frame - b.frame || a.d - b.d);
+    const out = [];
+    let n = 0;
+    for (const c of list) {
+      n += c.d;
+      seenMost = Math.max(seenMost, n);
+      const last = out[out.length - 1];
+      if (last && last.frame === c.frame) last.n = n;
+      else out.push({ frame: c.frame, n });
+    }
+    steps.set(hall, out);
+  }
+  const larvaCap = KINDS.game ? 3 : Math.max(3, seenMost);
+  const frames = t.samples.frame;
+  const result = [];
+  const gaps = [];
+  for (const series2 of t.samples.players) {
+    if (!playing3.has(series2.slot)) continue;
+    const slot = series2.slot;
+    const until = Math.min(end, leftAt.get(slot) ?? end);
+    const bank = (i2) => series2.minerals[i2] + series2.gas[i2];
+    const able = (i2, c) => {
+      const max2 = series2.supplyMax[i2], used = series2.supplyUsed[i2];
+      return series2.minerals[i2] >= c.minerals && series2.gas[i2] >= c.gas && !(max2 > 0 && used >= max2);
+    };
+    const withMoney = (spans, c) => {
+      const out = [];
+      let i2 = 0;
+      for (const s of spans) {
+        while (i2 + 1 < frames.length && frames[i2 + 1] <= s.from) i2++;
+        for (let k = i2; k < frames.length && frames[k] < s.to; k++) {
+          const a = Math.max(s.from, frames[k]), b = Math.min(s.to, k + 1 < frames.length ? frames[k + 1] : end);
+          if (able(k, c)) push(out, a, b);
+        }
+      }
+      return out;
+    };
+    const lanes = [];
+    for (const b of buildings2.values()) {
+      if (b.owner !== slot || b.done === null) continue;
+      const window2 = { from: b.done, to: Math.min(b.end ?? until, until) };
+      if (window2.to <= window2.from) continue;
+      const larvaSteps = steps.get(b.unit);
+      if (larvaSteps && DEPOTS.has(b.type)) {
+        const full = [];
+        for (let k = 0; k < larvaSteps.length; k++) if (larvaSteps[k].n >= larvaCap) push(full, larvaSteps[k].frame, larvaSteps[k + 1]?.frame ?? end);
+        const fullIn = full.map((s) => ({ from: Math.max(s.from, window2.from), to: Math.min(s.to, window2.to) })).filter((s) => s.to > s.from);
+        const made = hatched.get(slot);
+        lanes.push({
+          kind: "larvae",
+          unit: b.unit,
+          type: b.type,
+          owner: slot,
+          x: b.x,
+          y: b.y,
+          from: window2.from,
+          to: window2.to,
+          busy: free(window2, fullIn),
+          idle: withMoney(fullIn, cheapest(made?.keys() ?? [])),
+          makes: most(made)
+        });
+        continue;
+      }
+      const byType = madeByType.get(b.type);
+      if (!byType) continue;
+      const workers = [...byType.keys()].some((type) => WORKERS.has(type));
+      const busy = merged2(b.busy, QUEUE_JOIN).map((s) => ({ from: Math.max(s.from, window2.from), to: Math.min(s.to, window2.to) })).filter((s) => s.to > s.from);
+      const idle = withMoney(free(window2, busy), cheapest(byType.keys()));
+      lanes.push({
+        kind: workers ? "workers" : "units",
+        unit: b.unit,
+        type: b.type,
+        owner: slot,
+        x: b.x,
+        y: b.y,
+        from: window2.from,
+        to: window2.to,
+        busy,
+        idle: workers ? idle.map((s) => ({ from: s.from, to: Math.min(s.to, COUNT_UNTIL) })).filter((s) => s.to > s.from) : idle,
+        makes: most(b.made) ?? most(byType)
+      });
+    }
+    lanes.sort((a, b) => (a.kind === b.kind ? 0 : a.kind === "units" ? 1 : b.kind === "units" ? -1 : 0) || a.from - b.from || a.unit - b.unit);
+    const workerLanes = lanes.filter((l) => l.kind === "workers"), unitLanes = lanes.filter((l) => l.kind === "units"), larvaLanes = lanes.filter((l) => l.kind === "larvae");
+    const worker = workerLanes.map((l) => l.makes).find((m) => m !== null && WORKERS.has(m)) ?? null;
+    const workerTime = worker === null ? null : data.buildTime(worker);
+    const standingHalls = merged2(workerLanes.map((l) => ({ from: l.from, to: Math.min(l.to, COUNT_UNTIL) })).filter((s) => s.to > s.from));
+    const training = merged2(workerLanes.flatMap((l) => l.busy));
+    const noWorkerSpans = worker === null ? [] : withMoney(standingHalls.flatMap((s) => free(s, training)), data.cost(worker));
+    let peak = { value: 0, frame: 0 };
+    for (let i2 = 0; i2 < frames.length && frames[i2] <= Math.min(until, COUNT_UNTIL); i2++) if (bank(i2) > peak.value) peak = { value: bank(i2), frame: frames[i2] };
+    result.push({
+      slot,
+      noWorker: workerLanes.length ? covered(noWorkerSpans) : null,
+      workersShort: workerLanes.length && workerTime ? Math.round(covered(noWorkerSpans, 0, SHORT_AT) / workerTime) : null,
+      noWorkerSpans,
+      productionIdle: unitLanes.reduce((n, l) => n + covered(l.idle, 0, COUNT_UNTIL), 0),
+      larvaeWaiting: larvaLanes.length ? covered(merged2(larvaLanes.flatMap((l) => l.idle)), 0, COUNT_UNTIL) : null,
+      peakBank: peak,
+      lanes
+    });
+    const gapsOf = (idle, kind, type, lane) => {
+      for (const s of merged2(idle, GAP_JOIN)) {
+        const n = covered(idle, s.from, s.to);
+        if (n < GAP_MIN) continue;
+        let most2 = 0;
+        for (let i2 = 0; i2 < frames.length && frames[i2] <= s.to; i2++) if (frames[i2] >= s.from) most2 = Math.max(most2, bank(i2));
+        const same3 = gaps.find((g) => g.player === slot && g.type === type && Math.abs(g.from - s.from) <= GAP_JOIN && Math.abs(g.to - s.to) <= GAP_JOIN);
+        if (same3) {
+          same3.count++;
+          continue;
+        }
+        gaps.push({ player: slot, kind, type, lane, from: s.from, to: s.to, frames: n, bank: most2, count: 1 });
+      }
+    };
+    if (workerLanes.length) gapsOf(noWorkerSpans, "workers", workerLanes[0].type, null);
+    for (const lane of lanes) if (lane.kind !== "workers") gapsOf(lane.idle.filter((s) => lane.busy.some((b) => b.from >= s.to)), lane.kind, lane.type, lane);
+  }
+  gaps.sort((a, b) => b.frames - a.frames || a.from - b.from);
+  return { players: result, gaps: gaps.slice(0, GAPS), until: COUNT_UNTIL, shortAt: SHORT_AT, larvaCap };
+}
+
+// macroview.ts
+function macroData(api) {
+  const units = api.data.units();
+  if (!units) return null;
+  return {
+    buildTime: (type) => units.buildTime[type] ?? null,
+    cost: (type) => ({ minerals: units.mineralCost[type] ?? 0, gas: units.vespeneCost[type] ?? 0 }),
+    // units.dat's special ability flags: bit 1 is an add-on.
+    addon: (type) => ((units.flags[type] ?? 0) & 2) !== 0
+  };
+}
+var kept = /* @__PURE__ */ new WeakMap();
+function macroOf(api, timeline, leftAt) {
+  const was = kept.get(timeline);
+  if (was && was.revision === KINDS.revision) return was.macro;
+  const data = macroData(api);
+  if (!data) return null;
+  const players = timeline.samples.players.filter((s) => s.supplyMax.some((n) => n > 0)).map((s) => s.slot);
+  const m = macro(timeline, players, data, leftAt);
+  kept.set(timeline, { revision: KINDS.revision, macro: m });
+  return m;
+}
+var short2 = (name) => name.replace(/^(Terran|Zerg|Protoss) (?=\S)/, "");
+function mountMacro(body, cx) {
+  const { api, t, timeline: tl } = cx;
+  const el = api.ui.el, w = api.ui.widgets;
+  const m = macroOf(api, tl, new Map(cx.players.map((p) => [p.slot, p.leftAt])));
+  if (!m) {
+    body.append(el("p", { className: "afm-dim afm-it-note" }, t("The Macro tab needs the game's data (what units cost and how long they take), which this editor does not have.")));
+    return;
+  }
+  const data = macroData(api);
+  const shown = cx.players.filter((p) => m.players.some((x2) => x2.slot === p.slot));
+  const of = (slot) => m.players.find((p) => p.slot === slot);
+  const nameOfType = (type) => short2(api.names.unit(type));
+  const swatch = (color) => el("span", { className: "afm-tip-swatch", style: `background:${color}` });
+  const { picture, icon, watch } = icons(api);
+  const until = formatTime(m.until);
+  const laneNames = /* @__PURE__ */ new Map();
+  for (const p of m.players) {
+    const seen = /* @__PURE__ */ new Map();
+    for (const l of p.lanes) {
+      const n = (seen.get(l.type) ?? 0) + 1;
+      seen.set(l.type, n);
+      laneNames.set(l, n > 1 ? `${nameOfType(l.type)} ${n}` : nameOfType(l.type));
+    }
+  }
+  const workerOf = (p) => p.lanes.find((l) => l.kind === "workers")?.makes ?? null;
+  const cards = el("div", { className: "afm-it-cards" }, ...shown.map((sp) => {
+    const p = of(sp.slot);
+    const worker = workerOf(p);
+    const hero = p.noWorker !== null ? [formatTime(p.noWorker), t("no {worker} in training", { worker: worker === null ? t("worker") : nameOfType(worker) })] : p.larvaeWaiting !== null ? [formatTime(p.larvaeWaiting), t("larvae waiting at a full hatchery")] : ["\u2013", t("no workers or larvae made")];
+    const line = (value, text) => el("div", { className: "afm-it-card-line" }, el("b", {}, value), " ", el("span", { className: "afm-dim" }, text));
+    const lines = [];
+    if (p.workersShort !== null && p.workersShort > 0) lines.push(line(t("about {n}", { n: p.workersShort }), t("workers short at {time}", { time: formatTime(SHORT_AT) })));
+    if (p.lanes.some((l) => l.kind === "units")) lines.push(line(formatTime(p.productionIdle), t("production idle with money")));
+    lines.push(line(Math.round(p.peakBank.value).toLocaleString(), t("unspent at the most, {time}", { time: formatTime(p.peakBank.frame) })));
+    return el(
+      "div",
+      { className: "afm-it-card", style: `border-top-color:${sp.color}` },
+      el("div", { className: "afm-it-card-name" }, swatch(sp.color), el("span", { className: "afm-gt-name" }, sp.name)),
+      el("div", { className: "afm-it-hero" }, hero[0]),
+      el("div", { className: "afm-dim afm-it-card-line" }, hero[1]),
+      ...lines
+    );
+  }));
+  const said = [];
+  for (const sp of shown) {
+    const p = of(sp.slot);
+    if (p.noWorker !== null) {
+      const stops = merged2(p.noWorkerSpans, 4 * 48).filter((s) => covered(p.noWorkerSpans, s.from, s.to) >= 240);
+      if (!stops.length) {
+        said.push(t("{name} kept a worker in training until {time}, but for moments.", { name: sp.name, time: until }));
+        continue;
+      }
+      const longest = stops.reduce((a, b) => covered(p.noWorkerSpans, b.from, b.to) > covered(p.noWorkerSpans, a.from, a.to) ? b : a);
+      said.push(t(
+        "{name} stopped making workers {n, plural, one {once} other {# times}} for 10 seconds or more before {time}; the longest stop was {length} from {at}.",
+        { name: sp.name, n: stops.length, time: until, length: formatTime(covered(p.noWorkerSpans, longest.from, longest.to)), at: formatTime(longest.from) }
+      ));
+    } else if (p.larvaeWaiting !== null) {
+      said.push(p.larvaeWaiting >= 240 ? t("{name} had larvae waiting at a full hatchery, with money to spend, for {length} before {time}.", { name: sp.name, length: formatTime(p.larvaeWaiting), time: until }) : t("{name} spent larvae as they came until {time}, but for moments.", { name: sp.name, time: until }));
+    }
+  }
+  const verdict = said.length ? el("p", { className: "afm-it-verdict" }, said.join(" ")) : null;
+  const rowLane = /* @__PURE__ */ new Map();
+  const groups = shown.map((sp) => ({
+    slot: sp.slot,
+    label: sp.name,
+    color: sp.color,
+    rows: of(sp.slot).lanes.map((l) => {
+      const row = { label: laneNames.get(l), icon: () => picture("unit", l.type, l.owner), from: l.from, to: l.to, busy: l.busy, idle: l.idle };
+      rowLane.set(row, l);
+      return row;
+    })
+  }));
+  const at = (spans, f) => spans.some((s) => s.from <= f && f < s.to);
+  const chart = new ProductionChart(cx.host, (f, pt) => {
+    const hit = chart.rowAt(pt.offsetY);
+    const head = el("div", { className: "afm-gt-head" }, el("b", {}, formatTime(f)));
+    if (!hit) return el("div", { className: "afm-gt" }, head, el("div", { className: "afm-gt-foot afm-dim" }, t("Press or drag to go there")));
+    const lane = rowLane.get(hit.row);
+    const state = f < lane.from || f >= lane.to ? t("not standing then") : at(lane.busy, f) ? lane.kind === "larvae" ? t("making larvae") : t("making something") : at(lane.idle, f) ? lane.kind === "larvae" ? t("full of larvae, with money to spend") : t("idle, with money for a unit") : lane.kind === "larvae" ? t("full of larvae, without the money or the supply") : t("idle, without the money or the supply");
+    return el(
+      "div",
+      { className: "afm-gt" },
+      head,
+      el("div", { className: "afm-it-row" }, icon("unit", lane.type, { title: hit.row.label, wait: false, owner: lane.owner }), swatch(hit.group.color), el("span", { className: "afm-gt-name" }, hit.row.label)),
+      el("div", {}, state),
+      el("div", { className: "afm-gt-foot afm-dim" }, t("Press or drag to go there"))
+    );
+  }, t("Production over the game"));
+  chart.set(groups, tl.frames);
+  cx.chart(chart);
+  const legend = el(
+    "div",
+    { className: "afm-it-controls afm-dim afm-it-about" },
+    el("span", { className: "afm-ti-key" }, el("span", { className: "afm-mc-key afm-mc-busy" }), t("making something (a hatchery: making larvae)")),
+    el("span", { className: "afm-ti-key" }, el("span", { className: "afm-mc-key afm-mc-idle", style: `border-color:${IDLE_COLOUR}` }), t("idle, with money for something it makes (a hatchery: full of larvae)"))
+  );
+  const chartSection = el(
+    "section",
+    { className: "afm-it-section" },
+    el("h3", { className: "afm-sc-h" }, t("Production over the game")),
+    legend,
+    el("div", { className: "afm-it-chart" }, chart.element),
+    el("p", { className: "afm-dim afm-it-note" }, t("A building counts from when it is finished. It is idle only while its owner could pay for something it makes and had the supply for it; supply blocks are on the Economy tab. A town hall's idle time is shown to {time}: later, a player with workers enough stops on purpose.", { time: until }))
+  );
+  const what = (g) => {
+    const name = nameOfType(g.type);
+    if (g.kind === "workers") {
+      const wk2 = workerOf(of(g.player));
+      return t("No {worker} in training", { worker: wk2 === null ? t("worker") : nameOfType(wk2) });
+    }
+    if (g.kind === "larvae") return t("Larvae waiting at {building}", { building: g.lane ? laneNames.get(g.lane) : name });
+    return g.count > 1 ? t("{n} \xD7 {building} idle", { n: g.count, building: name }) : t("{building} idle", { building: g.lane ? laneNames.get(g.lane) : name });
+  };
+  const cost = (g) => {
+    const p = of(g.player);
+    const made = g.kind === "workers" ? workerOf(p) : g.lane?.makes ?? null;
+    if (g.kind === "larvae") return t("{n} unspent at the most", { n: Math.round(g.bank).toLocaleString() });
+    const time = made === null ? null : data.buildTime(made);
+    if (made === null || !time) return "\u2013";
+    const n = Math.floor(g.frames / time * g.count);
+    return n >= 1 ? t("about {n} \xD7 {unit}", { n, unit: nameOfType(made) }) : t("less than one {unit}", { unit: nameOfType(made) });
+  };
+  const bySlot = new Map(shown.map((p) => [p.slot, p]));
+  const gapRows = m.gaps.filter((g) => bySlot.has(g.player)).map((g) => {
+    const sp = bySlot.get(g.player);
+    const row = el(
+      "tr",
+      { className: "afm-mc-gap", title: t("Go to the time") },
+      el("td", {}, formatTime(g.from)),
+      el("td", {}, el("span", { className: "afm-it-row" }, swatch(sp.color), icon("unit", g.kind === "workers" ? workerOf(of(g.player)) ?? g.type : g.type, { title: nameOfType(g.type), small: true, owner: g.player }), what(g))),
+      el("td", {}, formatTime(g.frames)),
+      el("td", { className: "afm-dim" }, cost(g))
+    );
+    row.addEventListener("click", () => cx.seek(g.from));
+    return row;
+  });
+  const gapSection = el(
+    "section",
+    { className: "afm-it-section" },
+    el("h3", { className: "afm-sc-h" }, t("The longest gaps")),
+    gapRows.length ? el(
+      "table",
+      { className: "afm-it-table afm-sc-table afm-mc-table" },
+      el("thead", {}, el("tr", {}, el("th", { scope: "col" }, t("When")), el("th", { scope: "col" }, t("What")), el("th", { scope: "col" }, t("How long")), el("th", { scope: "col" }, t("What it cost, about")))),
+      el("tbody", {}, ...gapRows)
+    ) : el("p", { className: "afm-dim afm-it-note" }, t("No gap of 10 seconds or more.")),
+    el("p", { className: "afm-dim afm-it-note" }, t("Idle moments less than 8 seconds apart are one gap. A building is listed only for a gap it was used again after; one left standing to the end shows on the chart. The cost is the gap over what the building made most, at its build time."))
+  );
+  const how = w.fold({ text: t("How this is measured"), open: false });
+  how.body.append(el("p", { className: "afm-dim afm-it-note" }, t("The game records each unit the frame its training begins, at the middle of the building training it, so what each building made, and when, is exact. A Terran building that lifts off and lands elsewhere is followed by what it trains there. Larvae count for the hatchery they appear beside; a hatchery is full at {n}. Money and supply are read every two seconds.", { n: m.larvaCap })));
+  const cardsNote = el("p", { className: "afm-dim afm-it-note" }, t("The cards count the first {time}. Workers short: the time with no worker in training over a worker's build time, as one hall would have made them. Production idle: each production building's idle time with money there, added up.", { time: until }));
+  body.append(cards, cardsNote, ...verdict ? [verdict] : [], chartSection, gapSection, how);
+  chart.draw();
+  const watching = watch(() => chart.draw());
+  if (watching) cx.keep(watching);
+}
+
 // insight.ts
 var economies = /* @__PURE__ */ new WeakMap();
 var InsightView = class {
@@ -11288,6 +11974,14 @@ var InsightView = class {
     this.shownTimeline = game?.timeline ?? null;
     this.game = game;
     this.render(why);
+  }
+  /** Show the tab `tab` ("macro"), as a link from elsewhere asks. */
+  select(tab) {
+    this.deps.settings.tab = tab;
+    if (this.game) {
+      this.shownKey = "";
+      this.render("");
+    }
   }
   /** The replay's clock moved. */
   update() {
@@ -11322,7 +12016,8 @@ var InsightView = class {
     const tabs = w.tabs([
       { value: "economy", label: t("Economy"), mount: (body) => this.economy(body) },
       { value: "tech", label: t("Tech"), mount: (body) => this.tech(body) },
-      { value: "scouting", label: t("Scouting"), mount: (body) => this.scouting(body) }
+      { value: "scouting", label: t("Scouting"), mount: (body) => this.scouting(body) },
+      { value: "macro", label: t("Macro"), mount: (body) => this.macro(body) }
     ], { value: settings.tab, onChange: (tab) => {
       settings.tab = tab;
       this.deps.save();
@@ -11335,6 +12030,25 @@ var InsightView = class {
   tech(body) {
     const game = this.game;
     mountTech(body, {
+      api: this.deps.api,
+      t: this.deps.t,
+      host: this,
+      timeline: game.timeline,
+      players: game.players.filter((p) => !p.hidden),
+      seek: (f) => this.deps.seek(f),
+      chart: (c) => {
+        this.charts.push(c);
+        c.setNow(this.deps.frame());
+      },
+      keep: (d) => {
+        this.tips.push(d);
+      }
+    });
+  }
+  /* ── Macro ── */
+  macro(body) {
+    const game = this.game;
+    mountMacro(body, {
       api: this.deps.api,
       t: this.deps.t,
       host: this,
@@ -11611,6 +12325,130 @@ function nearestSample(frames, frame) {
   return lo > 0 && Math.abs(frames[lo - 1] - frame) <= Math.abs(frames[lo] - frame) ? lo - 1 : lo;
 }
 
+// opening.ts
+function supplyAt(t, player, frame) {
+  const s = t.samples.players.find((p) => p.slot === player);
+  const frames = t.samples.frame;
+  if (!s) return null;
+  let lo = 0, hi = frames.length;
+  while (lo < hi) {
+    const mid = lo + hi >> 1;
+    if (frames[mid] < frame) lo = mid + 1;
+    else hi = mid;
+  }
+  const i2 = lo - 1;
+  if (i2 < 0) return null;
+  return s.supplyUsed[i2] + workerStarts(t, player, frames[i2], frame);
+}
+function workerStarts(t, player, from, to) {
+  let n = 0;
+  const ev = t.events;
+  let lo = 0, hi = ev.length;
+  while (lo < hi) {
+    const mid = lo + hi >> 1;
+    if (ev[mid].frame <= from) lo = mid + 1;
+    else hi = mid;
+  }
+  for (let k = lo; k < ev.length && ev[k].frame < to; k++) {
+    const e = ev[k];
+    if (e.owner !== player) continue;
+    if (e.kind === "born" && WORKERS.has(e.type) && !e.hallucination && !finishedAt(t, k)) n++;
+    else if (e.kind === "morph" && KINDS.eggs.has(e.type)) {
+      const into = hatchesInto(t, k, e.unit);
+      if (into !== null && WORKERS.has(into)) n++;
+    } else if (e.kind === "morph" && e.from !== void 0 && WORKERS.has(e.from) && isBuilding(e.type)) n--;
+  }
+  return n;
+}
+function finishedAt(t, k) {
+  const e = t.events[k];
+  for (let j = k + 1; j < t.events.length && t.events[j].frame === e.frame; j++) if (t.events[j].unit === e.unit && t.events[j].kind === "done") return true;
+  return false;
+}
+function hatchesInto(t, k, unit) {
+  for (let j = k + 1; j < t.events.length; j++) {
+    const e = t.events[j];
+    if (e.unit !== unit) continue;
+    if (e.kind === "morph") return e.type;
+    if (e.kind === "died") return null;
+  }
+  return null;
+}
+var U = {
+  overlord: 42,
+  pool: 142,
+  hatchery: 131,
+  commandCenter: 106,
+  depot: 109,
+  barracks: 111,
+  factory: 113,
+  starport: 114,
+  nexus: 154,
+  pylon: 156,
+  gateway: 160,
+  core: 164,
+  forge: 166
+};
+function opening(steps, race, home, others) {
+  if (!KINDS.game || race === null || race > 2) return null;
+  const built = steps.filter((s) => s.row.kind === "unit" && s.row.building && s.row.frame > 0);
+  const first = (type) => built.find((s) => s.row.id === type) ?? null;
+  const all = (type) => built.filter((s) => s.row.id === type);
+  const at = (s) => s?.row.frame ?? Infinity;
+  const supply = (s) => s?.supply ?? null;
+  const proxied = (s) => {
+    if (!s || !home || !others.length) return false;
+    const own = Math.hypot(s.row.x - home.x, s.row.y - home.y);
+    return own > 40 * 32 && others.some((o) => Math.hypot(s.row.x - o.x, s.row.y - o.y) < own);
+  };
+  const named = (kind, n, m, by) => ({ kind, n, m, proxy: proxied(by) });
+  if (race === 0) {
+    const pool = first(U.pool), hatch = first(U.hatchery);
+    if (pool && at(pool) < at(hatch)) {
+      const ovie = steps.find((s) => s.row.kind === "unit" && s.row.id === U.overlord && s.row.frame > 0 && s.row.frame < pool.row.frame) ?? null;
+      if ((supply(pool) ?? 0) > 8 && ovie && supply(ovie) === 9 && (supply(pool) ?? 99) <= 10) return named("overpool", null, null, pool);
+      return named("pool", supply(pool), null, pool);
+    }
+    if (hatch) return pool ? named("hatch-pool", supply(hatch), supply(pool), hatch) : named("hatch", supply(hatch), null, hatch);
+    return null;
+  }
+  if (race === 1) {
+    const rax = all(U.barracks), cc = first(U.commandCenter), depot = first(U.depot), fact = first(U.factory), port = first(U.starport);
+    if (rax.length >= 2 && at(rax[1]) < at(depot)) return named("bbs", null, null, rax[0]);
+    if (cc && at(cc) < at(rax[0] ?? null)) return named("cc-first", supply(cc), null, rax[0] ?? null);
+    const raxBefore = (frame) => rax.filter((r) => r.row.frame < frame).length;
+    if (cc && at(cc) < at(fact)) return raxBefore(cc.row.frame) === 1 ? named("rax-fe", null, null, rax[0]) : named("rax", raxBefore(cc.row.frame), null, rax[0] ?? null);
+    if (fact) {
+      if (port && at(port) < at(cc)) return named("one-one-one", null, null, rax[0] ?? fact);
+      if (all(U.factory).filter((f) => at(f) < at(cc)).length >= 2) return named("two-fact", null, null, rax[0] ?? fact);
+      return named("rax-fact", null, null, rax[0] ?? fact);
+    }
+    if (rax.length >= 2) return named("rax", rax.length, null, rax[0]);
+    return null;
+  }
+  const nexus = first(U.nexus), forge = first(U.forge), gates = all(U.gateway), core = first(U.core);
+  const gate = gates[0] ?? null;
+  if (nexus && at(nexus) < at(gate) && at(nexus) < at(forge)) return named("nexus-first", supply(nexus), null, null);
+  if (nexus && forge && at(forge) < at(gate) && at(nexus) < at(gate)) return named("forge-fe", null, null, forge);
+  const gatesBeforeCore = gates.filter((g) => at(g) < at(core)).length;
+  if (gatesBeforeCore >= 2) return named("gates", gatesBeforeCore, null, gate);
+  if (nexus && gate && at(nexus) < at(core)) return named("gate-fe", null, null, gate);
+  if (gate && core) return named("gate-core", null, null, gate);
+  return null;
+}
+function keySteps(steps, count = 4) {
+  const supplyBuildings = KINDS.game ? /* @__PURE__ */ new Set([U.depot, U.pylon]) : /* @__PURE__ */ new Set();
+  return steps.filter((s) => s.row.kind === "unit" && s.row.building && s.row.frame > 0 && !supplyBuildings.has(s.row.id)).slice(0, count);
+}
+function starts(t) {
+  const out = /* @__PURE__ */ new Map();
+  for (const e of t.events) {
+    if (e.frame > 0) break;
+    if (e.kind === "born" && DEPOTS.has(e.type) && e.owner <= 7 && !out.has(e.owner)) out.set(e.owner, { x: e.x, y: e.y });
+  }
+  return out;
+}
+
 // plugin.ts
 var DEFAULTS = { orders: false, legend: true, heat: "losses", speed: 8, workers: false, chart: "lead", tab: "summary", insightTab: "economy", resource: "both", insightMetric: "income", castFormat: "game", castBanter: "light", castCards: true, castVoiced: true, castNotes: "", cinemaMinimap: true, version: 5 };
 var FRONT_FRAMES = 120;
@@ -11843,6 +12681,33 @@ var STYLE2 = `
 .afm .afm-step.afm-future { opacity: 0.45; }
 .afm .afm-step .afm-t { font-variant-numeric: tabular-nums; color: var(--text-dim, #99a2b3); }
 .afm .afm-step.afm-hall { font-weight: 600; }
+.afm .afm-bo-who { display: flex; gap: 6px; margin-bottom: 6px; }
+.afm .afm-bo-player { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 6px; padding: 5px 8px; background: none; border: 1px solid var(--border, #3a4150); border-radius: 4px; color: var(--text-dim, #99a2b3); font: inherit; cursor: pointer; }
+.afm .afm-bo-player.afm-on { color: var(--text, #e4e8ef); border-color: var(--accent, #4fd1c5); background: var(--hover, rgba(255,255,255,0.06)); }
+.afm .afm-bo-card { display: flex; flex-direction: column; gap: 5px; margin: 2px 0 8px; padding: 9px 10px; background: var(--bg-2, rgba(255,255,255,0.04)); border: 1px solid var(--border, rgba(255,255,255,0.08)); border-radius: 6px; }
+.afm .afm-bo-kicker { font-size: 11px; }
+.afm .afm-bo-opening { font-size: 16px; font-weight: 600; }
+.afm .afm-bo-keys { display: flex; flex-wrap: wrap; gap: 2px 10px; }
+.afm .afm-bo-stats { display: flex; flex-wrap: wrap; gap: 6px 14px; padding-top: 6px; margin-top: 2px; border-top: 1px solid var(--border, rgba(255,255,255,0.08)); }
+.afm .afm-bo-stat { display: flex; flex-direction: column; font-variant-numeric: tabular-nums; cursor: help; }
+.afm .afm-bo-stat .afm-dim { font-size: 11px; }
+.afm .afm-bo-card .afm-link { align-self: flex-start; font-size: 11px; }
+.afm .afm-bstep { display: grid; grid-template-columns: 22px 26px minmax(0, 1fr) auto; gap: 6px; align-items: center; }
+.afm .afm-bstep.afm-bo-head { padding: 0 6px 2px; font-size: 11px; cursor: default; }
+.afm .afm-bo-head > span:first-child, .afm .afm-bo-supply { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.afm .afm-bstep.afm-hall .afm-bo-supply { color: var(--accent, #4fd1c5); }
+.afm .afm-bo-name { display: flex; flex-direction: column; min-width: 0; }
+.afm .afm-bo-name > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.afm .afm-ostep { grid-template-columns: 44px 26px minmax(0, 1fr); align-items: center; }
+.afm .afm-bo-block { display: flex; justify-content: space-between; gap: 8px; margin: 2px 6px; padding: 2px 8px; border-radius: 3px; background: rgba(232,131,58,0.16); color: #f0b48a; font-size: 11px; cursor: pointer; }
+.afm .afm-bo-block.afm-future { opacity: 0.45; }
+.afm .afm-bo-block .afm-t { color: inherit; }
+.afm-mc-key { display: inline-block; width: 16px; height: 8px; border-radius: 2px; vertical-align: middle; }
+.afm-mc-busy { background: var(--text-dim, #99a2b3); }
+.afm-mc-idle { box-sizing: border-box; border: 1px solid; background: repeating-linear-gradient(135deg, #e8833a 0 2px, transparent 2px 5px); }
+.afm-mc-table th, .afm-mc-table td { text-align: left; }
+.afm-mc-table tbody tr { cursor: pointer; }
+.afm-mc-table tbody tr:hover td { text-decoration: underline; }
 .afm .afm-fight { padding-top: 3px; padding-bottom: 3px; }
 .afm .afm-fight .afm-sides, .afm .afm-fold .afm-step { font-size: 11px; color: var(--text-dim, #99a2b3); }
 .afm .afm-again { margin-top: 2px; font-size: 11px; font-variant-numeric: tabular-nums; }
@@ -11963,6 +12828,12 @@ function activate(api) {
   let nextId = 1;
   let current = null;
   const ownData = (entry) => !entry?.mod || api.gameData?.source?.()?.hash === entry.mod.dataSet.hash;
+  const short3 = (name) => name.replace(/^(Terran|Zerg|Protoss) (?=\S)/, "");
+  const openingName = (o) => {
+    const n = o.n ?? 0, m = o.m ?? 0;
+    const name = o.kind === "pool" ? t("{n} Pool", { n }) : o.kind === "overpool" ? t("Overpool") : o.kind === "hatch" ? t("{n} Hatch", { n }) : o.kind === "hatch-pool" ? t("{n} Hatch, {m} Pool", { n, m }) : o.kind === "bbs" ? t("Two Barracks before a Supply Depot") : o.kind === "cc-first" ? t("{n} Command Center", { n }) : o.kind === "rax-fe" ? t("One Barracks expand") : o.kind === "rax" ? t("{n, plural, one {One Barracks} other {# Barracks}}", { n }) : o.kind === "one-one-one" ? t("Barracks, Factory, Starport") : o.kind === "two-fact" ? t("Two Factories") : o.kind === "rax-fact" ? t("Barracks, Factory") : o.kind === "forge-fe" ? t("Forge expand") : o.kind === "nexus-first" ? t("{n} Nexus", { n }) : o.kind === "gates" ? t("{n} Gateways", { n }) : o.kind === "gate-fe" ? t("Gateway expand") : t("One Gateway, Cybernetics Core");
+    return o.proxy ? t("{opening}, proxied", { opening: name }) : name;
+  };
   const names = {
     unit: (id) => ownData(current) ? api.names.unit(id) : t("Unit {id}", { id }),
     upgrade: (id) => ownData(current) ? api.names.upgrade(id) : t("Upgrade {id}", { id }),
@@ -12086,13 +12957,13 @@ function activate(api) {
               letter.focus();
               return false;
             }
-            let kept = null;
+            let kept2 = null;
             try {
-              kept = declare(raceEditor, row);
+              kept2 = declare(raceEditor, row);
             } catch (err2) {
               api.log("Aftermath: naming a race,", err2);
             }
-            if (!kept) api.ui.toast({ kind: "warn", title: t("The race could not be named"), detail: t("The data set in use keeps no names for races.") });
+            if (!kept2) api.ui.toast({ kind: "warn", title: t("The race could not be named"), detail: t("The data set in use keeps no names for races.") });
             racesChanged();
           }
         }
@@ -12574,9 +13445,9 @@ function activate(api) {
       return true;
     }
     const base = entry.fileName.replace(/\.rep$/i, "").replace(/[\\/:*?"<>|]/g, "_") || t("Replay map");
-    opening = entry;
+    opening2 = entry;
     const ok = await api.document.open(entry.report.replay.chk, `${base}.scx`, { viewOnly: { label: t("Replay") } });
-    opening = null;
+    opening2 = null;
     if (!ok) {
       api.ui.toast({ kind: "error", title: t("Could not open the map of {name}", { name: entry.fileName }) });
       return false;
@@ -12600,7 +13471,7 @@ function activate(api) {
     if (built) return { tx: built.tx, ty: built.ty };
     return { tx: Math.floor(entry.map.width / 2), ty: Math.floor(entry.map.height / 2) };
   }
-  let opening = null;
+  let opening2 = null;
   function remove(entry) {
     const at = loaded.indexOf(entry);
     if (at < 0) return;
@@ -12619,9 +13490,9 @@ function activate(api) {
   function sync() {
     const open = new Set(api.document.list().map((d) => d.id));
     for (const l of [...loaded]) if (l.docId !== null && !open.has(l.docId)) remove(l);
-    for (const l of [...loaded]) if (l.docId === null && l !== opening && !hasTab(l.group)) remove(l);
+    for (const l of [...loaded]) if (l.docId === null && l !== opening2 && !hasTab(l.group)) remove(l);
     const id = api.document.id();
-    if (opening && opening.docId === null && id !== null && !loaded.some((l) => l.docId === id)) opening.docId = id;
+    if (opening2 && opening2.docId === null && id !== null && !loaded.some((l) => l.docId === id)) opening2.docId = id;
     const next = loaded.find((l) => l.docId !== null && l.docId === id) ?? null;
     if (next !== current) {
       share.close();
@@ -12883,8 +13754,8 @@ function activate(api) {
   const keptChecked = /* @__PURE__ */ new WeakSet();
   async function refreshKept(entry) {
     keptChecked.add(entry);
-    const kept = await store.forReplay(await replayOf(entry));
-    if (kept.length) keptFor.set(entry.id, kept[0].key);
+    const kept2 = await store.forReplay(await replayOf(entry));
+    if (kept2.length) keptFor.set(entry.id, kept2[0].key);
     else keptFor.delete(entry.id);
     if (current === entry) strip?.render();
   }
@@ -13129,9 +14000,9 @@ function activate(api) {
   async function madeOf(entry, key) {
     const have = casts.get(key);
     if (have) return have;
-    const kept = await store.get(key);
-    if (!kept) return null;
-    const made = await ready_(key, kept.input, kept.lines, kept.clips, await castGameOf(entry));
+    const kept2 = await store.get(key);
+    if (!kept2) return null;
+    const made = await ready_(key, kept2.input, kept2.lines, kept2.clips, await castGameOf(entry));
     casts.set(key, made);
     return made;
   }
@@ -13272,9 +14143,9 @@ function activate(api) {
               return el2("span", { className: `afm-cast-step afm-cast-step-${state}` }, state === "done" ? `\u2713 ${names2[k]}` : state === "error" ? `\u2715 ${names2[k]}` : names2[k]);
             }));
             bar?.set(fraction(m), makingLine(m));
-            const opening2 = m.writing.storyline ? /^.*?[.!?](?=\s|$)/.exec(m.writing.storyline.trim())?.[0] ?? null : null;
-            story2.textContent = opening2 ?? "";
-            story2.hidden = !opening2;
+            const opening3 = m.writing.storyline ? /^.*?[.!?](?=\s|$)/.exec(m.writing.storyline.trim())?.[0] ?? null : null;
+            story2.textContent = opening3 ?? "";
+            story2.hidden = !opening3;
           };
           update();
           const cancel = w.button(m.error ? t("Back") : t("Cancel"), { onClick: () => {
@@ -13304,7 +14175,7 @@ function activate(api) {
         };
         const optionsView = async () => {
           const replay = await replayOf(entry);
-          const kept = await store.forReplay(replay);
+          const kept2 = await store.forReplay(replay);
           const offer = castOffer;
           let format = settings.castFormat, banter = settings.castBanter, voiced = settings.castVoiced && !!offer?.speech, notes = settings.castNotes;
           const estimateLine = el2("p", { className: "afm-dim afm-cast-estimate" });
@@ -13317,7 +14188,7 @@ function activate(api) {
               from: e.making[0],
               to: e.making[1]
             });
-            const same3 = kept.find((k) => k.key === castKey(replay, { format, banter }, voiced, notes));
+            const same3 = kept2.find((k) => k.key === castKey(replay, { format, banter }, voiced, notes));
             make.textContent = same3 ? t("Make a new one") : t("Make cast");
           };
           const formatPick = w.segmented([{ value: "game", label: t("Whole game") }, { value: "highlights", label: t("Key moments") }], { value: format, onChange: (v) => {
@@ -13355,7 +14226,7 @@ function activate(api) {
           } });
           const blocked = castBlocked(entry);
           if (blocked) make.disabled = true;
-          const keptRows = kept.map((k) => {
+          const keptRows = kept2.map((k) => {
             const label2 = [k.options.format === "game" ? t("Whole game") : t("Key moments"), k.options.banter === "off" ? t("No banter") : k.options.banter === "lots" ? t("Lots of banter") : t("Some banter"), k.voiced ? t("Voiced") : t("Captions only")].join(" \xB7 ");
             const watch = w.button(t("Watch"), { primary: true, onClick: async () => {
               const ctx = k.voiced ? new AudioContext() : null;
@@ -14658,6 +15529,10 @@ function activate(api) {
     /** The list rows that belong to a moment, greyed while it is still to come. */
     steps = [];
     buildPlayer = -1;
+    /** The Build tab of a played game: what was made, or what was ordered. */
+    buildMode = "made";
+    /** The game's icons on the Build tab's lines, filled in as they arrive. */
+    icons = icons(api);
     /** Map stats' line for the game the engine is playing, refreshed with its progress. */
     running = null;
     /** The Fights tab's lines for key moments still being played again, refreshed with the engine's progress. */
@@ -14858,35 +15733,80 @@ function activate(api) {
     renderBuild(body, entry) {
       const players = entry.report.players;
       if (!players.some((p) => p.player.id === this.buildPlayer)) this.buildPlayer = players[0]?.player.id ?? -1;
-      const who = w.select(players.map((p) => ({ value: p.player.id, label: p.player.name })), { value: this.buildPlayer, onChange: (id) => {
+      const who = players.length <= 4 ? el("div", { className: "afm-bo-who" }, ...players.map((p) => {
+        const b = el(
+          "button",
+          { type: "button", className: "afm-bo-player" + (p.player.id === this.buildPlayer ? " afm-on" : ""), title: p.player.name },
+          el("span", { className: "afm-tip-swatch", style: `background:${p.player.color}` }),
+          el("span", { className: "afm-gt-name" }, p.player.name)
+        );
+        b.setAttribute("aria-pressed", String(p.player.id === this.buildPlayer));
+        b.addEventListener("click", () => {
+          this.buildPlayer = p.player.id;
+          this.render();
+        });
+        return b;
+      })) : w.select(players.map((p) => ({ value: p.player.id, label: p.player.name })), { value: this.buildPlayer, onChange: (id) => {
         this.buildPlayer = Number(id);
         this.render();
       } });
+      body.append(who);
+      const pr = players.find((p) => p.player.id === this.buildPlayer);
+      const made = !!entry.played && this.buildMode === "made";
+      if (entry.played && pr) body.append(this.openingCard(entry, pr));
       const workers = w.checkbox(t("Workers"), { value: settings.workers, title: t("Show SCVs, Drones and Probes"), onChange: (on) => {
         settings.workers = on;
         save();
         this.render();
       } });
-      body.append(w.row(who, workers));
-      const list = el("div");
-      const pr = players.find((p) => p.player.id === this.buildPlayer);
+      const mode = entry.played ? w.segmented([{ value: "made", label: t("Made") }, { value: "ordered", label: t("Ordered") }], {
+        value: this.buildMode,
+        title: t("What was really made, as the game played it, or what the replay's commands asked for"),
+        onChange: (v) => {
+          this.buildMode = v === "ordered" ? "ordered" : "made";
+          this.render();
+        }
+      }) : null;
+      body.append(w.row(...mode ? [mode] : [], workers));
+      const list = el("div", { className: "afm-bo-list" });
+      const icon = (kind, id, owner) => this.icons.icon(kind, id, { title: kind === "unit" ? names.unit(id) : kind === "tech" ? names.tech(id) : names.upgrade(id), owner });
       const toBuilding = (frame, x2, y, type) => {
         const size = api.palette.unitSize(type);
         const tw = Math.max(1, Math.ceil(size.width / 32)), th = Math.max(1, Math.ceil(size.height / 32));
         const tx = Math.max(0, Math.floor(x2 / 32 - tw / 2)), ty = Math.max(0, Math.floor(y / 32 - th / 2));
         goTo(frame, x2, y, { x0: tx, y0: ty, x1: tx + tw, y1: ty + th });
       };
-      if (entry.played && pr) {
-        let count = 0;
-        for (const row of madeRows(entry.played.timeline, pr.player.index, { workers: settings.workers })) {
-          const name = row.kind === "upgrade" ? `${names.upgrade(row.id)} ${row.level ?? ""}`.trim() : row.kind === "tech" ? names.tech(row.id) : names.unit(row.id);
-          const hall = row.kind === "unit" && TOWN_HALLS.has(row.id);
-          const end = row.kind !== "unit" ? t("researched") : row.done === null ? row.lost === null ? t("not finished") : row.building ? t("cancelled or destroyed {time}", { time: formatTime(row.lost) }) : t("lost {time}", { time: formatTime(row.lost) }) : row.lost !== null ? t("lost {time}", { time: formatTime(row.lost) }) : row.building ? t("done {time}", { time: formatTime(row.done) }) : "";
+      if (made && entry.played && pr) {
+        const tl = entry.played.timeline, slot = pr.player.index;
+        const series2 = tl.samples.players.find((s) => s.slot === slot);
+        const blocks = series2 ? supplyBlocks(tl.samples.frame, series2.supplyUsed, series2.supplyMax, pr.leftAt ?? tl.frames) : [];
+        let block = 0;
+        const band = (b) => {
           const line = el(
             "div",
-            { className: "afm-step" + (hall ? " afm-hall" : "") + (row.kind === "unit" && row.done === null && row.lost !== null ? " afm-gone" : ""), title: row.kind === "unit" ? t("Go to the time and place") : t("Go to the time") },
-            el("span", { className: "afm-t" }, formatTime(row.frame)),
-            el("span", {}, row.count > 1 ? `${name} \xD7${row.count}` : name, end ? el("span", { className: "afm-end" }, ` \xB7 ${end}`) : null)
+            { className: "afm-bo-block", title: t("Go to the time") },
+            el("span", {}, t("Supply blocked {time}", { time: formatTime(b.to - b.from) })),
+            el("span", { className: "afm-t" }, formatTime(b.from))
+          );
+          line.addEventListener("click", () => seek(b.from));
+          list.append(line);
+          this.steps.push({ el: line, frame: b.from });
+        };
+        let count = 0;
+        list.append(el("div", { className: "afm-bstep afm-bo-head afm-dim" }, el("span", {}, t("Supply")), el("span", {}), el("span", {}, t("Started")), el("span", {})));
+        for (const row of madeRows(tl, slot, { workers: settings.workers })) {
+          while (block < blocks.length && blocks[block].from <= row.frame) band(blocks[block++]);
+          const name = row.kind === "upgrade" ? short3(`${names.upgrade(row.id)} ${row.level ?? ""}`.trim()) : row.kind === "tech" ? names.tech(row.id) : short3(names.unit(row.id));
+          const hall = row.kind === "unit" && TOWN_HALLS.has(row.id);
+          const end = row.kind !== "unit" ? t("researched") : row.done === null ? row.lost === null ? t("not finished") : row.building ? t("cancelled or destroyed {time}", { time: formatTime(row.lost) }) : t("lost {time}", { time: formatTime(row.lost) }) : row.lost !== null ? t("lost {time}", { time: formatTime(row.lost) }) : row.building ? t("done {time}", { time: formatTime(row.done) }) : "";
+          const supply = row.kind === "unit" ? supplyAt(tl, slot, row.frame) : null;
+          const line = el(
+            "div",
+            { className: "afm-step afm-bstep" + (hall ? " afm-hall" : "") + (row.kind === "unit" && row.done === null && row.lost !== null ? " afm-gone" : ""), title: row.kind === "unit" ? t("Go to the time and place") : t("Go to the time") },
+            el("span", { className: "afm-bo-supply" }, supply === null ? "" : String(Math.floor(supply))),
+            icon(row.kind === "unit" ? "unit" : row.kind, row.id, slot),
+            el("span", { className: "afm-bo-name" }, el("span", {}, row.count > 1 ? `${name} \xD7${row.count}` : name), end ? el("span", { className: "afm-end" }, end) : null),
+            el("span", { className: "afm-t" }, formatTime(row.frame))
           );
           line.addEventListener("click", () => {
             if (row.kind === "unit") toBuilding(row.frame, row.x, row.y, row.id);
@@ -14896,7 +15816,11 @@ function activate(api) {
           this.steps.push({ el: line, frame: row.frame });
           count++;
         }
+        while (block < blocks.length) band(blocks[block++]);
         if (!count) list.append(el("div", { className: "afm-dim" }, t("Nothing was made.")));
+        body.append(list);
+        if (count) body.append(w.hint(t("Supply is what the player had when each was begun. Press a line to go to that time and place.")));
+        return;
       } else {
         const rows = pr ? buildOrderRows(pr.build, { workers: settings.workers }) : [];
         for (const step2 of rows) {
@@ -14904,8 +15828,9 @@ function activate(api) {
           const hall = step2.kind === "build" && TOWN_HALLS.has(step2.id);
           const line = el(
             "div",
-            { className: "afm-step" + (hall ? " afm-hall" : ""), title: step2.placement ? t("Go to the time and place") : t("Go to the time") },
+            { className: "afm-step afm-ostep" + (hall ? " afm-hall" : ""), title: step2.placement ? t("Go to the time and place") : t("Go to the time") },
             el("span", { className: "afm-t" }, formatTime(step2.frame)),
+            icon(step2.kind === "upgrade" || step2.kind === "tech" ? step2.kind : "unit", step2.id, pr?.player.index ?? 0),
             el("span", { title: step2.count > 1 ? t("Ordered {n} times", { n: step2.count }) : void 0 }, step2.count > 1 ? `${name} \xD7${step2.count}` : name)
           );
           line.addEventListener("click", () => {
@@ -14922,9 +15847,59 @@ function activate(api) {
           this.steps.push({ el: line, frame: step2.frame });
         }
         if (!rows.length) list.append(el("div", { className: "afm-dim" }, t("No builds, units or research ordered.")));
-        if (rows.length) body.append(w.hint(t("What was ordered. Once the game has been analysed, this shows what was really made.")));
+        else if (!entry.played) body.append(w.hint(t("What was ordered. Once the game has been analysed, this shows what was really made.")));
+        else body.append(w.hint(t("What the replay's commands asked for, which is not always what was made.")));
       }
       body.append(list);
+    }
+    /**
+     * The card over a played game's build: the opening's name, its first buildings with the supply each was begun at,
+     * and three numbers on how the production went (from the Macro tab of the Analysis window).
+     */
+    openingCard(entry, pr) {
+      const tl = entry.played.timeline, slot = pr.player.index;
+      const steps = madeRows(tl, slot).map((row) => ({ row, supply: row.kind === "unit" ? supplyAt(tl, slot, row.frame) : null }));
+      const homes = starts(tl);
+      const others = [...homes].filter(([s]) => s !== slot).map(([, at]) => at);
+      const race = tableRace(raceOf(entry, pr.player).id);
+      const o = opening(steps, race, homes.get(slot) ?? null, others);
+      const card = el("section", { className: "afm-bo-card" });
+      const played = new Set(tl.samples.players.filter((s) => s.supplyMax.some((n) => n > 0)).map((s) => s.slot));
+      const foes = entry.report.players.filter((p) => p.player.index !== slot && played.has(p.player.index) && (pr.player.team === 0 || p.player.team !== pr.player.team));
+      const foeRaces = [...new Set(foes.map((p) => tableRace(raceOf(entry, p.player).id)))];
+      const against = foeRaces.length === 1 && foeRaces[0] !== null ? t("Opening, against {race}", { race: translate(RACES2[foeRaces[0]]) }) : t("Opening");
+      card.append(el("div", { className: "afm-dim afm-bo-kicker" }, against));
+      card.append(el("div", { className: "afm-bo-opening" }, o ? openingName(o) : t("No name for this start")));
+      const keys2 = keySteps(steps);
+      if (keys2.length) card.append(el("div", { className: "afm-bo-keys" }, ...keys2.map((k) => el(
+        "span",
+        {},
+        k.supply === null ? null : el("b", {}, `${Math.floor(k.supply)} `),
+        short3(names.unit(k.row.id))
+      ))));
+      const m = macroOf(api, tl, new Map(entry.report.players.map((p) => [p.player.index, p.leftAt])));
+      const mp = m?.players.find((p) => p.slot === slot) ?? null;
+      const series2 = tl.samples.players.find((s) => s.slot === slot);
+      const blocked = series2 ? supplyBlocks(tl.samples.frame, series2.supplyUsed, series2.supplyMax, pr.leftAt ?? tl.frames).reduce((n, b) => n + b.to - b.from, 0) : 0;
+      const eight = 8 * FRAMES_PER_MINUTE, at8 = series2 && tl.frames >= eight ? series2.workers[sampleAt(tl.samples.frame, eight)] : null;
+      const stat = (value, label2, title) => el("div", { className: "afm-bo-stat", title }, el("b", {}, value), el("span", { className: "afm-dim" }, label2));
+      const stats = [];
+      if (mp?.noWorker != null) stats.push(stat(formatTime(mp.noWorker), t("no worker made"), t("Before 10:00, the time no town hall had a worker in training while there was money for one")));
+      else if (mp?.larvaeWaiting != null) stats.push(stat(formatTime(mp.larvaeWaiting), t("larvae waiting"), t("Before 10:00, the time larvae waited at a full hatchery while there was money to spend")));
+      stats.push(stat(formatTime(blocked), t("supply blocked"), t("Time at the supply limit, below 200")));
+      if (at8 !== null && at8 !== void 0) stats.push(stat(String(at8), t("workers at 8:00"), t("Finished workers at 8:00")));
+      card.append(el("div", { className: "afm-bo-stats" }, ...stats));
+      if (mp) {
+        const more = el("button", { type: "button", className: "afm-link" }, t("Production in the Analysis window"));
+        more.addEventListener("click", () => {
+          settings.insightTab = "macro";
+          save();
+          if (insight) insight.select("macro");
+          else openInsight();
+        });
+        card.append(more);
+      }
+      return card;
     }
     /** Who lost what in a fight, a swatch and a number a side, the side that came out ahead in bold. */
     sides(entry, f) {
